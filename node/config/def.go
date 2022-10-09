@@ -6,11 +6,23 @@ import (
 	"golang.org/x/xerrors"
 )
 
+// storage node config
 type StorageNode struct {
+	Chain Chain
+}
+
+type Chain struct {
+	Remote     string
+	WsEndpoint string
 }
 
 func DefaultNode() *StorageNode {
-	return &StorageNode{}
+	return &StorageNode{
+		Chain: Chain{
+			Remote:     "http://localhost:26657",
+			WsEndpoint: "/websocket",
+		},
+	}
 }
 
 func NodeBytes(cfg interface{}) ([]byte, error) {

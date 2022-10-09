@@ -13,8 +13,9 @@ require (
 )
 
 require (
-	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/ipfs/go-cid v0.2.0
+	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/tendermint/tendermint v0.34.21
 	github.com/urfave/cli/v2 v2.17.1
 )
 
@@ -64,7 +65,6 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/golang/glog v1.0.0 // indirect
-	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
@@ -131,12 +131,10 @@ require (
 	github.com/tendermint/btcd v0.1.1 // indirect
 	github.com/tendermint/crypto v0.0.0-20191022145703-50d29ede1e15 // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
-	github.com/tendermint/tendermint v0.34.21 // indirect
 	github.com/tendermint/tm-db v0.6.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/zondax/hid v0.9.1-0.20220302062450-5552068d2266 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
-	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.22.0 // indirect
@@ -159,7 +157,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-//replace sao-consensus => ../sao-consensus
 replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
