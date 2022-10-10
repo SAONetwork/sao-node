@@ -1,7 +1,10 @@
 package repo
 
 import (
+	"crypto/rand"
+	"errors"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 	"io/ioutil"
@@ -18,6 +21,11 @@ const (
 	fsConfig    = "config.toml"
 	fsKeystore  = "keystore"
 	fsLibp2pKey = "libp2p.key"
+	fsAPI       = "api"
+)
+
+var (
+	ErrNoAPIEndpoint = errors.New("API not running (no endpoint)")
 )
 
 type Repo struct {
@@ -68,7 +76,35 @@ func (r *Repo) Init() error {
 	return r.initKeystore()
 }
 
-func (r *Repo) SetPeerId(data []byte) error {
+func (r *Repo) GeneratePeerId() (crypto.PrivKey, error) {
+	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+
+	kbytes, err := crypto.MarshalPrivateKey(pk)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.setPeerId(kbytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return pk, nil
+}
+
+func (r *Repo) PeerId() (crypto.PrivKey, error) {
+	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
+	key, err := ioutil.ReadFile(libp2pPath)
+	if err != nil {
+		return nil, err
+	}
+	return crypto.UnmarshalPrivateKey(key)
+}
+
+func (r *Repo) setPeerId(data []byte) error {
 	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
 	err := ioutil.WriteFile(libp2pPath, data, 0600)
 	if err != nil {

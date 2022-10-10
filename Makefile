@@ -3,17 +3,17 @@ SHELL=/usr/bin/env bash
 GOCC?=go
 BINS:=
 
-all: snode clientcli
+all: saonode saoclient
 
-snode:
-	$(GOCC) build -o snode ./cmd/node
-.PHONY: snode
-BINS+=snode
+saonode:
+	$(GOCC) build -o saonode ./cmd/node
+.PHONY: saonode
+BINS+=saonode
 
-clientcli:
-	$(GOCC) build -o clientcli ./cmd/clientcli
-.PHONY: clientcli
-BINS+=clientcli
+saoclient:
+	$(GOCC) build -o saoclient ./cmd/client
+.PHONY: saoclient
+BINS+=saoclient
 
 api-gen:
 	$(GOCC) run ./gen/api
