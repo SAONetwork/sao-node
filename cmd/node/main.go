@@ -5,12 +5,10 @@ package main
 // later cmd(join, quit) should call node process api to get node address if accountAddress not provided.
 
 import (
-	"crypto/rand"
 	"fmt"
 	"github.com/SaoNetwork/sao/x/node/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -18,7 +16,6 @@ import (
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
-	"sao-storage-node/node/config"
 	"sao-storage-node/node/repo"
 )
 
@@ -104,7 +101,7 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("initialize libp2p identity")
-		p2pSk, err := makeHostKey(r)
+		p2pSk, err := r.GeneratePeerId()
 		if err != nil {
 			return xerrors.Errorf("make host key: %w", err)
 		}
@@ -259,25 +256,6 @@ var quitCmd = &cli.Command{
 	},
 }
 
-func makeHostKey(r *repo.Repo) (crypto.PrivKey, error) {
-	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
-
-	kbytes, err := crypto.MarshalPrivateKey(pk)
-	if err != nil {
-		return nil, err
-	}
-
-	err = r.SetPeerId(kbytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return pk, nil
-}
-
 var runCmd = &cli.Command{
 	Name: "run",
 	Action: func(cctx *cli.Context) error {
@@ -285,12 +263,12 @@ var runCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String(FlagStorageRepo)
-		r, err := repo.NewRepo(repoPath)
+		repo, err := repo.NewRepo(repoPath)
 		if err != nil {
 			return err
 		}
 
-		ok, err := r.Exists()
+		ok, err := repo.Exists()
 		if err != nil {
 			return err
 		}
@@ -298,24 +276,20 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'snode init' to set it up", repoPath)
 		}
 
-		c, err := r.Config()
+		// start node.
+		snode, err := node.NewStorageNode(ctx, repo)
 		if err != nil {
 			return err
 		}
-
-		cfg, ok := c.(*config.StorageNode)
-		if !ok {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
-		}
-
-		// start node.
-		snode := node.NewStorageNode(ctx, cfg)
 		err = snode.Start()
 		if err != nil {
 			return err
 		}
 
-		finishCh := node.MonitorShutdown(shutdownChan)
+		finishCh := node.MonitorShutdown(
+			shutdownChan,
+			node.ShutdownHandler{Component: "storagenode", StopFunc: snode.Stop},
+		)
 		<-finishCh
 		return nil
 	},

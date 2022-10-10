@@ -14,11 +14,14 @@ require (
 
 require (
 	github.com/evanphx/json-patch v4.9.0+incompatible
+	github.com/filecoin-project/go-jsonrpc v0.1.8
+	github.com/gorilla/mux v1.8.0
 	github.com/hyperjumptech/grule-rule-engine v1.11.0
 	github.com/ipfs/go-cid v0.2.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
+	github.com/multiformats/go-multiaddr v0.6.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/raviqqe/hamt v0.0.0-20220630081707-76400bd6195c
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.1
@@ -77,12 +80,12 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gogo/protobuf v1.3.3 // indirect
 	github.com/golang/glog v1.0.0 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
@@ -115,7 +118,6 @@ require (
 	github.com/mtibben/percent v0.2.1 // indirect
 	github.com/multiformats/go-base32 v0.0.4 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
-	github.com/multiformats/go-multiaddr v0.6.0 // indirect
 	github.com/multiformats/go-multibase v0.1.1 // indirect
 	github.com/multiformats/go-multicodec v0.5.0 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
@@ -154,6 +156,7 @@ require (
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/zondax/hid v0.9.1-0.20220302062450-5552068d2266 // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
+	go.opencensus.io v0.23.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	go.uber.org/zap v1.22.0 // indirect

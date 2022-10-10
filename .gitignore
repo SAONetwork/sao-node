@@ -1,3 +1,5 @@
 .idea
 snode
-go.sum
+clientcli
+saonode
+saoclient
