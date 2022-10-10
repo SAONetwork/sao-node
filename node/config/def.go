@@ -10,6 +10,7 @@ import (
 // storage node config
 type StorageNode struct {
 	Chain Chain
+	Cache Cache
 }
 
 type Chain struct {
@@ -17,11 +18,20 @@ type Chain struct {
 	WsEndpoint string
 }
 
+type Cache struct {
+	CacheCapacity int
+	ContentLimit  int
+}
+
 func DefaultNode() *StorageNode {
 	return &StorageNode{
 		Chain: Chain{
 			Remote:     "http://localhost:26657",
 			WsEndpoint: "/websocket",
+		},
+		Cache: Cache{
+			CacheCapacity: 1000,
+			ContentLimit:  2097152,
 		},
 	}
 }

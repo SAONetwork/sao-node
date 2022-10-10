@@ -1,10 +1,10 @@
 package validator
 
 import (
-	"encoding/json"
 	"sao-storage-node/node/model/rule_engine"
 	"strings"
 
+	jsoniter "github.com/json-iterator/go"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v5"
 	"golang.org/x/xerrors"
 )
@@ -66,12 +66,11 @@ func NewDataModelValidator(dmName string, dmSchema string, dmRule string) (*Vali
 }
 
 func (v *Validator) ValidateWithRef(dmContent interface{}, refContents map[string]interface{}) error {
-	model, err := json.Marshal(dmContent)
+	model, err := jsoniter.Marshal(dmContent)
 	if err != nil {
 		return xerrors.Errorf(err.Error())
 	}
-	var doc interface{}
-	json.Unmarshal(model, &doc)
+	doc := jsoniter.Get(model).GetInterface()
 
 	err = v.sch.Validate(doc)
 	if err == nil {

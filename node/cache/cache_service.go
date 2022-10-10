@@ -3,7 +3,9 @@ package cache
 import (
 	"sync"
 
+	logging "github.com/ipfs/go-log/v2"
 	hamt "github.com/raviqqe/hamt"
+
 	"golang.org/x/xerrors"
 )
 
@@ -32,6 +34,7 @@ type (
 var (
 	cacheSvc *CacheSvc
 	once     sync.Once
+	log      = logging.Logger("cache")
 )
 
 func (l *LruCache) addNode(node *Node) {
@@ -88,7 +91,7 @@ func (l *LruCache) put(key hamt.Entry, value interface{}) {
 	oldValue := l.Map.Find(key)
 	if oldValue == nil {
 		node := Node{Key: key, Value: value}
-		if l.Map.Size() >= l.Capacity {
+		if l.Capacity > 0 && l.Map.Size() >= l.Capacity {
 			oldKey := l.removeNode(l.head)
 			l.Map = l.Map.Delete(oldKey).Insert(key, &node)
 		} else {
@@ -141,42 +144,42 @@ func (svc *CacheSvc) Get(name string, key string) (interface{}, error) {
 	return cache.get(hamt.Entry(entryString(key))), nil
 }
 
-func (svc *CacheSvc) Put(name string, key string, value interface{}) error {
+func (svc *CacheSvc) Put(name string, key string, value interface{}) {
 	cache := svc.Caches[name]
 	if cache == nil {
-		return xerrors.Errorf("the cache [%s] not found", name)
+		log.Errorf("the cache [%s] not found", name)
 	}
 
 	cache.put(hamt.Entry(entryString(key)), value)
-
-	return nil
 }
 
-func (svc *CacheSvc) Evict(name string, key string) error {
+func (svc *CacheSvc) Evict(name string, key string) {
 	cache := svc.Caches[name]
 	if cache == nil {
-		return xerrors.Errorf("the cache [%s] not found", name)
+		log.Errorf("the cache [%s] not found", name)
 	}
 
 	cache.evict(hamt.Entry(entryString(key)))
-
-	return nil
 }
 
-func (svc *CacheSvc) GetCapacity(name string) (int, error) {
+func (svc *CacheSvc) GetCapacity(name string) int {
 	cache := svc.Caches[name]
 	if cache == nil {
-		return 0, xerrors.Errorf("the cache [%s] not found", name)
+		log.Errorf("the cache [%s] not found", name)
+
+		return 0
 	}
-	return cache.Capacity, nil
+	return cache.Capacity
 }
 
-func (svc *CacheSvc) GetSize(name string) (int, error) {
+func (svc *CacheSvc) GetSize(name string) int {
 	cache := svc.Caches[name]
 	if cache == nil {
-		return 0, xerrors.Errorf("the cache [%s] not found", name)
+		log.Errorf("the cache [%s] not found", name)
+
+		return 0
 	}
-	return cache.Size, nil
+	return cache.Size
 }
 
 func (svc *CacheSvc) ReSize(name string, capacity int) error {
@@ -185,7 +188,7 @@ func (svc *CacheSvc) ReSize(name string, capacity int) error {
 		return xerrors.Errorf("the cache [%s] not found", name)
 	}
 
-	if cache.Capacity <= capacity {
+	if capacity == -1 || cache.Capacity <= capacity {
 		cache.Capacity = capacity
 	} else {
 		for {

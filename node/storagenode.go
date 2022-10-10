@@ -2,9 +2,11 @@ package node
 
 import (
 	"context"
+	"sao-storage-node/node/config"
+	"sao-storage-node/node/model"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/tendermint/tendermint/rpc/client/http"
-	"sao-storage-node/node/config"
 )
 
 var log = logging.Logger("node")
@@ -13,12 +15,14 @@ type StorageNode struct {
 	ctx             context.Context
 	chainHttpClient *http.HTTP
 	cfg             *config.StorageNode
+	manager         *model.ModelManager
 }
 
 func NewStorageNode(ctx context.Context, cfg *config.StorageNode) StorageNode {
 	return StorageNode{
-		ctx: ctx,
-		cfg: cfg,
+		ctx:     ctx,
+		cfg:     cfg,
+		manager: model.NewModelManager(&cfg.Cache),
 	}
 }
 
