@@ -8,7 +8,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/SaoNetwork/sao/x/node/types"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -16,10 +15,11 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
-	"sao-storage-node/api"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
+	"sao-storage-node/node/config"
+	"sao-storage-node/node/repo"
 )
 
 var log = logging.Logger("node")
@@ -85,7 +85,7 @@ var initCmd = &cli.Command{
 		log.Info("Checking if repo exists")
 
 		repoPath := cctx.String(FlagStorageRepo)
-		r, err := node.NewRepo(repoPath)
+		r, err := repo.NewRepo(repoPath)
 		if err != nil {
 			return err
 		}
@@ -259,7 +259,7 @@ var quitCmd = &cli.Command{
 	},
 }
 
-func makeHostKey(r *node.Repo) (crypto.PrivKey, error) {
+func makeHostKey(r *repo.Repo) (crypto.PrivKey, error) {
 	pk, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -282,30 +282,39 @@ var runCmd = &cli.Command{
 	Name: "run",
 	Action: func(cctx *cli.Context) error {
 		shutdownChan := make(chan struct{})
+		ctx := cctx.Context
 
-		// init websocket
-		log.Info("initialize websocket...")
-		var concensusNodeApi api.ConcensusNodeApiStruct
-		closer, err := jsonrpc.NewMergeClient(cctx.Context, "ws://127.0.0.1:26657/websocket", "", api.GetInternalStructs(&concensusNodeApi), nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		incomings, err := concensusNodeApi.Subscribe(cctx.Context,
-			api.SubscribeQuery{Query: "node-login.creator='cosmos1angsar60505jnztcjxycwpmunsn5j7wl4f6rl3'"},
-		)
+		repoPath := cctx.String(FlagStorageRepo)
+		r, err := repo.NewRepo(repoPath)
 		if err != nil {
 			return err
 		}
 
-		for incoming := range incomings {
-			for _, i := range incoming {
-				log.Debug("subscribe incoming", i.Query)
-			}
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'snode init' to set it up", repoPath)
 		}
 
-		// init p2p host
+		c, err := r.Config()
+		if err != nil {
+			return err
+		}
+
+		cfg, ok := c.(*config.StorageNode)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		// start node.
+		snode := node.NewStorageNode(ctx, cfg)
+		err = snode.Start()
+		if err != nil {
+			return err
+		}
+
 		finishCh := node.MonitorShutdown(shutdownChan)
 		<-finishCh
 		return nil

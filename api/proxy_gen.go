@@ -2,32 +2,6 @@
 
 package api
 
-import (
-	"context"
-
-	"golang.org/x/xerrors"
-)
+import "golang.org/x/xerrors"
 
 var ErrNotSupported = xerrors.New("method not supported")
-
-type ConcensusNodeApiStruct struct {
-	Internal struct {
-		Subscribe func(p0 context.Context, p1 SubscribeQuery) (<-chan []*SubscribeResult, error) ``
-	}
-}
-
-type ConcensusNodeApiStub struct {
-}
-
-func (s *ConcensusNodeApiStruct) Subscribe(p0 context.Context, p1 SubscribeQuery) (<-chan []*SubscribeResult, error) {
-	if s.Internal.Subscribe == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.Subscribe(p0, p1)
-}
-
-func (s *ConcensusNodeApiStub) Subscribe(p0 context.Context, p1 SubscribeQuery) (<-chan []*SubscribeResult, error) {
-	return nil, ErrNotSupported
-}
-
-var _ ConcensusNodeApi = new(ConcensusNodeApiStruct)
