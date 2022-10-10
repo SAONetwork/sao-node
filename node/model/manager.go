@@ -15,10 +15,22 @@ import (
 	"golang.org/x/xerrors"
 )
 
+type ModelType string
+
+const (
+	ModelTypeData = ModelType("DATA")
+	ModelTypeFile = ModelType("FILE")
+)
+
+const PROPERTY_CONTEXT = "@context"
+const PROPERTY_TYPE = "@type"
+const MODEL_TYPE_FILE = "File"
+
 type Model struct {
 	ResourceId string
 	Alias      string
 	Schema     []byte
+	Type       ModelType
 	Content    []byte
 	OrderId    string
 	Cid        cid.Cid
@@ -86,6 +98,8 @@ func (m *ModelManager) Create(account string, alias string, content string, rule
 		return nil, xerrors.Errorf(err.Error())
 	}
 
+	modelType := m.getDataModelType([]byte(content))
+
 	// model, err = m.CommitSvc.Commit(account, content)
 	// if err != nil {
 	// 	return nil, xerrors.Errorf(err.Error())
@@ -95,6 +109,7 @@ func (m *ModelManager) Create(account string, alias string, content string, rule
 		ResourceId: GenerateResourceId(),
 		Alias:      alias,
 		Content:    []byte(content),
+		Type:       modelType,
 		Cid:        cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
 	}
 
@@ -109,12 +124,7 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	contentBytes, err := jsoniter.Marshal(orgModel)
-	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
-	}
-
-	newContentBytes, err := m.JsonpatchSvc.ApplyPatch(contentBytes, []byte(patch))
+	newContentBytes, err := m.JsonpatchSvc.ApplyPatch(orgModel.(*Model).Content, []byte(patch))
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -129,8 +139,8 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 	// 	return nil, xerrors.Errorf(err.Error())
 	// }
 	model := &Model{
-		ResourceId: GenerateResourceId(),
-		Alias:      alias,
+		ResourceId: orgModel.(*Model).ResourceId,
+		Alias:      orgModel.(*Model).Alias,
 		Content:    newContentBytes,
 		Cid:        cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
 	}
@@ -141,7 +151,7 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 }
 
 func (m *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
-	schema := jsoniter.Get(contentBytes, "@context").ToString()
+	schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
 	validator, err := validator.NewDataModelValidator(alias, schema, rule)
 	if err != nil {
 		return xerrors.Errorf(err.Error())
@@ -152,6 +162,15 @@ func (m *ModelManager) validateModel(account string, alias string, contentBytes 
 	}
 
 	return nil
+}
+
+func (m *ModelManager) getDataModelType(contentBytes []byte) ModelType {
+	modelType := ModelTypeData
+	if jsoniter.Get(contentBytes, PROPERTY_TYPE).ToString() == MODEL_TYPE_FILE {
+		modelType = ModelTypeFile
+	}
+
+	return modelType
 }
 
 func (m *ModelManager) cacheModel(account string, alias string, model *Model) {
