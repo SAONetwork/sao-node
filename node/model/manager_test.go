@@ -18,6 +18,7 @@ func TestManager(t *testing.T) {
 	model, err := manager.Create("aa", "model1", `{"xml": "3c726f6f742f3e"}`, "")
 	require.NotNil(t, model)
 	require.NoError(t, err)
+
 	t.Logf(model.OrderId)
 	t.Logf(model.ResourceId)
 	t.Logf(string(model.Content))

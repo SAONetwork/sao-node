@@ -93,6 +93,10 @@ func (m *ModelManager) Create(account string, alias string, content string, rule
 		}
 	}
 
+	if alias == "" {
+		alias = GenerateAlias(content)
+	}
+
 	err = m.validateModel(account, alias, []byte(content), rule)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())

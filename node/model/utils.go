@@ -6,6 +6,10 @@ import (
 	"golang.org/x/xerrors"
 )
 
+func GenerateAlias(content string) string {
+	return uuid.FromStringOrNil(content).String()
+}
+
 func GenerateResourceId() string {
 	return uuid.NewV4().String()
 }
