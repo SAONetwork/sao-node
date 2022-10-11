@@ -1,16 +1,15 @@
 package validator
 
 import (
-	"encoding/json"
 	"testing"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDataModelValidator(t *testing.T) {
 	model1 := `{"xml": "3c726f6f742f3e"}`
-	var doc interface{}
-	json.Unmarshal([]byte(model1), &doc)
+	doc := jsoniter.Get([]byte(model1)).GetInterface()
 	require.NotNil(t, doc)
 
 	validator1, err1 := NewDataModelValidator("test1", `{"type": "object"}`, "")

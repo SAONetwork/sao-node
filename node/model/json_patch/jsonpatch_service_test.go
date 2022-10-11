@@ -1,9 +1,9 @@
 package json_patch
 
 import (
-	"encoding/json"
 	"testing"
 
+	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,10 +23,9 @@ func TestJsonpatch(t *testing.T) {
 	require.NoError(t, err2)
 
 	t.Logf("Target %s", targetModel)
-	var newDoc interface{}
-	json.Unmarshal(newModel, &newDoc)
-	var targetDoc interface{}
-	json.Unmarshal(targetModel, &targetDoc)
+
+	newDoc := jsoniter.Get([]byte(newModel)).GetInterface()
+	targetDoc := jsoniter.Get([]byte(targetModel)).GetInterface()
 
 	require.Equal(t, newDoc, targetDoc)
 }
