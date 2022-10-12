@@ -3,8 +3,8 @@ package node
 import (
 	"context"
 	"sao-storage-node/node/model"
+	"sao-storage-node/node/transport"
 
-	"fmt"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/repo"
@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	"golang.org/x/xerrors"
@@ -25,9 +24,9 @@ type StorageNode struct {
 	chainHttpClient *http.HTTP
 	cfg             *config.StorageNode
 	manager         *model.ModelManager
-	host            *host.Host
-	repo            *repo.Repo
-	stopFuncs       []StopFunc
+	// host            *host.Host
+	repo      *repo.Repo
+	stopFuncs []StopFunc
 }
 
 func NewStorageNode(ctx context.Context, repo *repo.Repo) (*StorageNode, error) {
@@ -55,6 +54,11 @@ func (n *StorageNode) Start() error {
 	}
 
 	err = n.initRpcServer()
+	if err != nil {
+		return err
+	}
+
+	err = n.initTransportServer()
 	if err != nil {
 		return err
 	}
@@ -102,14 +106,30 @@ func (n *StorageNode) initRpcServer() error {
 
 	strma := strings.TrimSpace(n.cfg.Api.ListenAddress)
 	endpoint, err := multiaddr.NewMultiaddr(strma)
+	if err != nil {
+		return xerrors.Errorf("failed to decode multiaddr [%s]: %w", strma, err)
+	}
 	rpcStopper, err := ServeRPC(handler, endpoint)
 	if err != nil {
-		return fmt.Errorf("failed to start json-rpc endpoint: %s", err)
+		return xerrors.Errorf("failed to start json-rpc endpoint: %s", err)
 	}
 	n.stopFuncs = append(n.stopFuncs, func(ctx context.Context) error {
 		log.Info("stop rpc server succeed.")
 		return rpcStopper(ctx)
 	})
+	return nil
+}
+
+func (n *StorageNode) initTransportServer() error {
+	for _, address := range n.cfg.Libp2p.ListenAddress {
+		log.Info("initialize transport server on ", address)
+
+		err := transport.ServeQuicTransport(address, n.repo)
+		if err != nil {
+			return xerrors.Errorf("failed to start transport server [%s]: %w", address, err)
+		}
+	}
+
 	return nil
 }
 

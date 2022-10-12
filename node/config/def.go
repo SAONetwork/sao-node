@@ -48,8 +48,8 @@ func DefaultNode() *StorageNode {
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip6/::/tcp/0",
+				"/ip4/0.0.0.0/udp/26658",
+				"/ip6/::/udp/26658",
 			},
 		},
 		Api: API{
@@ -70,5 +70,5 @@ func NodeBytes(cfg interface{}) ([]byte, error) {
 		return nil, xerrors.Errorf("encoding node config: %w", err)
 	}
 
-	return []byte(buf.String()), nil
+	return buf.Bytes(), nil
 }

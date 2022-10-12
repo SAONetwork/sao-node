@@ -2,10 +2,11 @@ package config
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/kelseyhightower/envconfig"
 	"io"
 	"os"
+
+	"github.com/BurntSushi/toml"
+	"github.com/kelseyhightower/envconfig"
 )
 
 // FromFile loads config from a specified file overriding defaults specified in

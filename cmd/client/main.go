@@ -5,16 +5,16 @@ package main
 // * guic transfer data
 
 import (
-	"fmt"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 	"os"
 	apiclient "sao-storage-node/api/client"
 	"sao-storage-node/build"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/types"
+
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("saoclient")
@@ -26,9 +26,11 @@ const (
 
 func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("saoclient", "INFO")
+	_ = logging.SetLogLevel("transport-client", "INFO")
 
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("saoclient", "DEBUG")
+		_ = logging.SetLogLevel("transport-client", "DEBUG")
 	}
 
 	return nil
@@ -47,6 +49,7 @@ func main() {
 		Commands: []*cli.Command{
 			testCmd,
 			createCmd,
+			uploadCmd,
 		},
 	}
 	app.Setup()
@@ -58,7 +61,7 @@ func main() {
 }
 
 var testCmd = &cli.Command{
-	Name: "create",
+	Name: "test",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "gateway",
@@ -81,7 +84,7 @@ var testCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(resp)
+		log.Info(resp)
 		return nil
 	},
 }
@@ -150,7 +153,40 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(dataId)
+		log.Info(dataId)
+		return nil
+	},
+}
+
+var uploadCmd = &cli.Command{
+	Name:  "upload",
+	Usage: "upload a file to storage network",
+	Flags: []cli.Flag{
+		&cli.PathFlag{
+			Name:     "filepath",
+			Usage:    "file's path to upload",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "multiaddr",
+			Usage:    "remote multiaddr",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "peerid",
+			Usage:    "remote peer id",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		// filepath := cctx.String("filepath")
+		multiaddr := cctx.String("multiaddr")
+		peerId := cctx.String("peerid")
+		result := saoclient.DoQuicTransport(ctx, multiaddr, peerId, []byte("DoQuicTransportDoQuicTransportDoQuicTransport"))
+
+		log.Info(result)
 		return nil
 	},
 }
