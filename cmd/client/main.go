@@ -14,6 +14,7 @@ import (
 	"sao-storage-node/build"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
+	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 )
 
@@ -58,7 +59,7 @@ func main() {
 }
 
 var testCmd = &cli.Command{
-	Name: "create",
+	Name: "test",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "gateway",
@@ -103,6 +104,16 @@ var createCmd = &cli.Command{
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
+		&cli.BoolFlag{
+			Name:     "clientPublish",
+			Value:    false,
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "chainAddress",
+			Value:    "http://localhost:26657",
+			Required: false,
+		},
 		&cli.IntFlag{
 			Name:     "replica",
 			Usage:    "how many copies to store.",
@@ -129,10 +140,12 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("must provide --from")
 		}
 		from := cctx.String("from")
+		clientPublish := cctx.Bool("clientPublish")
 
 		// TODO: check valid range
 		duration := cctx.Int("duration")
-		replicas := cctx.Int("replicas")
+		replicas := cctx.Int("replica")
+		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
 		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
@@ -141,12 +154,33 @@ var createCmd = &cli.Command{
 		}
 		defer closer()
 
-		client := saoclient.NewSaoClient(gatewayApi)
-		dataId, err := client.Create(ctx, types.OrderMeta{
+		orderMeta := types.OrderMeta{
 			Creator:  from,
-			Duration: duration,
-			Replica:  replicas,
-		}, content)
+			Duration: int32(duration),
+			Replica:  int32(replicas),
+		}
+		if clientPublish {
+			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
+			if err != nil {
+				return xerrors.Errorf("new cosmos chain: %w", err)
+			}
+			orderId, tx, err := chain.Store(from, from, gatewayAddress, int32(duration), int32(replicas))
+			if err != nil {
+				return err
+			}
+			log.Infof("order id=%d, tx=%s", orderId, tx)
+			orderMeta.TxId = tx
+			orderMeta.OrderId = orderId
+			orderMeta.TxSent = true
+		}
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		dataId, err := client.Create(ctx, orderMeta, content)
 		if err != nil {
 			return err
 		}

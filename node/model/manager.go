@@ -2,6 +2,7 @@ package model
 
 import (
 	"fmt"
+	"sao-storage-node/node"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model/json_patch"
@@ -40,7 +41,7 @@ type ModelManager struct {
 	CacheCfg     *config.Cache
 	CacheSvc     *cache.CacheSvc
 	JsonpatchSvc *json_patch.JsonpatchSvc
-	//CommitSvc *commit.CommitSvc
+	commitSvc    *node.CommitSvc
 }
 
 var (
@@ -48,13 +49,13 @@ var (
 	once         sync.Once
 )
 
-func NewModelManager(cacheCfg *config.Cache) *ModelManager {
+func NewModelManager(cacheCfg *config.Cache, commitSvc *node.CommitSvc) *ModelManager {
 	once.Do(func() {
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,
 			CacheSvc:     cache.NewCacheSvc(),
 			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
-			// CommitSvc: commit.NewCommitSvc(),
+			commitSvc:    commitSvc,
 		}
 	})
 
@@ -100,10 +101,10 @@ func (m *ModelManager) Create(account string, alias string, content string, rule
 
 	modelType := m.getDataModelType([]byte(content))
 
-	// model, err = m.CommitSvc.Commit(account, content)
-	// if err != nil {
-	// 	return nil, xerrors.Errorf(err.Error())
-	// }
+	//
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
 
 	model := &Model{
 		ResourceId: GenerateResourceId(),

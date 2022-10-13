@@ -9,12 +9,22 @@ import (
 	"golang.org/x/xerrors"
 )
 
-// storage node config
-type StorageNode struct {
-	Cache  Cache
+type Common struct {
 	Chain  Chain
 	Libp2p Libp2p
+}
+
+// gateway node config
+type Node struct {
+	Common
+	Cache  Cache
 	Api    API
+	Module Module
+}
+
+type Module struct {
+	GatewayEnable bool
+	StorageEnable bool
 }
 
 type API struct {
@@ -39,8 +49,26 @@ type Cache struct {
 	ContentLimit  int
 }
 
-func DefaultNode() *StorageNode {
-	return &StorageNode{
+func DefaultGatewayNode() *Node {
+	return &Node{
+		Common: defCommon(),
+		Api: API{
+			ListenAddress: "/ip4/127.0.0.1/tcp/8888/http",
+			Timeout:       30 * time.Second,
+		},
+		Cache: Cache{
+			CacheCapacity: 1000,
+			ContentLimit:  2097152,
+		},
+		Module: Module{
+			GatewayEnable: true,
+			StorageEnable: true,
+		},
+	}
+}
+
+func defCommon() Common {
+	return Common{
 		Chain: Chain{
 			Remote:        "http://localhost:26657",
 			WsEndpoint:    "/websocket",
@@ -51,14 +79,6 @@ func DefaultNode() *StorageNode {
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
 			},
-		},
-		Api: API{
-			ListenAddress: "/ip4/127.0.0.1/tcp/8888/http",
-			Timeout:       30 * time.Second,
-		},
-		Cache: Cache{
-			CacheCapacity: 1000,
-			ContentLimit:  2097152,
 		},
 	}
 }

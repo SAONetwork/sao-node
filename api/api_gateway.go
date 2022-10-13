@@ -9,4 +9,5 @@ import (
 type GatewayApi interface {
 	Test(ctx context.Context, msg string) (string, error)
 	Create(ctx context.Context, orderMeta types.OrderMeta, commit any) (apitypes.CreateResp, error)
+	NodeAddress(ctx context.Context) (string, error)
 }

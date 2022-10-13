@@ -6,8 +6,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/SaoNetwork/sao/x/node/types"
-	"github.com/ignite/cli/ignite/pkg/cosmosclient"
+	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
@@ -16,6 +15,7 @@ import (
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
+	"sao-storage-node/node/chain"
 	"sao-storage-node/node/repo"
 )
 
@@ -36,9 +36,11 @@ var FlagRepo = &cli.StringFlag{
 func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("node", "INFO")
 	_ = logging.SetLogLevel("rpc", "INFO")
+	_ = logging.SetLogLevel("chain", "INFO")
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("node", "DEBUG")
 		_ = logging.SetLogLevel("rpc", "DEBUG")
+		_ = logging.SetLogLevel("chain", "DEBUG")
 	}
 
 	return nil
@@ -56,7 +58,6 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
-			joinCmd,
 			updateCmd,
 			quitCmd,
 			runCmd,
@@ -74,29 +75,40 @@ var initCmd = &cli.Command{
 	Name: "init",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "accountName",
+			Name:  "creator",
 			Usage: "node's account name",
+		},
+		&cli.StringFlag{
+			Name:  "multiaddr",
+			Usage: "nodes' multiaddr",
+			Value: "/ip4/127.0.0.1/tcp/4001/",
+		},
+		&cli.StringFlag{
+			Name:     "chainAddress",
+			Value:    "http://localhost:26657",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Checking if repo exists")
-
+		ctx := cctx.Context
+		// TODO: validate input
 		repoPath := cctx.String(FlagStorageRepo)
-		r, err := repo.NewRepo(repoPath)
+		creator := cctx.String("creator")
+		multiaddr := cctx.String("multiaddr")
+		chainAddress := cctx.String("chainAddress")
+
+		r, err := initRepo(repoPath)
+		if err != nil {
+			return xerrors.Errorf("init repo: %w", err)
+		}
+
+		// init metadata datastore
+		mds, err := r.Datastore(ctx, "/metadata")
 		if err != nil {
 			return err
 		}
-
-		ok, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if ok {
-			return xerrors.Errorf("repo at '%s' is already initialized", cctx.String(FlagStorageRepo))
-		}
-
-		log.Info("Initializing repo")
-		if err := r.Init(); err != nil {
+		if err := mds.Put(ctx, datastore.NewKey("node-address"), []byte(creator)); err != nil {
 			return err
 		}
 
@@ -105,63 +117,46 @@ var initCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("make host key: %w", err)
 		}
-
 		peerid, err := peer.IDFromPrivateKey(p2pSk)
 		if err != nil {
 			return xerrors.Errorf("peer ID from private key: %w", err)
 		}
 
-		addressPrefix := "cosmos"
-		cosmos, err := cosmosclient.New(cctx.Context, cosmosclient.WithAddressPrefix(addressPrefix))
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
 		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+		if tx, err := chain.Login(creator, multiaddr, peerid); err != nil {
+			// TODO: clear dir
 			return err
-		}
-
-		account, err := cosmos.Account(cctx.String("accountName"))
-		if err != nil {
-			return err
-		}
-
-		addr, err := account.Address(addressPrefix)
-		if err != nil {
-			return err
-		}
-
-		// TODO: /ip4/127.0.0.1/tcp/4001 should be read from config.toml file.
-		multiaddress := "/ip4/127.0.0.1/tcp/4001"
-		msg := &types.MsgLogin{
-			Creator: addr,
-			Peer:    fmt.Sprintf("%v/p2p/%v", multiaddress, peerid),
-		}
-
-		// TODO: recheck - seems BroadcastTx will return after confirmed on chain.
-		txResp, err := cosmos.BroadcastTx(account, msg)
-		if err != nil {
-			return err
-		}
-		if txResp.TxResponse.Code != 0 {
-			return xerrors.Errorf("MsgLogin transaction %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 		} else {
-			log.Infof("MsgLogin transaction %v succeed.", txResp.TxResponse.TxHash)
+			fmt.Println(tx)
 		}
 
 		return nil
 	},
 }
 
-var joinCmd = &cli.Command{
-	Name:  "join",
-	Usage: "if a node quits on chain, join cmd can allow it to re-join the network again.",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "accountName",
-			Usage: "node's account name",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		// TODO:
-		return nil
-	},
+func initRepo(repoPath string) (*repo.Repo, error) {
+	// init base dir
+	r, err := repo.NewRepo(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := r.Exists()
+	if err != nil {
+		return nil, err
+	}
+	if ok {
+		return nil, xerrors.Errorf("repo at '%s' is already initialized", repoPath)
+	}
+
+	log.Info("Initializing repo")
+	if err = r.Init(); err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 var updateCmd = &cli.Command{
@@ -169,45 +164,46 @@ var updateCmd = &cli.Command{
 	Usage: "update peer information.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "accountName",
+			Name:  "creator",
 			Usage: "node's account name",
 		},
 		&cli.StringFlag{
-			Name:  "peer",
-			Usage: "peer including multiaddr and peer id",
+			Name:  "multiaddr",
+			Usage: "multiaddr",
+		},
+		&cli.StringFlag{
+			Name:  "peerId",
+			Usage: "peer id",
+		},
+		&cli.StringFlag{
+			Name:     "chainAddress",
+			Value:    "http://localhost:26657",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		addressPrefix := "cosmos"
-		cosmos, err := cosmosclient.New(cctx.Context, cosmosclient.WithAddressPrefix(addressPrefix))
+		ctx := cctx.Context
+		// TODO: validate input
+		creator := cctx.String("creator")
+		multiaddr := cctx.String("multiaddr")
+		peerId := cctx.String("peerId")
+		chainAddress := cctx.String("chainAddress")
+
+		peer, err := peer.Decode(peerId)
 		if err != nil {
 			return err
 		}
 
-		account, err := cosmos.Account(cctx.String("accountName"))
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
 		if err != nil {
-			return err
+			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		addr, err := account.Address(addressPrefix)
+		tx, err := chain.Reset(creator, multiaddr, peer)
 		if err != nil {
 			return err
-		}
-
-		// TODO: validate peer
-		peer := cctx.String("peer")
-		msg := &types.MsgReset{
-			Creator: addr,
-			Peer:    peer,
-		}
-		txResp, err := cosmos.BroadcastTx(account, msg)
-		if err != nil {
-			return err
-		}
-		if txResp.TxResponse.Code != 0 {
-			return xerrors.Errorf("MsgReset transaction %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 		} else {
-			log.Infof("MsgReset transaction %v succeed.", txResp.TxResponse.TxHash)
+			fmt.Println(tx)
 		}
 
 		return nil
@@ -219,39 +215,31 @@ var quitCmd = &cli.Command{
 	Usage: "node quit sao network",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "accountName",
+			Name:  "creator",
 			Usage: "node's account name",
+		},
+		&cli.StringFlag{
+			Name:     "chainAddress",
+			Value:    "http://localhost:26657",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		addressPrefix := "cosmos"
-		cosmos, err := cosmosclient.New(cctx.Context, cosmosclient.WithAddressPrefix(addressPrefix))
-		if err != nil {
-			return err
-		}
+		ctx := cctx.Context
+		// TODO: validate input
+		creator := cctx.String("creator")
+		chainAddress := cctx.String("chainAddress")
 
-		account, err := cosmos.Account(cctx.String("accountName"))
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
 		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+		if tx, err := chain.Logout(creator); err != nil {
 			return err
-		}
-
-		addr, err := account.Address(addressPrefix)
-		if err != nil {
-			return err
-		}
-
-		msg := &types.MsgLogout{
-			Creator: addr,
-		}
-		txResp, err := cosmos.BroadcastTx(account, msg)
-		if err != nil {
-			return err
-		}
-		if txResp.TxResponse.Code != 0 {
-			return xerrors.Errorf("MsgLogout transaction %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 		} else {
-			log.Infof("MsgLogout transaction %v succeed.", txResp.TxResponse.TxHash)
+			fmt.Println(tx)
 		}
+
 		return nil
 	},
 }
@@ -277,11 +265,7 @@ var runCmd = &cli.Command{
 		}
 
 		// start node.
-		snode, err := node.NewStorageNode(ctx, repo)
-		if err != nil {
-			return err
-		}
-		err = snode.Start()
+		snode, err := node.NewNode(ctx, repo)
 		if err != nil {
 			return err
 		}

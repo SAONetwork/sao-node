@@ -16,6 +16,8 @@ type GatewayApiStruct struct {
 	Internal struct {
 		Create func(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) ``
 
+		NodeAddress func(p0 context.Context) (string, error) ``
+
 		Test func(p0 context.Context, p1 string) (string, error) ``
 	}
 }
@@ -32,6 +34,17 @@ func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.OrderMeta, p2 any
 
 func (s *GatewayApiStub) Create(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) NodeAddress(p0 context.Context) (string, error) {
+	if s.Internal.NodeAddress == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.NodeAddress(p0)
+}
+
+func (s *GatewayApiStub) NodeAddress(p0 context.Context) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *GatewayApiStruct) Test(p0 context.Context, p1 string) (string, error) {

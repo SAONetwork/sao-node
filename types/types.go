@@ -4,11 +4,9 @@ import "github.com/ipfs/go-cid"
 
 type CommitHeader struct {
 	Controllers []string
-}
-
-type GenesisCommitHeader struct {
-	CommitHeader
-	DataType string // model, record
+	Labels      []string
+	Schema      string
+	DataType    string // datamodel, file, record
 }
 
 type DataCommit struct {
@@ -16,21 +14,22 @@ type DataCommit struct {
 }
 
 type GenesisCommit struct {
-	DataCommit
-	Header GenesisCommitHeader
+	Header  CommitHeader
+	Content any
 }
 
 type RawCommit struct {
-	DataCommit
-	Header CommitHeader
-	Id     cid.Cid
-	Prev   cid.Cid
+	Content any
+	Header  CommitHeader
+	Id      cid.Cid
+	Prev    cid.Cid
 }
 
 type OrderMeta struct {
 	Creator  string
-	OrderId  string
+	Duration int32
+	Replica  int32
+	OrderId  uint64
 	TxId     string
-	Duration int
-	Replica  int
+	TxSent   bool
 }

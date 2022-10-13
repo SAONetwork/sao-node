@@ -1,8 +1,10 @@
 package repo
 
 import (
+	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
@@ -11,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sao-storage-node/node/config"
+	"sync"
 )
 
 var log = logging.Logger("repo")
@@ -21,7 +24,7 @@ const (
 	fsConfig    = "config.toml"
 	fsKeystore  = "keystore"
 	fsLibp2pKey = "libp2p.key"
-	fsAPI       = "api"
+	fsDatastore = "datastore"
 )
 
 var (
@@ -31,6 +34,12 @@ var (
 type Repo struct {
 	path       string
 	configPath string
+
+	readonly bool
+
+	ds     map[string]datastore.Batching
+	dsErr  error
+	dsOnce sync.Once
 }
 
 func NewRepo(path string) (*Repo, error) {
@@ -117,6 +126,21 @@ func (r *Repo) Config() (interface{}, error) {
 	return config.FromFile(r.configPath, r.defaultConfig())
 }
 
+func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, error) {
+	r.dsOnce.Do(func() {
+		r.ds, r.dsErr = r.openDatastores(r.readonly)
+	})
+
+	if r.dsErr != nil {
+		return nil, r.dsErr
+	}
+	ds, ok := r.ds[ns]
+	if ok {
+		return ds, nil
+	}
+	return nil, xerrors.Errorf("no such datastore: %s", ns)
+}
+
 func (r *Repo) initConfig() error {
 	_, err := os.Stat(r.configPath)
 	if err == nil {
@@ -147,7 +171,7 @@ func (r *Repo) initConfig() error {
 }
 
 func (r *Repo) defaultConfig() interface{} {
-	return config.DefaultNode()
+	return config.DefaultGatewayNode()
 }
 
 func (r *Repo) initKeystore() error {
@@ -158,4 +182,9 @@ func (r *Repo) initKeystore() error {
 		return err
 	}
 	return os.Mkdir(kstorePath, 0700)
+}
+
+// join joins path elements with fsr.path
+func (fsr *Repo) join(paths ...string) string {
+	return filepath.Join(append([]string{fsr.path}, paths...)...)
 }
