@@ -185,8 +185,12 @@ var uploadCmd = &cli.Command{
 		multiaddr := cctx.String("multiaddr")
 		peerId := cctx.String("peerid")
 		result := saoclient.DoQuicTransport(ctx, multiaddr, peerId, []byte("DoQuicTransportDoQuicTransportDoQuicTransport"))
+		if result != nil {
+			log.Info("file successfully uploaded, CID is ", result)
+		} else {
+			log.Warn("failed to uploaded the file, please try again")
+		}
 
-		log.Info(result)
 		return nil
 	},
 }

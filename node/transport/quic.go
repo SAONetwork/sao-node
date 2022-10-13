@@ -7,6 +7,10 @@ import (
 
 	"sao-storage-node/node/repo"
 
+	cid "github.com/ipfs/go-cid"
+	mc "github.com/multiformats/go-multicodec"
+	mh "github.com/multiformats/go-multihash"
+
 	logging "github.com/ipfs/go-log/v2"
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -72,14 +76,31 @@ func ServeQuicTransport(address string, repo *repo.Repo) error {
 func handleConn(conn tpt.CapableConn) error {
 	str, err := conn.AcceptStream()
 	if err != nil {
+		log.Error(err.Error())
 		return err
 	}
 	data, err := io.ReadAll(str)
 	if err != nil {
+		log.Error(err.Error())
 		return err
 	}
 	log.Debug("Received ", len(data), " bytes...")
-	if _, err := str.Write([]byte("OK")); err != nil {
+
+	pref := cid.Prefix{
+		Version:  1,
+		Codec:    uint64(mc.Raw),
+		MhType:   mh.SHA2_256,
+		MhLength: -1, // default length
+	}
+	cid, err := pref.Sum(data)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	log.Info("CID is ", cid.String())
+
+	if _, err := str.Write(cid.Bytes()); err != nil {
+		log.Error(err.Error())
 		return err
 	}
 	return str.Close()
@@ -109,6 +130,18 @@ func DoQuicTransport(ctx context.Context, remoteAddr string, remotePeerId string
 		return nil
 	}
 
+	pref := cid.Prefix{
+		Version:  1,
+		Codec:    uint64(mc.Raw),
+		MhType:   mh.SHA2_256,
+		MhLength: -1, // default length
+	}
+	cidLocal, err := pref.Sum(content)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
+
 	log.Info("Dialing ", remoteAddr, " (", remotePeerId, ")")
 	conn, err := t.Dial(context.Background(), address, peerId)
 	if err != nil {
@@ -131,12 +164,22 @@ func DoQuicTransport(ctx context.Context, remoteAddr string, remotePeerId string
 		log.Error(err)
 		return nil
 	}
-	data, err := io.ReadAll(str)
+	res, err := io.ReadAll(str)
 	if err != nil {
 		log.Error(err)
 		return nil
 	}
-	log.Debug("Received ", len(data), " bytes...")
+	log.Debug("Received ", len(res), " bytes...")
+	_, cidRemote, err := cid.CidFromBytes(res)
+	if err != nil {
+		log.Error(err)
+		return nil
+	}
 
-	return data
+	if cidRemote.Equals(cidLocal) {
+		return res
+	} else {
+		log.Error("file cid mismatch, ", cidLocal.String(), " vs. ", cidRemote.String())
+		return nil
+	}
 }
