@@ -104,9 +104,6 @@ func (ss *StoreSvc) SubscribeShardTask(ctx context.Context) error {
 	}
 	go func() {
 		for c := range reqchan {
-			log.Infof("store chan: data: %v", c.Data)
-			log.Infof("store chan: events: %v", c.Events)
-
 			providers := c.Events["new-shard.provider"]
 			var i int
 			for ii, provider := range providers {

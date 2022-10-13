@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
@@ -26,6 +27,8 @@ const (
 const PROPERTY_CONTEXT = "@context"
 const PROPERTY_TYPE = "@type"
 const MODEL_TYPE_FILE = "File"
+
+var log = logging.Logger("model")
 
 type Model struct {
 	ResourceId string
@@ -71,6 +74,7 @@ func (m *ModelManager) Load(account string, alias string) (*Model, error) {
 	if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", account)) {
 		err = m.CacheSvc.CreateCache(account, m.CacheCfg.CacheCapacity)
 		if err != nil {
+			log.Error(err.Error())
 			return nil, xerrors.Errorf(err.Error())
 		}
 	}
@@ -92,6 +96,10 @@ func (m *ModelManager) Create(account string, alias string, content string, rule
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
+	}
+
+	if alias == "" {
+		alias = GenerateAlias(content)
 	}
 
 	err = m.validateModel(account, alias, []byte(content), rule)

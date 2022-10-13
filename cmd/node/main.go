@@ -7,16 +7,17 @@ package main
 import (
 	"fmt"
 	"github.com/ipfs/go-datastore"
+	"sao-storage-node/build"
+	cliutil "sao-storage-node/cmd"
+	"sao-storage-node/node"
+	"sao-storage-node/node/repo"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 	"os"
-	"sao-storage-node/build"
-	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/node"
 	"sao-storage-node/node/chain"
-	"sao-storage-node/node/repo"
 )
 
 var log = logging.Logger("node")
@@ -34,13 +35,19 @@ var FlagRepo = &cli.StringFlag{
 }
 
 func before(cctx *cli.Context) error {
+	_ = logging.SetLogLevel("cache", "INFO")
+	_ = logging.SetLogLevel("model", "INFO")
 	_ = logging.SetLogLevel("node", "INFO")
 	_ = logging.SetLogLevel("rpc", "INFO")
 	_ = logging.SetLogLevel("chain", "INFO")
+	_ = logging.SetLogLevel("transport", "INFO")
 	if cliutil.IsVeryVerbose {
+		_ = logging.SetLogLevel("cache", "DEBUG")
+		_ = logging.SetLogLevel("model", "DEBUG")
 		_ = logging.SetLogLevel("node", "DEBUG")
 		_ = logging.SetLogLevel("rpc", "DEBUG")
 		_ = logging.SetLogLevel("chain", "DEBUG")
+		_ = logging.SetLogLevel("transport", "DEBUG")
 	}
 
 	return nil
