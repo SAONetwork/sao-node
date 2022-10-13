@@ -12,6 +12,7 @@ import (
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/types"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -160,7 +161,7 @@ var createCmd = &cli.Command{
 
 var uploadCmd = &cli.Command{
 	Name:  "upload",
-	Usage: "upload a file to storage network",
+	Usage: "upload file(s) to storage network",
 	Flags: []cli.Flag{
 		&cli.PathFlag{
 			Name:     "filepath",
@@ -181,14 +182,14 @@ var uploadCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		// filepath := cctx.String("filepath")
+		filepath := cctx.String("filepath")
 		multiaddr := cctx.String("multiaddr")
 		peerId := cctx.String("peerid")
-		result := saoclient.DoQuicTransport(ctx, multiaddr, peerId, []byte("DoQuicTransportDoQuicTransportDoQuicTransport"))
-		if result != nil {
-			log.Info("file successfully uploaded, CID is ", result)
+		c := saoclient.DoQuicTransport(ctx, multiaddr, peerId, []byte("DoQuicTransportDoQuicTransportDoQuicTransport"))
+		if c != cid.Undef {
+			log.Info("file [", filepath, "] successfully uploaded, CID is ", c.String())
 		} else {
-			log.Warn("failed to uploaded the file, please try again")
+			log.Warn("failed to uploaded the file [", filepath, "], please try again")
 		}
 
 		return nil

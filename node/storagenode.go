@@ -124,9 +124,18 @@ func (n *StorageNode) initTransportServer() error {
 	for _, address := range n.cfg.Libp2p.ListenAddress {
 		log.Info("initialize transport server on ", address)
 
-		err := transport.ServeQuicTransport(address, n.repo)
-		if err != nil {
-			return xerrors.Errorf("failed to start transport server [%s]: %w", address, err)
+		if strings.Contains(address, "tcp") {
+			err := transport.ServeWebsocketTransport(address, n.repo)
+			if err != nil {
+				return xerrors.Errorf("failed to start transport server [%s]: %w", address, err)
+			}
+		} else if strings.Contains(address, "udp") {
+			err := transport.ServeQuicTransport(address, n.repo)
+			if err != nil {
+				return xerrors.Errorf("failed to start transport server [%s]: %w", address, err)
+			}
+		} else {
+			return xerrors.Errorf("invalid transport server address [%s]", address)
 		}
 	}
 
