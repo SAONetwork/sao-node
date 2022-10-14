@@ -163,17 +163,20 @@ var createCmd = &cli.Command{
 			Duration: int32(duration),
 			Replica:  int32(replicas),
 		}
+		// TODO:
+		cid, _ := cid.Decode("QmeSoArjthZ5VcaeJxg35rRPt6gwd4sWyPmNbYSpKtF4uF")
+		orderMeta.Cid = cid
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
 			if err != nil {
 				return err
 			}
 
-			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
+			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
-			orderId, tx, err := chain.Store(from, from, gatewayAddress, int32(duration), int32(replicas))
+			orderId, tx, err := chain.StoreOrder(from, from, gatewayAddress, cid, int32(duration), int32(replicas))
 			if err != nil {
 				return err
 			}
@@ -184,11 +187,11 @@ var createCmd = &cli.Command{
 		}
 
 		client := saoclient.NewSaoClient(gatewayApi)
-		dataId, err := client.Create(ctx, orderMeta, content)
+		resp, err := client.Create(ctx, orderMeta, content)
 		if err != nil {
 			return err
 		}
-		log.Info(dataId)
+		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
 		return nil
 	},
 }
@@ -229,120 +232,3 @@ var uploadCmd = &cli.Command{
 		return nil
 	},
 }
-
-//var storeCmd = &cli.Command{
-//	Name:  "order",
-//	Usage: "submit a order",
-//	Flags: []cli.Flag{
-//		&cli.StringFlag{
-//			Name:     "from",
-//			Usage:    "client address",
-//			Required: true,
-//		},
-//		&cli.StringFlag{
-//			Name:     "content",
-//			Usage:    "data content to store",
-//			Required: false,
-//		},
-//		&cli.PathFlag{
-//			Name:     "filepath",
-//			Usage:    "file's path to store. if --content is provided, --filepath will be ignored",
-//			Required: false,
-//		},
-//		&cli.IntFlag{
-//			Name:  "duration",
-//			Usage: "how long do you want to store the data.",
-//			//Value:    DEFAULT_DURATION,
-//			Required: false,
-//		},
-//		&cli.IntFlag{
-//			Name:  "replica",
-//			Usage: "how many copies to store.",
-//			//Value:    DEFAULT_REPLICA,
-//			Required: false,
-//		},
-//		&cli.StringSliceFlag{
-//			Name:     "gateways",
-//			Usage:    "gateway connection list, separated by comma",
-//			Required: false,
-//		},
-//	},
-//	Action: func(cctx *cli.Context) error {
-//		var dataReader io.Reader
-//		var err error
-//		if cctx.IsSet("content") {
-//			dataReader = strings.NewReader(cctx.String("content"))
-//		} else if cctx.IsSet("filepath") {
-//			f, err := os.Open(cctx.String("filepath"))
-//			if err != nil {
-//				return err
-//			}
-//			dataReader = f
-//			defer f.Close()
-//		} else {
-//			return xerrors.Errorf("either --content or --filepath should be provided.")
-//		}
-//
-//		// calculate data cid
-//		cid, err := generateDataCid(dataReader)
-//		if err != nil {
-//			return err
-//		}
-//
-//		// gateway selection.
-//		var gateways []string
-//		if cctx.IsSet("gateways") {
-//			gateways = strings.Split(cctx.String("gateways"), ",")
-//		} else {
-//			// TODO: should configure default gateway or read from env.
-//			//return xerrors.Errorf("--gateways must be provided.")
-//		}
-//
-//		nodeInfo, err := uploadData(gateways, dataReader)
-//		if err != nil {
-//			return err
-//		}
-//
-//		// store message on chain
-//		addressPrefix := "cosmos"
-//		cosmos, err := cosmosclient.New(cctx.Context, cosmosclient.WithAddressPrefix(addressPrefix))
-//		if err != nil {
-//			return err
-//		}
-//
-//		account, err := cosmos.Account(cctx.String("from"))
-//		if err != nil {
-//			return err
-//		}
-//
-//		addr, err := account.Address(addressPrefix)
-//		if err != nil {
-//			return err
-//		}
-//
-//		msg := &types.MsgStore{
-//			Creator:  addr,
-//			Cid:      cid.String(),
-//			Provider: nodeInfo.Address,
-//			Duration: int32(cctx.Int("duration")),
-//			Replica:  int32(cctx.Int("replica")),
-//		}
-//		txResp, err := cosmos.BroadcastTx(account, msg)
-//		if err != nil {
-//			return err
-//		}
-//		log.Debug("MsgStore result: ", txResp)
-//		if txResp.TxResponse.Code != 0 {
-//			return xerrors.Errorf("MsgStore transaction %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
-//		} else {
-//			dataResp := &types.MsgStoreResponse{}
-//			err = txResp.Decode(dataResp)
-//			if err != nil {
-//				return err
-//			}
-//			log.Infof("MsgStore transaction %v succeed: orderId=%d", txResp.TxResponse.TxHash, dataResp.OrderId)
-//		}
-//
-//		return nil
-//	},
-//}

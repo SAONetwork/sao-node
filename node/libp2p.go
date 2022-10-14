@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/network"
 	"io"
 )
@@ -16,7 +17,7 @@ const (
 // TODO: store node should sign the request.
 type ShardStoreReq struct {
 	OrderId uint64
-	Cid     string
+	Cid     cid.Cid
 }
 
 func (f *ShardStoreReq) Unmarshal(r io.Reader, format string) (err error) {
@@ -46,7 +47,7 @@ func (f *ShardStoreReq) Marshal(w io.Writer, format string) error {
 
 type ShardStoreResp struct {
 	OrderId uint64
-	Cid     string
+	Cid     cid.Cid
 	Content []byte
 }
 

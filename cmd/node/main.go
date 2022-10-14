@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"github.com/ipfs/go-datastore"
+	"github.com/multiformats/go-multiaddr"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
@@ -102,7 +103,11 @@ var initCmd = &cli.Command{
 		// TODO: validate input
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
-		multiaddr := cctx.String("multiaddr")
+		ma, err := multiaddr.NewMultiaddr(cctx.String("multiaddr"))
+		if err != nil {
+			return xerrors.Errorf("invalid --multiaddr: %w", err)
+		}
+
 		chainAddress := cctx.String("chainAddress")
 
 		r, err := initRepo(repoPath)
@@ -129,11 +134,11 @@ var initCmd = &cli.Command{
 			return xerrors.Errorf("peer ID from private key: %w", err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
-		if tx, err := chain.Login(creator, multiaddr, peerid); err != nil {
+		if tx, err := chain.Login(creator, ma, peerid); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
@@ -192,26 +197,29 @@ var updateCmd = &cli.Command{
 		ctx := cctx.Context
 		// TODO: validate input
 		creator := cctx.String("creator")
-		multiaddr := cctx.String("multiaddr")
-		peerId := cctx.String("peerId")
 		chainAddress := cctx.String("chainAddress")
 
+		ma, err := multiaddr.NewMultiaddr(cctx.String("multiaddr"))
+		if err != nil {
+			return xerrors.Errorf("invalid --multiaddr: %w", err)
+		}
+
+		peerId := cctx.String("peerId")
 		peer, err := peer.Decode(peerId)
 		if err != nil {
 			return err
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		tx, err := chain.Reset(creator, multiaddr, peer)
+		tx, err := chain.Reset(creator, ma, peer)
 		if err != nil {
 			return err
-		} else {
-			fmt.Println(tx)
 		}
+		fmt.Println(tx)
 
 		return nil
 	},
@@ -237,7 +245,7 @@ var quitCmd = &cli.Command{
 		creator := cctx.String("creator")
 		chainAddress := cctx.String("chainAddress")
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -254,24 +262,12 @@ var quitCmd = &cli.Command{
 var runCmd = &cli.Command{
 	Name: "run",
 	Action: func(cctx *cli.Context) error {
+		// there is no place to trigger shutdown signal now. may add somewhere later.
 		shutdownChan := make(chan struct{})
 		ctx := cctx.Context
 
-		repoPath := cctx.String(FlagStorageRepo)
-		repo, err := repo.NewRepo(repoPath)
-		if err != nil {
-			return err
-		}
+		repo, err := prepareRepo(cctx)
 
-		ok, err := repo.Exists()
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return xerrors.Errorf("repo at '%s' is not initialized, run 'snode init' to set it up", repoPath)
-		}
-
-		// start node.
 		snode, err := node.NewNode(ctx, repo)
 		if err != nil {
 			return err
@@ -284,4 +280,21 @@ var runCmd = &cli.Command{
 		<-finishCh
 		return nil
 	},
+}
+
+func prepareRepo(cctx *cli.Context) (*repo.Repo, error) {
+	repoPath := cctx.String(FlagStorageRepo)
+	repo, err := repo.NewRepo(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := repo.Exists()
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, xerrors.Errorf("repo at '%s' is not initialized, run 'snode init' to set it up", repoPath)
+	}
+	return repo, nil
 }

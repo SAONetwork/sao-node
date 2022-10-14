@@ -12,11 +12,17 @@ import (
 	"path/filepath"
 )
 
+const (
+	dsNsMetadata = "metadata"
+	dsNsOrder    = "order"
+)
+
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)
 
 var fsDatastores = map[string]dsCtor{
-	"metadata": levelDs,
-	"order":    badgerDs,
+	dsNsMetadata: levelDs,
+	// Those need to be fast for large writes... but also need a really good GC
+	dsNsOrder: badgerDs,
 }
 
 func levelDs(path string, readonly bool) (datastore.Batching, error) {

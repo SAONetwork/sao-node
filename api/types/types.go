@@ -1,7 +1,7 @@
 package apitypes
 
 type CreateResp struct {
-	OrderId string
+	OrderId uint64
 	DataId  string
 	TxId    string
 }

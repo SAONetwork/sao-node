@@ -5,59 +5,54 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"github.com/tendermint/tendermint/rpc/client/http"
 	"sao-storage-node/node/chain"
-	"strconv"
 )
 
-const subscriber_storage = "storagenode"
-
 type StoreSvc struct {
-	nodeAddress   string
-	chainListener *http.HTTP
-	chainSvc      *chain.ChainSvc
-	taskChan      chan *storeTask
-	host          host.Host
+	nodeAddress string
+	chainSvc    *chain.ChainSvc
+	taskChan    chan *chain.ShardTask
+	host        host.Host
 }
 
-type storeTask struct {
-	orderId uint64
-	gateway string
-	cid     string
-}
-
-func NewStoreService(ctx context.Context, nodeAddress string, http *http.HTTP, chainSvc *chain.ChainSvc, host host.Host) *StoreSvc {
+func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host) (*StoreSvc, error) {
 	ss := StoreSvc{
-		nodeAddress:   nodeAddress,
-		chainListener: http,
-		chainSvc:      chainSvc,
-		taskChan:      make(chan *storeTask),
-		host:          host,
+		nodeAddress: nodeAddress,
+		chainSvc:    chainSvc,
+		taskChan:    make(chan *chain.ShardTask),
+		host:        host,
+	}
+	if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
+		return nil, err
 	}
 
-	return &ss
+	return &ss, nil
 }
 
-func (ss *StoreSvc) StartProcessTasks(ctx context.Context) {
+func (ss *StoreSvc) Start(ctx context.Context) error {
 	for {
 		select {
-		case t := <-ss.taskChan:
+		case t, ok := <-ss.taskChan:
+			if !ok {
+				return nil
+			}
 			err := ss.process(ctx, t)
 			if err != nil {
 				log.Error(err)
 			}
+		case <-ctx.Done():
+			return nil
 		}
 	}
 }
 
-func (ss *StoreSvc) process(ctx context.Context, task *storeTask) error {
-	log.Infof("processing task: order id=%d gateway=%s", task.orderId, task.gateway)
-	conn, err := ss.chainSvc.GetNodePeer(ctx, task.gateway)
+func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
+	log.Infof("processing task: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
+	conn, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
 	if err != nil {
 		return err
 	}
 
-	log.Infof("gateway peer id: %s", conn)
 	a, err := ma.NewMultiaddr(conn)
 	if err != nil {
 		return err
@@ -75,19 +70,21 @@ func (ss *StoreSvc) process(ctx context.Context, task *storeTask) error {
 		return err
 	}
 	defer stream.Close()
+	log.Infof("open stream(%s) to gateway %s", ShardStoreProtocol, conn)
 
 	req := ShardStoreReq{
-		OrderId: task.orderId,
-		Cid:     task.cid,
+		OrderId: task.OrderId,
+		Cid:     task.Cid,
 	}
+	log.Debugf("send ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
 	var resp ShardStoreResp
 	if err = DoRpc(ctx, stream, &req, &resp, "json"); err != nil {
 		// TODO: handle error
 		return err
 	}
-	// TODO: store resp.Content
-	log.Debugf("resp.content: %s", string(resp.Content))
-	txHash, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.orderId, task.cid, int32(len(resp.Content)))
+	// TODO: store resp.Content to ipfs
+	log.Debugf("receive ShardStoreResp: content=%s", string(resp.Content))
+	txHash, err := ss.chainSvc.CompleteOrder(ss.nodeAddress, task.OrderId, task.Cid, int32(len(resp.Content)))
 	if err != nil {
 		return err
 	}
@@ -95,46 +92,9 @@ func (ss *StoreSvc) process(ctx context.Context, task *storeTask) error {
 	return nil
 }
 
-func (ss *StoreSvc) SubscribeShardTask(ctx context.Context) error {
-	queryOrderShard := chain.QueryOrderShard(ss.nodeAddress)
-	log.Debugf("subscribe query: %v", queryOrderShard)
-	reqchan, err := ss.chainListener.Subscribe(ctx, subscriber_storage, queryOrderShard)
-	if err != nil {
-		return err
-	}
-	go func() {
-		for c := range reqchan {
-			providers := c.Events["new-shard.provider"]
-			var i int
-			for ii, provider := range providers {
-				if provider == ss.nodeAddress {
-					i = ii
-					break
-				}
-			}
-			orderIdStr := c.Events["new-shard.order-id"][i]
-			gateway := c.Events["new-shard.peer"][i]
-			cid := c.Events["new-shard.cid"][i]
-
-			orderId, err := strconv.ParseUint(orderIdStr, 10, 64)
-			if err != nil {
-				log.Error(err)
-			} else {
-				ss.taskChan <- &storeTask{
-					orderId: orderId,
-					gateway: gateway,
-					cid:     cid,
-				}
-			}
-		}
-	}()
-	return nil
-}
-
-func (ss *StoreSvc) UnsubscribeShardTask(ctx context.Context) error {
-	queryOrderShard := chain.QueryOrderShard(ss.nodeAddress)
-	log.Debugf("unsubscribe query: %s", queryOrderShard)
-	if err := ss.chainListener.Unsubscribe(ctx, subscriber_storage, queryOrderShard); err != nil {
+func (ss *StoreSvc) Stop(ctx context.Context) error {
+	close(ss.taskChan)
+	if err := ss.chainSvc.UnsubscribeShardTask(ctx, ss.nodeAddress); err != nil {
 		return err
 	}
 	return nil

@@ -26,10 +26,12 @@ type RawCommit struct {
 }
 
 type OrderMeta struct {
-	Creator  string
-	Duration int32
-	Replica  int32
-	OrderId  uint64
-	TxId     string
-	TxSent   bool
+	Creator               string
+	Duration              int32
+	Replica               int32
+	OrderId               uint64
+	Cid                   cid.Cid
+	TxId                  string
+	TxSent                bool
+	CompleteTimeoutBlocks int
 }
