@@ -87,6 +87,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 		orderMeta.TxSent = true
 	}
 
+	log.Infof("try to commit data: %v", content)
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
