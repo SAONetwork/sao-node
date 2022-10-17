@@ -8,15 +8,11 @@ import (
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
-	csms "github.com/libp2p/go-libp2p/p2p/net/conn-security-multistream"
-	tptu "github.com/libp2p/go-libp2p/p2p/net/upgrader"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
-	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 	libp2pquic "github.com/libp2p/go-libp2p/p2p/transport/quic"
-	libp2pwebsocket "github.com/libp2p/go-libp2p/p2p/transport/websocket"
+	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	mc "github.com/multiformats/go-multicodec"
 	mh "github.com/multiformats/go-multihash"
 
@@ -26,41 +22,43 @@ import (
 var log = logging.Logger("transport-client")
 
 func DoWebsocketTransport(ctx context.Context, remoteAddr string, remotePeerId string, content []byte) cid.Cid {
-	address, err := ma.NewMultiaddr(remoteAddr)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	peerId, err := peer.Decode(remotePeerId)
+	serverAddress, err := ma.NewMultiaddr(remoteAddr)
 	if err != nil {
 		log.Error(err)
 		return cid.Undef
 	}
 
-	priv, _, err := ic.GenerateECDSAKeyPair(rand.Reader)
+	serverId, err := peer.Decode(remotePeerId)
 	if err != nil {
 		log.Error(err)
 		return cid.Undef
 	}
 
-	var secMuxer csms.SSMuxer
-	noiseTpt, err := noise.New(priv)
-	if err != nil {
-		log.Error(err.Error())
-		return cid.Undef
-	}
-	secMuxer.AddTransport(noise.ID, noiseTpt)
-
-	u, err := tptu.New(&secMuxer, yamux.DefaultTransport)
-	if err != nil {
-		log.Error(err.Error())
-	}
-
-	t, err := libp2pwebsocket.New(u, network.NullResourceManager)
+	clientKey, _, err := ic.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		log.Error(err)
 		return cid.Undef
 	}
+
+	tr, err := libp2pwebtransport.New(clientKey, nil, network.NullResourceManager)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+
+	log.Info("Dialing ", serverId, " (", serverAddress, ")")
+	conn, err := tr.Dial(ctx, serverAddress, serverId)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+	defer conn.Close()
+	str, err := conn.OpenStream(ctx)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+	defer str.Close()
 
 	pref := cid.Prefix{
 		Version:  1,
@@ -73,19 +71,6 @@ func DoWebsocketTransport(ctx context.Context, remoteAddr string, remotePeerId s
 		log.Error(err)
 		return cid.Undef
 	}
-
-	log.Info("Dialing ", remoteAddr, " (", remotePeerId, ")")
-	conn, err := t.Dial(context.Background(), address, peerId)
-	if err != nil {
-		log.Error(err)
-	}
-	defer conn.Close()
-	str, err := conn.OpenStream(context.Background())
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	defer str.Close()
 
 	log.Debug("Sending ", len(content), " bytes...")
 	if _, err := str.Write(content); err != nil {

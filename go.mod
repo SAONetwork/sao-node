@@ -4,9 +4,6 @@ go 1.19
 
 require (
 	github.com/BurntSushi/toml v1.2.0
-	//sao-consensus v0.0.0-00010101000000-000000000000
-	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
-	github.com/ignite/cli v0.24.0
 	github.com/ipfs/go-log/v2 v2.5.1
 	github.com/mitchellh/go-homedir v1.1.0
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f
@@ -40,7 +37,7 @@ require (
 )
 
 require (
-	github.com/cosmos/cosmos-sdk v0.46.1 // indirect
+	github.com/cosmos/cosmos-sdk v0.44.0 // indirect
 	github.com/libp2p/go-libp2p v0.23.2
 )
 
@@ -69,8 +66,7 @@ require (
 	github.com/cosmos/cosmos-proto v1.0.0-alpha7 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gorocksdb v1.2.0 // indirect
-	github.com/cosmos/iavl v0.19.1 // indirect
-	github.com/cosmos/ibc-go/v5 v5.0.0-rc1 // indirect
+	github.com/cosmos/iavl v0.17.0 // indirect
 	github.com/cosmos/ledger-cosmos-go v0.11.1 // indirect
 	github.com/cosmos/ledger-go v0.9.2 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
@@ -140,9 +136,11 @@ require (
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
 	github.com/lucas-clemente/quic-go v0.29.1 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/marten-seemann/qpack v0.2.1 // indirect
 	github.com/marten-seemann/qtls-go1-18 v0.1.2 // indirect
 	github.com/marten-seemann/qtls-go1-19 v0.1.0 // indirect
 	github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd // indirect
+	github.com/marten-seemann/webtransport-go v0.1.1 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-pointer v0.0.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect

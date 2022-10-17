@@ -76,10 +76,7 @@ func defCommon() Common {
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{
-				"/ip4/0.0.0.0/udp/26658",
 				"/ip4/0.0.0.0/tcp/26659",
-				"/ip6/::/udp/26658",
-				"/ip6/::/tcp/26659",
 			},
 		},
 	}
