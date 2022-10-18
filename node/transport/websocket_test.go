@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"io"
 	cli "sao-storage-node/client"
@@ -17,11 +18,15 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
-	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
+	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
+	csms "github.com/libp2p/go-libp2p/p2p/net/conn-security-multistream"
+	tptu "github.com/libp2p/go-libp2p/p2p/net/upgrader"
+	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
+	libp2pwebsocket "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	"github.com/stretchr/testify/require"
 )
 
-func TestWebTransport(t *testing.T) {
+func TestWebsocketTransport(t *testing.T) {
 	repo, err := repo.NewRepo("./testdata")
 	require.NotNil(t, repo)
 	require.NoError(t, err)
@@ -32,7 +37,7 @@ func TestWebTransport(t *testing.T) {
 	require.NotNil(t, serverId)
 	require.NoError(t, err)
 
-	ln, err := StartWebTransportServer("/ip4/127.0.0.1/udp/26661", serverKey)
+	ln, err := ServeWebsocketTransportServer("/ip4/127.0.0.1/tcp/26661", serverKey)
 	require.NotNil(t, ln)
 	require.NoError(t, err)
 	defer ln.Close()
@@ -44,9 +49,25 @@ func TestWebTransport(t *testing.T) {
 		clientKey, _, err := ic.GenerateEd25519Key(rand.Reader)
 		require.NotNil(t, clientKey)
 		require.NoError(t, err)
-		tr2, err := libp2pwebtransport.New(clientKey, nil, network.NullResourceManager)
+
+		id, err := peer.IDFromPrivateKey(clientKey)
+		require.NotNil(t, id)
 		require.NoError(t, err)
-		defer tr2.(io.Closer).Close()
+
+		var secMuxer csms.SSMuxer
+		noiseTpt, err := noise.New(clientKey)
+		require.NotNil(t, noiseTpt)
+		require.NoError(t, err)
+		secMuxer.AddTransport(noise.ID, noiseTpt)
+
+		u, err := tptu.New(&secMuxer, yamux.DefaultTransport)
+		require.NotNil(t, u)
+		require.NoError(t, err)
+
+		tlsConfig := &tls.Config{InsecureSkipVerify: true}
+		tr2, err := libp2pwebsocket.New(u, network.NullResourceManager, libp2pwebsocket.WithTLSClientConfig(tlsConfig))
+		require.NoError(t, err)
+		require.NoError(t, err)
 
 		fmt.Println("666")
 
@@ -72,7 +93,7 @@ func TestWebTransport(t *testing.T) {
 		cid, err := pref.Sum(data)
 		require.NotNil(t, cid)
 		require.NoError(t, err)
-		c := cli.DoWebTransport(context.TODO(), ln.Multiaddr().String(), serverId.String(), data)
+		c := cli.DoWebsocketTransport(context.TODO(), ln.Multiaddr().String(), serverId.String(), data)
 		require.Equal(t, cid, c)
 		fmt.Println("999")
 

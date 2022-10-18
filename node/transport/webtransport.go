@@ -7,6 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/core/peer"
 	tpt "github.com/libp2p/go-libp2p/core/transport"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	ma "github.com/multiformats/go-multiaddr"
@@ -28,7 +29,13 @@ func StartWebTransportServer(address string, serverKey crypto.PrivKey) (tpt.List
 		return nil, err
 	}
 
-	log.Info("TransportServer listening on ", ln.Multiaddr())
+	serverId, err := peer.IDFromPrivateKey(serverKey)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, err
+	}
+
+	log.Info("TransportServer listening on ", ln.Multiaddr(), "m peerId: ", serverId)
 
 	go func() {
 		for {
