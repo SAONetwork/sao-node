@@ -32,7 +32,7 @@ func TestWebsocketTransport(t *testing.T) {
 	require.NotNil(t, serverId)
 	require.NoError(t, err)
 
-	ln, err := StartWebTransportServer("/ip4/127.0.0.1/udp/26660", repo)
+	ln, err := StartWebTransportServer("/ip4/127.0.0.1/udp/26660", serverKey)
 	require.NotNil(t, ln)
 	require.NoError(t, err)
 	defer ln.Close()
@@ -72,7 +72,7 @@ func TestWebsocketTransport(t *testing.T) {
 		cid, err := pref.Sum(data)
 		require.NotNil(t, cid)
 		require.NoError(t, err)
-		c := cli.DoWebsocketTransport(context.TODO(), ln.Multiaddr().String(), serverId.String(), data)
+		c := cli.DoWebTransport(context.TODO(), ln.Multiaddr().String(), serverId.String(), data)
 		require.Equal(t, cid, c)
 		fmt.Println("999")
 

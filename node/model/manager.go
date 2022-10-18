@@ -1,12 +1,14 @@
 package model
 
 import (
+	"context"
 	"fmt"
-	"sao-storage-node/node"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model/json_patch"
 	"sao-storage-node/node/model/schema/validator"
+	"sao-storage-node/node/storage"
+	"sao-storage-node/types"
 	"strings"
 	"sync"
 
@@ -31,20 +33,21 @@ const MODEL_TYPE_FILE = "File"
 var log = logging.Logger("model")
 
 type Model struct {
-	ResourceId string
-	Alias      string
-	Schema     []byte
-	Type       ModelType
-	Content    []byte
-	OrderId    string
-	Cid        cid.Cid
+	DataId  string
+	Alias   string
+	Schema  []byte
+	Type    ModelType
+	Content []byte
+	OrderId uint64
+	Cid     cid.Cid
 }
 
 type ModelManager struct {
 	CacheCfg     *config.Cache
 	CacheSvc     *cache.CacheSvc
 	JsonpatchSvc *json_patch.JsonpatchSvc
-	commitSvc    *node.CommitSvc
+	// used by gateway module
+	CommitSvc *storage.CommitSvc
 }
 
 var (
@@ -52,17 +55,24 @@ var (
 	once         sync.Once
 )
 
-func NewModelManager(cacheCfg *config.Cache, commitSvc *node.CommitSvc) *ModelManager {
+func NewModelManager(cacheCfg *config.Cache, commitSvc *storage.CommitSvc) *ModelManager {
 	once.Do(func() {
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,
 			CacheSvc:     cache.NewCacheSvc(),
 			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
-			commitSvc:    commitSvc,
+			CommitSvc:    commitSvc,
 		}
 	})
 
 	return modelManager
+}
+
+func (m *ModelManager) Stop(ctx context.Context) error {
+	if m.CommitSvc != nil {
+		m.CommitSvc.Stop(ctx)
+	}
+	return nil
 }
 
 func (m *ModelManager) Load(account string, alias string) (*Model, error) {
@@ -86,43 +96,49 @@ func (m *ModelManager) Load(account string, alias string) (*Model, error) {
 	return mm, nil
 }
 
-func (m *ModelManager) Create(account string, alias string, content string, rule string) (*Model, error) {
-	oldModel, err := m.CacheSvc.Get(account, alias)
-	if oldModel != nil {
-		return nil, xerrors.Errorf("the model [%s] is exsiting already", alias)
+func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta) (*Model, error) {
+	var alias string
+	if orderMeta.Alias == "" {
+		alias = GenerateAlias(orderMeta.Content)
+	} else {
+		alias = orderMeta.Alias
 	}
-	if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", account)) {
-		err = m.CacheSvc.CreateCache(account, m.CacheCfg.CacheCapacity)
+
+	oldModel, err := m.CacheSvc.Get(orderMeta.Creator, orderMeta.Alias)
+	if oldModel != nil {
+		return nil, xerrors.Errorf("the model [%s] is exsiting already", orderMeta.Alias)
+	}
+	if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", orderMeta.Creator)) {
+		err = m.CacheSvc.CreateCache(orderMeta.Creator, m.CacheCfg.CacheCapacity)
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
 	}
 
-	if alias == "" {
-		alias = GenerateAlias(content)
-	}
-
-	err = m.validateModel(account, alias, []byte(content), rule)
+	err = m.validateModel(orderMeta.Creator, alias, orderMeta.Content, orderMeta.Rule)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	modelType := m.getDataModelType([]byte(content))
+	modelType := m.getDataModelType(orderMeta.Content)
 
-	//
+	// Commit
+	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
+	result, err := m.CommitSvc.Commit(ctx, orderMeta.Creator, orderMeta, orderMeta.Content)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &Model{
-		ResourceId: GenerateResourceId(),
-		Alias:      alias,
-		Content:    []byte(content),
-		Type:       modelType,
-		Cid:        cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
+		DataId:  result.DataId,
+		Alias:   alias,
+		Content: orderMeta.Content,
+		Type:    modelType,
+		Cid:     orderMeta.Cid,
+		OrderId: result.OrderId,
 	}
 
-	m.cacheModel(account, alias, model)
+	m.cacheModel(orderMeta.Creator, alias, model)
 
 	return model, nil
 }
@@ -148,10 +164,10 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 	// 	return nil, xerrors.Errorf(err.Error())
 	// }
 	model := &Model{
-		ResourceId: orgModel.(*Model).ResourceId,
-		Alias:      orgModel.(*Model).Alias,
-		Content:    newContentBytes,
-		Cid:        cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
+		DataId:  orgModel.(*Model).DataId,
+		Alias:   orgModel.(*Model).Alias,
+		Content: newContentBytes,
+		Cid:     cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
 	}
 
 	m.cacheModel(account, alias, model)
@@ -188,6 +204,6 @@ func (m *ModelManager) cacheModel(account string, alias string, model *Model) {
 	} else {
 		m.CacheSvc.Put(account, alias, model)
 	}
-	m.CacheSvc.Put(account, model.ResourceId, alias)
-	m.CacheSvc.Put(account, model.OrderId, alias)
+	m.CacheSvc.Put(account, model.DataId, alias)
+	m.CacheSvc.Put(account, fmt.Sprintf("%d", model.OrderId), alias)
 }

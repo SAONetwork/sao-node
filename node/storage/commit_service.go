@@ -1,16 +1,17 @@
-package node
+package storage
 
 import (
 	"context"
 	"fmt"
+	"sao-storage-node/node/chain"
+	"sao-storage-node/types"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/pkg/errors"
-	"sao-storage-node/node/chain"
-	"sao-storage-node/types"
-	"time"
 )
 
 type CommitResult struct {
@@ -26,6 +27,10 @@ type CommitSvc struct {
 	db          datastore.Batching
 	host        host.Host
 }
+
+const (
+	ShardStoreProtocol = "/sao/store/shard/1.0"
+)
 
 func NewCommitSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, db datastore.Batching, host host.Host) *CommitSvc {
 	cs := &CommitSvc{

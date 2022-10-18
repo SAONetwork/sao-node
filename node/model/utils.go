@@ -19,17 +19,17 @@ func IsLink(content string) bool {
 	return strings.Contains(content, `^((http(s))|(ipfs)|(sao)?://.*?$`)
 }
 
-func IsResourceId(content string) bool {
+func IsDataId(content string) bool {
 	r, _ := regexp.Compile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 
 	return r.MatchString(content)
 }
 
-func GenerateAlias(content string) string {
-	return uuid.FromStringOrNil(content).String()
+func GenerateAlias(content []byte) string {
+	return uuid.FromBytesOrNil(content).String()
 }
 
-func GenerateResourceId() string {
+func GenerateDataId() string {
 	return uuid.NewV4().String()
 }
 

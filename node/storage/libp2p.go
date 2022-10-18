@@ -1,17 +1,14 @@
-package node
+package storage
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/network"
-	"io"
-)
-
-const (
-	ShardStoreProtocol = "/sao/store/shard/1.0"
 )
 
 // TODO: store node should sign the request.

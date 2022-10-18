@@ -11,12 +11,12 @@ type SchemaHelper struct {
 	//CommitSvc *commit.CommitSvc
 }
 
-func GenerateResourceId(modelType string, headcommit string, alias string) string {
+func GenerateDataId(modelType string, headcommit string, alias string) string {
 	return uuid.FromStringOrNil(modelType + headcommit + alias).String()
 }
 
-func GenerateResourceLink(ResourceId string) string {
-	return SAO_LINK_PREFIX + ResourceId
+func GenerateDataLink(DataId string) string {
+	return SAO_LINK_PREFIX + DataId
 }
 
 func FetchContent(link string) (interface{}, error) {

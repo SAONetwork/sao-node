@@ -27,6 +27,7 @@ type RawCommit struct {
 
 type OrderMeta struct {
 	Creator               string
+	Alias                 string
 	Duration              int32
 	Replica               int32
 	OrderId               uint64
@@ -34,4 +35,6 @@ type OrderMeta struct {
 	TxId                  string
 	TxSent                bool
 	CompleteTimeoutBlocks int
+	Content               []byte
+	Rule                  string
 }

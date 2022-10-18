@@ -2,17 +2,20 @@ package node
 
 import (
 	"context"
+	"sao-storage-node/api"
+	"sao-storage-node/node/chain"
+	"sao-storage-node/node/transport"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
-	"sao-storage-node/api"
-	"sao-storage-node/node/chain"
-	//"sao-storage-node/node/model"
 
 	"fmt"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/node/config"
+	"sao-storage-node/node/model"
 	"sao-storage-node/node/repo"
+	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
 	"strings"
 
@@ -27,14 +30,13 @@ type Node struct {
 	ctx context.Context
 	cfg *config.Node
 	//manager       *model.ModelManager
-	host    *host.Host
-	repo    *repo.Repo
-	address string
-	// used by gateway module
-	commitSvc *CommitSvc
-	// used by store module
-	storeSvc  *StoreSvc
+	host      *host.Host
+	repo      *repo.Repo
+	address   string
 	stopFuncs []StopFunc
+	// used by store module
+	storeSvc *storage.StoreSvc
+	manager  *model.ModelManager
 }
 
 func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
@@ -73,6 +75,13 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
+	for _, address := range cfg.Libp2p.TransportListenAddress {
+		_, err := transport.StartWebTransportServer(address, peerKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// chain
 	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	if err != nil {
@@ -90,14 +99,16 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		host:      &host,
 	}
 
+	var manager *model.ModelManager = nil
 	if cfg.Module.GatewayEnable {
 		// order db
 		orderDb, err := repo.Datastore(ctx, "/order")
 		if err != nil {
 			return nil, err
 		}
-		sn.commitSvc = NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host)
-		sn.stopFuncs = append(sn.stopFuncs, sn.commitSvc.Stop)
+
+		manager = model.NewModelManager(&cfg.Cache, storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host))
+		sn.stopFuncs = append(sn.stopFuncs, manager.Stop)
 
 		// api server
 		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
@@ -108,7 +119,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.StorageEnable {
-		sn.storeSvc, err = NewStoreService(ctx, nodeAddr, chainSvc, host)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host)
 		if err != nil {
 			return nil, err
 		}
@@ -157,14 +168,13 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 }
 
 func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, commit any) (apitypes.CreateResp, error) {
-	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := n.commitSvc.Commit(ctx, orderMeta.Creator, orderMeta, commit)
+	model, err := n.manager.Create(ctx, orderMeta)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
 	return apitypes.CreateResp{
-		OrderId: result.OrderId,
-		DataId:  result.DataId,
+		OrderId: model.OrderId,
+		DataId:  model.DataId,
 	}, nil
 }
 

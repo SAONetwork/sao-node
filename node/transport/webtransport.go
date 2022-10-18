@@ -1,32 +1,22 @@
 package transport
 
 import (
-	"fmt"
-	"sao-storage-node/node/repo"
+	"io"
 
+	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/core/transport"
+	tpt "github.com/libp2p/go-libp2p/core/transport"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	ma "github.com/multiformats/go-multiaddr"
+	mc "github.com/multiformats/go-multicodec"
+	mh "github.com/multiformats/go-multihash"
 )
 
 var log = logging.Logger("transport")
 
-func StartWebTransportServer(address string, repo *repo.Repo) (transport.Listener, error) {
-	serverKey, err := repo.PeerId()
-	if err != nil {
-		log.Error(err.Error())
-		return nil, err
-	}
-
-	peerID, err := peer.IDFromPrivateKey(serverKey)
-	if err != nil {
-		log.Error(err.Error())
-		return nil, err
-	}
-
+func StartWebTransportServer(address string, serverKey crypto.PrivKey) (tpt.Listener, error) {
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
 		log.Error(err.Error())
@@ -37,9 +27,8 @@ func StartWebTransportServer(address string, repo *repo.Repo) (transport.Listene
 		log.Error(err.Error())
 		return nil, err
 	}
-	fmt.Println("Listening on ", peerID, " (", ln.Multiaddr(), ")")
 
-	log.Info("Listening on ", peerID, " (", ln.Multiaddr(), ")")
+	log.Info("TransportServer listening on ", ln.Multiaddr())
 
 	go func() {
 		for {
@@ -58,4 +47,37 @@ func StartWebTransportServer(address string, repo *repo.Repo) (transport.Listene
 	}()
 
 	return ln, nil
+}
+
+func handleConn(conn tpt.CapableConn) error {
+	str, err := conn.AcceptStream()
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	data, err := io.ReadAll(str)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	log.Debug("Received ", len(data), " bytes...")
+
+	pref := cid.Prefix{
+		Version:  1,
+		Codec:    uint64(mc.Raw),
+		MhType:   mh.SHA2_256,
+		MhLength: -1, // default length
+	}
+	cid, err := pref.Sum(data)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	log.Info("CID is ", cid.String())
+
+	if _, err := str.Write(cid.Bytes()); err != nil {
+		log.Error(err.Error())
+		return err
+	}
+	return str.Close()
 }

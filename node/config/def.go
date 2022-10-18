@@ -41,7 +41,8 @@ type Chain struct {
 type Libp2p struct {
 	// Binding address for the libp2p host - 0 means random port.
 	// Format: multiaddress; see https://multiformats.io/multiaddr/
-	ListenAddress []string
+	ListenAddress          []string
+	TransportListenAddress []string
 }
 
 type Cache struct {
@@ -77,6 +78,9 @@ func defCommon() Common {
 		Libp2p: Libp2p{
 			ListenAddress: []string{
 				"/ip4/0.0.0.0/tcp/26659",
+			},
+			TransportListenAddress: []string{
+				"/ip4/0.0.0.0/udp/26660",
 			},
 		},
 	}

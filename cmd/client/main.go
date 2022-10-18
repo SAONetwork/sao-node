@@ -222,7 +222,7 @@ var uploadCmd = &cli.Command{
 		filepath := cctx.String("filepath")
 		multiaddr := cctx.String("multiaddr")
 		peerId := cctx.String("peerid")
-		c := saoclient.DoQuicTransport(ctx, multiaddr, peerId, []byte("DoQuicTransportDoQuicTransportDoQuicTransport"))
+		c := saoclient.DoWebTransport(ctx, multiaddr, peerId, []byte("DoWebTransportDoWebTransportDoWebTransportDoWebTransportDoWebTransportDoWebTransport"))
 		if c != cid.Undef {
 			log.Info("file [", filepath, "] successfully uploaded, CID is ", c.String())
 		} else {

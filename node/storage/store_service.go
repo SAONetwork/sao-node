@@ -1,12 +1,17 @@
-package node
+package storage
 
 import (
 	"context"
+	"sao-storage-node/node/chain"
+
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	"sao-storage-node/node/chain"
 )
+
+var log = logging.Logger("storage")
 
 type StoreSvc struct {
 	nodeAddress string
