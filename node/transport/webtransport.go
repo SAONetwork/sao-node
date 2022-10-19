@@ -35,8 +35,7 @@ func StartWebTransportServer(address string, serverKey crypto.PrivKey) (tpt.List
 		return nil, err
 	}
 
-	log.Info("TransportServer listening on ", ln.Multiaddr(), "m peerId: ", serverId)
-
+	log.Info("TransportServer listening on ", ln.Multiaddr(), "/p2p/", serverId)
 	go func() {
 		for {
 			conn, err := ln.Accept()

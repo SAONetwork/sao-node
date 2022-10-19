@@ -32,7 +32,7 @@ func ServeWebsocketTransportServer(address string, serverKey crypto.PrivKey) (tp
 		log.Error(err.Error())
 		return nil, err
 	}
-	log.Info("TransportServer listening on ", ln.Multiaddr(), "m peerId: ", serverId)
+	log.Info("TransportServer listening on ", ln.Multiaddr(), "/p2p/", serverId)
 
 	go func() {
 		for {
