@@ -2,13 +2,15 @@ package transport
 
 import (
 	"io"
+	"os"
+	"os/signal"
+	"time"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	tpt "github.com/libp2p/go-libp2p/core/transport"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	ma "github.com/multiformats/go-multiaddr"
 	mc "github.com/multiformats/go-multicodec"
@@ -17,56 +19,50 @@ import (
 
 var log = logging.Logger("transport")
 
-func StartWebTransportServer(address string, serverKey crypto.PrivKey) (tpt.Listener, error) {
-	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
+func StartWebTransportServer(address string, serverKey crypto.PrivKey) error {
+	h, err := libp2p.New(libp2p.Transport(libp2pwebtransport.New))
 	if err != nil {
 		log.Error(err.Error())
-		return nil, err
+		return err
 	}
-	ln, err := tr.Listen(ma.StringCast(address + "/quic/webtransport"))
+
+	err = h.Network().Listen(ma.StringCast(address + "/quic/webtransport"))
 	if err != nil {
 		log.Error(err.Error())
-		return nil, err
+		return err
 	}
 
-	serverId, err := peer.IDFromPrivateKey(serverKey)
-	if err != nil {
-		log.Error(err.Error())
-		return nil, err
+	for _, a := range h.Addrs() {
+		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
+		log.Info("addr=", withP2p.String())
 	}
 
-	log.Info("TransportServer listening on ", ln.Multiaddr(), "/p2p/", serverId)
-	go func() {
-		for {
-			conn, err := ln.Accept()
-			if err != nil {
-				log.Error(err.Error())
-				continue
-			}
-			log.Info("Accepted new connection from ", conn.RemotePeer(), " (", conn.RemoteMultiaddr(), ")")
-			go func() {
-				if err := handleConn(conn); err != nil {
-					log.Error("handling conn failed: ", err.Error())
-				}
-			}()
-		}
-	}()
+	h.Network().SetStreamHandler(handleStream)
 
-	return ln, nil
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	select {
+	case <-c:
+	case <-time.After(time.Second):
+	}
+
+	return nil
 }
 
-func handleConn(conn tpt.CapableConn) error {
-	str, err := conn.AcceptStream()
+func handleStream(s network.Stream) {
+	defer s.Close()
+	log.Info("handleStream: ", s.Stat())
+
+	// Set a deadline on reading from the stream so it doesn’t hang
+	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
+	defer s.SetReadDeadline(time.Time{}) // nolint
+	data, err := io.ReadAll(s)
 	if err != nil {
 		log.Error(err.Error())
-		return err
+		return
 	}
-	data, err := io.ReadAll(str)
-	if err != nil {
-		log.Error(err.Error())
-		return err
-	}
-	log.Debug("Received ", len(data), " bytes...")
+	log.Info("Received ", len(data), " bytes...")
+	log.Info("Received ", string(data))
 
 	pref := cid.Prefix{
 		Version:  1,
@@ -77,13 +73,17 @@ func handleConn(conn tpt.CapableConn) error {
 	cid, err := pref.Sum(data)
 	if err != nil {
 		log.Error(err.Error())
-		return err
+		return
 	}
 	log.Info("CID is ", cid.String())
 
-	if _, err := str.Write(cid.Bytes()); err != nil {
+	if _, err := s.Write(cid.Bytes()); err != nil {
 		log.Error(err.Error())
-		return err
+		return
 	}
-	return str.Close()
+
+	if err := s.CloseWrite(); err != nil {
+		log.Error(err.Error())
+		return
+	}
 }

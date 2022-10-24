@@ -77,12 +77,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	for _, address := range cfg.Libp2p.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			_, err := transport.StartWebTransportServer(address, peerKey)
-			if err != nil {
-				return nil, err
-			}
-		} else if strings.Contains(address, "tcp") {
-			_, err := transport.ServeWebsocketTransportServer(address, peerKey)
+			err := transport.StartWebTransportServer(address, peerKey)
 			if err != nil {
 				return nil, err
 			}
@@ -137,7 +132,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	// chainSvc.stop should be after chain listener unsubscribe
-	stopFuncs = append(stopFuncs, chainSvc.Stop)
+	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
 
 	return &sn, nil
 }
@@ -152,6 +147,9 @@ func newRpcServer(ga api.GatewayApi, listenAddress string) (StopFunc, error) {
 
 	strma := strings.TrimSpace(listenAddress)
 	endpoint, err := multiaddr.NewMultiaddr(strma)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endpoint: %s, %s", strma, err)
+	}
 	rpcStopper, err := ServeRPC(handler, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start json-rpc endpoint: %s", err)

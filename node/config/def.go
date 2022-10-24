@@ -81,7 +81,6 @@ func defCommon() Common {
 			},
 			TransportListenAddress: []string{
 				"/ip4/0.0.0.0/udp/26660",
-				"/ip4/0.0.0.0/tcp/26661",
 			},
 		},
 	}
