@@ -5,6 +5,7 @@ package main
 // * guic transfer data
 
 import (
+	"fmt"
 	"os"
 	apiclient "sao-storage-node/api/client"
 	"sao-storage-node/build"
@@ -12,6 +13,7 @@ import (
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -210,18 +212,16 @@ var uploadCmd = &cli.Command{
 			Usage:    "remote multiaddr",
 			Required: true,
 		},
-		&cli.StringFlag{
-			Name:     "peerid",
-			Usage:    "remote peer id",
-			Required: true,
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
 		filepath := cctx.String("filepath")
 		multiaddr := cctx.String("multiaddr")
-		peerId := cctx.String("peerid")
+		if !strings.Contains(multiaddr, "/p2p/") {
+			return fmt.Errorf("invalid multiaddr: %s", multiaddr)
+		}
+		peerId := strings.Split(multiaddr, "/p2p/")[1]
 		c := saoclient.DoWebTransport(ctx, multiaddr, peerId, []byte("DoWebTransportDoWebTransportDoWebTransportDoWebTransportDoWebTransportDoWebTransport"))
 		if c != cid.Undef {
 			log.Info("file [", filepath, "] successfully uploaded, CID is ", c.String())

@@ -20,7 +20,13 @@ import (
 var log = logging.Logger("transport")
 
 func StartWebTransportServer(address string, serverKey crypto.PrivKey) error {
-	h, err := libp2p.New(libp2p.Transport(libp2pwebtransport.New))
+	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
+	if err != nil {
+		log.Error(err.Error())
+		return err
+	}
+
+	h, err := libp2p.New(libp2p.Transport(tr), libp2p.Identity(serverKey))
 	if err != nil {
 		log.Error(err.Error())
 		return err
