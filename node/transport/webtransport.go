@@ -57,18 +57,17 @@ func StartWebTransportServer(address string, serverKey crypto.PrivKey) error {
 
 func handleStream(s network.Stream) {
 	defer s.Close()
-	log.Info("handleStream: ", s.Stat())
 
 	// Set a deadline on reading from the stream so it doesn’t hang
 	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
+
 	data, err := io.ReadAll(s)
 	if err != nil {
 		log.Error(err.Error())
 		return
 	}
 	log.Info("Received ", len(data), " bytes...")
-	log.Info("Received ", string(data))
 
 	pref := cid.Prefix{
 		Version:  1,
@@ -81,7 +80,9 @@ func handleStream(s network.Stream) {
 		log.Error(err.Error())
 		return
 	}
-	log.Info("CID is ", cid.String())
+
+	log.Info("Received file content length ", len(data))
+	log.Info("Received file CID is ", cid.String())
 
 	if _, err := s.Write(cid.Bytes()); err != nil {
 		log.Error(err.Error())

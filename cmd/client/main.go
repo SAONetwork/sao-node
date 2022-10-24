@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	apiclient "sao-storage-node/api/client"
 	"sao-storage-node/build"
 	saoclient "sao-storage-node/client"
@@ -216,17 +217,41 @@ var uploadCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		filepath := cctx.String("filepath")
+		fpath := cctx.String("filepath")
 		multiaddr := cctx.String("multiaddr")
 		if !strings.Contains(multiaddr, "/p2p/") {
 			return fmt.Errorf("invalid multiaddr: %s", multiaddr)
 		}
 		peerId := strings.Split(multiaddr, "/p2p/")[1]
-		c := saoclient.DoWebTransport(ctx, multiaddr, peerId, []byte("DoWebTransportDoWebTransportDoWebTransportDoWebTransportDoWebTransportDoWebTransport"))
-		if c != cid.Undef {
-			log.Info("file [", filepath, "] successfully uploaded, CID is ", c.String())
-		} else {
-			log.Warn("failed to uploaded the file [", filepath, "], please try again")
+
+		var files []string
+		err := filepath.Walk(fpath, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !info.IsDir() {
+				files = append(files, path)
+			} else {
+				log.Warn("skip directory ", path)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, file := range files {
+			log.Info("uploading file ", file)
+
+			c := saoclient.DoWebTransport(ctx, multiaddr, peerId, file)
+			if c != cid.Undef {
+				log.Info("file [", file, "] successfully uploaded, CID is ", c.String())
+			} else {
+				log.Warn("failed to uploaded the file [", file, "], please try again")
+			}
 		}
 
 		return nil

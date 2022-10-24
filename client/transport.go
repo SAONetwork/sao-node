@@ -3,20 +3,15 @@ package client
 import (
 	"context"
 	"crypto/rand"
-	"crypto/tls"
 	"io"
+	"os"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
-	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
-	csms "github.com/libp2p/go-libp2p/p2p/net/conn-security-multistream"
-	tptu "github.com/libp2p/go-libp2p/p2p/net/upgrader"
-	libp2pwebsocket "github.com/libp2p/go-libp2p/p2p/transport/websocket"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 
 	mc "github.com/multiformats/go-multicodec"
@@ -27,7 +22,13 @@ import (
 
 var log = logging.Logger("transport-client")
 
-func DoWebTransport(ctx context.Context, remoteAddr string, remotePeerId string, content []byte) cid.Cid {
+func DoWebTransport(ctx context.Context, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
+	file, err := os.Open(fpath)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+
 	serverAddress, err := ma.NewMultiaddr(remoteAddr)
 	if err != nil {
 		log.Error(err)
@@ -66,100 +67,11 @@ func DoWebTransport(ctx context.Context, remoteAddr string, remotePeerId string,
 	}
 	defer str.Close()
 
-	pref := cid.Prefix{
-		Version:  1,
-		Codec:    uint64(mc.Raw),
-		MhType:   mh.SHA2_256,
-		MhLength: -1, // default length
-	}
-	cidLocal, err := pref.Sum(content)
+	content, err := io.ReadAll(file)
 	if err != nil {
 		log.Error(err)
 		return cid.Undef
 	}
-
-	log.Debug("Sending ", len(content), " bytes...")
-	if _, err := str.Write(content); err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	if err := str.CloseWrite(); err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	res, err := io.ReadAll(str)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	log.Debug("Received ", len(res), " bytes...")
-	_, cidRemote, err := cid.CidFromBytes(res)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-
-	if cidRemote.Equals(cidLocal) {
-		return cidRemote
-	} else {
-		log.Error("file cid mismatch, ", cidLocal.String(), " vs. ", cidRemote.String())
-		return cid.Undef
-	}
-}
-
-func DoWebsocketTransport(ctx context.Context, remoteAddr string, remotePeerId string, content []byte) cid.Cid {
-	serverAddress, err := ma.NewMultiaddr(remoteAddr)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-
-	serverId, err := peer.Decode(remotePeerId)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-
-	clientKey, _, err := ic.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-
-	var secMuxer csms.SSMuxer
-	noiseTpt, err := noise.New(clientKey)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	secMuxer.AddTransport(noise.ID, noiseTpt)
-
-	u, err := tptu.New(&secMuxer, yamux.DefaultTransport)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-
-	tlsConfig := &tls.Config{InsecureSkipVerify: true}
-	tr, err := libp2pwebsocket.New(u, network.NullResourceManager, libp2pwebsocket.WithTLSClientConfig(tlsConfig))
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-
-	log.Info("Dialing ", serverId, " (", serverAddress, ")")
-	conn, err := tr.Dial(ctx, serverAddress, serverId)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	defer conn.Close()
-	str, err := conn.OpenStream(ctx)
-	if err != nil {
-		log.Error(err)
-		return cid.Undef
-	}
-	defer str.Close()
 
 	pref := cid.Prefix{
 		Version:  1,
@@ -173,7 +85,6 @@ func DoWebsocketTransport(ctx context.Context, remoteAddr string, remotePeerId s
 		return cid.Undef
 	}
 
-	log.Debug("Sending ", len(content), " bytes...")
 	if _, err := str.Write(content); err != nil {
 		log.Error(err)
 		return cid.Undef
@@ -187,7 +98,6 @@ func DoWebsocketTransport(ctx context.Context, remoteAddr string, remotePeerId s
 		log.Error(err)
 		return cid.Undef
 	}
-	log.Debug("Received ", len(res), " bytes...")
 	_, cidRemote, err := cid.CidFromBytes(res)
 	if err != nil {
 		log.Error(err)
