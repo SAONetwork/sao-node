@@ -77,7 +77,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	for _, address := range cfg.Libp2p.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			err := transport.StartWebTransportServer(address, peerKey)
+			_, err := transport.StartTransportServer(ctx, address, peerKey, mds)
 			if err != nil {
 				return nil, err
 			}
