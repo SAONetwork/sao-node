@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/signal"
 	"sync"
@@ -27,11 +26,7 @@ var log = logging.Logger("transport")
 
 const CHUNCK_SIZE = 16 * 1024 * 1024
 
-type ChunkUnmarshaler interface {
-	UnMarshal(io.Reader) error
-}
-
-type ChunkReq struct {
+type FileChunkReq struct {
 	ChunkId     int
 	TotalLength int
 	TotalChunks int
@@ -101,7 +96,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
-	var req ChunkReq
+	var req FileChunkReq
 	buf := &bytes.Buffer{}
 	buf.ReadFrom(s)
 	err := json.Unmarshal(buf.Bytes(), &req)
