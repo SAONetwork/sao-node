@@ -4,16 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sao-storage-node/node/config"
 	"sync"
+
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("repo")

@@ -246,7 +246,7 @@ var uploadCmd = &cli.Command{
 		for _, file := range files {
 			log.Info("uploading file ", file)
 
-			c := saoclient.DoWebTransport(ctx, multiaddr, peerId, file)
+			c := saoclient.DoTransport(ctx, multiaddr, peerId, file)
 			if c != cid.Undef {
 				log.Info("file [", file, "] successfully uploaded, CID is ", c.String())
 			} else {

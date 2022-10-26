@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestWebTransport(t *testing.T) {
+func TestTransport(t *testing.T) {
 	// repo, err := repo.NewRepo("./testdata")
 	// require.NotNil(t, repo)
 	// require.NoError(t, err)
@@ -15,7 +15,7 @@ func TestWebTransport(t *testing.T) {
 	// require.NotNil(t, serverId)
 	// require.NoError(t, err)
 
-	// err = StartWebTransportServer("/ip4/127.0.0.1/udp/26661", serverKey)
+	// err = StartTransportServer("/ip4/127.0.0.1/udp/26661", serverKey)
 	// require.NoError(t, err)
 
 	// // addrChan := make(chan ma.Multiaddr)
@@ -51,7 +51,7 @@ func TestWebTransport(t *testing.T) {
 	// 	// cid, err := pref.Sum(data)
 	// 	// require.NotNil(t, cid)
 	// 	// require.NoError(t, err)
-	// 	// c := cli.DoWebTransport(context.TODO(), "/ip4/127.0.0.1/udp/26660/quic/webtransport/certhash/uEiBs2u9K13BQ-vX0k32I0QaN8lN95qQzoytH9wbJQDUm2w/certhash/uEiC_57QLDQ0zk0GUKMC9Vs0yC7SabtFmksf8ohZZfLQ2Pw/p2p/12D3KooWPj8B9LPYEHDPqmqsmKZirchtf3HGhUZLoZKcopVMaoJP", "12D3KooWPj8B9LPYEHDPqmqsmKZirchtf3HGhUZLoZKcopVMaoJP", data)
+	// 	// c := cli.DoTransport(context.TODO(), "/ip4/127.0.0.1/udp/26660/quic/webtransport/certhash/uEiBs2u9K13BQ-vX0k32I0QaN8lN95qQzoytH9wbJQDUm2w/certhash/uEiC_57QLDQ0zk0GUKMC9Vs0yC7SabtFmksf8ohZZfLQ2Pw/p2p/12D3KooWPj8B9LPYEHDPqmqsmKZirchtf3HGhUZLoZKcopVMaoJP", "12D3KooWPj8B9LPYEHDPqmqsmKZirchtf3HGhUZLoZKcopVMaoJP", data)
 	// 	// require.Equal(t, cid, c)
 	// 	// fmt.Println("999")
 

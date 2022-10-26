@@ -17,9 +17,10 @@ type Common struct {
 // gateway node config
 type Node struct {
 	Common
-	Cache  Cache
-	Api    API
-	Module Module
+	Cache     Cache
+	Transport Transport
+	Api       API
+	Module    Module
 }
 
 type Module struct {
@@ -41,13 +42,18 @@ type Chain struct {
 type Libp2p struct {
 	// Binding address for the libp2p host - 0 means random port.
 	// Format: multiaddress; see https://multiformats.io/multiaddr/
-	ListenAddress          []string
-	TransportListenAddress []string
+	ListenAddress []string
 }
 
 type Cache struct {
 	CacheCapacity int
 	ContentLimit  int
+}
+
+type Transport struct {
+	TransportListenAddress []string
+	StagingPath            string
+	StagingSapceSize       int
 }
 
 func DefaultGatewayNode() *Node {
@@ -59,7 +65,14 @@ func DefaultGatewayNode() *Node {
 		},
 		Cache: Cache{
 			CacheCapacity: 1000,
-			ContentLimit:  2097152,
+			ContentLimit:  2 * 1024 * 1024,
+		},
+		Transport: Transport{
+			TransportListenAddress: []string{
+				"/ip4/0.0.0.0/udp/26660",
+			},
+			StagingPath:      "~/.sao_staging",
+			StagingSapceSize: 32 * 1024 * 1024 * 1024,
 		},
 		Module: Module{
 			GatewayEnable: true,
@@ -78,9 +91,6 @@ func defCommon() Common {
 		Libp2p: Libp2p{
 			ListenAddress: []string{
 				"/ip4/0.0.0.0/tcp/26659",
-			},
-			TransportListenAddress: []string{
-				"/ip4/0.0.0.0/udp/26660",
 			},
 		},
 	}

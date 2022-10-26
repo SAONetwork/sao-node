@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"sao-storage-node/types/transport"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -23,18 +24,7 @@ import (
 
 var log = logging.Logger("transport-client")
 
-const CHUNK_SIZE int = 32 * 1024 * 1024
-
-type FileChunkReq struct {
-	ChunkId     int
-	TotalLength int
-	TotalChunks int
-	ChunkCid    string
-	Cid         string
-	Content     []byte
-}
-
-func DoWebTransport(ctx context.Context, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
+func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
 	file, err := os.Open(fpath)
 	if err != nil {
 		log.Error(err)
@@ -92,14 +82,14 @@ func DoWebTransport(ctx context.Context, remoteAddr string, remotePeerId string,
 	}
 
 	var contentLength int = len(content)
-	var totalChunks = contentLength/CHUNK_SIZE + 1
+	var totalChunks = contentLength/transport.CHUNK_SIZE + 1
 	chunkId := 0
 	for chunkId <= totalChunks {
 		var chunk []byte
-		if (chunkId+1)*CHUNK_SIZE < len(content) {
-			chunk = content[chunkId*CHUNK_SIZE : (chunkId+1)*CHUNK_SIZE]
-		} else if chunkId*CHUNK_SIZE < len(content) {
-			chunk = content[chunkId*CHUNK_SIZE:]
+		if (chunkId+1)*transport.CHUNK_SIZE < len(content) {
+			chunk = content[chunkId*transport.CHUNK_SIZE : (chunkId+1)*transport.CHUNK_SIZE]
+		} else if chunkId*transport.CHUNK_SIZE < len(content) {
+			chunk = content[chunkId*transport.CHUNK_SIZE:]
 		} else {
 			chunk = make([]byte, 0)
 		}
@@ -125,7 +115,7 @@ func DoWebTransport(ctx context.Context, remoteAddr string, remotePeerId string,
 		}
 		defer str.Close()
 
-		req := &FileChunkReq{
+		req := &transport.FileChunkReq{
 			ChunkId:     chunkId,
 			TotalLength: contentLength,
 			TotalChunks: totalChunks,
