@@ -96,7 +96,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
-	shardStaging := NewShardStaging(cfg.Transport.StagingPath)
+	shardStaging := storage.NewShardStaging(cfg.Transport.StagingPath)
 	var stopFuncs []StopFunc
 
 	sn := Node{

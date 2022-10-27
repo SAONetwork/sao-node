@@ -1,11 +1,12 @@
-package node
+package storage
 
 import (
 	"fmt"
-	"github.com/ipfs/go-cid"
-	"github.com/mitchellh/go-homedir"
 	"os"
 	"path/filepath"
+
+	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 )
 
 type ShardStaging struct {

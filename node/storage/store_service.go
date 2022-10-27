@@ -2,9 +2,9 @@ package storage
 
 import (
 	"context"
-	"github.com/ipfs/go-cid"
-	"sao-storage-node/node"
 	"sao-storage-node/node/chain"
+
+	"github.com/ipfs/go-cid"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -20,10 +20,10 @@ type StoreSvc struct {
 	chainSvc     *chain.ChainSvc
 	taskChan     chan *chain.ShardTask
 	host         host.Host
-	shardStaging *node.ShardStaging
+	shardStaging *ShardStaging
 }
 
-func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, shardStaging *node.ShardStaging) (*StoreSvc, error) {
+func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, shardStaging *ShardStaging) (*StoreSvc, error) {
 	ss := StoreSvc{
 		nodeAddress:  nodeAddress,
 		chainSvc:     chainSvc,
@@ -67,6 +67,8 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		shard, err = ss.getShardFromGateway(ctx, task.Gateway, task.OrderId, task.Cid)
 	}
 	// TODO: store resp.Content to ipfs
+	log.Info("ss.nodeAddress: ", ss.nodeAddress)
+
 	txHash, err := ss.chainSvc.CompleteOrder(ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
 	if err != nil {
 		return err
