@@ -184,7 +184,7 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 }
 
 func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, commit any) (apitypes.CreateResp, error) {
-	model, err := n.manager.Create(ctx, orderMeta, types.ModelTypeFile)
+	model, err := n.manager.Create(ctx, orderMeta, types.ModelTypeData)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}

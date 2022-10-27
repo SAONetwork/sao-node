@@ -29,6 +29,10 @@ func (sc SaoClient) Create(ctx context.Context, orderMeta types.OrderMeta, conte
 	return sc.gatewayApi.Create(ctx, orderMeta, content)
 }
 
+func (sc SaoClient) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
+	return sc.gatewayApi.CreateFile(ctx, orderMeta)
+}
+
 func (sc SaoClient) Load(ctx context.Context, owner string, alias string) (apitypes.LoadResp, error) {
 	return sc.gatewayApi.Load(ctx, owner, alias)
 }

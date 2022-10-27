@@ -4,6 +4,7 @@ type CreateResp struct {
 	OrderId uint64
 	DataId  string
 	TxId    string
+	Cid     string
 }
 
 type LoadResp struct {

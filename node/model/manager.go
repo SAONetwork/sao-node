@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 
+	mc "github.com/multiformats/go-multicodec"
+
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -90,11 +92,13 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 		return model.(*Model), nil
 	}
 
-	if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", account)) {
-		err = m.CacheSvc.CreateCache(account, m.CacheCfg.CacheCapacity)
-		if err != nil {
-			log.Error(err.Error())
-			return nil, xerrors.Errorf(err.Error())
+	if err != nil {
+		if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", account)) {
+			err = m.CacheSvc.CreateCache(account, m.CacheCfg.CacheCapacity)
+			if err != nil {
+				log.Error(err.Error())
+				return nil, xerrors.Errorf(err.Error())
+			}
 		}
 	}
 
@@ -199,6 +203,18 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
+
+		pref := cid.Prefix{
+			Version:  1,
+			Codec:    uint64(mc.Raw),
+			MhType:   multihash.SHA2_256,
+			MhLength: -1, // default length
+		}
+		modelCid, err := pref.Sum(modelBytes)
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+		orderMeta.Cid = modelCid
 	} else {
 		modelBytes = orderMeta.Content
 	}
@@ -210,7 +226,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 
 	// Commit
 	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := m.CommitSvc.Commit(ctx, orderMeta.Creator, orderMeta, orderMeta.Content)
+	result, err := m.CommitSvc.Commit(ctx, orderMeta.Creator, orderMeta, modelBytes)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}

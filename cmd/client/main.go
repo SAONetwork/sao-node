@@ -56,6 +56,7 @@ func main() {
 		Commands: []*cli.Command{
 			testCmd,
 			createCmd,
+			createFileCmd,
 			uploadCmd,
 			loadCmd,
 			downloadCmd,
@@ -207,6 +208,124 @@ var createCmd = &cli.Command{
 			return err
 		}
 		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
+		return nil
+	},
+}
+
+var createFileCmd = &cli.Command{
+	Name: "create-file",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "from",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "file-name",
+			Required: true,
+		},
+		&cli.IntFlag{
+			Name:     "duration",
+			Usage:    "how long do you want to store the data.",
+			Value:    DEFAULT_DURATION,
+			Required: false,
+		},
+		&cli.BoolFlag{
+			Name:     "clientPublish",
+			Value:    false,
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "chainAddress",
+			Value:    "http://localhost:26657",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "cid",
+			Value:    "",
+			Required: true,
+		},
+		&cli.IntFlag{
+			Name:     "replica",
+			Usage:    "how many copies to store.",
+			Value:    DEFAULT_REPLICA,
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		// ---- check parameters ----
+		// if !cctx.IsSet("content") || cctx.String("content") == "" {
+		// 	return xerrors.Errorf("must provide non-empty --content.")
+		// }
+		if !cctx.IsSet("from") {
+			return xerrors.Errorf("must provide --from")
+		}
+		from := cctx.String("from")
+
+		if !cctx.IsSet("file-name") {
+			return xerrors.Errorf("must provide --file-name")
+		}
+		fileName := cctx.String("file-name")
+
+		clientPublish := cctx.Bool("clientPublish")
+
+		// TODO: check valid range
+		duration := cctx.Int("duration")
+		replicas := cctx.Int("replica")
+		chainAddress := cctx.String("chainAddress")
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		orderMeta := types.OrderMeta{
+			Creator:  from,
+			Alias:    fileName,
+			Duration: int32(duration),
+			Replica:  int32(replicas),
+		}
+		// TODO:
+		cid, err := cid.Decode(cctx.String("cid"))
+		if err == nil {
+			orderMeta.Cid = cid
+		}
+
+		if clientPublish {
+			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+			if err != nil {
+				return xerrors.Errorf("new cosmos chain: %w", err)
+			}
+			orderId, tx, err := chain.StoreOrder(from, from, gatewayAddress, cid, int32(duration), int32(replicas))
+			if err != nil {
+				return err
+			}
+			log.Infof("order id=%d, tx=%s", orderId, tx)
+			orderMeta.TxId = tx
+			orderMeta.OrderId = orderId
+			orderMeta.TxSent = true
+		}
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		resp, err := client.CreateFile(ctx, orderMeta)
+		if err != nil {
+			return err
+		}
+		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId, resp.Cid)
 		return nil
 	},
 }

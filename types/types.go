@@ -33,9 +33,9 @@ type OrderMeta struct {
 	Replica               int32
 	OrderId               uint64
 	CompleteTimeoutBlocks int
-	Cid     cid.Cid
-	Content []byte
-	TxId    string
+	Cid                   cid.Cid
+	Content               []byte
+	TxId                  string
 	TxSent                bool
 	Rule                  string
 }
