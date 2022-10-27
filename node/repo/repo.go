@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sao-storage-node/node/config"
@@ -107,7 +106,7 @@ func (r *Repo) GeneratePeerId() (crypto.PrivKey, error) {
 
 func (r *Repo) PeerId() (crypto.PrivKey, error) {
 	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
-	key, err := ioutil.ReadFile(libp2pPath)
+	key, err := os.ReadFile(libp2pPath)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,7 @@ func (r *Repo) PeerId() (crypto.PrivKey, error) {
 
 func (r *Repo) setPeerId(data []byte) error {
 	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
-	err := ioutil.WriteFile(libp2pPath, data, 0600)
+	err := os.WriteFile(libp2pPath, data, 0600)
 	if err != nil {
 		return err
 	}

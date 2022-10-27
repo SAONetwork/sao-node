@@ -5,6 +5,7 @@ package main
 // * guic transfer data
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
+	"sao-storage-node/types/model"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -55,6 +57,8 @@ func main() {
 			testCmd,
 			createCmd,
 			uploadCmd,
+			loadCmd,
+			downloadCmd,
 		},
 	}
 	app.Setup()
@@ -260,6 +264,153 @@ var uploadCmd = &cli.Command{
 			} else {
 				log.Warn("failed to uploaded the file [", file, "], please try again")
 			}
+		}
+
+		return nil
+	},
+}
+
+var loadCmd = &cli.Command{
+	Name:  "load",
+	Usage: "load data model",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "data model's owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "key",
+			Usage:    "data model's alias, dataId or tag",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+		&cli.BoolFlag{
+			Name:     "dump",
+			Value:    false,
+			Usage:    "dump data model content to current path",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
+		if !cctx.IsSet("key") {
+			return xerrors.Errorf("must provide --key")
+		}
+		key := cctx.String("key")
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		resp, err := client.Load(ctx, owner, key)
+		if err != nil {
+			return err
+		}
+		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
+
+		dumpFlag := cctx.Bool("dump")
+		if dumpFlag {
+			path := filepath.Join("./", resp.DataId+".json")
+			file, err := os.Create(path)
+			if err != nil {
+				return err
+			}
+
+			_, err = file.Write(resp.Content)
+			if err != nil {
+				return err
+			}
+			log.Infof("data model dumped to %s", path)
+		}
+
+		return nil
+	},
+}
+
+var downloadCmd = &cli.Command{
+	Name:  "download",
+	Usage: "download file(s) from storage network",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "data model's owner",
+			Required: true,
+		},
+		&cli.StringSliceFlag{
+			Name:     "keys",
+			Usage:    "storage network dataId(s) of the file(s)",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
+		if !cctx.IsSet("keys") {
+			return xerrors.Errorf("must provide --keys")
+		}
+		keys := cctx.StringSlice("keys")
+
+		client := saoclient.NewSaoClient(gatewayApi)
+
+		for _, key := range keys {
+			resp, err := client.Load(ctx, owner, key)
+			if err != nil {
+				return err
+			}
+			log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
+
+			var fm model.FileModel
+			var buf []byte
+			err = json.Unmarshal(buf, &fm)
+			if err != nil {
+				return err
+			}
+
+			path := filepath.Join("./", fm.FileName)
+			file, err := os.Create(path)
+			if err != nil {
+				return err
+			}
+
+			_, err = file.Write(fm.Content)
+			if err != nil {
+				return err
+			}
+			log.Infof("file downloaded to %s", path)
 		}
 
 		return nil

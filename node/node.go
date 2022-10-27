@@ -183,13 +183,37 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 }
 
 func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, commit any) (apitypes.CreateResp, error) {
-	model, err := n.manager.Create(ctx, orderMeta)
+	model, err := n.manager.Create(ctx, orderMeta, types.ModelTypeFile)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
 	return apitypes.CreateResp{
 		OrderId: model.OrderId,
 		DataId:  model.DataId,
+	}, nil
+}
+
+func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
+	model, err := n.manager.Create(ctx, orderMeta, types.ModelTypeFile)
+	if err != nil {
+		return apitypes.CreateResp{}, err
+	}
+	return apitypes.CreateResp{
+		OrderId: model.OrderId,
+		DataId:  model.DataId,
+	}, nil
+}
+
+func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.LoadResp, error) {
+	model, err := n.manager.Load(ctx, owner, alias)
+	if err != nil {
+		return apitypes.LoadResp{}, err
+	}
+	return apitypes.LoadResp{
+		OrderId: model.OrderId,
+		DataId:  model.DataId,
+		Alias:   model.Alias,
+		Content: model.Content,
 	}, nil
 }
 

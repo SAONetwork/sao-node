@@ -28,6 +28,7 @@ type RawCommit struct {
 type OrderMeta struct {
 	Creator               string
 	Alias                 string
+	Tags                  []string
 	Duration              int32
 	Replica               int32
 	OrderId               uint64
@@ -38,3 +39,15 @@ type OrderMeta struct {
 	Content               []byte
 	Rule                  string
 }
+
+const (
+	ModelTypes = "adsf"
+)
+
+type ModelType string
+
+const (
+	ModelTypeData = ModelType("DATA")
+	ModelTypeFile = ModelType("FILE")
+	ModelTypeRule = ModelType("RULE")
+)
