@@ -1,6 +1,9 @@
 package repo
 
 import (
+	"os"
+	"path/filepath"
+
 	dgbadger "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
@@ -8,13 +11,12 @@ import (
 	measure "github.com/ipfs/go-ds-measure"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
-	"os"
-	"path/filepath"
 )
 
 const (
-	dsNsMetadata = "metadata"
-	dsNsOrder    = "order"
+	dsNsMetadata  = "metadata"
+	dsNsOrder     = "order"
+	dsNsTransport = "transport"
 )
 
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)
@@ -22,7 +24,8 @@ type dsCtor func(path string, readonly bool) (datastore.Batching, error)
 var fsDatastores = map[string]dsCtor{
 	dsNsMetadata: levelDs,
 	// Those need to be fast for large writes... but also need a really good GC
-	dsNsOrder: badgerDs,
+	dsNsOrder:     badgerDs,
+	dsNsTransport: levelDs,
 }
 
 func levelDs(path string, readonly bool) (datastore.Batching, error) {

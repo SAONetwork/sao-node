@@ -103,7 +103,7 @@ var createCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "content",
-			Required: true,
+			Required: false,
 		},
 		&cli.IntFlag{
 			Name:     "duration",
@@ -119,6 +119,11 @@ var createCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "chainAddress",
 			Value:    "http://localhost:26657",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "cid",
+			Value:    "",
 			Required: false,
 		},
 		&cli.IntFlag{
@@ -138,9 +143,9 @@ var createCmd = &cli.Command{
 		ctx := cctx.Context
 
 		// ---- check parameters ----
-		if !cctx.IsSet("content") || cctx.String("content") == "" {
-			return xerrors.Errorf("must provide non-empty --content.")
-		}
+		// if !cctx.IsSet("content") || cctx.String("content") == "" {
+		// 	return xerrors.Errorf("must provide non-empty --content.")
+		// }
 		content := cctx.String("content")
 
 		if !cctx.IsSet("from") {
@@ -167,8 +172,11 @@ var createCmd = &cli.Command{
 			Replica:  int32(replicas),
 		}
 		// TODO:
-		cid, _ := cid.Decode("QmeSoArjthZ5VcaeJxg35rRPt6gwd4sWyPmNbYSpKtF4uF")
-		orderMeta.Cid = cid
+		cid, err := cid.Decode(cctx.String("cid"))
+		if err == nil {
+			orderMeta.Cid = cid
+		}
+
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
 			if err != nil {

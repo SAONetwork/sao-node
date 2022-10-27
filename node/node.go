@@ -75,9 +75,13 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
+	tds, err := repo.Datastore(ctx, "/transport")
+	if err != nil {
+		return nil, err
+	}
 	for _, address := range cfg.Transport.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			_, err := transport.StartTransportServer(ctx, address, peerKey, mds, cfg)
+			_, err := transport.StartTransportServer(ctx, address, peerKey, tds, cfg)
 			if err != nil {
 				return nil, err
 			}
@@ -103,7 +107,6 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		host:      &host,
 	}
 
-	var manager *model.ModelManager = nil
 	if cfg.Module.GatewayEnable {
 		// order db
 		orderDb, err := repo.Datastore(ctx, "/order")
@@ -111,8 +114,13 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 			return nil, err
 		}
 
-		manager = model.NewModelManager(&cfg.Cache, storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host))
-		sn.stopFuncs = append(sn.stopFuncs, manager.Stop)
+		ds, err := repo.Datastore(ctx, "/transport")
+		if err != nil {
+			return nil, err
+		}
+
+		sn.manager = model.NewModelManager(&cfg.Cache, storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host), ds)
+		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// api server
 		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)

@@ -16,5 +16,6 @@ type ReceivedFileInfo struct {
 	TotalLength    int
 	TotalChunks    int
 	ReceivedLength int
+	Path           string
 	ChunkCids      []string
 }

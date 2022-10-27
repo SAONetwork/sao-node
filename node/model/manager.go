@@ -2,19 +2,25 @@ package model
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model/json_patch"
-	"sao-storage-node/node/model/schema/validator"
 	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
+	"sao-storage-node/types/transport"
 	"strings"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 )
@@ -48,6 +54,7 @@ type ModelManager struct {
 	JsonpatchSvc *json_patch.JsonpatchSvc
 	// used by gateway module
 	CommitSvc *storage.CommitSvc
+	Db        datastore.Batching
 }
 
 var (
@@ -55,15 +62,20 @@ var (
 	once         sync.Once
 )
 
-func NewModelManager(cacheCfg *config.Cache, commitSvc *storage.CommitSvc) *ModelManager {
+func NewModelManager(cacheCfg *config.Cache, commitSvc *storage.CommitSvc, db datastore.Batching) *ModelManager {
+	log.Info("content m.Db ", db)
+
 	once.Do(func() {
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,
 			CacheSvc:     cache.NewCacheSvc(),
 			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
 			CommitSvc:    commitSvc,
+			Db:           db,
 		}
 	})
+
+	log.Info("content modelManager.Db ", modelManager.Db)
 
 	return modelManager
 }
@@ -100,8 +112,46 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta) (*
 	var alias string
 	if orderMeta.Alias == "" {
 		alias = GenerateAlias(orderMeta.Content)
+		orderMeta.Alias = alias
 	} else {
 		alias = orderMeta.Alias
+	}
+
+	if orderMeta.Cid != cid.Undef && len(orderMeta.Content) == 0 {
+		// Asynchronous order and the content has been uploaded already
+		key := datastore.NewKey(fmt.Sprintf("fileIno_%s", orderMeta.Cid))
+		log.Info("content ctx ", ctx)
+		log.Info("content key ", key)
+		log.Info("content m.Db ", m.Db)
+
+		if info, err := m.Db.Get(ctx, key); err == nil {
+			var fileInfo *transport.ReceivedFileInfo
+			err := json.Unmarshal(info, &fileInfo)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+
+			basePath, err := homedir.Expand(fileInfo.Path)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+			log.Info("path: ", basePath)
+
+			var path = filepath.Join(basePath, orderMeta.Cid.String())
+			file, err := os.Open(path)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+
+			content, err := io.ReadAll(file)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+			orderMeta.Content = content
+			log.Info("content added")
+		} else {
+			log.Info("key not found...")
+		}
 	}
 
 	oldModel, err := m.CacheSvc.Get(orderMeta.Creator, orderMeta.Alias)
@@ -176,15 +226,15 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 }
 
 func (m *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
-	schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
-	validator, err := validator.NewDataModelValidator(alias, schema, rule)
-	if err != nil {
-		return xerrors.Errorf(err.Error())
-	}
-	err = validator.Validate(jsoniter.Get(contentBytes))
-	if err != nil {
-		return xerrors.Errorf(err.Error())
-	}
+	// schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
+	// validator, err := validator.NewDataModelValidator(alias, schema, rule)
+	// if err != nil {
+	// 	return xerrors.Errorf(err.Error())
+	// }
+	// err = validator.Validate(jsoniter.Get(contentBytes))
+	// if err != nil {
+	// 	return xerrors.Errorf(err.Error())
+	// }
 
 	return nil
 }

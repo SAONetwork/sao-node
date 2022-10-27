@@ -12,7 +12,7 @@ func TestManager(t *testing.T) {
 		CacheCapacity: 10,
 		ContentLimit:  1024 * 1024,
 	}
-	manager := NewModelManager(config, nil)
+	manager := NewModelManager(config, nil, nil)
 	require.NotNil(t, manager)
 
 	// model, err := manager.Create("aa", "model1", `{"xml": "3c726f6f742f3e"}`, "")

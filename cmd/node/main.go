@@ -6,19 +6,21 @@ package main
 
 import (
 	"fmt"
-	"github.com/ipfs/go-datastore"
-	"github.com/multiformats/go-multiaddr"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
 	"sao-storage-node/node/repo"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/multiformats/go-multiaddr"
+
+	"os"
+	"sao-storage-node/node/chain"
+
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"os"
-	"sao-storage-node/node/chain"
 )
 
 var log = logging.Logger("node")
@@ -41,6 +43,7 @@ func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("node", "INFO")
 	_ = logging.SetLogLevel("rpc", "INFO")
 	_ = logging.SetLogLevel("chain", "INFO")
+	_ = logging.SetLogLevel("storage", "INFO")
 	_ = logging.SetLogLevel("transport", "INFO")
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("cache", "DEBUG")
@@ -48,6 +51,7 @@ func before(cctx *cli.Context) error {
 		_ = logging.SetLogLevel("node", "DEBUG")
 		_ = logging.SetLogLevel("rpc", "DEBUG")
 		_ = logging.SetLogLevel("chain", "DEBUG")
+		_ = logging.SetLogLevel("storage", "DEBUG")
 		_ = logging.SetLogLevel("transport", "DEBUG")
 	}
 

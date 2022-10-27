@@ -80,7 +80,7 @@ func (cs *CommitSvc) handleShardStore(s network.Stream) {
 	}
 }
 
-func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content any) (*CommitResult, error) {
+func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
 	if !orderMeta.TxSent {
 		orderId, txId, err := cs.chainSvc.StoreOrder(cs.nodeAddress, creator, cs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica)
 		if err != nil {
@@ -97,7 +97,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
 	// TODO: support marshal any content
-	err := cs.db.Put(ctx, orderShardDsKey(orderMeta.OrderId, orderMeta.Cid), []byte(content.(string)))
+	err := cs.db.Put(ctx, orderShardDsKey(orderMeta.OrderId, orderMeta.Cid), content)
 	if err != nil {
 		return nil, err
 	}

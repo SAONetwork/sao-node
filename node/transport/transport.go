@@ -113,21 +113,22 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 		MhType:   mh.SHA2_256,
 		MhLength: -1, // default length
 	}
-	cid, err := pref.Sum(req.Content)
+	localCid, err := pref.Sum(req.Content)
 	if err != nil {
 		log.Error(err.Error())
 		return
 	}
 
 	if len(req.Content) > 0 {
-		ts.handleChunkInfo(&req)
+		var path = filepath.Join(ts.StagingPath, s.Conn().RemotePeer().String(), req.Cid)
 
-		if _, err := s.Write([]byte(cid.String())); err != nil {
+		ts.handleChunkInfo(&req, path)
+
+		if _, err := s.Write([]byte(localCid.String())); err != nil {
 			log.Error(err.Error())
 			return
 		}
 
-		var path = filepath.Join(ts.StagingPath, s.Conn().RemotePeer().String(), req.Cid)
 		path, err = homedir.Expand(path)
 		if err != nil {
 			return
@@ -159,7 +160,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 			return
 		}
 
-		log.Info("Received file chunk[", req.ChunkId, "], remote CID: ", req.ChunkCid, ", local CID: ", cid)
+		log.Info("Received file chunk[", req.ChunkId, "], remote CID: ", req.ChunkCid, ", local CID: ", localCid)
 		log.Info("Staging file ", filepath.Join(path, req.ChunkCid), " generated")
 	} else {
 		// Transport is done
@@ -167,9 +168,6 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 			log.Error(err.Error())
 			return
 		}
-
-		log.Info("Received file, CID: ", req.Cid)
-		log.Info("Received file, length: ", req.TotalLength)
 
 		key := datastore.NewKey(fmt.Sprintf("fileIno_%s", req.Cid))
 		if info, err := ts.Db.Get(ts.Ctx, key); err == nil {
@@ -180,8 +178,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 				return
 			}
 
-			var basePath = filepath.Join(ts.StagingPath, s.Conn().RemotePeer().String(), req.Cid)
-			basePath, err = homedir.Expand(basePath)
+			basePath, err := homedir.Expand(fileInfo.Path)
 			if err != nil {
 				return
 			}
@@ -204,6 +201,24 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 
 				fileContent = append(fileContent, content...)
 			}
+
+			pref := cid.Prefix{
+				Version:  1,
+				Codec:    uint64(mc.Raw),
+				MhType:   mh.SHA2_256,
+				MhLength: -1, // default length
+			}
+			contentCid, err := pref.Sum(fileContent)
+			if err != nil {
+				log.Error(err.Error())
+				return
+			}
+
+			log.Info("Requested file, CID: ", req.Cid)
+			log.Info("Requested file, length: ", req.TotalLength)
+			log.Info("Received file, CID: ", contentCid)
+			log.Info("Received file, length: ", len(fileContent))
+
 			file, err := os.Create(filepath.Join(basePath, req.Cid))
 			if err != nil {
 				log.Error(err.Error())
@@ -224,7 +239,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 	}
 }
 
-func (ts *TransportServer) handleChunkInfo(req *transport.FileChunkReq) {
+func (ts *TransportServer) handleChunkInfo(req *transport.FileChunkReq, path string) {
 	ts.DbLk.Lock()
 	defer ts.DbLk.Unlock()
 
@@ -237,6 +252,7 @@ func (ts *TransportServer) handleChunkInfo(req *transport.FileChunkReq) {
 			TotalLength:    req.TotalLength,
 			TotalChunks:    req.TotalChunks,
 			ReceivedLength: len(req.Content),
+			Path:           path,
 			ChunkCids:      make([]string, req.TotalChunks),
 		}
 		fileInfo.ChunkCids[0] = req.ChunkCid
