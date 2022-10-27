@@ -2,12 +2,11 @@ package storage
 
 import (
 	"context"
-	"fmt"
+	"sao-storage-node/node"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 	"time"
 
-	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -21,24 +20,26 @@ type CommitResult struct {
 }
 
 type CommitSvc struct {
-	ctx         context.Context
-	chainSvc    *chain.ChainSvc
-	nodeAddress string
-	db          datastore.Batching
-	host        host.Host
+	ctx          context.Context
+	chainSvc     *chain.ChainSvc
+	nodeAddress  string
+	db           datastore.Batching
+	host         host.Host
+	shardStaging *node.ShardStaging
 }
 
 const (
 	ShardStoreProtocol = "/sao/store/shard/1.0"
 )
 
-func NewCommitSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, db datastore.Batching, host host.Host) *CommitSvc {
+func NewCommitSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, db datastore.Batching, host host.Host, shardSharding *node.ShardStaging) *CommitSvc {
 	cs := &CommitSvc{
-		ctx:         ctx,
-		chainSvc:    chainSvc,
-		nodeAddress: nodeAddress,
-		db:          db,
-		host:        host,
+		ctx:          ctx,
+		chainSvc:     chainSvc,
+		nodeAddress:  nodeAddress,
+		db:           db,
+		host:         host,
+		shardStaging: shardSharding,
 	}
 	cs.host.SetStreamHandler(ShardStoreProtocol, cs.handleShardStore)
 	return cs
@@ -64,8 +65,9 @@ func (cs *CommitSvc) handleShardStore(s network.Stream) {
 	}
 	log.Debugf("receive ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
 
-	contentBytes, err := cs.db.Get(cs.ctx, orderShardDsKey(req.OrderId, req.Cid))
+	contentBytes, err := cs.shardStaging.GetStagedShard(req.OrderId, req.Cid)
 	if err != nil {
+		log.Error(err)
 		// TODO: respond error
 	}
 	var resp = &ShardStoreResp{
@@ -97,7 +99,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
 	// TODO: support marshal any content
-	err := cs.db.Put(ctx, orderShardDsKey(orderMeta.OrderId, orderMeta.Cid), content)
+	err := cs.shardStaging.StageShard(orderMeta.OrderId, orderMeta.Cid, content)
 	if err != nil {
 		return nil, err
 	}
@@ -135,8 +137,4 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 			DataId:  dataId,
 		}, nil
 	}
-}
-
-func orderShardDsKey(orderId uint64, cid cid.Cid) datastore.Key {
-	return datastore.NewKey(fmt.Sprintf("order-%d-%v", orderId, cid))
 }

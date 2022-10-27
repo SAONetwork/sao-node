@@ -96,6 +96,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
+	shardStaging := NewShardStaging(cfg.Transport.StagingPath)
 	var stopFuncs []StopFunc
 
 	sn := Node{
@@ -119,7 +120,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 			return nil, err
 		}
 
-		sn.manager = model.NewModelManager(&cfg.Cache, storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host), ds)
+		sn.manager = model.NewModelManager(&cfg.Cache, storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host, &shardStaging), ds)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// api server
@@ -131,7 +132,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.StorageEnable {
-		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, &shardStaging)
 		if err != nil {
 			return nil, err
 		}

@@ -54,6 +54,7 @@ func main() {
 		Commands: []*cli.Command{
 			testCmd,
 			createCmd,
+			createFileCmd,
 			uploadCmd,
 		},
 	}
