@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"path/filepath"
 	"sao-storage-node/types/transport"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/mitchellh/go-homedir"
 
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -23,6 +25,8 @@ import (
 )
 
 var log = logging.Logger("transport-client")
+
+const SAO_CLI_KEY_PATH = "~/.sao_cli_key/"
 
 func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
 	file, err := os.Open(fpath)
@@ -43,9 +47,9 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		return cid.Undef
 	}
 
-	clientKey, _, err := ic.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		log.Error(err)
+	clientKey := fetchKey()
+	if clientKey == nil {
+		log.Error("failed to generate transport key")
 		return cid.Undef
 	}
 
@@ -156,4 +160,55 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 	}
 
 	return contentCid
+}
+
+func fetchKey() ic.PrivKey {
+	kstorePath, err := homedir.Expand(SAO_CLI_KEY_PATH)
+	if err != nil {
+		log.Error(err.Error())
+		return nil
+	}
+
+	keyPath := filepath.Join(kstorePath, "libp2p.key")
+	key, err := os.ReadFile(keyPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(kstorePath, 0700) //nolint: gosec
+			if err != nil && !os.IsExist(err) {
+				log.Error(err.Error())
+				return nil
+			}
+
+			pk, _, err := ic.GenerateEd25519Key(rand.Reader)
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+
+			keyBytes, err := ic.MarshalPrivateKey(pk)
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+
+			err = os.WriteFile(keyPath, keyBytes, 0600)
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+
+			return pk
+		} else {
+			log.Error(err.Error())
+			return nil
+		}
+	}
+
+	pk, err := ic.UnmarshalPrivateKey(key)
+	if err != nil {
+		log.Error(err.Error())
+		return nil
+	} else {
+		return pk
+	}
 }

@@ -16,6 +16,10 @@ type GatewayApiStruct struct {
 	Internal struct {
 		Create func(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) ``
 
+		CreateFile func(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) ``
+
+		Load func(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) ``
+
 		NodeAddress func(p0 context.Context) (string, error) ``
 
 		Test func(p0 context.Context, p1 string) (string, error) ``
@@ -34,6 +38,28 @@ func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.OrderMeta, p2 any
 
 func (s *GatewayApiStub) Create(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) CreateFile(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) {
+	if s.Internal.CreateFile == nil {
+		return *new(apitypes.CreateResp), ErrNotSupported
+	}
+	return s.Internal.CreateFile(p0, p1)
+}
+
+func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) {
+	return *new(apitypes.CreateResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) Load(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) {
+	if s.Internal.Load == nil {
+		return *new(apitypes.LoadResp), ErrNotSupported
+	}
+	return s.Internal.Load(p0, p1, p2)
+}
+
+func (s *GatewayApiStub) Load(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) {
+	return *new(apitypes.LoadResp), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) NodeAddress(p0 context.Context) (string, error) {

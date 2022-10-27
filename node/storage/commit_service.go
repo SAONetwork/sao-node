@@ -19,6 +19,17 @@ type CommitResult struct {
 	CommitId string
 }
 
+type PullResult struct {
+	OrderId  uint64
+	DataId   string
+	Alias    string
+	Tags     string
+	CommitId string
+	Content  []byte
+	Cid      cid.Cid
+	Type     types.ModelType
+}
+
 type CommitSvc struct {
 	ctx          context.Context
 	chainSvc     *chain.ChainSvc
@@ -137,4 +148,16 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 			DataId:  dataId,
 		}, nil
 	}
+}
+func (cs *CommitSvc) Pull(ctx context.Context, key string) (*PullResult, error) {
+	return &PullResult{
+		OrderId: 100,
+		DataId:  "6666666",
+		Content: []byte("sdafasdf"),
+	}, nil
+}
+
+
+func orderShardDsKey(orderId uint64, cid cid.Cid) datastore.Key {
+	return datastore.NewKey(fmt.Sprintf("order-%d-%v", orderId, cid))
 }

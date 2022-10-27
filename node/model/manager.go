@@ -10,8 +10,10 @@ import (
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model/json_patch"
+	"sao-storage-node/node/model/schema/validator"
 	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
+	"sao-storage-node/types/model"
 	"sao-storage-node/types/transport"
 	"strings"
 	"sync"
@@ -22,14 +24,8 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multihash"
+	"github.com/tendermint/tendermint/types/time"
 	"golang.org/x/xerrors"
-)
-
-type ModelType string
-
-const (
-	ModelTypeData = ModelType("DATA")
-	ModelTypeFile = ModelType("FILE")
 )
 
 const PROPERTY_CONTEXT = "@context"
@@ -41,8 +37,9 @@ var log = logging.Logger("model")
 type Model struct {
 	DataId  string
 	Alias   string
+	Tags    []string
 	Schema  []byte
-	Type    ModelType
+	Type    types.ModelType
 	Content []byte
 	OrderId uint64
 	Cid     cid.Cid
@@ -87,8 +84,8 @@ func (m *ModelManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *ModelManager) Load(account string, alias string) (*Model, error) {
-	model, err := m.CacheSvc.Get(account, alias)
+func (m *ModelManager) Load(ctx context.Context, account string, key string) (*Model, error) {
+	model, err := m.CacheSvc.Get(account, key)
 	if model != nil {
 		return model.(*Model), nil
 	}
@@ -101,29 +98,66 @@ func (m *ModelManager) Load(account string, alias string) (*Model, error) {
 		}
 	}
 
+	result, err := m.CommitSvc.Pull(ctx, key)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+
+	model = &Model{
+		DataId:  result.DataId,
+		Alias:   result.Alias,
+		Content: result.Content,
+		Type:    result.Type,
+		Cid:     result.Cid,
+		OrderId: result.OrderId,
+	}
+
 	mm := model.(*Model)
 
-	m.cacheModel(account, alias, mm)
+	m.cacheModel(account, mm.Alias, mm)
+	for _, k := range mm.Tags {
+		m.cacheModel(account, k, mm)
+	}
 
 	return mm, nil
 }
 
-func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta) (*Model, error) {
+func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, modelType types.ModelType) (*Model, error) {
 	var alias string
 	if orderMeta.Alias == "" {
-		alias = GenerateAlias(orderMeta.Content)
+		if orderMeta.Cid != cid.Undef {
+			alias = orderMeta.Cid.String()
+		} else if len(orderMeta.Content) > 0 {
+			alias = GenerateAlias(orderMeta.Content)
+		} else {
+			alias = GenerateAlias([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
+		}
+		log.Info("use a system generated alias ", alias)
 		orderMeta.Alias = alias
 	} else {
 		alias = orderMeta.Alias
 	}
 
+	oldModel, err := m.CacheSvc.Get(orderMeta.Creator, orderMeta.Alias)
+	if err != nil {
+		if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", orderMeta.Creator)) {
+			err = m.CacheSvc.CreateCache(orderMeta.Creator, m.CacheCfg.CacheCapacity)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+		} else {
+			return nil, xerrors.Errorf(err.Error())
+		}
+	}
+	if oldModel != nil {
+		return nil, xerrors.Errorf("the model [%s] is exsiting already", orderMeta.Alias)
+	} else {
+		log.Info("new model request")
+	}
+
 	if orderMeta.Cid != cid.Undef && len(orderMeta.Content) == 0 {
 		// Asynchronous order and the content has been uploaded already
 		key := datastore.NewKey(fmt.Sprintf("fileIno_%s", orderMeta.Cid))
-		log.Info("content ctx ", ctx)
-		log.Info("content key ", key)
-		log.Info("content m.Db ", m.Db)
-
 		if info, err := m.Db.Get(ctx, key); err == nil {
 			var fileInfo *transport.ReceivedFileInfo
 			err := json.Unmarshal(info, &fileInfo)
@@ -148,29 +182,31 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta) (*
 				return nil, xerrors.Errorf(err.Error())
 			}
 			orderMeta.Content = content
-			log.Info("content added")
 		} else {
-			log.Info("key not found...")
+			return nil, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())
 		}
 	}
 
-	oldModel, err := m.CacheSvc.Get(orderMeta.Creator, orderMeta.Alias)
-	if oldModel != nil {
-		return nil, xerrors.Errorf("the model [%s] is exsiting already", orderMeta.Alias)
-	}
-	if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", orderMeta.Creator)) {
-		err = m.CacheSvc.CreateCache(orderMeta.Creator, m.CacheCfg.CacheCapacity)
+	var modelBytes []byte
+	if modelType == types.ModelTypeFile {
+		model := &model.FileModel{
+			FileName: orderMeta.Alias,
+			Tags:     orderMeta.Tags,
+			Cid:      orderMeta.Cid.String(),
+			Content:  orderMeta.Content,
+		}
+		modelBytes, err = json.Marshal(model)
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
+	} else {
+		modelBytes = orderMeta.Content
 	}
 
-	err = m.validateModel(orderMeta.Creator, alias, orderMeta.Content, orderMeta.Rule)
+	err = m.validateModel(orderMeta.Creator, alias, modelBytes, orderMeta.Rule)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
-
-	modelType := m.getDataModelType(orderMeta.Content)
 
 	// Commit
 	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
@@ -189,6 +225,9 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta) (*
 	}
 
 	m.cacheModel(orderMeta.Creator, alias, model)
+	for _, k := range orderMeta.Tags {
+		m.cacheModel(orderMeta.Creator, k, model)
+	}
 
 	return model, nil
 }
@@ -221,31 +260,25 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 	}
 
 	m.cacheModel(account, alias, model)
+	for _, k := range model.Tags {
+		m.cacheModel(account, k, model)
+	}
 
 	return model, nil
 }
 
 func (m *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
-	// schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
-	// validator, err := validator.NewDataModelValidator(alias, schema, rule)
-	// if err != nil {
-	// 	return xerrors.Errorf(err.Error())
-	// }
-	// err = validator.Validate(jsoniter.Get(contentBytes))
-	// if err != nil {
-	// 	return xerrors.Errorf(err.Error())
-	// }
-
-	return nil
-}
-
-func (m *ModelManager) getDataModelType(contentBytes []byte) ModelType {
-	modelType := ModelTypeData
-	if jsoniter.Get(contentBytes, PROPERTY_TYPE).ToString() == MODEL_TYPE_FILE {
-		modelType = ModelTypeFile
+	schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
+	validator, err := validator.NewDataModelValidator(alias, schema, rule)
+	if err != nil {
+		return xerrors.Errorf(err.Error())
+	}
+	err = validator.Validate(jsoniter.Get(contentBytes))
+	if err != nil {
+		return xerrors.Errorf(err.Error())
 	}
 
-	return modelType
+	return nil
 }
 
 func (m *ModelManager) cacheModel(account string, alias string, model *Model) {
