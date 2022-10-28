@@ -189,6 +189,7 @@ func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, commit any
 		return apitypes.CreateResp{}, err
 	}
 	return apitypes.CreateResp{
+		Alias:   model.Alias,
 		OrderId: model.OrderId,
 		DataId:  model.DataId,
 	}, nil
@@ -200,8 +201,10 @@ func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apity
 		return apitypes.CreateResp{}, err
 	}
 	return apitypes.CreateResp{
+		Alias:   model.Alias,
 		OrderId: model.OrderId,
 		DataId:  model.DataId,
+		Cid:     model.Cid.String(),
 	}, nil
 }
 

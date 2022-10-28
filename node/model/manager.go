@@ -86,8 +86,6 @@ func (m *ModelManager) Stop(ctx context.Context) error {
 func (m *ModelManager) Load(ctx context.Context, account string, key string) (*Model, error) {
 	model, err := m.CacheSvc.Get(account, key)
 	if model != nil {
-		log.Info("model: ", model)
-
 		return model.(*Model), nil
 	}
 

@@ -3,6 +3,7 @@ package apitypes
 type CreateResp struct {
 	OrderId uint64
 	DataId  string
+	Alias   string
 	TxId    string
 	Cid     string
 }

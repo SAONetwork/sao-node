@@ -344,7 +344,7 @@ var createFileCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId, resp.Cid)
+		log.Infof("order id: %d, file name: %s, data id: %s, cid: %s", resp.OrderId, resp.Alias, resp.DataId, resp.Cid)
 		return nil
 	},
 }

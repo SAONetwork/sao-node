@@ -68,7 +68,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	if task.Gateway == ss.nodeAddress {
 		shard, err = ss.getShardFromLocal(task.OrderId, task.Cid)
 		if err != nil {
-			log.Error("known err: ", err.Error())
+			log.Warn("skip the known error: ", err.Error())
 			// return err
 		}
 	} else {
@@ -83,7 +83,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("Complete order succeed: txHash:%s, OrderId: ", txHash, task.OrderId)
+	log.Infof("Complete order succeed: txHash:%s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
 	return nil
 }
 

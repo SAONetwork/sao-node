@@ -56,10 +56,8 @@ func (ss *ShardStaging) GetStagedShard(orderId uint64, cid cid.Cid) ([]byte, err
 		filename := fmt.Sprintf("%d-%v", orderId, cid)
 		bytes, err := os.ReadFile(filepath.Join(path, filename))
 		if err != nil {
-			log.Error(err.Error())
-
 			if os.IsNotExist(err) {
-				time.Sleep(time.Second * 10)
+				time.Sleep(time.Second * 2)
 				retry++
 			} else {
 				log.Error(err.Error())
@@ -70,5 +68,5 @@ func (ss *ShardStaging) GetStagedShard(orderId uint64, cid cid.Cid) ([]byte, err
 		}
 	}
 
-	return nil, xerrors.Errorf("not able to ge the shard for order: %d", orderId)
+	return nil, xerrors.Errorf("not able to get the shard for order: %d", orderId)
 }
