@@ -513,8 +513,7 @@ var downloadCmd = &cli.Command{
 			log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
 
 			var fm model.FileModel
-			var buf []byte
-			err = json.Unmarshal(buf, &fm)
+			err = json.Unmarshal(resp.Content, &fm)
 			if err != nil {
 				return err
 			}

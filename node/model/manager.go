@@ -99,6 +99,8 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 				log.Error(err.Error())
 				return nil, xerrors.Errorf(err.Error())
 			}
+		} else {
+			return nil, xerrors.Errorf(err.Error())
 		}
 	}
 
@@ -234,7 +236,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 	model := &Model{
 		DataId:  result.DataId,
 		Alias:   alias,
-		Content: orderMeta.Content,
+		Content: modelBytes,
 		Type:    modelType,
 		Cid:     orderMeta.Cid,
 		OrderId: result.OrderId,

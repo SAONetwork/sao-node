@@ -102,7 +102,7 @@ func (l *LruCache) put(key hamt.Entry, value interface{}) {
 		node := oldValue.(*Node)
 		node.Value = value
 		l.refreshNode(node)
-		l.Map = l.Map.Insert(key, &node)
+		l.Map = l.Map.Insert(key, node)
 	}
 	l.Size = l.Map.Size()
 }
