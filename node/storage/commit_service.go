@@ -31,6 +31,12 @@ type PullResult struct {
 	Type     types.ModelType
 }
 
+type CommitSvcApi interface {
+	Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
+	Pull(ctx context.Context, key string) (*PullResult, error)
+	Stop(ctx context.Context) error
+}
+
 type CommitSvc struct {
 	ctx          context.Context
 	chainSvc     *chain.ChainSvc

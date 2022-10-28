@@ -53,8 +53,8 @@ type ModelManager struct {
 	CacheSvc     *cache.CacheSvc
 	JsonpatchSvc *json_patch.JsonpatchSvc
 	// used by gateway module
-	CommitSvc *storage.CommitSvc
-	Db        datastore.Batching
+	CommitSvc storage.CommitSvcApi
+	Db        datastore.Read
 }
 
 var (
@@ -62,7 +62,7 @@ var (
 	once         sync.Once
 )
 
-func NewModelManager(cacheCfg *config.Cache, commitSvc *storage.CommitSvc, db datastore.Batching) *ModelManager {
+func NewModelManager(cacheCfg *config.Cache, commitSvc storage.CommitSvcApi, db datastore.Read) *ModelManager {
 	once.Do(func() {
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,

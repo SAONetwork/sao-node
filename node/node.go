@@ -120,7 +120,9 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 			return nil, err
 		}
 
-		sn.manager = model.NewModelManager(&cfg.Cache, storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host, &shardStaging), ds)
+		var commitSvc = storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host, &shardStaging)
+		var commitSvcApi storage.CommitSvcApi = commitSvc
+		sn.manager = model.NewModelManager(&cfg.Cache, commitSvcApi, ds)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// api server
