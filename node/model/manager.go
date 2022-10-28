@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	mc "github.com/multiformats/go-multicodec"
 
 	cid "github.com/ipfs/go-cid"
@@ -121,9 +122,6 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 	mm := model.(*Model)
 
 	m.cacheModel(account, mm.Alias, mm)
-	for _, k := range mm.Tags {
-		m.cacheModel(account, k, mm)
-	}
 
 	return mm, nil
 }
@@ -243,9 +241,6 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 	}
 
 	m.cacheModel(orderMeta.Creator, alias, model)
-	for _, k := range orderMeta.Tags {
-		m.cacheModel(orderMeta.Creator, k, model)
-	}
 
 	return model, nil
 }
@@ -278,15 +273,24 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 	}
 
 	m.cacheModel(account, alias, model)
-	for _, k := range model.Tags {
-		m.cacheModel(account, k, model)
-	}
 
 	return model, nil
 }
 
 func (m *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
 	schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
+
+	if schema != "" {
+		_, err := uuid.Parse(schema)
+		if err == nil {
+			model, err := m.CacheSvc.Get(account, schema)
+			if err != nil {
+				return xerrors.Errorf(err.Error())
+			}
+			schema = string(model.(*Model).Content)
+		}
+	}
+
 	validator, err := validator.NewDataModelValidator(alias, schema, rule)
 	if err != nil {
 		return xerrors.Errorf(err.Error())
@@ -302,9 +306,17 @@ func (m *ModelManager) validateModel(account string, alias string, contentBytes 
 func (m *ModelManager) cacheModel(account string, alias string, model *Model) {
 	if len(model.Content) > m.CacheCfg.ContentLimit {
 		m.CacheSvc.Put(account, alias, model.Cid.String())
+		m.CacheSvc.Put(account, model.DataId, model.Cid.String())
+		for _, k := range model.Tags {
+			m.CacheSvc.Put(account, k, model.Cid.String())
+		}
 	} else {
 		m.CacheSvc.Put(account, alias, model)
+		m.CacheSvc.Put(account, model.DataId, model)
+		for _, k := range model.Tags {
+			m.CacheSvc.Put(account, k, model)
+		}
 	}
-	m.CacheSvc.Put(account, model.DataId, alias)
+
 	m.CacheSvc.Put(account, fmt.Sprintf("%d", model.OrderId), alias)
 }
