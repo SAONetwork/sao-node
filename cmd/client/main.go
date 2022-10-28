@@ -18,8 +18,11 @@ import (
 	"sao-storage-node/types/model"
 	"strings"
 
+	"github.com/multiformats/go-multicodec"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -127,6 +130,11 @@ var createCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
+			Name:     "name",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "cid",
 			Value:    "",
 			Required: false,
@@ -148,9 +156,9 @@ var createCmd = &cli.Command{
 		ctx := cctx.Context
 
 		// ---- check parameters ----
-		// if !cctx.IsSet("content") || cctx.String("content") == "" {
-		// 	return xerrors.Errorf("must provide non-empty --content.")
-		// }
+		if !cctx.IsSet("content") || cctx.String("content") == "" {
+			return xerrors.Errorf("must provide non-empty --content.")
+		}
 		content := cctx.String("content")
 
 		if !cctx.IsSet("from") {
@@ -173,14 +181,23 @@ var createCmd = &cli.Command{
 
 		orderMeta := types.OrderMeta{
 			Creator:  from,
+			Alias:    cctx.String("name"),
+			Content:  []byte(content),
 			Duration: int32(duration),
 			Replica:  int32(replicas),
 		}
-		// TODO:
-		cid, err := cid.Decode(cctx.String("cid"))
-		if err == nil {
-			orderMeta.Cid = cid
+
+		pref := cid.Prefix{
+			Version:  1,
+			Codec:    uint64(multicodec.Raw),
+			MhType:   multihash.SHA2_256,
+			MhLength: -1, // default length
 		}
+		contentCid, err := pref.Sum([]byte(content))
+		if err != nil {
+			return err
+		}
+		orderMeta.Cid = contentCid
 
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
@@ -192,7 +209,8 @@ var createCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
-			orderId, tx, err := chain.StoreOrder(from, from, gatewayAddress, cid, int32(duration), int32(replicas))
+
+			orderId, tx, err := chain.StoreOrder(from, from, gatewayAddress, contentCid, int32(duration), int32(replicas))
 			if err != nil {
 				return err
 			}
@@ -451,7 +469,7 @@ var loadCmd = &cli.Command{
 				return err
 			}
 
-			_, err = file.Write(resp.Content)
+			_, err = file.Write([]byte(resp.Content))
 			if err != nil {
 				return err
 			}
@@ -513,7 +531,7 @@ var downloadCmd = &cli.Command{
 			log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
 
 			var fm model.FileModel
-			err = json.Unmarshal(resp.Content, &fm)
+			err = json.Unmarshal([]byte(resp.Content), &fm)
 			if err != nil {
 				return err
 			}

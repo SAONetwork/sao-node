@@ -214,7 +214,7 @@ func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.L
 		OrderId: model.OrderId,
 		DataId:  model.DataId,
 		Alias:   model.Alias,
-		Content: model.Content,
+		Content: string(model.Content),
 	}, nil
 }
 

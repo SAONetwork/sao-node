@@ -11,5 +11,5 @@ type LoadResp struct {
 	OrderId uint64
 	DataId  string
 	Alias   string
-	Content []byte
+	Content string
 }

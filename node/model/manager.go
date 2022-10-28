@@ -205,21 +205,21 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
-
-		pref := cid.Prefix{
-			Version:  1,
-			Codec:    uint64(mc.Raw),
-			MhType:   multihash.SHA2_256,
-			MhLength: -1, // default length
-		}
-		modelCid, err := pref.Sum(modelBytes)
-		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
-		}
-		orderMeta.Cid = modelCid
 	} else {
 		modelBytes = orderMeta.Content
 	}
+
+	pref := cid.Prefix{
+		Version:  1,
+		Codec:    uint64(mc.Raw),
+		MhType:   multihash.SHA2_256,
+		MhLength: -1, // default length
+	}
+	modelCid, err := pref.Sum(modelBytes)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+	orderMeta.Cid = modelCid
 
 	err = m.validateModel(orderMeta.Creator, alias, modelBytes, orderMeta.Rule)
 	if err != nil {
