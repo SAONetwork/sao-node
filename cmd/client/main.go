@@ -60,6 +60,7 @@ func main() {
 			testCmd,
 			createCmd,
 			createFileCmd,
+			deleteCmd,
 			uploadCmd,
 			loadCmd,
 			downloadCmd,
@@ -475,6 +476,58 @@ var loadCmd = &cli.Command{
 			}
 			log.Infof("data model dumped to %s", path)
 		}
+
+		return nil
+	},
+}
+
+var deleteCmd = &cli.Command{
+	Name:  "delete",
+	Usage: "delete data model",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "data model's owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "key",
+			Usage:    "data model's alias, dataId or tag",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
+		if !cctx.IsSet("key") {
+			return xerrors.Errorf("must provide --key")
+		}
+		key := cctx.String("key")
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		resp, err := client.Delete(ctx, owner, key)
+		if err != nil {
+			return err
+		}
+		log.Infof("data model %s deleted", resp.Alias)
 
 		return nil
 	},

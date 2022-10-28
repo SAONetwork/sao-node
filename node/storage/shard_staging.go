@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 )
 
 type ShardStaging struct {
@@ -28,6 +30,8 @@ func (ss *ShardStaging) StageShard(orderId uint64, cid cid.Cid, content []byte) 
 	}
 
 	filename := fmt.Sprintf("%d-%v", orderId, cid)
+	log.Info("path: ", path)
+	log.Info("staging filename: ", filename)
 	file, err := os.Create(filepath.Join(path, filename))
 	if err != nil {
 		return err
@@ -42,11 +46,29 @@ func (ss *ShardStaging) StageShard(orderId uint64, cid cid.Cid, content []byte) 
 }
 
 func (ss *ShardStaging) GetStagedShard(orderId uint64, cid cid.Cid) ([]byte, error) {
-	path, err := homedir.Expand(ss.basedir)
-	if err != nil {
-		return nil, err
+	var retry = 0
+	for retry < 1 {
+		path, err := homedir.Expand(ss.basedir)
+		if err != nil {
+			return nil, err
+		}
+
+		filename := fmt.Sprintf("%d-%v", orderId, cid)
+		bytes, err := os.ReadFile(filepath.Join(path, filename))
+		if err != nil {
+			log.Error(err.Error())
+
+			if os.IsNotExist(err) {
+				time.Sleep(time.Second * 10)
+				retry++
+			} else {
+				log.Error(err.Error())
+				return nil, err
+			}
+		} else {
+			return bytes, nil
+		}
 	}
 
-	filename := fmt.Sprintf("%d-%v", orderId, cid)
-	return os.ReadFile(filepath.Join(path, filename))
+	return nil, xerrors.Errorf("not able to ge the shard for order: %d", orderId)
 }

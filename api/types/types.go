@@ -13,3 +13,8 @@ type LoadResp struct {
 	Alias   string
 	Content string
 }
+
+type DeleteResp struct {
+	DataId string
+	Alias  string
+}

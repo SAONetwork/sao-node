@@ -18,6 +18,8 @@ type GatewayApiStruct struct {
 
 		CreateFile func(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) ``
 
+		Delete func(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) ``
+
 		Load func(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) ``
 
 		NodeAddress func(p0 context.Context) (string, error) ``
@@ -49,6 +51,17 @@ func (s *GatewayApiStruct) CreateFile(p0 context.Context, p1 types.OrderMeta) (a
 
 func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) Delete(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) {
+	if s.Internal.Delete == nil {
+		return *new(apitypes.DeleteResp), ErrNotSupported
+	}
+	return s.Internal.Delete(p0, p1, p2)
+}
+
+func (s *GatewayApiStub) Delete(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) {
+	return *new(apitypes.DeleteResp), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) Load(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) {

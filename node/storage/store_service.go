@@ -60,20 +60,30 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 
 	var shard []byte
 	var err error
+
+	log.Info("task.Gateway: ", task.Gateway)
+	log.Info("ss.nodeAddress: ", ss.nodeAddress)
+
 	// check if gateway is node itself
 	if task.Gateway == ss.nodeAddress {
 		shard, err = ss.getShardFromLocal(task.OrderId, task.Cid)
+		if err != nil {
+			log.Error("known err: ", err.Error())
+			// return err
+		}
 	} else {
 		shard, err = ss.getShardFromGateway(ctx, task.Gateway, task.OrderId, task.Cid)
+		if err != nil {
+			return err
+		}
 	}
 	// TODO: store resp.Content to ipfs
-	log.Info("ss.nodeAddress: ", ss.nodeAddress)
 
 	txHash, err := ss.chainSvc.CompleteOrder(ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
 	if err != nil {
 		return err
 	}
-	log.Infof("Complete order succeed: %s", txHash)
+	log.Infof("Complete order succeed: txHash:%s, OrderId: ", txHash, task.OrderId)
 	return nil
 }
 

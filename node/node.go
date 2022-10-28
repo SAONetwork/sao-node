@@ -218,6 +218,17 @@ func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.L
 	}, nil
 }
 
+func (n *Node) Delete(ctx context.Context, owner string, alias string) (apitypes.DeleteResp, error) {
+	model, err := n.manager.Delete(ctx, owner, alias)
+	if err != nil {
+		return apitypes.DeleteResp{}, err
+	}
+	return apitypes.DeleteResp{
+		DataId: model.DataId,
+		Alias:  model.Alias,
+	}, nil
+}
+
 func (n *Node) NodeAddress(ctx context.Context) (string, error) {
 	return n.address, nil
 }

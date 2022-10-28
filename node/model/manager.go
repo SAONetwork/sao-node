@@ -63,8 +63,6 @@ var (
 )
 
 func NewModelManager(cacheCfg *config.Cache, commitSvc *storage.CommitSvc, db datastore.Batching) *ModelManager {
-	log.Info("content m.Db ", db)
-
 	once.Do(func() {
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,
@@ -74,8 +72,6 @@ func NewModelManager(cacheCfg *config.Cache, commitSvc *storage.CommitSvc, db da
 			Db:           db,
 		}
 	})
-
-	log.Info("content modelManager.Db ", modelManager.Db)
 
 	return modelManager
 }
@@ -90,6 +86,8 @@ func (m *ModelManager) Stop(ctx context.Context) error {
 func (m *ModelManager) Load(ctx context.Context, account string, key string) (*Model, error) {
 	model, err := m.CacheSvc.Get(account, key)
 	if model != nil {
+		log.Info("model: ", model)
+
 		return model.(*Model), nil
 	}
 
@@ -141,6 +139,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 	} else {
 		alias = orderMeta.Alias
 	}
+	log.Info("model alias ", orderMeta.Alias)
 
 	oldModel, err := m.CacheSvc.Get(orderMeta.Creator, orderMeta.Alias)
 	if err != nil {
@@ -154,7 +153,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		}
 	}
 	if oldModel != nil {
-		return nil, xerrors.Errorf("the model [%s] is exsiting already", orderMeta.Alias)
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.(*Model).Alias, oldModel.(*Model).DataId)
 	} else {
 		log.Info("new model request")
 	}
@@ -221,6 +220,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 
 	err = m.validateModel(orderMeta.Creator, alias, modelBytes, orderMeta.Rule)
 	if err != nil {
+		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
 	}
 
@@ -240,7 +240,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		OrderId: result.OrderId,
 	}
 
-	m.cacheModel(orderMeta.Creator, alias, model)
+	m.cacheModel(orderMeta.Creator, model.Alias, model)
 
 	return model, nil
 }
@@ -275,6 +275,23 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 	m.cacheModel(account, alias, model)
 
 	return model, nil
+}
+
+func (mm *ModelManager) Delete(ctx context.Context, account string, key string) (*Model, error) {
+	model, _ := mm.CacheSvc.Get(account, key)
+	if model != nil {
+		m := model.(*Model)
+
+		mm.CacheSvc.Evict(account, m.DataId)
+		mm.CacheSvc.Evict(account, m.Alias)
+
+		return &Model{
+			DataId: m.DataId,
+			Alias:  m.Alias,
+		}, nil
+	}
+
+	return nil, nil
 }
 
 func (m *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {

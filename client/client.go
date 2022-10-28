@@ -36,3 +36,7 @@ func (sc SaoClient) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (
 func (sc SaoClient) Load(ctx context.Context, owner string, alias string) (apitypes.LoadResp, error) {
 	return sc.gatewayApi.Load(ctx, owner, alias)
 }
+
+func (sc SaoClient) Delete(ctx context.Context, owner string, alias string) (apitypes.DeleteResp, error) {
+	return sc.gatewayApi.Delete(ctx, owner, alias)
+}

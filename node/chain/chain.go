@@ -3,6 +3,9 @@ package chain
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/hashicorp/go-uuid"
@@ -13,8 +16,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/tendermint/tendermint/rpc/client/http"
 	"golang.org/x/xerrors"
-	"strconv"
-	"time"
 )
 
 var log = logging.Logger("chain")
@@ -221,6 +222,7 @@ func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, 
 	if err != nil {
 		return err
 	}
+
 	go func() {
 		_ = <-ch
 		// TODO: replace with real data id.
