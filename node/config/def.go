@@ -46,6 +46,7 @@ type Libp2p struct {
 }
 
 type Cache struct {
+	EnableCache   bool
 	CacheCapacity int
 	ContentLimit  int
 }
@@ -64,6 +65,7 @@ func DefaultGatewayNode() *Node {
 			Timeout:       30 * time.Second,
 		},
 		Cache: Cache{
+			EnableCache:   true,
 			CacheCapacity: 1000,
 			ContentLimit:  2 * 1024 * 1024,
 		},
