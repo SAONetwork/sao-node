@@ -18,14 +18,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/google/uuid"
-	mc "github.com/multiformats/go-multicodec"
-
 	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/mitchellh/go-homedir"
+	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
 	"github.com/tendermint/tendermint/types/time"
 	"golang.org/x/xerrors"
@@ -84,21 +82,9 @@ func (m *ModelManager) Stop(ctx context.Context) error {
 }
 
 func (m *ModelManager) Load(ctx context.Context, account string, key string) (*Model, error) {
-	model, err := m.CacheSvc.Get(account, key)
+	model := m.loadModel(account, key)
 	if model != nil {
-		return model.(*Model), nil
-	}
-
-	if err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", account)) {
-			err = m.CacheSvc.CreateCache(account, m.CacheCfg.CacheCapacity)
-			if err != nil {
-				log.Error(err.Error())
-				return nil, xerrors.Errorf(err.Error())
-			}
-		} else {
-			return nil, xerrors.Errorf(err.Error())
-		}
+		return model, nil
 	}
 
 	result, err := m.CommitSvc.Pull(ctx, key)
@@ -115,9 +101,9 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 		OrderId: result.OrderId,
 	}
 
-	mm := model.(*Model)
+	mm := model
 
-	m.cacheModel(account, mm.Alias, mm)
+	m.cacheModel(account, mm)
 
 	return mm, nil
 }
@@ -132,26 +118,16 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		} else {
 			alias = GenerateAlias([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
 		}
-		log.Info("use a system generated alias ", alias)
+		log.Debug("use a system generated alias ", alias)
 		orderMeta.Alias = alias
 	} else {
 		alias = orderMeta.Alias
 	}
-	log.Info("model alias ", orderMeta.Alias)
+	log.Debug("model alias ", orderMeta.Alias)
 
-	oldModel, err := m.CacheSvc.Get(orderMeta.Creator, orderMeta.Alias)
-	if err != nil {
-		if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", orderMeta.Creator)) {
-			err = m.CacheSvc.CreateCache(orderMeta.Creator, m.CacheCfg.CacheCapacity)
-			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
-			}
-		} else {
-			return nil, xerrors.Errorf(err.Error())
-		}
-	}
+	oldModel := m.loadModel(orderMeta.Creator, orderMeta.Alias)
 	if oldModel != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.(*Model).Alias, oldModel.(*Model).DataId)
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	} else {
 		log.Info("new model request")
 	}
@@ -189,6 +165,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 	}
 
 	var modelBytes []byte
+	var err error
 	if modelType == types.ModelTypeFile {
 		model := &model.FileModel{
 			FileName: orderMeta.Alias,
@@ -206,7 +183,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 
 	pref := cid.Prefix{
 		Version:  1,
-		Codec:    uint64(mc.Raw),
+		Codec:    uint64(multicodec.Raw),
 		MhType:   multihash.SHA2_256,
 		MhLength: -1, // default length
 	}
@@ -238,18 +215,18 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		OrderId: result.OrderId,
 	}
 
-	m.cacheModel(orderMeta.Creator, model.Alias, model)
+	m.cacheModel(orderMeta.Creator, model)
 
 	return model, nil
 }
 
 func (m *ModelManager) Update(account string, alias string, patch string, rule string) (*Model, error) {
-	orgModel, err := m.CacheSvc.Get(account, alias)
-	if err != nil || orgModel == nil {
-		return nil, xerrors.Errorf(err.Error())
+	orgModel := m.loadModel(account, alias)
+	if orgModel == nil {
+		return nil, xerrors.Errorf("invalid model alias %s", alias)
 	}
 
-	newContentBytes, err := m.JsonpatchSvc.ApplyPatch(orgModel.(*Model).Content, []byte(patch))
+	newContentBytes, err := m.JsonpatchSvc.ApplyPatch(orgModel.Content, []byte(patch))
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -264,13 +241,13 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 	// 	return nil, xerrors.Errorf(err.Error())
 	// }
 	model := &Model{
-		DataId:  orgModel.(*Model).DataId,
-		Alias:   orgModel.(*Model).Alias,
+		DataId:  orgModel.DataId,
+		Alias:   orgModel.Alias,
 		Content: newContentBytes,
 		Cid:     cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
 	}
 
-	m.cacheModel(account, alias, model)
+	m.cacheModel(account, model)
 
 	return model, nil
 }
@@ -296,8 +273,7 @@ func (m *ModelManager) validateModel(account string, alias string, contentBytes 
 	schema := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
 
 	if schema != "" {
-		_, err := uuid.Parse(schema)
-		if err == nil {
+		if IsDataId(schema) {
 			model, err := m.CacheSvc.Get(account, schema)
 			if err != nil {
 				return xerrors.Errorf(err.Error())
@@ -318,20 +294,56 @@ func (m *ModelManager) validateModel(account string, alias string, contentBytes 
 	return nil
 }
 
-func (m *ModelManager) cacheModel(account string, alias string, model *Model) {
-	if len(model.Content) > m.CacheCfg.ContentLimit {
-		m.CacheSvc.Put(account, alias, model.Cid.String())
-		m.CacheSvc.Put(account, model.DataId, model.Cid.String())
-		for _, k := range model.Tags {
-			m.CacheSvc.Put(account, k, model.Cid.String())
-		}
-	} else {
-		m.CacheSvc.Put(account, alias, model)
-		m.CacheSvc.Put(account, model.DataId, model)
-		for _, k := range model.Tags {
-			m.CacheSvc.Put(account, k, model)
+func (m *ModelManager) loadModel(account string, key string) *Model {
+	if !m.CacheCfg.EnableCache {
+		return nil
+	}
+
+	value, err := m.CacheSvc.Get(account, key)
+	if err != nil {
+		if strings.Contains(err.Error(), fmt.Sprintf("the cache [%s] not found", account)) {
+			err = m.CacheSvc.CreateCache(account, m.CacheCfg.CacheCapacity)
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+		} else {
+			log.Error(err.Error())
+			return nil
 		}
 	}
 
-	m.CacheSvc.Put(account, fmt.Sprintf("%d", model.OrderId), alias)
+	if value != nil {
+		if IsDataId(key) {
+			return value.(*Model)
+		} else {
+			model, err := m.CacheSvc.Get(account, value.(string))
+			if model != nil {
+				return model.(*Model)
+			}
+
+			if err != nil {
+				log.Warn(err.Error())
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *ModelManager) cacheModel(account string, model *Model) {
+	if !m.CacheCfg.EnableCache {
+		return
+	}
+
+	if len(model.Content) > m.CacheCfg.ContentLimit {
+		m.CacheSvc.Put(account, model.DataId, model.Cid.String())
+	} else {
+		m.CacheSvc.Put(account, model.DataId, model)
+	}
+
+	m.CacheSvc.Put(account, model.Alias, model.DataId)
+	// for _, k := range model.Tags {
+	// 	m.CacheSvc.Put(account, k, model.DataId)
+	// }
 }

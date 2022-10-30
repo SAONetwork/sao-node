@@ -20,9 +20,9 @@ func IsLink(content string) bool {
 }
 
 func IsDataId(content string) bool {
-	r, _ := regexp.Compile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
-
-	return r.MatchString(content)
+	log.Infof("content: %s", content)
+	_, err := uuid.FromString(content)
+	return err == nil
 }
 
 func GenerateAlias(content []byte) string {
