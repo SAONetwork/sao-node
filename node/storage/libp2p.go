@@ -13,6 +13,7 @@ import (
 
 // TODO: store node should sign the request.
 type ShardStoreReq struct {
+	Owner   string
 	OrderId uint64
 	Cid     cid.Cid
 }

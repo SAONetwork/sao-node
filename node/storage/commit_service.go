@@ -83,7 +83,7 @@ func (cs *CommitSvc) handleShardStore(s network.Stream) {
 	}
 	log.Debugf("receive ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
 
-	contentBytes, err := cs.shardStaging.GetStagedShard(req.OrderId, req.Cid)
+	contentBytes, err := cs.shardStaging.GetStagedShard(req.Owner, req.Cid)
 	if err != nil {
 		log.Error(err)
 		// TODO: respond error
@@ -101,6 +101,15 @@ func (cs *CommitSvc) handleShardStore(s network.Stream) {
 }
 
 func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
+	// TODO: consider store node may ask earlier than file split
+	// TODO: if big data, consider store to staging dir.
+	// TODO: support split file.
+	// TODO: support marshal any content
+	err := cs.shardStaging.StageShard(creator, orderMeta.Cid, content)
+	if err != nil {
+		return nil, err
+	}
+
 	if !orderMeta.TxSent {
 		orderId, txId, err := cs.chainSvc.StoreOrder(cs.nodeAddress, creator, cs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica)
 		if err != nil {
@@ -110,15 +119,13 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 		orderMeta.OrderId = orderId
 		orderMeta.TxId = txId
 		orderMeta.TxSent = true
-	}
-
-	// TODO: consider store node may ask earlier than file split
-	// TODO: if big data, consider store to staging dir.
-	// TODO: support split file.
-	// TODO: support marshal any content
-	err := cs.shardStaging.StageShard(orderMeta.OrderId, orderMeta.Cid, content)
-	if err != nil {
-		return nil, err
+	} else {
+		txId, err := cs.chainSvc.OrderReady(cs.nodeAddress, orderMeta.OrderId)
+		if err != nil {
+			return nil, err
+		}
+		orderMeta.TxId = txId
+		orderMeta.TxSent = true
 	}
 
 	log.Infof("start SubscribeOrderComplete")
