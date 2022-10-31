@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sao-storage-node/node/config"
 	"sao-storage-node/types/transport"
+	"strings"
 	"sync"
 	"time"
 
@@ -56,9 +57,15 @@ func StartTransportServer(ctx context.Context, address string, serverKey crypto.
 		return nil, err
 	}
 
+	var peerInfos []string
 	for _, a := range h.Addrs() {
 		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
 		log.Info("addr=", withP2p.String())
+		peerInfos = append(peerInfos, withP2p.String())
+	}
+	if len(peerInfos) > 0 {
+		key := datastore.NewKey(fmt.Sprintf(transport.PEER_INFO_PREFIX))
+		db.Put(ctx, key, []byte(strings.Join(peerInfos, ", ")))
 	}
 
 	path, err := homedir.Expand(cfg.Transport.StagingPath)
@@ -169,7 +176,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 			return
 		}
 
-		key := datastore.NewKey(fmt.Sprintf("fileIno_%s", req.Cid))
+		key := datastore.NewKey(transport.FILE_INFO_PREFIX + req.Cid)
 		if info, err := ts.Db.Get(ts.Ctx, key); err == nil {
 			var fileInfo *transport.ReceivedFileInfo
 			err := json.Unmarshal(info, &fileInfo)

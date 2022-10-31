@@ -20,6 +20,8 @@ type GatewayApiStruct struct {
 
 		Delete func(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) ``
 
+		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) ``
+
 		Load func(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) ``
 
 		NodeAddress func(p0 context.Context) (string, error) ``
@@ -62,6 +64,17 @@ func (s *GatewayApiStruct) Delete(p0 context.Context, p1 string, p2 string) (api
 
 func (s *GatewayApiStub) Delete(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) {
 	return *new(apitypes.DeleteResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoResp, error) {
+	if s.Internal.GetPeerInfo == nil {
+		return *new(apitypes.GetPeerInfoResp), ErrNotSupported
+	}
+	return s.Internal.GetPeerInfo(p0)
+}
+
+func (s *GatewayApiStub) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoResp, error) {
+	return *new(apitypes.GetPeerInfoResp), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) Load(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) {

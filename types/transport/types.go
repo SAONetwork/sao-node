@@ -1,6 +1,7 @@
 package transport
 
-const FILE_INFO_PREFIX = "fileIno_"
+const PEER_INFO_PREFIX = "peerInfo_"
+const FILE_INFO_PREFIX = "fileInfo_"
 
 const CHUNK_SIZE int = 32 * 1024 * 1024
 
