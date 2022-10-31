@@ -12,5 +12,6 @@ type GatewayApi interface {
 	CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error)
 	Load(ctx context.Context, onwer string, alias string) (apitypes.LoadResp, error)
 	Delete(ctx context.Context, onwer string, alias string) (apitypes.DeleteResp, error)
+	GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error)
 	NodeAddress(ctx context.Context) (string, error)
 }

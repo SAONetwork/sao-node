@@ -62,6 +62,7 @@ func main() {
 			uploadCmd,
 			loadCmd,
 			downloadCmd,
+			peerInfoCmd,
 		},
 	}
 	app.Setup()
@@ -592,6 +593,38 @@ var downloadCmd = &cli.Command{
 			}
 			log.Infof("file downloaded to %s", path)
 		}
+
+		return nil
+	},
+}
+
+var peerInfoCmd = &cli.Command{
+	Name:  "peer-info",
+	Usage: "get peer info of the gateway",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		resp, err := client.GetPeerInfo(ctx)
+		if err != nil {
+			return err
+		}
+		log.Info("peer info: ", resp.PeerInfo)
 
 		return nil
 	},
