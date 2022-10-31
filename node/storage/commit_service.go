@@ -105,6 +105,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
 	// TODO: support marshal any content
+	log.Infof("stage shard /%s/%v", creator, orderMeta.Cid)
 	err := cs.shardStaging.StageShard(creator, orderMeta.Cid, content)
 	if err != nil {
 		return nil, err
@@ -115,7 +116,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 		if err != nil {
 			return nil, err
 		}
-		log.Info("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
+		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
 		orderMeta.OrderId = orderId
 		orderMeta.TxId = txId
 		orderMeta.TxSent = true
@@ -152,6 +153,12 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 		log.Error(err)
 	} else {
 		log.Info("UnsubscribeOrderComplete")
+	}
+
+	log.Infof("unstage shard /%s/%v", creator, orderMeta.Cid)
+	err = cs.shardStaging.UnstageShard(creator, orderMeta.Cid)
+	if err != nil {
+		return nil, err
 	}
 
 	if timeout {
