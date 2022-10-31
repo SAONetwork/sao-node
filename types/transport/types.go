@@ -1,5 +1,7 @@
 package transport
 
+const FILE_INFO_PREFIX = "fileIno_"
+
 const CHUNK_SIZE int = 32 * 1024 * 1024
 
 type FileChunkReq struct {

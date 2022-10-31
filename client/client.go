@@ -25,7 +25,7 @@ func (sc SaoClient) Test(ctx context.Context) (string, error) {
 	return resp, nil
 }
 
-func (sc SaoClient) Create(ctx context.Context, orderMeta types.OrderMeta, content string) (apitypes.CreateResp, error) {
+func (sc SaoClient) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
 	return sc.gatewayApi.Create(ctx, orderMeta, content)
 }
 

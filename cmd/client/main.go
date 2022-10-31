@@ -5,7 +5,6 @@ package main
 // * guic transfer data
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -15,7 +14,6 @@ import (
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
-	"sao-storage-node/types/model"
 	"strings"
 
 	"github.com/multiformats/go-multicodec"
@@ -160,7 +158,7 @@ var createCmd = &cli.Command{
 		if !cctx.IsSet("content") || cctx.String("content") == "" {
 			return xerrors.Errorf("must provide non-empty --content.")
 		}
-		content := cctx.String("content")
+		content := []byte(cctx.String("content"))
 
 		if !cctx.IsSet("from") {
 			return xerrors.Errorf("must provide --from")
@@ -183,7 +181,6 @@ var createCmd = &cli.Command{
 		orderMeta := types.OrderMeta{
 			Creator:  from,
 			Alias:    cctx.String("name"),
-			Content:  []byte(content),
 			Duration: int32(duration),
 			Replica:  int32(replicas),
 		}
@@ -194,7 +191,7 @@ var createCmd = &cli.Command{
 			MhType:   multihash.SHA2_256,
 			MhLength: -1, // default length
 		}
-		contentCid, err := pref.Sum([]byte(content))
+		contentCid, err := pref.Sum(content)
 		if err != nil {
 			return err
 		}
@@ -226,7 +223,7 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
+		log.Infof("alias: %d, data id: %s", resp.Alias, resp.DataId)
 		return nil
 	},
 }
@@ -344,7 +341,7 @@ var createFileCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("order id: %d, file name: %s, data id: %s, cid: %s", resp.OrderId, resp.Alias, resp.DataId, resp.Cid)
+		log.Infof("file name: %s, data id: %s, cid: %s", resp.Alias, resp.DataId, resp.Cid)
 		return nil
 	},
 }
@@ -460,7 +457,7 @@ var loadCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
+		log.Infof("alias id: %d, data id: %s", resp.Alias, resp.DataId)
 
 		dumpFlag := cctx.Bool("dump")
 		if dumpFlag {
@@ -581,21 +578,15 @@ var downloadCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			log.Infof("order id: %d, data id: %s", resp.OrderId, resp.DataId)
+			log.Infof("file name: %d, data id: %s", resp.Alias, resp.DataId)
 
-			var fm model.FileModel
-			err = json.Unmarshal([]byte(resp.Content), &fm)
-			if err != nil {
-				return err
-			}
-
-			path := filepath.Join("./", fm.FileName)
+			path := filepath.Join("./", resp.Alias)
 			file, err := os.Create(path)
 			if err != nil {
 				return err
 			}
 
-			_, err = file.Write(fm.Content)
+			_, err = file.Write([]byte(resp.Content))
 			if err != nil {
 				return err
 			}

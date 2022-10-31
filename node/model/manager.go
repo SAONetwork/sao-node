@@ -2,28 +2,19 @@ package model
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model/json_patch"
 	"sao-storage-node/node/model/schema/validator"
 	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
-	"sao-storage-node/types/model"
-	"sao-storage-node/types/transport"
 	"strings"
 	"sync"
 
 	cid "github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
 	"github.com/tendermint/tendermint/types/time"
 	"golang.org/x/xerrors"
@@ -36,14 +27,12 @@ const MODEL_TYPE_FILE = "File"
 var log = logging.Logger("model")
 
 type Model struct {
-	DataId  string
-	Alias   string
-	Tags    []string
-	Schema  []byte
-	Type    types.ModelType
-	Content []byte
-	OrderId uint64
-	Cid     cid.Cid
+	DataId     string
+	Alias      string
+	Tags       []string
+	Content    []byte
+	Cid        cid.Cid
+	ExtendInfo string
 }
 
 type ModelManager struct {
@@ -52,7 +41,6 @@ type ModelManager struct {
 	JsonpatchSvc *json_patch.JsonpatchSvc
 	// used by gateway module
 	CommitSvc storage.CommitSvcApi
-	Db        datastore.Read
 }
 
 var (
@@ -60,14 +48,13 @@ var (
 	once         sync.Once
 )
 
-func NewModelManager(cacheCfg *config.Cache, commitSvc storage.CommitSvcApi, db datastore.Read) *ModelManager {
+func NewModelManager(cacheCfg *config.Cache, commitSvc storage.CommitSvcApi) *ModelManager {
 	once.Do(func() {
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,
 			CacheSvc:     cache.NewCacheSvc(),
 			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
 			CommitSvc:    commitSvc,
-			Db:           db,
 		}
 	})
 
@@ -96,9 +83,7 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 		DataId:  result.DataId,
 		Alias:   result.Alias,
 		Content: result.Content,
-		Type:    result.Type,
 		Cid:     result.Cid,
-		OrderId: result.OrderId,
 	}
 
 	mm := model
@@ -108,13 +93,13 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 	return mm, nil
 }
 
-func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, modelType types.ModelType) (*Model, error) {
+func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (*Model, error) {
 	var alias string
 	if orderMeta.Alias == "" {
 		if orderMeta.Cid != cid.Undef {
 			alias = orderMeta.Cid.String()
-		} else if len(orderMeta.Content) > 0 {
-			alias = GenerateAlias(orderMeta.Content)
+		} else if len(content) > 0 {
+			alias = GenerateAlias(content)
 		} else {
 			alias = GenerateAlias([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
 		}
@@ -132,68 +117,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 		log.Info("new model request")
 	}
 
-	if orderMeta.Cid != cid.Undef && len(orderMeta.Content) == 0 {
-		// Asynchronous order and the content has been uploaded already
-		key := datastore.NewKey(fmt.Sprintf("fileIno_%s", orderMeta.Cid))
-		if info, err := m.Db.Get(ctx, key); err == nil {
-			var fileInfo *transport.ReceivedFileInfo
-			err := json.Unmarshal(info, &fileInfo)
-			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
-			}
-
-			basePath, err := homedir.Expand(fileInfo.Path)
-			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
-			}
-			log.Info("path: ", basePath)
-
-			var path = filepath.Join(basePath, orderMeta.Cid.String())
-			file, err := os.Open(path)
-			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
-			}
-
-			content, err := io.ReadAll(file)
-			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
-			}
-			orderMeta.Content = content
-		} else {
-			return nil, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())
-		}
-	}
-
-	var modelBytes []byte
-	var err error
-	if modelType == types.ModelTypeFile {
-		model := &model.FileModel{
-			FileName: orderMeta.Alias,
-			Tags:     orderMeta.Tags,
-			Cid:      orderMeta.Cid.String(),
-			Content:  orderMeta.Content,
-		}
-		modelBytes, err = json.Marshal(model)
-		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
-		}
-	} else {
-		modelBytes = orderMeta.Content
-	}
-
-	pref := cid.Prefix{
-		Version:  1,
-		Codec:    uint64(multicodec.Raw),
-		MhType:   multihash.SHA2_256,
-		MhLength: -1, // default length
-	}
-	modelCid, err := pref.Sum(modelBytes)
-	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
-	}
-	orderMeta.Cid = modelCid
-
-	err = m.validateModel(orderMeta.Creator, alias, modelBytes, orderMeta.Rule)
+	err := m.validateModel(orderMeta.Creator, alias, oldModel.Content, orderMeta.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
@@ -201,7 +125,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 
 	// Commit
 	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := m.CommitSvc.Commit(ctx, orderMeta.Creator, orderMeta, modelBytes)
+	result, err := m.CommitSvc.Commit(ctx, orderMeta.Creator, orderMeta, content)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -209,10 +133,8 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, mo
 	model := &Model{
 		DataId:  result.DataId,
 		Alias:   alias,
-		Content: modelBytes,
-		Type:    modelType,
+		Content: content,
 		Cid:     orderMeta.Cid,
-		OrderId: result.OrderId,
 	}
 
 	m.cacheModel(orderMeta.Creator, model)

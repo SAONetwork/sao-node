@@ -2,6 +2,10 @@ package node
 
 import (
 	"context"
+	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
 	"sao-storage-node/api"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/node/transport"
@@ -9,6 +13,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/mitchellh/go-homedir"
 
 	"fmt"
 	apitypes "sao-storage-node/api/types"
@@ -17,6 +22,7 @@ import (
 	"sao-storage-node/node/repo"
 	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
+	typestransport "sao-storage-node/types/transport"
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -37,6 +43,7 @@ type Node struct {
 	// used by store module
 	storeSvc *storage.StoreSvc
 	manager  *model.ModelManager
+	tds      datastore.Read
 }
 
 func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
@@ -106,6 +113,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		address:   nodeAddr,
 		stopFuncs: stopFuncs,
 		host:      &host,
+		tds:       tds,
 	}
 
 	if cfg.Module.GatewayEnable {
@@ -115,14 +123,9 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 			return nil, err
 		}
 
-		ds, err := repo.Datastore(ctx, "/transport")
-		if err != nil {
-			return nil, err
-		}
-
 		var commitSvc = storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host, &shardStaging)
 		var commitSvcApi storage.CommitSvcApi = commitSvc
-		sn.manager = model.NewModelManager(&cfg.Cache, commitSvcApi, ds)
+		sn.manager = model.NewModelManager(&cfg.Cache, commitSvcApi)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// api server
@@ -185,29 +188,57 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 	return "world", nil
 }
 
-func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, commit any) (apitypes.CreateResp, error) {
-	model, err := n.manager.Create(ctx, orderMeta, types.ModelTypeData)
+func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
+	model, err := n.manager.Create(ctx, orderMeta, content)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
 	return apitypes.CreateResp{
-		Alias:   model.Alias,
-		OrderId: model.OrderId,
-		DataId:  model.DataId,
+		Alias:  model.Alias,
+		DataId: model.DataId,
+		Cid:    model.Cid.String(),
 	}, nil
 }
 
 func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
-	model, err := n.manager.Create(ctx, orderMeta, types.ModelTypeFile)
-	if err != nil {
-		return apitypes.CreateResp{}, err
+	// Asynchronous order and the content has been uploaded already
+	key := datastore.NewKey(typestransport.FILE_INFO_PREFIX + orderMeta.Cid.String())
+	if info, err := n.tds.Get(ctx, key); err == nil {
+		var fileInfo *typestransport.ReceivedFileInfo
+		err := json.Unmarshal(info, &fileInfo)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		basePath, err := homedir.Expand(fileInfo.Path)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+		log.Info("path: ", basePath)
+
+		var path = filepath.Join(basePath, orderMeta.Cid.String())
+		file, err := os.Open(path)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		content, err := io.ReadAll(file)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		model, err := n.manager.Create(ctx, orderMeta, content)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+		return apitypes.CreateResp{
+			Alias:  model.Alias,
+			DataId: model.DataId,
+			Cid:    model.Cid.String(),
+		}, nil
+	} else {
+		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())
 	}
-	return apitypes.CreateResp{
-		Alias:   model.Alias,
-		OrderId: model.OrderId,
-		DataId:  model.DataId,
-		Cid:     model.Cid.String(),
-	}, nil
 }
 
 func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.LoadResp, error) {
@@ -216,7 +247,6 @@ func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.L
 		return apitypes.LoadResp{}, err
 	}
 	return apitypes.LoadResp{
-		OrderId: model.OrderId,
 		DataId:  model.DataId,
 		Alias:   model.Alias,
 		Content: string(model.Content),
