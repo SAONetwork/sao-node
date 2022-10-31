@@ -26,6 +26,7 @@ const (
 )
 
 type ShardTask struct {
+	Owner   string
 	OrderId uint64
 	Gateway string
 	Cid     cid.Cid
@@ -139,9 +140,34 @@ func (c *ChainSvc) Reset(creator string, ma multiaddr.Multiaddr, peerId peer.ID)
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(signer string, creator string, provider string, cid cid.Cid, duration int32, replica int32) (uint64, string, error) {
-	if signer != creator && signer != provider {
-		return 0, "", xerrors.Errorf("Order tx signer must be creator or signer.")
+func (c *ChainSvc) OrderReady(provider string, orderId uint64) (string, error) {
+	signerAcc, err := c.cosmos.Account(provider)
+	if err != nil {
+		return "", err
+	}
+
+	msg := &saotypes.MsgReady{
+		OrderId: orderId,
+		Creator: provider,
+	}
+	txResp, err := c.cosmos.BroadcastTx(signerAcc, msg)
+	if err != nil {
+		return "", err
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	dataResp := &saotypes.MsgReadyResponse{}
+	err = txResp.Decode(dataResp)
+	if err != nil {
+		return "", err
+	}
+	return txResp.TxResponse.TxHash, nil
+}
+
+func (c *ChainSvc) StoreOrder(signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32) (uint64, string, error) {
+	if signer != owner && signer != provider {
+		return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	}
 
 	signerAcc, err := c.cosmos.Account(signer)
@@ -151,7 +177,8 @@ func (c *ChainSvc) StoreOrder(signer string, creator string, provider string, ci
 
 	// TODO: Cid
 	msg := &saotypes.MsgStore{
-		Creator:  creator,
+		Creator:  signer,
+		Owner:    owner,
 		Cid:      cid.String(),
 		Provider: provider,
 		Duration: duration,
@@ -271,7 +298,14 @@ func (cs *ChainSvc) SubscribeShardTask(ctx context.Context, nodeAddr string, sha
 				continue
 			}
 
+			order, err := cs.GetOrder(ctx, orderId)
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
 			shardTaskChan <- &ShardTask{
+				Owner:   order.Owner,
 				OrderId: orderId,
 				Gateway: gateway,
 				Cid:     cid,

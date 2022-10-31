@@ -117,7 +117,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, co
 		log.Info("new model request")
 	}
 
-	err := m.validateModel(orderMeta.Creator, alias, oldModel.Content, orderMeta.Rule)
+	err := m.validateModel(orderMeta.Creator, alias, content, orderMeta.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())

@@ -223,7 +223,7 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias: %d, data id: %s", resp.Alias, resp.DataId)
+		log.Infof("alias: %s, data id: %s", resp.Alias, resp.DataId)
 		return nil
 	},
 }

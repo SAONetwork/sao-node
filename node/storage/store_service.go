@@ -66,13 +66,13 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 
 	// check if gateway is node itself
 	if task.Gateway == ss.nodeAddress {
-		shard, err = ss.getShardFromLocal(task.OrderId, task.Cid)
+		shard, err = ss.getShardFromLocal(task.Owner, task.Cid)
 		if err != nil {
 			log.Warn("skip the known error: ", err.Error())
 			// return err
 		}
 	} else {
-		shard, err = ss.getShardFromGateway(ctx, task.Gateway, task.OrderId, task.Cid)
+		shard, err = ss.getShardFromGateway(ctx, task.Owner, task.Gateway, task.OrderId, task.Cid)
 		if err != nil {
 			return err
 		}
@@ -87,11 +87,11 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	return nil
 }
 
-func (ss *StoreSvc) getShardFromLocal(orderId uint64, cid cid.Cid) ([]byte, error) {
-	return ss.shardStaging.GetStagedShard(orderId, cid)
+func (ss *StoreSvc) getShardFromLocal(owner string, cid cid.Cid) ([]byte, error) {
+	return ss.shardStaging.GetStagedShard(owner, cid)
 }
 
-func (ss *StoreSvc) getShardFromGateway(ctx context.Context, gateway string, orderId uint64, cid cid.Cid) ([]byte, error) {
+func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gateway string, orderId uint64, cid cid.Cid) ([]byte, error) {
 	conn, err := ss.chainSvc.GetNodePeer(ctx, gateway)
 	if err != nil {
 		return nil, err
@@ -117,6 +117,7 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, gateway string, ord
 	log.Infof("open stream(%s) to gateway %s", ShardStoreProtocol, conn)
 
 	req := ShardStoreReq{
+		Owner:   owner,
 		OrderId: orderId,
 		Cid:     cid,
 	}
