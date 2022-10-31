@@ -75,3 +75,13 @@ func (ss *ShardStaging) GetStagedShard(creator string, cid cid.Cid) ([]byte, err
 
 	return nil, xerrors.Errorf("not able to get the shard for order: %d", cid)
 }
+
+func (ss *ShardStaging) UnstageShard(creator string, cid cid.Cid) error {
+	path, err := homedir.Expand(ss.basedir)
+	if err != nil {
+		return err
+	}
+
+	filename := fmt.Sprintf("%v", cid)
+	return os.Remove(filepath.Join(path, creator, filename))
+}
