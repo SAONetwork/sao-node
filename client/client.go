@@ -40,3 +40,7 @@ func (sc SaoClient) Load(ctx context.Context, owner string, alias string) (apity
 func (sc SaoClient) Delete(ctx context.Context, owner string, alias string) (apitypes.DeleteResp, error) {
 	return sc.gatewayApi.Delete(ctx, owner, alias)
 }
+
+func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
+	return sc.gatewayApi.GetPeerInfo(ctx)
+}
