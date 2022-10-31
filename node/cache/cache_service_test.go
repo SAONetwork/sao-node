@@ -11,8 +11,8 @@ type Data struct {
 	length uint
 }
 
-func TestCache(t *testing.T) {
-	svc := NewCacheSvc()
+func TestLruCache(t *testing.T) {
+	svc := NewLruCacheSvc()
 
 	svc.CreateCache("test1", 3)
 	svc.CreateCache("test2", 2)
