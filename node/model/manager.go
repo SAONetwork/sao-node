@@ -37,7 +37,7 @@ type Model struct {
 
 type ModelManager struct {
 	CacheCfg     *config.Cache
-	CacheSvc     *cache.CacheSvc
+	CacheSvc     cache.CacheSvcApi
 	JsonpatchSvc *json_patch.JsonpatchSvc
 	// used by gateway module
 	CommitSvc storage.CommitSvcApi
@@ -50,9 +50,16 @@ var (
 
 func NewModelManager(cacheCfg *config.Cache, commitSvc storage.CommitSvcApi) *ModelManager {
 	once.Do(func() {
+		var cacheSvc cache.CacheSvcApi
+		if cacheCfg.RedisCache.RedisConn == "" {
+			cacheSvc = cache.NewLruCacheSvc()
+		} else {
+			cacheSvc = cache.NewRedisCacheSvc(cacheCfg.RedisCache.RedisConn, cacheCfg.RedisCache.RedisPassword, cacheCfg.RedisCache.RedisPoolSize)
+		}
+
 		modelManager = &ModelManager{
 			CacheCfg:     cacheCfg,
-			CacheSvc:     cache.NewCacheSvc(),
+			CacheSvc:     cacheSvc,
 			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
 			CommitSvc:    commitSvc,
 		}
