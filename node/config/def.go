@@ -54,7 +54,7 @@ type Cache struct {
 type Transport struct {
 	TransportListenAddress []string
 	StagingPath            string
-	StagingSapceSize       int
+	StagingSapceSize       int64
 }
 
 func DefaultGatewayNode() *Node {
