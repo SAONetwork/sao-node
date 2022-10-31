@@ -11,7 +11,7 @@ import (
 
 type RedisCacheSvc struct {
 	Ctx    context.Context
-	Client *redis.ClusterClient
+	Client redis.Cmdable
 }
 
 var (
@@ -21,12 +21,21 @@ var (
 func NewRedisCacheSvc(conn string, password string, poolSize int) *RedisCacheSvc {
 	once.Do(func() {
 		log.Infof("octopus: init redis client: %v ******", conn)
+		var cli redis.Cmdable
+		if strings.Contains(conn, ",") {
+			cli = redis.NewClusterClient(&redis.ClusterOptions{
+				Addrs:    strings.Split(conn, ","),
+				Password: password,
+				PoolSize: poolSize,
+			})
+		} else {
+			cli = redis.NewClient(&redis.Options{
+				Addr:     conn,
+				Password: password,
+				PoolSize: poolSize,
+			})
+		}
 
-		cli := redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    strings.Split(conn, ","),
-			Password: password,
-			PoolSize: poolSize,
-		})
 		if cli != nil {
 			redisCacheSvc = &RedisCacheSvc{
 				Client: cli,
