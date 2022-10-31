@@ -14,7 +14,7 @@ var ErrNotSupported = xerrors.New("method not supported")
 
 type GatewayApiStruct struct {
 	Internal struct {
-		Create func(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) ``
+		Create func(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.CreateResp, error) ``
 
 		CreateFile func(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) ``
 
@@ -31,14 +31,14 @@ type GatewayApiStruct struct {
 type GatewayApiStub struct {
 }
 
-func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) {
+func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.CreateResp, error) {
 	if s.Internal.Create == nil {
 		return *new(apitypes.CreateResp), ErrNotSupported
 	}
 	return s.Internal.Create(p0, p1, p2)
 }
 
-func (s *GatewayApiStub) Create(p0 context.Context, p1 types.OrderMeta, p2 any) (apitypes.CreateResp, error) {
+func (s *GatewayApiStub) Create(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
