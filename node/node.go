@@ -264,6 +264,17 @@ func (n *Node) Delete(ctx context.Context, owner string, alias string) (apitypes
 	}, nil
 }
 
+func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
+	key := datastore.NewKey(typestransport.PEER_INFO_PREFIX)
+	if peerInfo, err := n.tds.Get(ctx, key); err == nil {
+		return apitypes.GetPeerInfoResp{
+			PeerInfo: string(peerInfo),
+		}, nil
+	} else {
+		return apitypes.GetPeerInfoResp{}, err
+	}
+}
+
 func (n *Node) NodeAddress(ctx context.Context) (string, error) {
 	return n.address, nil
 }

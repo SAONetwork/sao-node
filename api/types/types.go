@@ -17,3 +17,7 @@ type DeleteResp struct {
 	DataId string
 	Alias  string
 }
+
+type GetPeerInfoResp struct {
+	PeerInfo string
+}
