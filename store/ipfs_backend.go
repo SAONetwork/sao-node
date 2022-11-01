@@ -48,7 +48,7 @@ func (b *IpfsBackend) Close() error {
 }
 
 func (b *IpfsBackend) Store(reader io.Reader) (any, error) {
-	hash, err := b.ipfsApi.Add(reader, shell.Pin(true))
+	hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
 	log.Debugf("%s store hash: %v", b.Id(), hash)
 	return hash, err
 }
