@@ -45,17 +45,13 @@ type Libp2p struct {
 	ListenAddress []string
 }
 
-type RedisCache struct {
-	RedisConn     string
-	RedisPassword string
-	RedisPoolSize int
-}
-
 type Cache struct {
 	EnableCache   bool
 	CacheCapacity int
 	ContentLimit  int
-	RedisCache    RedisCache
+	RedisConn     string
+	RedisPassword string
+	RedisPoolSize int
 }
 
 type Transport struct {
