@@ -93,7 +93,7 @@ func (svc *RedisCacheSvc) GetSize(name string) int {
 }
 
 func (svc *RedisCacheSvc) ReSize(name string, capacity int) error {
-	log.Warn("depends on redis capacity")
+	log.Warn("unsupport operation, depends on redis capacity")
 
 	return nil
 }
