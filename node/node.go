@@ -9,6 +9,7 @@ import (
 	"sao-storage-node/api"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/node/transport"
+	"sao-storage-node/store"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
@@ -137,7 +138,22 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.StorageEnable {
-		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, &shardStaging)
+		var backends []store.StoreBackend
+		if len(cfg.Storage.Ipfs) > 0 {
+			for _, f := range cfg.Storage.Ipfs {
+				ipfsBackend, err := store.NewIpfsBackend(f.Conn)
+				if err != nil {
+					return nil, err
+				}
+				err = ipfsBackend.Open()
+				if err != nil {
+					return nil, err
+				}
+				backends = append(backends, ipfsBackend)
+			}
+		}
+		storageManager := store.NewStoreManager(backends)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, &shardStaging, storageManager)
 		if err != nil {
 			return nil, err
 		}

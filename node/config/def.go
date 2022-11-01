@@ -21,6 +21,15 @@ type Node struct {
 	Transport Transport
 	Api       API
 	Module    Module
+	Storage   Storage
+}
+
+type Storage struct {
+	Ipfs []Ipfs
+}
+
+type Ipfs struct {
+	Conn string
 }
 
 type Module struct {
@@ -79,6 +88,13 @@ func DefaultGatewayNode() *Node {
 		Module: Module{
 			GatewayEnable: true,
 			StorageEnable: true,
+		},
+		Storage: Storage{
+			Ipfs: []Ipfs{
+				{
+					Conn: "ipfs+http://localhost:5001",
+				},
+			},
 		},
 	}
 }

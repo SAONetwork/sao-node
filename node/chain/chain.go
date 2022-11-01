@@ -78,7 +78,7 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (c *ChainSvc) Login(creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
+func (c *ChainSvc) Login(ctx context.Context, creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", xerrors.Errorf("chain get account: %w", err)
@@ -90,7 +90,7 @@ func (c *ChainSvc) Login(creator string, ma multiaddr.Multiaddr, peerId peer.ID)
 	}
 
 	// TODO: recheck - seems BroadcastTx will return after confirmed on chain.
-	txResp, err := c.cosmos.BroadcastTx(account, msg)
+	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
 		return "", err
 	}
@@ -100,7 +100,7 @@ func (c *ChainSvc) Login(creator string, ma multiaddr.Multiaddr, peerId peer.ID)
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) Logout(creator string) (string, error) {
+func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", err
@@ -109,7 +109,7 @@ func (c *ChainSvc) Logout(creator string) (string, error) {
 	msg := &nodetypes.MsgLogout{
 		Creator: creator,
 	}
-	txResp, err := c.cosmos.BroadcastTx(account, msg)
+	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
 		return "", err
 	}
@@ -120,7 +120,7 @@ func (c *ChainSvc) Logout(creator string) (string, error) {
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) Reset(creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
+func (c *ChainSvc) Reset(ctx context.Context, creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", err
@@ -130,7 +130,7 @@ func (c *ChainSvc) Reset(creator string, ma multiaddr.Multiaddr, peerId peer.ID)
 		Creator: creator,
 		Peer:    fmt.Sprintf("%v/p2p/%v", ma, peerId),
 	}
-	txResp, err := c.cosmos.BroadcastTx(account, msg)
+	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
 		return "", err
 	}
@@ -140,7 +140,7 @@ func (c *ChainSvc) Reset(creator string, ma multiaddr.Multiaddr, peerId peer.ID)
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) OrderReady(provider string, orderId uint64) (string, error) {
+func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (string, error) {
 	signerAcc, err := c.cosmos.Account(provider)
 	if err != nil {
 		return "", err
@@ -150,7 +150,7 @@ func (c *ChainSvc) OrderReady(provider string, orderId uint64) (string, error) {
 		OrderId: orderId,
 		Creator: provider,
 	}
-	txResp, err := c.cosmos.BroadcastTx(signerAcc, msg)
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
 		return "", err
 	}
@@ -165,7 +165,7 @@ func (c *ChainSvc) OrderReady(provider string, orderId uint64) (string, error) {
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32) (uint64, string, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32) (uint64, string, error) {
 	if signer != owner && signer != provider {
 		return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	}
@@ -184,7 +184,7 @@ func (c *ChainSvc) StoreOrder(signer string, owner string, provider string, cid 
 		Duration: duration,
 		Replica:  replica,
 	}
-	txResp, err := c.cosmos.BroadcastTx(signerAcc, msg)
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
 		return 0, "", err
 	}
@@ -200,7 +200,7 @@ func (c *ChainSvc) StoreOrder(signer string, owner string, provider string, cid 
 	return dataResp.OrderId, txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) CompleteOrder(creator string, orderId uint64, cid cid.Cid, size int32) (string, error) {
+func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", err
@@ -212,7 +212,7 @@ func (c *ChainSvc) CompleteOrder(creator string, orderId uint64, cid cid.Cid, si
 		Cid:     cid.String(),
 		Size_:   size,
 	}
-	txResp, err := c.cosmos.BroadcastTx(signerAcc, msg)
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
 		return "", err
 	}
