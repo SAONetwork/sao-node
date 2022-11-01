@@ -1,8 +1,10 @@
 package storage
 
 import (
+	"bytes"
 	"context"
 	"sao-storage-node/node/chain"
+	"sao-storage-node/store"
 
 	"github.com/ipfs/go-cid"
 
@@ -21,15 +23,17 @@ type StoreSvc struct {
 	taskChan     chan *chain.ShardTask
 	host         host.Host
 	shardStaging *ShardStaging
+	storeManager *store.StoreManager
 }
 
-func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, shardStaging *ShardStaging) (*StoreSvc, error) {
+func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, shardStaging *ShardStaging, storeManager *store.StoreManager) (*StoreSvc, error) {
 	ss := StoreSvc{
 		nodeAddress:  nodeAddress,
 		chainSvc:     chainSvc,
 		taskChan:     make(chan *chain.ShardTask),
 		host:         host,
 		shardStaging: shardStaging,
+		storeManager: storeManager,
 	}
 	if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
 		return nil, err
@@ -61,15 +65,12 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	var shard []byte
 	var err error
 
-	log.Info("task.Gateway: ", task.Gateway)
-	log.Info("ss.nodeAddress: ", ss.nodeAddress)
-
 	// check if gateway is node itself
 	if task.Gateway == ss.nodeAddress {
 		shard, err = ss.getShardFromLocal(task.Owner, task.Cid)
 		if err != nil {
 			log.Warn("skip the known error: ", err.Error())
-			// return err
+			return err
 		}
 	} else {
 		shard, err = ss.getShardFromGateway(ctx, task.Owner, task.Gateway, task.OrderId, task.Cid)
@@ -77,9 +78,14 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 			return err
 		}
 	}
-	// TODO: store resp.Content to ipfs
 
-	txHash, err := ss.chainSvc.CompleteOrder(ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
+	log.Info("store to backends.")
+	_, err = ss.storeManager.Store(task.Cid, bytes.NewReader(shard))
+	if err != nil {
+		return err
+	}
+
+	txHash, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
 	if err != nil {
 		return err
 	}

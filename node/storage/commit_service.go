@@ -112,7 +112,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 	}
 
 	if !orderMeta.TxSent {
-		orderId, txId, err := cs.chainSvc.StoreOrder(cs.nodeAddress, creator, cs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica)
+		orderId, txId, err := cs.chainSvc.StoreOrder(ctx, cs.nodeAddress, creator, cs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica)
 		if err != nil {
 			return nil, err
 		}
@@ -121,7 +121,7 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 		orderMeta.TxId = txId
 		orderMeta.TxSent = true
 	} else {
-		txId, err := cs.chainSvc.OrderReady(cs.nodeAddress, orderMeta.OrderId)
+		txId, err := cs.chainSvc.OrderReady(ctx, cs.nodeAddress, orderMeta.OrderId)
 		if err != nil {
 			return nil, err
 		}

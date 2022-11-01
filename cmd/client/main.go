@@ -209,7 +209,7 @@ var createCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderId, tx, err := chain.StoreOrder(from, from, gatewayAddress, contentCid, int32(duration), int32(replicas))
+			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, contentCid, int32(duration), int32(replicas))
 			if err != nil {
 				return err
 			}
@@ -327,7 +327,7 @@ var createFileCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
-			orderId, tx, err := chain.StoreOrder(from, from, gatewayAddress, cid, int32(duration), int32(replicas))
+			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, cid, int32(duration), int32(replicas))
 			if err != nil {
 				return err
 			}

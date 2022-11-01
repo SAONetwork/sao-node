@@ -45,6 +45,7 @@ func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("chain", "INFO")
 	_ = logging.SetLogLevel("storage", "INFO")
 	_ = logging.SetLogLevel("transport", "INFO")
+	_ = logging.SetLogLevel("store", "INFO")
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("cache", "DEBUG")
 		_ = logging.SetLogLevel("model", "DEBUG")
@@ -53,6 +54,7 @@ func before(cctx *cli.Context) error {
 		_ = logging.SetLogLevel("chain", "DEBUG")
 		_ = logging.SetLogLevel("storage", "DEBUG")
 		_ = logging.SetLogLevel("transport", "DEBUG")
+		_ = logging.SetLogLevel("store", "DEBUG")
 	}
 
 	return nil
@@ -142,7 +144,7 @@ var initCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
-		if tx, err := chain.Login(creator, ma, peerid); err != nil {
+		if tx, err := chain.Login(ctx, creator, ma, peerid); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
@@ -219,7 +221,7 @@ var updateCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		tx, err := chain.Reset(creator, ma, peer)
+		tx, err := chain.Reset(ctx, creator, ma, peer)
 		if err != nil {
 			return err
 		}
@@ -253,7 +255,7 @@ var quitCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
-		if tx, err := chain.Logout(creator); err != nil {
+		if tx, err := chain.Logout(ctx, creator); err != nil {
 			return err
 		} else {
 			fmt.Println(tx)
