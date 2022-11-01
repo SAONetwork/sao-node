@@ -1,8 +1,6 @@
 package cache
 
 import (
-	hamt "github.com/raviqqe/hamt"
-
 	"golang.org/x/xerrors"
 )
 
@@ -39,7 +37,7 @@ func (svc *LruCacheSvc) Get(name string, key string) (interface{}, error) {
 		return nil, xerrors.Errorf("the cache [%s] not found", name)
 	}
 
-	return cache.get(hamt.Entry(entryString(key))), nil
+	return cache.get(key), nil
 }
 
 func (svc *LruCacheSvc) Put(name string, key string, value interface{}) {
@@ -48,7 +46,7 @@ func (svc *LruCacheSvc) Put(name string, key string, value interface{}) {
 		log.Errorf("the cache [%s] not found", name)
 	}
 
-	cache.put(hamt.Entry(entryString(key)), value)
+	cache.put(key, value)
 }
 
 func (svc *LruCacheSvc) Evict(name string, key string) {
@@ -57,7 +55,7 @@ func (svc *LruCacheSvc) Evict(name string, key string) {
 		log.Errorf("the cache [%s] not found", name)
 	}
 
-	cache.evict(hamt.Entry(entryString(key)))
+	cache.evict(key)
 }
 
 func (svc *LruCacheSvc) GetCapacity(name string) int {
