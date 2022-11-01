@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"runtime"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
@@ -21,6 +22,10 @@ var (
 func NewRedisCacheSvc(conn string, password string, poolSize int) *RedisCacheSvc {
 	once.Do(func() {
 		log.Infof("octopus: init redis client: %v ******", conn)
+
+		if poolSize < 1 {
+			poolSize = 4 * runtime.NumCPU()
+		}
 		var cli redis.Cmdable
 		if strings.Contains(conn, ",") {
 			cli = redis.NewClusterClient(&redis.ClusterOptions{

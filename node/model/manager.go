@@ -50,10 +50,10 @@ var (
 func NewModelManager(cacheCfg *config.Cache, commitSvc storage.CommitSvcApi) *ModelManager {
 	once.Do(func() {
 		var cacheSvc cache.CacheSvcApi
-		if cacheCfg.RedisCache.RedisConn == "" {
+		if cacheCfg.RedisConn == "" {
 			cacheSvc = cache.NewLruCacheSvc()
 		} else {
-			cacheSvc = cache.NewRedisCacheSvc(cacheCfg.RedisCache.RedisConn, cacheCfg.RedisCache.RedisPassword, cacheCfg.RedisCache.RedisPoolSize)
+			cacheSvc = cache.NewRedisCacheSvc(cacheCfg.RedisConn, cacheCfg.RedisPassword, cacheCfg.RedisPoolSize)
 		}
 
 		modelManager = &ModelManager{
