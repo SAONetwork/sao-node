@@ -15,7 +15,6 @@ import (
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/multiformats/go-multihash"
 	"github.com/tendermint/tendermint/types/time"
 	"golang.org/x/xerrors"
 )
@@ -31,7 +30,7 @@ type Model struct {
 	Alias      string
 	Tags       []string
 	Content    []byte
-	Cid        cid.Cid
+	Cids       []string
 	ExtendInfo string
 }
 
@@ -90,7 +89,7 @@ func (m *ModelManager) Load(ctx context.Context, account string, key string) (*M
 		DataId:  result.DataId,
 		Alias:   result.Alias,
 		Content: result.Content,
-		Cid:     result.Cid,
+		Cids:    result.Cids,
 	}
 
 	mm := model
@@ -141,7 +140,7 @@ func (m *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, co
 		DataId:  result.DataId,
 		Alias:   alias,
 		Content: content,
-		Cid:     orderMeta.Cid,
+		Cids:    result.Cids,
 	}
 
 	m.cacheModel(orderMeta.Creator, model)
@@ -173,7 +172,7 @@ func (m *ModelManager) Update(account string, alias string, patch string, rule s
 		DataId:  orgModel.DataId,
 		Alias:   orgModel.Alias,
 		Content: newContentBytes,
-		Cid:     cid.NewCidV1(cid.Raw, multihash.Multihash(alias)),
+		Cids:    make([]string, 1),
 	}
 
 	m.cacheModel(account, model)
@@ -266,7 +265,7 @@ func (m *ModelManager) cacheModel(account string, model *Model) {
 	}
 
 	if len(model.Content) > m.CacheCfg.ContentLimit {
-		m.CacheSvc.Put(account, model.DataId, model.Cid.String())
+		m.CacheSvc.Put(account, model.DataId, model.Cids)
 	} else {
 		m.CacheSvc.Put(account, model.DataId, model)
 	}
