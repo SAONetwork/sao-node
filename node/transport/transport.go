@@ -35,7 +35,7 @@ type TransportServer struct {
 	DbLk             sync.Mutex
 	Db               datastore.Batching
 	StagingPath      string
-	StagingSapceSize int
+	StagingSapceSize int64
 }
 
 func StartTransportServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*TransportServer, error) {
@@ -127,6 +127,17 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 	}
 
 	if len(req.Content) > 0 {
+		info, err := os.Stat(ts.StagingPath)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		} else {
+			if info.Size()+int64(len(req.Content)) > ts.StagingSapceSize {
+				log.Errorf("not enough staging space under %s, need %v but only %v left", ts.StagingPath, len(req.Content), ts.StagingSapceSize-info.Size())
+				return
+			}
+		}
+
 		var path = filepath.Join(ts.StagingPath, s.Conn().RemotePeer().String(), req.Cid)
 
 		ts.handleChunkInfo(&req, path)
@@ -167,8 +178,8 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 			return
 		}
 
-		log.Info("Received file chunk[", req.ChunkId, "], remote CID: ", req.ChunkCid, ", local CID: ", localCid)
-		log.Info("Staging file ", filepath.Join(path, req.ChunkCid), " generated")
+		log.Info("Received file chunk[%d], remote CID: %s, local CID: %s", req.ChunkId, req.ChunkCid, localCid)
+		log.Infof("Staging file %s generated", filepath.Join(path, req.ChunkCid))
 	} else {
 		// Transport is done
 		if _, err := s.Write([]byte(req.Cid)); err != nil {

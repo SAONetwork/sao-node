@@ -61,8 +61,8 @@ func TestManager1(t *testing.T) {
 	}`)
 
 	model, err := manager.Create(context.Background(), orderMeta, content)
-	require.NotNil(t, model)
 	require.NoError(t, err)
+	require.NotNil(t, model)
 
 	modelLoad1, err := manager.Load(context.Background(), orderMeta.Creator, orderMeta.Alias)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
@@ -90,9 +90,9 @@ func TestManager2(t *testing.T) {
 
 	creator := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"
 
-	schemaOrder := types.OrderMeta{
+	schemaOrder1 := types.OrderMeta{
 		Creator:  creator,
-		Alias:    "addresses_schema",
+		Alias:    "addresses_schema_1",
 		Duration: 100000,
 		Replica:  1,
 		OrderId:  1,
@@ -100,9 +100,9 @@ func TestManager2(t *testing.T) {
 		TxSent:   true,
 		Rule:     "",
 	}
-	content := []byte(`{
+	content1 := []byte(`{
 		"definitions": {
-			"address": {
+			"address1": {
 				"type": "object",
 				"$id" : "cc1e76d1-e341-46eb-b3ca-102ae66d82f5",
 				"properties": {
@@ -115,32 +115,63 @@ func TestManager2(t *testing.T) {
 		},
 		"type": "object",
 		"properties": {
-			"billing_address": { "$ref": "cc1e76d1-e341-46eb-b3ca-102ae66d82f5" },
+			"billing_address": { "$ref": "cc1e76d1-e341-46eb-b3ca-102ae66d82f5" }
+		}
+	}`)
+
+	schema1, err1 := manager.Create(context.Background(), schemaOrder1, content1)
+	require.NotNil(t, schema1)
+	require.NoError(t, err1)
+
+	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema_1")
+	require.Equal(t, schema1.Alias, schemaLoad1.Alias)
+	require.NoError(t, err)
+
+	schemaOrder2 := types.OrderMeta{
+		Creator:  creator,
+		Alias:    "addresses_schema_2",
+		Duration: 100000,
+		Replica:  1,
+		OrderId:  1,
+		TxId:     "4EC45A9C04A636AA5B47A51DACCE5E64481263974B500F4DCFDD10CFDE437627",
+		TxSent:   true,
+		Rule:     "",
+	}
+	content2 := []byte(`{
+		"definitions": {
+			"address": {
+				"type": "object",
+				"$id" : "cc1e76d1-e341-46eb-b3ca-102ae66d82f5",
+				"properties": {
+					"street_address": { "type": "string" },
+					"city":           { "type": "string" },
+					"state":          { "type": "string" }
+				},
+				"required": ["street_address", "state"]
+			}
+		},
+		"type": "object",
+		"properties": {
 			"shipping_address": { "$ref": "cc1e76d1-e341-46eb-b3ca-102ae66d82f5" }
 		}
 	}`)
 
-	schema, err := manager.Create(context.Background(), schemaOrder, content)
-	require.NotNil(t, schema)
-	require.NoError(t, err)
+	schema2, err2 := manager.Create(context.Background(), schemaOrder2, content2)
+	require.NotNil(t, schema2)
+	require.NoError(t, err2)
 
-	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema")
-	require.Equal(t, schema.Alias, schemaLoad1.Alias)
-	require.NoError(t, err)
-
-	schemaLoad2, err := manager.Load(context.Background(), creator, schema.DataId)
-	require.Equal(t, schema.Alias, schemaLoad2.Alias)
-	require.NoError(t, err)
+	schemaLoad2, err2 := manager.Load(context.Background(), creator, "addresses_schema_2")
+	require.Equal(t, schema2.Alias, schemaLoad2.Alias)
+	require.NoError(t, err2)
 
 	modelStr := `{
-		"@context": "` + schema.DataId + `",
+		"@context": ["` + schema1.DataId + `", "` + schema2.DataId + `"],
 		"billing_address": {
 			"street_address": "No. 1 Street",
 			"city": "Lonton"
 		},
 		"shipping_address": {
 			"street_address": "No. 2 Street",
-			"city": "Huston",
 			"state": "Texas"
 		}
 	}`
@@ -156,8 +187,8 @@ func TestManager2(t *testing.T) {
 	}
 
 	model, err := manager.Create(context.Background(), modelOrder, []byte(modelStr))
-	require.NotNil(t, model)
 	require.NoError(t, err)
+	require.NotNil(t, model)
 
 	modelLoad1, err := manager.Load(context.Background(), creator, "test_model")
 	require.Equal(t, model.DataId, modelLoad1.DataId)

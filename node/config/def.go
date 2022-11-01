@@ -58,12 +58,15 @@ type Cache struct {
 	EnableCache   bool
 	CacheCapacity int
 	ContentLimit  int
+	RedisConn     string
+	RedisPassword string
+	RedisPoolSize int
 }
 
 type Transport struct {
 	TransportListenAddress []string
 	StagingPath            string
-	StagingSapceSize       int
+	StagingSapceSize       int64
 }
 
 func DefaultGatewayNode() *Node {

@@ -18,6 +18,7 @@ type CommitResult struct {
 	OrderId  uint64
 	DataId   string
 	CommitId string
+	Cids     []string
 }
 
 type PullResult struct {
@@ -27,7 +28,7 @@ type PullResult struct {
 	Tags     string
 	CommitId string
 	Content  []byte
-	Cid      cid.Cid
+	Cids     []string
 	Type     types.ModelType
 }
 
@@ -165,10 +166,13 @@ func (cs *CommitSvc) Commit(ctx context.Context, creator string, orderMeta types
 		// TODO: timeout handling
 		return nil, errors.Errorf("process order %d timeout.", orderMeta.OrderId)
 	} else {
+		cids := make([]string, 1)
+		cids[0] = orderMeta.Cid.String()
 		log.Infof("order %d complete: dataId=%s", orderMeta.OrderId, dataId)
 		return &CommitResult{
 			OrderId: orderMeta.OrderId,
 			DataId:  dataId,
+			Cids:    cids,
 		}, nil
 	}
 }

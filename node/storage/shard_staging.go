@@ -2,11 +2,12 @@ package storage
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
-	"os"
-	"path/filepath"
 )
 
 type ShardStaging struct {

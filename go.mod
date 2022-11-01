@@ -14,6 +14,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/filecoin-project/go-jsonrpc v0.1.8
+	github.com/go-redis/redis/v8 v8.11.5
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-uuid v1.0.1
 	github.com/hyperjumptech/grule-rule-engine v1.11.0
@@ -83,6 +84,7 @@ require (
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
