@@ -3,10 +3,15 @@ package storage
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"os"
+	"path/filepath"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/store"
+	"sao-storage-node/types"
 
 	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -22,17 +27,17 @@ type StoreSvc struct {
 	chainSvc     *chain.ChainSvc
 	taskChan     chan *chain.ShardTask
 	host         host.Host
-	shardStaging *ShardStaging
+	stagingPath  string
 	storeManager *store.StoreManager
 }
 
-func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, shardStaging *ShardStaging, storeManager *store.StoreManager) (*StoreSvc, error) {
+func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) (*StoreSvc, error) {
 	ss := StoreSvc{
 		nodeAddress:  nodeAddress,
 		chainSvc:     chainSvc,
 		taskChan:     make(chan *chain.ShardTask),
 		host:         host,
-		shardStaging: shardStaging,
+		stagingPath:  stagingPath,
 		storeManager: storeManager,
 	}
 	if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
@@ -93,8 +98,19 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	return nil
 }
 
-func (ss *StoreSvc) getShardFromLocal(owner string, cid cid.Cid) ([]byte, error) {
-	return ss.shardStaging.GetStagedShard(owner, cid)
+func (ss *StoreSvc) getShardFromLocal(creator string, cid cid.Cid) ([]byte, error) {
+	path, err := homedir.Expand(ss.stagingPath)
+	if err != nil {
+		return nil, err
+	}
+
+	filename := fmt.Sprintf("%v", cid)
+	bytes, err := os.ReadFile(filepath.Join(path, creator, filename))
+	if err != nil {
+		return nil, err
+	} else {
+		return bytes, nil
+	}
 }
 
 func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gateway string, orderId uint64, cid cid.Cid) ([]byte, error) {
@@ -115,20 +131,20 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	if err != nil {
 		return nil, err
 	}
-	stream, err := ss.host.NewStream(ctx, pi.ID, ShardStoreProtocol)
+	stream, err := ss.host.NewStream(ctx, pi.ID, types.ShardStoreProtocol)
 	if err != nil {
 		return nil, err
 	}
 	defer stream.Close()
-	log.Infof("open stream(%s) to gateway %s", ShardStoreProtocol, conn)
+	log.Infof("open stream(%s) to gateway %s", types.ShardStoreProtocol, conn)
 
-	req := ShardStoreReq{
+	req := types.ShardStoreReq{
 		Owner:   owner,
 		OrderId: orderId,
 		Cid:     cid,
 	}
 	log.Debugf("send ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
-	var resp ShardStoreResp
+	var resp types.ShardStoreResp
 	if err = DoRpc(ctx, stream, &req, &resp, "json"); err != nil {
 		// TODO: handle error
 		return nil, err
