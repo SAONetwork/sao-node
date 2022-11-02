@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sao-storage-node/node/chain"
+	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
 
@@ -145,7 +146,7 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	}
 	log.Debugf("send ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
 	var resp types.ShardStoreResp
-	if err = DoRpc(ctx, stream, &req, &resp, "json"); err != nil {
+	if err = transport.DoTransport(ctx, stream, &req, &resp, "json"); err != nil {
 		// TODO: handle error
 		return nil, err
 	}

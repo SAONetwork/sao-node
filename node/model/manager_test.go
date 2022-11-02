@@ -25,12 +25,14 @@ func (mcs *MockOrderSvc) Query(ctx context.Context, key string) (*order.QueryRes
 	return &order.QueryResult{
 		OrderId: 100,
 		DataId:  GenerateDataId(),
-		Content: []byte("sdafasdf"),
 	}, nil
 }
 
-func (mcs *MockOrderSvc) Stop(ctx context.Context) error {
-	return nil
+func (os *MockOrderSvc) Fetch(ctx context.Context, cids []string) (*order.FetchResult, error) {
+	return &order.FetchResult{
+		Cid:     "123",
+		Content: make([]byte, 0),
+	}, nil
 }
 
 func TestManager1(t *testing.T) {
