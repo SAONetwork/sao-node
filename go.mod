@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	github.com/SaoNetwork/go-ipfs-api v0.0.0-20221101110236-985d495983f7
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/evanphx/json-patch v4.9.0+incompatible
@@ -24,7 +25,6 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.3
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
-	github.com/ipfs/go-ipfs-api v0.3.0
 	github.com/json-iterator/go v1.1.12
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
@@ -122,6 +122,7 @@ require (
 	github.com/hdevalence/ed25519consensus v0.0.0-20220222234857-c00d1f31bab3 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/ipfs/go-ipfs-api v0.3.0 // indirect
 	github.com/ipfs/go-ipfs-files v0.0.9 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/jackpal/go-nat-pmp v1.0.2 // indirect
@@ -239,5 +240,3 @@ require (
 replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
-
-replace github.com/ipfs/go-ipfs-api v0.3.0 => ../go-ipfs-api
