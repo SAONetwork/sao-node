@@ -97,6 +97,9 @@ func DefaultGatewayNode() *Node {
 				{
 					Conn: "ipfs+http://localhost:5001",
 				},
+				{
+					Conn: "ipfs+http://localhost:5002",
+				},
 			},
 		},
 	}

@@ -27,6 +27,7 @@ type RawCommit struct {
 
 type OrderMeta struct {
 	Creator               string
+	GroupId               string
 	Alias                 string
 	Tags                  []string
 	Duration              int32
