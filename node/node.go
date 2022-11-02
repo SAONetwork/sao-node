@@ -145,15 +145,18 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		}
 
 		if cfg.SaoIpfs.Enable {
-			ipfsDaemon := store.NewIpfsDaemon(cfg.SaoIpfs.Repo)
+			ipfsDaemon, err := store.NewIpfsDaemon(cfg.SaoIpfs.Repo)
+			if err != nil {
+				return nil, err
+			}
 			daemonApi, node, err := ipfsDaemon.Start(ctx)
+			if err != nil {
+				return nil, err
+			}
 			sn.stopFuncs = append(sn.stopFuncs, func(ctx context.Context) error {
 				log.Info("close ipfs daemon.")
 				return node.Close()
 			})
-			if err != nil {
-				return nil, err
-			}
 			ipfsBackend, err := store.NewIpfsBackend("ipfs+sao", daemonApi)
 			if err != nil {
 				return nil, err
