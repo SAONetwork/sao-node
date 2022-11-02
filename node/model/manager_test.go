@@ -3,33 +3,33 @@ package model
 import (
 	"context"
 	"sao-storage-node/node/config"
-	"sao-storage-node/node/storage"
+	"sao-storage-node/node/order"
 	"sao-storage-node/types"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-type MockCommitSvc struct {
+type MockOrderSvc struct {
 }
 
-func (mcs *MockCommitSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*storage.CommitResult, error) {
-	return &storage.CommitResult{
+func (mcs *MockOrderSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*order.CommitResult, error) {
+	return &order.CommitResult{
 		OrderId:  100,
 		DataId:   GenerateDataId(),
 		CommitId: "888888",
 	}, nil
 }
 
-func (mcs *MockCommitSvc) Pull(ctx context.Context, key string) (*storage.PullResult, error) {
-	return &storage.PullResult{
+func (mcs *MockOrderSvc) Query(ctx context.Context, key string) (*order.QueryResult, error) {
+	return &order.QueryResult{
 		OrderId: 100,
 		DataId:  GenerateDataId(),
 		Content: []byte("sdafasdf"),
 	}, nil
 }
 
-func (mcs *MockCommitSvc) Stop(ctx context.Context) error {
+func (mcs *MockOrderSvc) Stop(ctx context.Context) error {
 	return nil
 }
 
@@ -40,13 +40,14 @@ func TestManager1(t *testing.T) {
 		ContentLimit:  1024 * 1024,
 	}
 
-	var mockCommitSvc storage.CommitSvcApi = &MockCommitSvc{}
+	var mockOrderSvc order.OrderSvcApi = &MockOrderSvc{}
 
-	manager := NewModelManager(config, mockCommitSvc)
+	manager := NewModelManager(config, mockOrderSvc)
 	require.NotNil(t, manager)
 
 	orderMeta := types.OrderMeta{
 		Creator:  "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h",
+		GroupId:  "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
 		Alias:    "test_model1",
 		Duration: 100000,
 		Replica:  1,
@@ -83,15 +84,17 @@ func TestManager2(t *testing.T) {
 		ContentLimit:  1024 * 1024,
 	}
 
-	var mockCommitSvc storage.CommitSvcApi = &MockCommitSvc{}
+	var mockOrderSvc order.OrderSvcApi = &MockOrderSvc{}
 
-	manager := NewModelManager(config, mockCommitSvc)
+	manager := NewModelManager(config, mockOrderSvc)
 	require.NotNil(t, manager)
 
 	creator := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"
+	groupId := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"
 
 	schemaOrder1 := types.OrderMeta{
 		Creator:  creator,
+		GroupId:  groupId,
 		Alias:    "addresses_schema_1",
 		Duration: 100000,
 		Replica:  1,
@@ -129,6 +132,7 @@ func TestManager2(t *testing.T) {
 
 	schemaOrder2 := types.OrderMeta{
 		Creator:  creator,
+		GroupId:  groupId,
 		Alias:    "addresses_schema_2",
 		Duration: 100000,
 		Replica:  1,
@@ -177,6 +181,7 @@ func TestManager2(t *testing.T) {
 	}`
 	modelOrder := types.OrderMeta{
 		Creator:  creator,
+		GroupId:  groupId,
 		Alias:    "test_model",
 		Duration: 100000,
 		Replica:  1,

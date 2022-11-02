@@ -10,7 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sao-storage-node/node/config"
-	"sao-storage-node/types/transport"
+	"sao-storage-node/types"
 	"strings"
 	"sync"
 	"time"
@@ -64,7 +64,7 @@ func StartTransportServer(ctx context.Context, address string, serverKey crypto.
 		peerInfos = append(peerInfos, withP2p.String())
 	}
 	if len(peerInfos) > 0 {
-		key := datastore.NewKey(fmt.Sprintf(transport.PEER_INFO_PREFIX))
+		key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
 		db.Put(ctx, key, []byte(strings.Join(peerInfos, ", ")))
 	}
 
@@ -105,7 +105,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
-	var req transport.FileChunkReq
+	var req types.FileChunkReq
 	buf := &bytes.Buffer{}
 	buf.ReadFrom(s)
 	err := json.Unmarshal(buf.Bytes(), &req)
@@ -187,9 +187,9 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 			return
 		}
 
-		key := datastore.NewKey(transport.FILE_INFO_PREFIX + req.Cid)
+		key := datastore.NewKey(types.FILE_INFO_PREFIX + req.Cid)
 		if info, err := ts.Db.Get(ts.Ctx, key); err == nil {
-			var fileInfo *transport.ReceivedFileInfo
+			var fileInfo *types.ReceivedFileInfo
 			err := json.Unmarshal(info, &fileInfo)
 			if err != nil {
 				log.Error(err.Error())
@@ -257,15 +257,15 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 	}
 }
 
-func (ts *TransportServer) handleChunkInfo(req *transport.FileChunkReq, path string) {
+func (ts *TransportServer) handleChunkInfo(req *types.FileChunkReq, path string) {
 	ts.DbLk.Lock()
 	defer ts.DbLk.Unlock()
 
-	var fileInfo *transport.ReceivedFileInfo
+	var fileInfo *types.ReceivedFileInfo
 	key := datastore.NewKey(fmt.Sprintf("fileIno_%s", req.Cid))
 
 	if req.ChunkId == 0 {
-		fileInfo = &transport.ReceivedFileInfo{
+		fileInfo = &types.ReceivedFileInfo{
 			Cid:            req.Cid,
 			TotalLength:    req.TotalLength,
 			TotalChunks:    req.TotalChunks,
