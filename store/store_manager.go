@@ -29,11 +29,11 @@ func NewStoreManager(initial []StoreBackend) *StoreManager {
 	}
 }
 
-func (ss StoreManager) AddBackend(backend StoreBackend) {
+func (ss *StoreManager) AddBackend(backend StoreBackend) {
 	ss.backends = append(ss.backends, backend)
 }
 
-func (ss StoreManager) Type() string {
+func (ss *StoreManager) Type() string {
 	return "manager"
 }
 
@@ -51,7 +51,7 @@ func (ss *StoreManager) Open() error {
 	return nil
 }
 
-func (ss StoreManager) Close() error {
+func (ss *StoreManager) Close() error {
 	var err error
 	for _, back := range ss.backends {
 		err = back.Close()
@@ -63,7 +63,7 @@ func (ss StoreManager) Close() error {
 	return nil
 }
 
-func (ss StoreManager) Store(cid cid.Cid, reader io.Reader) (any, error) {
+func (ss *StoreManager) Store(cid cid.Cid, reader io.Reader) (any, error) {
 	var err error
 	for _, back := range ss.backends {
 		_, err = back.Store(reader)
@@ -74,7 +74,7 @@ func (ss StoreManager) Store(cid cid.Cid, reader io.Reader) (any, error) {
 	return nil, nil
 }
 
-func (ss StoreManager) Remove(cid cid.Cid) error {
+func (ss *StoreManager) Remove(cid cid.Cid) error {
 	var err error
 	for _, back := range ss.backends {
 		err = back.Remove(cid)
@@ -85,7 +85,7 @@ func (ss StoreManager) Remove(cid cid.Cid) error {
 	return nil
 }
 
-func (ss StoreManager) Get(cid cid.Cid) (io.ReadCloser, error) {
+func (ss *StoreManager) Get(cid cid.Cid) (io.ReadCloser, error) {
 	for _, back := range ss.backends {
 		reader, err := back.Get(cid)
 		if err != nil {
