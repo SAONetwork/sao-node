@@ -84,10 +84,9 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string) (*
 	}
 
 	model = &Model{
-		DataId:  result.DataId,
-		Alias:   result.Alias,
-		Content: result.Content,
-		Cids:    result.Cids,
+		DataId: result.DataId,
+		Alias:  result.Alias,
+		Cids:   result.Cids,
 	}
 
 	mm.cacheModel(account, model)

@@ -116,10 +116,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.GatewayEnable {
-		var orderSvc = order.NewOrderSvc(ctx, nodeAddr, chainSvc, cfg.Transport.StagingPath)
-		var handler = order.NewShardStreamHandler(cfg.Transport.StagingPath)
-		host.SetStreamHandler(types.ShardStoreProtocol, handler.HandleShardStream)
-
+		var orderSvc = order.NewOrderSvc(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath)
 		sn.manager = model.NewModelManager(&cfg.Cache, orderSvc)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 

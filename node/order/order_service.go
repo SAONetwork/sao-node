@@ -7,6 +7,7 @@ import (
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
 	"golang.org/x/xerrors"
 )
@@ -26,48 +27,54 @@ type QueryResult struct {
 	Alias    string
 	Tags     string
 	CommitId string
-	Content  []byte
 	Cids     []string
 	Type     types.ModelType
+}
+
+type FetchResult struct {
+	Cid     string
+	Content []byte
 }
 
 type OrderSvcApi interface {
 	Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
 	Query(ctx context.Context, key string) (*QueryResult, error)
-	// Stop(ctx context.Context) error
+	Fetch(ctx context.Context, cids []string) (*FetchResult, error)
 }
 
 type OrderSvc struct {
-	ctx         context.Context
-	chainSvc    *chain.ChainSvc
-	nodeAddress string
-	stagingPath string
+	ctx                context.Context
+	chainSvc           *chain.ChainSvc
+	shardStreamHandler *ShardStreamHandler
+	nodeAddress        string
+	stagingPath        string
 }
 
-func NewOrderSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, stagingPath string) *OrderSvc {
+func NewOrderSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string) *OrderSvc {
 	cs := &OrderSvc{
-		ctx:         ctx,
-		chainSvc:    chainSvc,
-		nodeAddress: nodeAddress,
-		stagingPath: stagingPath,
+		ctx:                ctx,
+		chainSvc:           chainSvc,
+		shardStreamHandler: NewShardStreamHandler(ctx, host, stagingPath),
+		nodeAddress:        nodeAddress,
+		stagingPath:        stagingPath,
 	}
 
 	return cs
 }
 
-func (cs *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
+func (os *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
 	// TODO: support marshal any content
 	log.Infof("stage shard /%s/%v", creator, orderMeta.Cid)
-	err := StageShard(cs.stagingPath, creator, orderMeta.Cid, content)
+	err := StageShard(os.stagingPath, creator, orderMeta.Cid, content)
 	if err != nil {
 		return nil, err
 	}
 
 	if !orderMeta.TxSent {
-		orderId, txId, err := cs.chainSvc.StoreOrder(ctx, cs.nodeAddress, creator, cs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica)
+		orderId, txId, err := os.chainSvc.StoreOrder(ctx, os.nodeAddress, creator, os.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +83,7 @@ func (cs *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 		orderMeta.TxId = txId
 		orderMeta.TxSent = true
 	} else {
-		txId, err := cs.chainSvc.OrderReady(ctx, cs.nodeAddress, orderMeta.OrderId)
+		txId, err := os.chainSvc.OrderReady(ctx, os.nodeAddress, orderMeta.OrderId)
 		if err != nil {
 			return nil, err
 		}
@@ -88,7 +95,7 @@ func (cs *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 
 	log.Infof("start SubscribeOrderComplete")
 	doneChan := make(chan chain.OrderCompleteResult)
-	err = cs.chainSvc.SubscribeOrderComplete(ctx, orderMeta.OrderId, doneChan)
+	err = os.chainSvc.SubscribeOrderComplete(ctx, orderMeta.OrderId, doneChan)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +112,7 @@ func (cs *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 	}
 	close(doneChan)
 
-	err = cs.chainSvc.UnsubscribeOrderComplete(ctx, orderMeta.OrderId)
+	err = os.chainSvc.UnsubscribeOrderComplete(ctx, orderMeta.OrderId)
 	if err != nil {
 		log.Error(err)
 	} else {
@@ -113,7 +120,7 @@ func (cs *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 	}
 
 	log.Infof("unstage shard /%s/%v", creator, orderMeta.Cid)
-	err = UnstageShard(cs.stagingPath, creator, orderMeta.Cid)
+	err = UnstageShard(os.stagingPath, creator, orderMeta.Cid)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +140,14 @@ func (cs *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 	}
 }
 
-func (cs *OrderSvc) Query(ctx context.Context, key string) (*QueryResult, error) {
+func (os *OrderSvc) Query(ctx context.Context, key string) (*QueryResult, error) {
 	return nil, xerrors.Errorf("not implemented yet")
+}
+
+func (os *OrderSvc) Fetch(ctx context.Context, cids []string) (*FetchResult, error) {
+
+	return &FetchResult{
+		Cid:     "sad",
+		Content: make([]byte, 0),
+	}, nil
 }
