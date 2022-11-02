@@ -22,6 +22,12 @@ type Node struct {
 	Api       API
 	Module    Module
 	Storage   Storage
+	SaoIpfs   SaoIpfs
+}
+
+type SaoIpfs struct {
+	Enable bool
+	Repo   string
 }
 
 type Storage struct {
@@ -93,11 +99,11 @@ func DefaultGatewayNode() *Node {
 			StorageEnable: true,
 		},
 		Storage: Storage{
-			Ipfs: []Ipfs{
-				{
-					Conn: "ipfs+http://localhost:5001",
-				},
-			},
+			Ipfs: []Ipfs{},
+		},
+		SaoIpfs: SaoIpfs{
+			Enable: true,
+			Repo:   "~/.sao_ipfs",
 		},
 	}
 }
