@@ -80,7 +80,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	}
 
 	log.Info("store to backends.")
-	_, err = ss.storeManager.Store(task.Cid, bytes.NewReader(shard))
+	_, err = ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
 	if err != nil {
 		return err
 	}
