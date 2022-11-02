@@ -21,10 +21,15 @@ type IpfsDaemon struct {
 	repoPath string
 }
 
-func NewIpfsDaemon(repoPath string) IpfsDaemon {
-	return IpfsDaemon{
-		repoPath: repoPath,
+func NewIpfsDaemon(repoPath string) (*IpfsDaemon, error) {
+	repoPath, err := homedir.Expand(repoPath)
+	if err != nil {
+		return nil, err
 	}
+
+	return &IpfsDaemon{
+		repoPath: repoPath,
+	}, nil
 }
 
 func (d IpfsDaemon) Start(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, error) {
@@ -41,6 +46,7 @@ func (d IpfsDaemon) Start(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, e
 		return nil, nil, err
 	}
 
+	log.Debugf("repo path: %s", d.repoPath)
 	node, err := createNode(ctx, d.repoPath)
 	if err != nil {
 		return nil, nil, err
