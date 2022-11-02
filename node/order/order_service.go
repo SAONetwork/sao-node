@@ -2,10 +2,14 @@ package order
 
 import (
 	"context"
+	"io"
 	"sao-storage-node/node/chain"
+	"sao-storage-node/store"
 	"sao-storage-node/types"
+	"strconv"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
@@ -21,40 +25,35 @@ type CommitResult struct {
 	Cids     []string
 }
 
-type QueryResult struct {
-	OrderId  uint64
-	DataId   string
-	Alias    string
-	Tags     string
-	CommitId string
-	Cids     []string
-	Type     types.ModelType
-}
-
 type FetchResult struct {
+	DataId  string
+	Alias   string
 	Cid     string
 	Content []byte
 }
 
 type OrderSvcApi interface {
 	Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
-	Query(ctx context.Context, key string) (*QueryResult, error)
-	Fetch(ctx context.Context, cids []string) (*FetchResult, error)
+	Query(ctx context.Context, key string) (*types.OrderMeta, error)
+	Fetch(ctx context.Context, orderId uint64) (*FetchResult, error)
+	Stop(ctx context.Context) error
 }
 
 type OrderSvc struct {
 	ctx                context.Context
 	chainSvc           *chain.ChainSvc
 	shardStreamHandler *ShardStreamHandler
+	storeManager       *store.StoreManager
 	nodeAddress        string
 	stagingPath        string
 }
 
-func NewOrderSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string) *OrderSvc {
+func NewOrderSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) *OrderSvc {
 	cs := &OrderSvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
 		shardStreamHandler: NewShardStreamHandler(ctx, host, stagingPath),
+		storeManager:       storeManager,
 		nodeAddress:        nodeAddress,
 		stagingPath:        stagingPath,
 	}
@@ -140,14 +139,85 @@ func (os *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 	}
 }
 
-func (os *OrderSvc) Query(ctx context.Context, key string) (*QueryResult, error) {
-	return nil, xerrors.Errorf("not implemented yet")
+func (os *OrderSvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
+	var cids = make([]string, 1)
+	fakeCid := "bafkreih36a72gdu7dwozyaegev47bscepunrlt64lcoyxcejuhnlnjnw6e"
+	cids[0] = fakeCid
+
+	uintNum, _ := strconv.Atoi(key)
+	orderId := uint64(uintNum)
+
+	return &types.OrderMeta{
+		DataId:    key,
+		Alias:     key,
+		CommitId:  key,
+		OrderId:   orderId,
+		ChunkCids: cids,
+	}, nil
 }
 
-func (os *OrderSvc) Fetch(ctx context.Context, cids []string) (*FetchResult, error) {
+func (os *OrderSvc) Fetch(ctx context.Context, orderId uint64) (*FetchResult, error) {
+	order, err := os.chainSvc.GetOrder(ctx, orderId)
+	if err != nil {
+		return nil, err
+	}
+
+	contentList := make([][]byte, len(order.Shards))
+	for key, shard := range order.Shards {
+		log.Info("shard: ", shard)
+		shardCid, err := cid.Decode(shard.Cid)
+		if err != nil {
+			return nil, err
+		}
+
+		addr, err := os.chainSvc.GetNodePeer(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+
+		var shardContent []byte
+		if key == os.nodeAddress {
+			// local shard
+			if os.storeManager == nil {
+				return nil, xerrors.Errorf("local store manager not found")
+			}
+			reader, err := os.storeManager.Get(ctx, shardCid)
+			if err != nil {
+				return nil, err
+			}
+			shardContent, err = io.ReadAll(reader)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			// remote shard
+			shardContent, err = os.shardStreamHandler.Fetch(addr, shardCid)
+			if err != nil {
+				return nil, err
+			}
+		}
+		contentList[shard.Id] = shardContent
+	}
+	log.Info("contentList: ", contentList)
+
+	var content []byte
+	for _, c := range contentList {
+		content = append(content, c...)
+	}
+
+	log.Info("content: ", content)
 
 	return &FetchResult{
-		Cid:     "sad",
-		Content: make([]byte, 0),
+		DataId:  "12234",
+		Alias:   "fasdfasdfasdf",
+		Cid:     "123456",
+		Content: content,
 	}, nil
+}
+
+func (cs *OrderSvc) Stop(ctx context.Context) error {
+	log.Info("stopping order service...")
+	cs.shardStreamHandler.Stop(ctx)
+
+	return nil
 }

@@ -115,19 +115,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		tds:       tds,
 	}
 
-	if cfg.Module.GatewayEnable {
-		var orderSvc = order.NewOrderSvc(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath)
-		sn.manager = model.NewModelManager(&cfg.Cache, orderSvc)
-		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
-
-		// api server
-		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
-		if err != nil {
-			return nil, err
-		}
-		sn.stopFuncs = append(sn.stopFuncs, rpcStopper)
-	}
-
+	var storageManager *store.StoreManager = nil
 	if cfg.Module.StorageEnable {
 		var backends []store.StoreBackend
 		if len(cfg.Storage.Ipfs) > 0 {
@@ -162,15 +150,35 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 				return nil, err
 			}
 			backends = append(backends, ipfsBackend)
+			log.Info("ipfs daemon initialized")
 		}
 
-		storageManager := store.NewStoreManager(backends)
+		storageManager = store.NewStoreManager(backends)
+		log.Info("store manager daemon initialized")
+
 		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
+
+		log.Info("storage node initialized")
 		if err != nil {
 			return nil, err
 		}
 		go sn.storeSvc.Start(ctx)
 		sn.stopFuncs = append(sn.stopFuncs, sn.storeSvc.Stop)
+	}
+
+	if cfg.Module.GatewayEnable {
+		var orderSvc = order.NewOrderSvc(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
+		sn.manager = model.NewModelManager(&cfg.Cache, orderSvc)
+		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
+
+		// api server
+		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
+		if err != nil {
+			return nil, err
+		}
+		sn.stopFuncs = append(sn.stopFuncs, rpcStopper)
+
+		log.Info("gateway node initialized")
 	}
 
 	// chainSvc.stop should be after chain listener unsubscribe
