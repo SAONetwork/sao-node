@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"sao-storage-node/api"
 	"sao-storage-node/node/chain"
+	"sao-storage-node/node/order"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 
@@ -23,7 +24,6 @@ import (
 	"sao-storage-node/node/repo"
 	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
-	typestransport "sao-storage-node/types/transport"
 	"strings"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -34,9 +34,8 @@ import (
 var log = logging.Logger("node")
 
 type Node struct {
-	ctx context.Context
-	cfg *config.Node
-	//manager       *model.ModelManager
+	ctx       context.Context
+	cfg       *config.Node
 	host      *host.Host
 	repo      *repo.Repo
 	address   string
@@ -104,7 +103,6 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
-	shardStaging := storage.NewShardStaging(cfg.Transport.StagingPath)
 	var stopFuncs []StopFunc
 
 	sn := Node{
@@ -118,15 +116,11 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.GatewayEnable {
-		// order db
-		orderDb, err := repo.Datastore(ctx, "/order")
-		if err != nil {
-			return nil, err
-		}
+		var orderSvc = order.NewOrderSvc(ctx, nodeAddr, chainSvc, cfg.Transport.StagingPath)
+		var handler = order.NewShardStreamHandler(cfg.Transport.StagingPath)
+		host.SetStreamHandler(types.ShardStoreProtocol, handler.HandleShardStream)
 
-		var commitSvc = storage.NewCommitSvc(ctx, nodeAddr, chainSvc, orderDb, host, &shardStaging)
-		var commitSvcApi storage.CommitSvcApi = commitSvc
-		sn.manager = model.NewModelManager(&cfg.Cache, commitSvcApi)
+		sn.manager = model.NewModelManager(&cfg.Cache, orderSvc)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// api server
@@ -171,7 +165,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		}
 
 		storageManager := store.NewStoreManager(backends)
-		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, &shardStaging, storageManager)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
 		if err != nil {
 			return nil, err
 		}
@@ -236,9 +230,9 @@ func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, content []
 
 func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
-	key := datastore.NewKey(typestransport.FILE_INFO_PREFIX + orderMeta.Cid.String())
+	key := datastore.NewKey(types.FILE_INFO_PREFIX + orderMeta.Cid.String())
 	if info, err := n.tds.Get(ctx, key); err == nil {
-		var fileInfo *typestransport.ReceivedFileInfo
+		var fileInfo *types.ReceivedFileInfo
 		err := json.Unmarshal(info, &fileInfo)
 		if err != nil {
 			return apitypes.CreateResp{}, err
@@ -299,7 +293,7 @@ func (n *Node) Delete(ctx context.Context, owner string, alias string) (apitypes
 }
 
 func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
-	key := datastore.NewKey(typestransport.PEER_INFO_PREFIX)
+	key := datastore.NewKey(types.PEER_INFO_PREFIX)
 	if peerInfo, err := n.tds.Get(ctx, key); err == nil {
 		return apitypes.GetPeerInfoResp{
 			PeerInfo: string(peerInfo),

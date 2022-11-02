@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sao-storage-node/types/transport"
+	"sao-storage-node/types"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -86,14 +86,14 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 	}
 
 	var contentLength int = len(content)
-	var totalChunks = contentLength/transport.CHUNK_SIZE + 1
+	var totalChunks = contentLength/types.CHUNK_SIZE + 1
 	chunkId := 0
 	for chunkId <= totalChunks {
 		var chunk []byte
-		if (chunkId+1)*transport.CHUNK_SIZE < len(content) {
-			chunk = content[chunkId*transport.CHUNK_SIZE : (chunkId+1)*transport.CHUNK_SIZE]
-		} else if chunkId*transport.CHUNK_SIZE < len(content) {
-			chunk = content[chunkId*transport.CHUNK_SIZE:]
+		if (chunkId+1)*types.CHUNK_SIZE < len(content) {
+			chunk = content[chunkId*types.CHUNK_SIZE : (chunkId+1)*types.CHUNK_SIZE]
+		} else if chunkId*types.CHUNK_SIZE < len(content) {
+			chunk = content[chunkId*types.CHUNK_SIZE:]
 		} else {
 			chunk = make([]byte, 0)
 		}
@@ -119,7 +119,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		}
 		defer str.Close()
 
-		req := &transport.FileChunkReq{
+		req := &types.FileChunkReq{
 			ChunkId:     chunkId,
 			TotalLength: contentLength,
 			TotalChunks: totalChunks,

@@ -107,6 +107,12 @@ var createCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "from",
+			Usage:    "data model owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -161,6 +167,11 @@ var createCmd = &cli.Command{
 		}
 		content := []byte(cctx.String("content"))
 
+		if !cctx.IsSet("platform") {
+			return xerrors.Errorf("must provide --platform")
+		}
+		platform := cctx.String("platform")
+
 		if !cctx.IsSet("from") {
 			return xerrors.Errorf("must provide --from")
 		}
@@ -181,6 +192,7 @@ var createCmd = &cli.Command{
 
 		orderMeta := types.OrderMeta{
 			Creator:  from,
+			GroupId:  platform,
 			Alias:    cctx.String("name"),
 			Duration: int32(duration),
 			Replica:  int32(replicas),
@@ -234,6 +246,12 @@ var createFileCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "from",
+			Usage:    "file owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the file",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -281,6 +299,11 @@ var createFileCmd = &cli.Command{
 		// if !cctx.IsSet("content") || cctx.String("content") == "" {
 		// 	return xerrors.Errorf("must provide non-empty --content.")
 		// }
+		if !cctx.IsSet("platform") {
+			return xerrors.Errorf("must provide --platform")
+		}
+		platform := cctx.String("platform")
+
 		if !cctx.IsSet("from") {
 			return xerrors.Errorf("must provide --from")
 		}
@@ -307,6 +330,7 @@ var createFileCmd = &cli.Command{
 
 		orderMeta := types.OrderMeta{
 			Creator:  from,
+			GroupId:  platform,
 			Alias:    fileName,
 			Duration: int32(duration),
 			Replica:  int32(replicas),

@@ -1,76 +1,12 @@
 package storage
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 
-	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/network"
 )
-
-// TODO: store node should sign the request.
-type ShardStoreReq struct {
-	Owner   string
-	OrderId uint64
-	Cid     cid.Cid
-}
-
-func (f *ShardStoreReq) Unmarshal(r io.Reader, format string) (err error) {
-	if format == "json" {
-		buf := &bytes.Buffer{}
-		buf.ReadFrom(r)
-		err = json.Unmarshal(buf.Bytes(), f)
-	} else {
-		// TODO: CBOR marshal
-	}
-	return nil
-}
-
-func (f *ShardStoreReq) Marshal(w io.Writer, format string) error {
-	if format == "json" {
-		bytes, err := json.Marshal(f)
-		if err != nil {
-			return err
-		}
-		w.Write(bytes)
-		return nil
-	} else {
-		// TODO: CBOR marshal
-	}
-	return nil
-}
-
-type ShardStoreResp struct {
-	OrderId uint64
-	Cid     cid.Cid
-	Content []byte
-}
-
-func (f *ShardStoreResp) Marshal(w io.Writer, format string) error {
-	if format == "cbor" {
-		// TODO:
-	} else {
-		bytes, err := json.Marshal(f)
-		if err != nil {
-			return err
-		}
-		w.Write(bytes)
-	}
-	return nil
-}
-func (f *ShardStoreResp) Unmarshal(r io.Reader, format string) (err error) {
-	if format == "json" {
-		buf := &bytes.Buffer{}
-		buf.ReadFrom(r)
-		err = json.Unmarshal(buf.Bytes(), f)
-	} else {
-		// TODO: CBOR marshal
-	}
-	return nil
-}
 
 type CommonUnmarshaler interface {
 	Unmarshal(io.Reader, string) error

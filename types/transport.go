@@ -1,4 +1,4 @@
-package transport
+package types
 
 const PEER_INFO_PREFIX = "peerInfo_"
 const FILE_INFO_PREFIX = "fileInfo_"
