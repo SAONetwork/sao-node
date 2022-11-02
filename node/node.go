@@ -135,7 +135,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		var backends []store.StoreBackend
 		if len(cfg.Storage.Ipfs) > 0 {
 			for _, f := range cfg.Storage.Ipfs {
-				ipfsBackend, err := store.NewIpfsBackend(f.Conn)
+				ipfsBackend, err := store.NewIpfsBackend(f.Conn, nil)
 				if err != nil {
 					return nil, err
 				}
@@ -146,6 +146,24 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 				backends = append(backends, ipfsBackend)
 			}
 		}
+
+		if cfg.SaoIpfs.Enable {
+			ipfsDaemon := store.NewIpfsDaemon(cfg.SaoIpfs.Repo)
+			daemonApi, node, err := ipfsDaemon.Start(ctx)
+			sn.stopFuncs = append(sn.stopFuncs, func(ctx context.Context) error {
+				log.Info("close ipfs daemon.")
+				return node.Close()
+			})
+			if err != nil {
+				return nil, err
+			}
+			ipfsBackend, err := store.NewIpfsBackend("ipfs+sao", daemonApi)
+			if err != nil {
+				return nil, err
+			}
+			backends = append(backends, ipfsBackend)
+		}
+
 		storageManager := store.NewStoreManager(backends)
 		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
 		if err != nil {

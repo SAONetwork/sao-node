@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -14,9 +15,9 @@ type StoreBackend interface {
 	Type() string
 	Open() error
 	Close() error
-	Store(reader io.Reader) (any, error)
-	Remove(cid cid.Cid) error
-	Get(cid cid.Cid) (io.ReadCloser, error)
+	Store(ctx context.Context, reader io.Reader) (any, error)
+	Remove(ctx context.Context, cid cid.Cid) error
+	Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error)
 }
 
 type StoreManager struct {
@@ -63,10 +64,10 @@ func (ss *StoreManager) Close() error {
 	return nil
 }
 
-func (ss *StoreManager) Store(cid cid.Cid, reader io.Reader) (any, error) {
+func (ss *StoreManager) Store(ctx context.Context, cid cid.Cid, reader io.Reader) (any, error) {
 	var err error
 	for _, back := range ss.backends {
-		_, err = back.Store(reader)
+		_, err = back.Store(ctx, reader)
 		if err != nil {
 			log.Errorf("%s store error: %v", back.Id(), err)
 		}
@@ -74,10 +75,10 @@ func (ss *StoreManager) Store(cid cid.Cid, reader io.Reader) (any, error) {
 	return nil, nil
 }
 
-func (ss *StoreManager) Remove(cid cid.Cid) error {
+func (ss *StoreManager) Remove(ctx context.Context, cid cid.Cid) error {
 	var err error
 	for _, back := range ss.backends {
-		err = back.Remove(cid)
+		err = back.Remove(ctx, cid)
 		if err != nil {
 			log.Errorf("%s remove cid=%v error: %v", back.Id(), cid, err)
 		}
@@ -85,9 +86,9 @@ func (ss *StoreManager) Remove(cid cid.Cid) error {
 	return nil
 }
 
-func (ss *StoreManager) Get(cid cid.Cid) (io.ReadCloser, error) {
+func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error) {
 	for _, back := range ss.backends {
-		reader, err := back.Get(cid)
+		reader, err := back.Get(ctx, cid)
 		if err != nil {
 			log.Errorf("%s remove cid=%v error: %v", back.Id(), cid, err)
 			continue
