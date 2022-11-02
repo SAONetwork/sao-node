@@ -2,10 +2,11 @@ package store
 
 import (
 	"context"
+	"io"
+
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
-	"io"
 )
 
 var log = logging.Logger("store")

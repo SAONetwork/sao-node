@@ -80,7 +80,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	}
 }
 
-func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) (*FetchResult, error) {
+func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) ([]byte, error) {
 	a, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
 		return nil, err
@@ -112,10 +112,7 @@ func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) (*FetchResul
 
 	log.Debugf("receive ShardStoreResp with content length:%d, from the storage node %s", len(resp.Content), addr)
 
-	return &FetchResult{
-		Cid:     resp.Cid.String(),
-		Content: resp.Content,
-	}, nil
+	return resp.Content, nil
 }
 
 func (ssh *ShardStreamHandler) Stop(ctx context.Context) error {

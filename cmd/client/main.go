@@ -482,7 +482,7 @@ var loadCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias id: %d, data id: %s", resp.Alias, resp.DataId)
+		log.Infof("alias id: %d, data id: %s, content: %s", resp.Alias, resp.DataId, resp.Content)
 
 		dumpFlag := cctx.Bool("dump")
 		if dumpFlag {

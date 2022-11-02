@@ -32,6 +32,7 @@ type Model struct {
 	Tags       []string
 	Content    []byte
 	Cids       []string
+	CommitId   string
 	ExtendInfo string
 }
 
@@ -69,27 +70,43 @@ func NewModelManager(cacheCfg *config.Cache, orderSvc order.OrderSvcApi) *ModelM
 }
 
 func (mm *ModelManager) Stop(ctx context.Context) error {
+	log.Info("stopping model manager...")
+
+	mm.OrderSvc.Stop(ctx)
+
 	return nil
 }
 
 func (mm *ModelManager) Load(ctx context.Context, account string, key string) (*Model, error) {
-	model := mm.loadModel(account, key)
-	if model != nil {
-		return model, nil
+	orderMeta, err := mm.OrderSvc.Query(ctx, key)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
 	}
 
-	result, err := mm.OrderSvc.Query(ctx, key)
+	model := mm.loadModel(account, orderMeta.DataId)
+	if model != nil {
+		// if model.CommitId == result.DataId {
+		if model.CommitId == orderMeta.CommitId {
+			return model, nil
+		}
+	}
+
+	log.Info("model ", model)
+
+	result, err := mm.OrderSvc.Fetch(ctx, orderMeta.OrderId)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model = &Model{
-		DataId: result.DataId,
-		Alias:  result.Alias,
-		Cids:   result.Cids,
+		DataId:  result.DataId,
+		Alias:   result.Alias,
+		Content: result.Content,
 	}
 
 	mm.cacheModel(account, model)
+
+	log.Info("model ", model)
 
 	return model, nil
 }

@@ -28,13 +28,16 @@ type RawCommit struct {
 type OrderMeta struct {
 	Creator               string
 	GroupId               string
+	DataId                string
 	Alias                 string
 	Tags                  []string
 	Duration              int32
 	Replica               int32
 	OrderId               uint64
+	CommitId              string
 	CompleteTimeoutBlocks int
 	Cid                   cid.Cid
+	ChunkCids             []string
 	TxId                  string
 	TxSent                bool
 	Rule                  string

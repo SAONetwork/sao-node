@@ -21,18 +21,22 @@ func (mcs *MockOrderSvc) Commit(ctx context.Context, creator string, orderMeta t
 	}, nil
 }
 
-func (mcs *MockOrderSvc) Query(ctx context.Context, key string) (*order.QueryResult, error) {
-	return &order.QueryResult{
+func (mcs *MockOrderSvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
+	return &types.OrderMeta{
 		OrderId: 100,
 		DataId:  GenerateDataId(),
 	}, nil
 }
 
-func (os *MockOrderSvc) Fetch(ctx context.Context, cids []string) (*order.FetchResult, error) {
+func (os *MockOrderSvc) Fetch(ctx context.Context, orderId uint64) (*order.FetchResult, error) {
 	return &order.FetchResult{
 		Cid:     "123",
 		Content: make([]byte, 0),
 	}, nil
+}
+
+func (cs *MockOrderSvc) Stop(ctx context.Context) error {
+	return nil
 }
 
 func TestManager1(t *testing.T) {
