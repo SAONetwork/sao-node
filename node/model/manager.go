@@ -76,7 +76,7 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string, gr
 
 	model := mm.loadModel(account, meta.DataId)
 	if model != nil {
-		if model.CommitId == meta.CommitId {
+		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
 			return model, nil
 		}
 	}
@@ -91,8 +91,8 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string, gr
 			DataId:  meta.DataId,
 			Alias:   meta.Alias,
 			GroupId: meta.GroupId,
-			Creator: meta.Creator,
 			OrderId: meta.OrderId,
+			Creator: meta.Creator,
 			Tags:    meta.Tags,
 			// Cid: N/a,
 			Shards:   meta.Shards,
@@ -148,11 +148,11 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 		DataId:  result.DataId,
 		Alias:   alias,
 		GroupId: orderMeta.GroupId,
-		Creator: orderMeta.Creator,
 		OrderId: result.OrderId,
+		Creator: orderMeta.Creator,
 		Tags:    orderMeta.Tags,
 		// Cid: N/a,
-		// Shards:   meta.Shards,
+		Shards:     result.Shards,
 		CommitId:   result.CommitId,
 		Commits:    append(make([]string, 0), result.CommitId),
 		Content:    content,
@@ -164,49 +164,62 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 	return model, nil
 }
 
-func (mm *ModelManager) Update(account string, alias string, patch string, rule string) (*types.Model, error) {
-	orgModel := mm.loadModel(account, alias)
-	if orgModel == nil {
-		return nil, xerrors.Errorf("invalid model alias %s", alias)
-	}
-
-	newContentBytes, err := mm.JsonpatchSvc.ApplyPatch(orgModel.Content, []byte(patch))
+func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (*types.Model, error) {
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Creator, orderMeta.Alias, orderMeta.GroupId)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	err = mm.validateModel(account, alias, newContentBytes, rule)
+	var isFetch = true
+	orgModel := mm.loadModel(orderMeta.Creator, meta.DataId)
+	if orgModel != nil {
+		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
+			isFetch = false
+		}
+	}
+
+	if isFetch {
+		result, err := mm.GatewaySvc.FetchContent(ctx, meta)
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+		orgModel.Content = result.Content
+	}
+
+	newContent, err := mm.JsonpatchSvc.ApplyPatch(orgModel.Content, []byte(patch))
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	// model, err = mm.CommitSvc.Commit(account, content)
-	// if err != nil {
-	// 	return nil, xerrors.Errorf(err.Error())
-	// }
+	err = mm.validateModel(orderMeta.Creator, orderMeta.Alias, newContent, orderMeta.Rule)
+	if err != nil {
+		log.Error(err.Error())
+		return nil, xerrors.Errorf(err.Error())
+	}
+
+	// Commit
+	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
+	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Creator, orderMeta, newContent)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+
 	model := &types.Model{
-		DataId:  orgModel.DataId,
-		Alias:   orgModel.Alias,
-		Content: newContentBytes,
-		// Cids:    make([]string, 1),
+		DataId:  orderMeta.DataId,
+		Alias:   orderMeta.Alias,
+		GroupId: orderMeta.GroupId,
+		OrderId: result.OrderId,
+		Creator: orderMeta.Creator,
+		Tags:    orderMeta.Tags,
+		// Cid: N/a,
+		Shards:     result.Shards,
+		CommitId:   result.CommitId,
+		Commits:    append(meta.Commits, result.CommitId),
+		Content:    newContent,
+		ExtendInfo: orderMeta.ExtenInfo,
 	}
 
-	// model := &types.Model{
-	// 	DataId:  result.DataId,
-	// 	Alias:   alias,
-	// 	GroupId: orderMeta.GroupId,
-	// 	Creator: orderMeta.Creator,
-	// 	OrderId: result.OrderId,
-	// 	Tags:    orderMeta.Tags,
-	// 	// Cid: N/a,
-	// 	// Shards:   meta.Shards,
-	// 	CommitId:   result.CommitId,
-	// 	Commits:    append(make([]string, 0), result.CommitId),
-	// 	Content:    content,
-	// 	ExtendInfo: orderMeta.ExtenInfo,
-	// }
-
-	mm.cacheModel(account, model)
+	mm.cacheModel(orderMeta.Creator, model)
 
 	return model, nil
 }

@@ -25,7 +25,8 @@ type CommitResult struct {
 	OrderId  uint64
 	DataId   string
 	CommitId string
-	Cids     []string
+	Cid      string
+	Shards   map[string]*modeltypes.ShardMeta
 }
 
 type FetchResult struct {
@@ -211,7 +212,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 	if err != nil {
 		log.Error(err)
 	} else {
-		log.Debugf("UnsubscribeOrderComplete 2")
+		log.Debugf("UnsubscribeOrderComplete")
 	}
 
 	log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, creator, orderMeta.Cid)
@@ -224,14 +225,25 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		// TODO: timeout handling
 		return nil, errors.Errorf("process order %d timeout.", orderMeta.OrderId)
 	} else {
-		cids := make([]string, 1)
-		cids[0] = orderMeta.Cid.String()
-		log.Debugf("order %d complete: dataId=%s", orderMeta.OrderId, orderMeta.DataId)
+		order, err := gs.chainSvc.GetOrder(ctx, orderMeta.OrderId)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("order %d complete: dataId=%s", order.Id, orderMeta.DataId)
+
+		shards := make(map[string]*modeltypes.ShardMeta)
+		for k, v := range order.Shards {
+			shards[k] = &modeltypes.ShardMeta{
+				ShardId: v.Id,
+				Cid:     v.Cid,
+			}
+		}
 		return &CommitResult{
 			OrderId:  orderMeta.OrderId,
 			DataId:   orderMeta.DataId,
 			CommitId: orderMeta.CommitId,
-			Cids:     cids,
+			Shards:   shards,
+			Cid:      orderMeta.Cid.String(),
 		}, nil
 	}
 }

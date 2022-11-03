@@ -4,7 +4,6 @@ import (
 	"context"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/gateway"
-	"sao-storage-node/node/utils"
 	"sao-storage-node/types"
 	"testing"
 
@@ -17,15 +16,18 @@ type MockGatewaySvc struct {
 func (mcs *MockGatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*gateway.CommitResult, error) {
 	return &gateway.CommitResult{
 		OrderId:  100,
-		DataId:   utils.GenerateDataId(),
-		CommitId: "888888",
+		DataId:   orderMeta.DataId,
+		CommitId: orderMeta.DataId,
 	}, nil
 }
 
 func (mcs *MockGatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error) {
 	return &types.Model{
-		OrderId: 100,
-		DataId:  utils.GenerateDataId(),
+		OrderId:  100,
+		DataId:   group,
+		CommitId: group,
+		Alias:    key,
+		Cid:      key,
 	}, nil
 }
 
@@ -54,8 +56,9 @@ func TestManager1(t *testing.T) {
 
 	orderMeta := types.OrderMeta{
 		Creator:  "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h",
+		DataId:   "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
 		GroupId:  "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
-		Alias:    "test_model1",
+		Alias:    "test_model_1",
 		Duration: 100000,
 		Replica:  1,
 		OrderId:  1,
@@ -97,11 +100,11 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, manager)
 
 	creator := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"
-	groupId := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"
 
 	schemaOrder1 := types.OrderMeta{
 		Creator:  creator,
-		GroupId:  groupId,
+		DataId:   "37743e1c-b4d0-42f6-9fee-89592425c1fb",
+		GroupId:  "37743e1c-b4d0-42f6-9fee-89592425c1fb",
 		Alias:    "addresses_schema_1",
 		Duration: 100000,
 		Replica:  1,
@@ -133,13 +136,14 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema1)
 	require.NoError(t, err1)
 
-	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema_1", groupId)
+	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema_1", schemaOrder1.GroupId)
 	require.Equal(t, schema1.Alias, schemaLoad1.Alias)
 	require.NoError(t, err)
 
 	schemaOrder2 := types.OrderMeta{
 		Creator:  creator,
-		GroupId:  groupId,
+		DataId:   "ba8c31a3-e1ff-408d-858a-bd8da6b23b90",
+		GroupId:  "ba8c31a3-e1ff-408d-858a-bd8da6b23b90",
 		Alias:    "addresses_schema_2",
 		Duration: 100000,
 		Replica:  1,
@@ -171,7 +175,7 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema2)
 	require.NoError(t, err2)
 
-	schemaLoad2, err2 := manager.Load(context.Background(), creator, "addresses_schema_2", groupId)
+	schemaLoad2, err2 := manager.Load(context.Background(), creator, "addresses_schema_2", schemaOrder2.GroupId)
 	require.Equal(t, schema2.Alias, schemaLoad2.Alias)
 	require.NoError(t, err2)
 
@@ -188,7 +192,8 @@ func TestManager2(t *testing.T) {
 	}`
 	modelOrder := types.OrderMeta{
 		Creator:  creator,
-		GroupId:  groupId,
+		DataId:   "94648406-8aeb-48ff-94c0-cc7f35e17978",
+		GroupId:  "94648406-8aeb-48ff-94c0-cc7f35e17978",
 		Alias:    "test_model",
 		Duration: 100000,
 		Replica:  1,
@@ -202,11 +207,11 @@ func TestManager2(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelLoad1, err := manager.Load(context.Background(), creator, "test_model", groupId)
+	modelLoad1, err := manager.Load(context.Background(), creator, "test_model", modelOrder.GroupId)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
 	require.NoError(t, err)
 
-	modelLoad2, err := manager.Load(context.Background(), creator, model.DataId, groupId)
+	modelLoad2, err := manager.Load(context.Background(), creator, model.DataId, modelOrder.GroupId)
 	require.Equal(t, model.Alias, modelLoad2.Alias)
 	require.NoError(t, err)
 
