@@ -10,7 +10,6 @@ type Model struct {
 	Creator    string
 	Tags       []string
 	Cid        string
-	ChunkCids  []string
 	Shards     map[string]*types.ShardMeta
 	CommitId   string
 	Commits    []string

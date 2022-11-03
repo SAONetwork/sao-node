@@ -22,7 +22,7 @@ func (mcs *MockGatewaySvc) CommitModel(ctx context.Context, creator string, orde
 	}, nil
 }
 
-func (mcs *MockGatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, error) {
+func (mcs *MockGatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error) {
 	return &types.Model{
 		OrderId: 100,
 		DataId:  utils.GenerateDataId(),
@@ -72,11 +72,11 @@ func TestManager1(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelLoad1, err := manager.Load(context.Background(), orderMeta.Creator, orderMeta.Alias)
+	modelLoad1, err := manager.Load(context.Background(), orderMeta.Creator, orderMeta.Alias, orderMeta.GroupId)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
 	require.NoError(t, err)
 
-	modelLoad2, err := manager.Load(context.Background(), orderMeta.Creator, model.DataId)
+	modelLoad2, err := manager.Load(context.Background(), orderMeta.Creator, model.DataId, orderMeta.GroupId)
 	require.Equal(t, model.Alias, modelLoad2.Alias)
 	require.NoError(t, err)
 
@@ -133,7 +133,7 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema1)
 	require.NoError(t, err1)
 
-	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema_1")
+	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema_1", groupId)
 	require.Equal(t, schema1.Alias, schemaLoad1.Alias)
 	require.NoError(t, err)
 
@@ -171,7 +171,7 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema2)
 	require.NoError(t, err2)
 
-	schemaLoad2, err2 := manager.Load(context.Background(), creator, "addresses_schema_2")
+	schemaLoad2, err2 := manager.Load(context.Background(), creator, "addresses_schema_2", groupId)
 	require.Equal(t, schema2.Alias, schemaLoad2.Alias)
 	require.NoError(t, err2)
 
@@ -202,11 +202,11 @@ func TestManager2(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelLoad1, err := manager.Load(context.Background(), creator, "test_model")
+	modelLoad1, err := manager.Load(context.Background(), creator, "test_model", groupId)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
 	require.NoError(t, err)
 
-	modelLoad2, err := manager.Load(context.Background(), creator, model.DataId)
+	modelLoad2, err := manager.Load(context.Background(), creator, model.DataId, groupId)
 	require.Equal(t, model.Alias, modelLoad2.Alias)
 	require.NoError(t, err)
 

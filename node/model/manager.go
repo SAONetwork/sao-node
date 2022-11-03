@@ -68,8 +68,8 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (mm *ModelManager) Load(ctx context.Context, account string, key string) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, key)
+func (mm *ModelManager) Load(ctx context.Context, account string, key string, group string) (*types.Model, error) {
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -95,9 +95,10 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string) (*
 			OrderId: meta.OrderId,
 			Tags:    meta.Tags,
 			// Cid: N/a,
-			// Shards: meta.Shards,
-			// CommitId: commitId,
-			// Commits:    meta.Commits,
+			Shards:   meta.Shards,
+			CommitId: meta.CommitId,
+			Commits:  meta.Commits,
+			// Content: N/a,
 			ExtendInfo: meta.ExtendInfo,
 		}
 	}
@@ -144,13 +145,18 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 	}
 
 	model := &types.Model{
-		DataId:    result.DataId,
-		Alias:     alias,
-		OrderId:   result.OrderId,
-		Content:   content,
-		ChunkCids: result.Cids,
-		CommitId:  result.CommitId,
-		Commits:   append(make([]string, 0), result.CommitId),
+		DataId:  result.DataId,
+		Alias:   alias,
+		GroupId: orderMeta.GroupId,
+		Creator: orderMeta.Creator,
+		OrderId: result.OrderId,
+		Tags:    orderMeta.Tags,
+		// Cid: N/a,
+		// Shards:   meta.Shards,
+		CommitId:   result.CommitId,
+		Commits:    append(make([]string, 0), result.CommitId),
+		Content:    content,
+		ExtendInfo: orderMeta.ExtenInfo,
 	}
 
 	mm.cacheModel(orderMeta.Creator, model)
@@ -185,12 +191,27 @@ func (mm *ModelManager) Update(account string, alias string, patch string, rule 
 		// Cids:    make([]string, 1),
 	}
 
+	// model := &types.Model{
+	// 	DataId:  result.DataId,
+	// 	Alias:   alias,
+	// 	GroupId: orderMeta.GroupId,
+	// 	Creator: orderMeta.Creator,
+	// 	OrderId: result.OrderId,
+	// 	Tags:    orderMeta.Tags,
+	// 	// Cid: N/a,
+	// 	// Shards:   meta.Shards,
+	// 	CommitId:   result.CommitId,
+	// 	Commits:    append(make([]string, 0), result.CommitId),
+	// 	Content:    content,
+	// 	ExtendInfo: orderMeta.ExtenInfo,
+	// }
+
 	mm.cacheModel(account, model)
 
 	return model, nil
 }
 
-func (mm *ModelManager) Delete(ctx context.Context, account string, key string) (*types.Model, error) {
+func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
 	model, _ := mm.CacheSvc.Get(account, key)
 	if model != nil {
 		m := model.(*types.Model)
@@ -305,7 +326,7 @@ func (mm *ModelManager) loadModel(account string, key string) *types.Model {
 		}
 
 		model = value.(*types.Model)
-		if len(model.Content) == 0 && len(model.ChunkCids) > 0 {
+		if len(model.Content) == 0 && len(model.Shards) > 0 {
 			log.Warnf("large size content should go through P2P channel")
 		}
 		return model
