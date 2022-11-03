@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
@@ -17,6 +19,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -30,6 +33,7 @@ type StoreSvc struct {
 	host         host.Host
 	stagingPath  string
 	storeManager *store.StoreManager
+	ctx          context.Context
 }
 
 func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) (*StoreSvc, error) {
@@ -40,7 +44,11 @@ func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.Ch
 		host:         host,
 		stagingPath:  stagingPath,
 		storeManager: storeManager,
+		ctx:          ctx,
 	}
+
+	host.SetStreamHandler(types.ShardStoreProtocol, ss.HandleShardStream)
+
 	if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
 		return nil, err
 	}
@@ -160,4 +168,50 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 		return err
 	}
 	return nil
+}
+
+func (ss *StoreSvc) HandleShardStream(s network.Stream) {
+	defer s.Close()
+
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
+	defer s.SetReadDeadline(time.Time{}) // nolint
+
+	var req types.ShardStoreReq
+	err := req.Unmarshal(s, "json")
+	if err != nil {
+		log.Error(err)
+		// TODO: respond error
+		return
+	}
+	log.Debugf("receive ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+
+	reader, err := ss.storeManager.Get(ss.ctx, req.Cid)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	shardContent, err := io.ReadAll(reader)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	var resp = &types.ShardStoreResp{
+		OrderId: req.OrderId,
+		Cid:     req.Cid,
+		Content: shardContent,
+	}
+	log.Debugf("send ShardStoreResp: Content len %d", len(shardContent))
+
+	err = resp.Marshal(s, "json")
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	if err := s.CloseWrite(); err != nil {
+		log.Error(err.Error())
+		return
+	}
 }
