@@ -205,8 +205,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 
 	timeout := false
 	select {
-	case _ = <-doneChan:
-		log.Debugf("SubscribeOrderComplete 1")
+	case <-doneChan:
 	case <-time.After(chain.Blocktime * time.Duration(orderMeta.CompleteTimeoutBlocks)):
 		timeout = true
 	case <-ctx.Done():
