@@ -304,6 +304,18 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 	}, nil
 }
 
+func (n *Node) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
+	model, err := n.manager.Create(ctx, orderMeta, patch)
+	if err != nil {
+		return apitypes.UpdateResp{}, err
+	}
+	return apitypes.UpdateResp{
+		Alias:  model.Alias,
+		DataId: model.DataId,
+		Cid:    model.Cid,
+	}, nil
+}
+
 func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
 	key := datastore.NewKey(types.PEER_INFO_PREFIX)
 	if peerInfo, err := n.tds.Get(ctx, key); err == nil {
