@@ -43,7 +43,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	defer s.Close()
 
 	// Set a deadline on reading from the stream so it doesn't hang
-	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
 	var req types.ShardReq
@@ -99,6 +99,10 @@ func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) ([]byte, err
 	}
 	defer stream.Close()
 	log.Infof("open stream(%s) to storage node %s", types.ShardLoadProtocol, addr)
+
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
+	defer stream.SetReadDeadline(time.Time{}) // nolint
 
 	req := types.ShardReq{
 		Cid: shardCid,
