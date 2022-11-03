@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"sao-storage-node/api"
 	"sao-storage-node/node/chain"
-	"sao-storage-node/node/order"
+	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 
@@ -167,8 +167,8 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.GatewayEnable {
-		var orderSvc = order.NewOrderSvc(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
-		sn.manager = model.NewModelManager(&cfg.Cache, orderSvc)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
+		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// api server

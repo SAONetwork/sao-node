@@ -315,7 +315,7 @@ type CommonMarshaler interface {
 	Marshal(io.Writer, string) error
 }
 
-func DoTransport(ctx context.Context, s network.Stream, req interface{}, resp interface{}, format string) error {
+func DoRequest(ctx context.Context, s network.Stream, req interface{}, resp interface{}, format string) error {
 	errc := make(chan error)
 	go func() {
 		if m, ok := req.(CommonMarshaler); ok {
