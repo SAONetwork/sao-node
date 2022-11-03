@@ -149,6 +149,10 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	defer stream.Close()
 	log.Infof("open stream(%s) to gateway %s", types.ShardStoreProtocol, conn)
 
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
+	defer stream.SetReadDeadline(time.Time{}) // nolint
+
 	req := types.ShardReq{
 		Owner:   owner,
 		OrderId: orderId,
@@ -176,7 +180,7 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 	defer s.Close()
 
 	// Set a deadline on reading from the stream so it doesn't hang
-	_ = s.SetReadDeadline(time.Now().Add(20 * time.Second))
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
 	var req types.ShardReq
