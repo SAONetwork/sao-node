@@ -41,6 +41,7 @@ type OrderMeta struct {
 	TxId                  string
 	TxSent                bool
 	Rule                  string
+	ExtenInfo             string
 }
 
 const (

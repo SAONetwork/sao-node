@@ -24,8 +24,7 @@ func StageShard(basedir string, creator string, cid cid.Cid, content []byte) err
 
 	//filename := fmt.Sprintf("%d-%v", orderId, cid)
 	filename := fmt.Sprintf("%v", cid)
-	log.Info("path: ", path)
-	log.Info("staging filename: ", filename)
+	log.Debugf("staging file: %s/%s/%s", path, creator, filename)
 	file, err := os.Create(filepath.Join(path, creator, filename))
 	if err != nil {
 		return err

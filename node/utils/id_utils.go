@@ -1,4 +1,4 @@
-package model
+package utils
 
 import (
 	"regexp"
@@ -20,7 +20,6 @@ func IsLink(content string) bool {
 }
 
 func IsDataId(content string) bool {
-	log.Infof("content: %s", content)
 	_, err := uuid.FromString(content)
 	return err == nil
 }
@@ -30,6 +29,10 @@ func GenerateAlias(content []byte) string {
 }
 
 func GenerateDataId() string {
+	return uuid.NewV4().String()
+}
+
+func GenerateCommitId() string {
 	return uuid.NewV4().String()
 }
 

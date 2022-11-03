@@ -232,7 +232,7 @@ func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, content []
 	return apitypes.CreateResp{
 		Alias:  model.Alias,
 		DataId: model.DataId,
-		Cids:   model.Cids,
+		Cid:    model.Cid,
 	}, nil
 }
 
@@ -270,7 +270,7 @@ func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apity
 		return apitypes.CreateResp{
 			Alias:  model.Alias,
 			DataId: model.DataId,
-			Cids:   model.Cids,
+			Cid:    model.Cid,
 		}, nil
 	} else {
 		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())

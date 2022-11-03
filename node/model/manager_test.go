@@ -4,6 +4,7 @@ import (
 	"context"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/gateway"
+	"sao-storage-node/node/utils"
 	"sao-storage-node/types"
 	"testing"
 
@@ -13,22 +14,22 @@ import (
 type MockGatewaySvc struct {
 }
 
-func (mcs *MockGatewaySvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*gateway.CommitResult, error) {
+func (mcs *MockGatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*gateway.CommitResult, error) {
 	return &gateway.CommitResult{
 		OrderId:  100,
-		DataId:   GenerateDataId(),
+		DataId:   utils.GenerateDataId(),
 		CommitId: "888888",
 	}, nil
 }
 
-func (mcs *MockGatewaySvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
-	return &types.OrderMeta{
+func (mcs *MockGatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, error) {
+	return &types.Model{
 		OrderId: 100,
-		DataId:  GenerateDataId(),
+		DataId:  utils.GenerateDataId(),
 	}, nil
 }
 
-func (os *MockGatewaySvc) Fetch(ctx context.Context, orderId uint64) (*gateway.FetchResult, error) {
+func (os *MockGatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*gateway.FetchResult, error) {
 	return &gateway.FetchResult{
 		Cid:     "123",
 		Content: make([]byte, 0),
