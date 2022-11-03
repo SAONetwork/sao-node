@@ -1,6 +1,6 @@
 package types
 
-import "github.com/SaoNetwork/sao/x/sao/types"
+import "github.com/SaoNetwork/sao/x/model/types"
 
 type Model struct {
 	DataId     string
@@ -11,7 +11,7 @@ type Model struct {
 	Tags       []string
 	Cid        string
 	ChunkCids  []string
-	Shards     map[string]*types.Shard
+	Shards     map[string]*types.ShardMeta
 	CommitId   string
 	Commits    []string
 	Content    []byte
