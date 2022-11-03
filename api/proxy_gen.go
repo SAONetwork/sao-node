@@ -18,11 +18,11 @@ type GatewayApiStruct struct {
 
 		CreateFile func(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) ``
 
-		Delete func(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) ``
+		Delete func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) ``
 
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) ``
 
-		Load func(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) ``
+		Load func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.LoadResp, error) ``
 
 		NodeAddress func(p0 context.Context) (string, error) ``
 
@@ -55,14 +55,14 @@ func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 types.OrderMeta) (api
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Delete(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) {
+func (s *GatewayApiStruct) Delete(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) {
 	if s.Internal.Delete == nil {
 		return *new(apitypes.DeleteResp), ErrNotSupported
 	}
-	return s.Internal.Delete(p0, p1, p2)
+	return s.Internal.Delete(p0, p1, p2, p3)
 }
 
-func (s *GatewayApiStub) Delete(p0 context.Context, p1 string, p2 string) (apitypes.DeleteResp, error) {
+func (s *GatewayApiStub) Delete(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) {
 	return *new(apitypes.DeleteResp), ErrNotSupported
 }
 
@@ -77,14 +77,14 @@ func (s *GatewayApiStub) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoRe
 	return *new(apitypes.GetPeerInfoResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Load(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) {
+func (s *GatewayApiStruct) Load(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.LoadResp, error) {
 	if s.Internal.Load == nil {
 		return *new(apitypes.LoadResp), ErrNotSupported
 	}
-	return s.Internal.Load(p0, p1, p2)
+	return s.Internal.Load(p0, p1, p2, p3)
 }
 
-func (s *GatewayApiStub) Load(p0 context.Context, p1 string, p2 string) (apitypes.LoadResp, error) {
+func (s *GatewayApiStub) Load(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.LoadResp, error) {
 	return *new(apitypes.LoadResp), ErrNotSupported
 }
 

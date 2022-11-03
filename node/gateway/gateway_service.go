@@ -34,7 +34,7 @@ type FetchResult struct {
 }
 
 type GatewaySvcApi interface {
-	QueryMeta(ctx context.Context, key string) (*types.Model, error)
+	QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error)
 	CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
@@ -62,14 +62,14 @@ func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.Chai
 	return cs
 }
 
-func (gs *GatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, error) {
+func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error) {
 	var res *modeltypes.QueryGetMetadataResponse = nil
 	var err error
 	var dataId string
 	if utils.IsDataId(key) {
 		dataId = key
 	} else {
-		dataId, err = gs.chainSvc.QueryDataId(ctx, key)
+		dataId, err = gs.chainSvc.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", account, key, group))
 		if err != nil {
 			return nil, err
 		}
@@ -94,10 +94,9 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, 
 		OrderId: res.Metadata.OrderId,
 		Tags:    res.Metadata.Tags,
 		// Cid: N/a,
-		ChunkCids: res.Metadata.Cids,
-		Shards:    res.Shards,
-		CommitId:  commitId,
-		Commits:   res.Metadata.Commits,
+		Shards:   res.Shards,
+		CommitId: commitId,
+		Commits:  res.Metadata.Commits,
 		// Content: N/a,
 		ExtendInfo: res.Metadata.ExtendInfo,
 	}, nil
@@ -106,8 +105,6 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, 
 func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error) {
 	contentList := make([][]byte, len(meta.Shards))
 	for key, shard := range meta.Shards {
-		log.Info("shard: ", shard)
-		log.Info("key: ", key)
 		shardCid, err := cid.Decode(shard.Cid)
 		if err != nil {
 			return nil, err
@@ -171,10 +168,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 			orderMeta.DataId,
 			orderMeta.ExtenInfo,
 			orderMeta.GroupId,
-			// orderMeta.CommitId,
 		)
-
-		log.Info("metadata: ", metadata)
 
 		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, creator, gs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica, metadata)
 		if err != nil {

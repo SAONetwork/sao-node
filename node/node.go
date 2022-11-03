@@ -281,8 +281,8 @@ func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apity
 	}
 }
 
-func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.LoadResp, error) {
-	model, err := n.manager.Load(ctx, owner, alias)
+func (n *Node) Load(ctx context.Context, owner string, key string, group string) (apitypes.LoadResp, error) {
+	model, err := n.manager.Load(ctx, owner, key, group)
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
@@ -293,8 +293,8 @@ func (n *Node) Load(ctx context.Context, owner string, alias string) (apitypes.L
 	}, nil
 }
 
-func (n *Node) Delete(ctx context.Context, owner string, alias string) (apitypes.DeleteResp, error) {
-	model, err := n.manager.Delete(ctx, owner, alias)
+func (n *Node) Delete(ctx context.Context, owner string, key string, group string) (apitypes.DeleteResp, error) {
+	model, err := n.manager.Delete(ctx, owner, key, group)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}

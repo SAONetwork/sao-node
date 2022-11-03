@@ -493,6 +493,11 @@ var loadCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
+			Required: true,
+		},
+		&cli.StringFlag{
 			Name:     "gateway",
 			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
@@ -520,13 +525,18 @@ var loadCmd = &cli.Command{
 		}
 		owner := cctx.String("owner")
 
+		if !cctx.IsSet("platform") {
+			return xerrors.Errorf("must provide --platform")
+		}
+		groupId := cctx.String("platform")
+
 		if !cctx.IsSet("key") {
 			return xerrors.Errorf("must provide --key")
 		}
 		key := cctx.String("key")
 
 		client := saoclient.NewSaoClient(gatewayApi)
-		resp, err := client.Load(ctx, owner, key)
+		resp, err := client.Load(ctx, owner, key, groupId)
 		if err != nil {
 			return err
 		}
@@ -566,6 +576,11 @@ var deleteCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
+			Required: true,
+		},
+		&cli.StringFlag{
 			Name:     "gateway",
 			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
@@ -592,8 +607,13 @@ var deleteCmd = &cli.Command{
 		}
 		key := cctx.String("key")
 
+		if !cctx.IsSet("platform") {
+			return xerrors.Errorf("must provide --platform")
+		}
+		groupId := cctx.String("platform")
+
 		client := saoclient.NewSaoClient(gatewayApi)
-		resp, err := client.Delete(ctx, owner, key)
+		resp, err := client.Delete(ctx, owner, key, groupId)
 		if err != nil {
 			return err
 		}
@@ -615,6 +635,11 @@ var downloadCmd = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:     "keys",
 			Usage:    "storage network dataId(s) of the file(s)",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -644,10 +669,15 @@ var downloadCmd = &cli.Command{
 		}
 		keys := cctx.StringSlice("keys")
 
+		if !cctx.IsSet("platform") {
+			return xerrors.Errorf("must provide --platform")
+		}
+		groupId := cctx.String("platform")
+
 		client := saoclient.NewSaoClient(gatewayApi)
 
 		for _, key := range keys {
-			resp, err := client.Load(ctx, owner, key)
+			resp, err := client.Load(ctx, owner, key, groupId)
 			if err != nil {
 				return err
 			}
