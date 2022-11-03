@@ -7,6 +7,13 @@ type CreateResp struct {
 	Cid    string
 }
 
+type UpdateResp struct {
+	DataId string
+	Alias  string
+	TxId   string
+	Cid    string
+}
+
 type LoadResp struct {
 	DataId  string
 	Alias   string

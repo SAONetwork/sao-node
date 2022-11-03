@@ -41,6 +41,10 @@ func (sc SaoClient) Delete(ctx context.Context, owner string, key string, group 
 	return sc.gatewayApi.Delete(ctx, owner, key, group)
 }
 
+func (sc SaoClient) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
+	return sc.gatewayApi.Update(ctx, orderMeta, patch)
+}
+
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
 	return sc.gatewayApi.GetPeerInfo(ctx)
 }

@@ -27,6 +27,8 @@ type GatewayApiStruct struct {
 		NodeAddress func(p0 context.Context) (string, error) ``
 
 		Test func(p0 context.Context, p1 string) (string, error) ``
+
+		Update func(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.UpdateResp, error) ``
 	}
 }
 
@@ -108,6 +110,17 @@ func (s *GatewayApiStruct) Test(p0 context.Context, p1 string) (string, error) {
 
 func (s *GatewayApiStub) Test(p0 context.Context, p1 string) (string, error) {
 	return "", ErrNotSupported
+}
+
+func (s *GatewayApiStruct) Update(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.UpdateResp, error) {
+	if s.Internal.Update == nil {
+		return *new(apitypes.UpdateResp), ErrNotSupported
+	}
+	return s.Internal.Update(p0, p1, p2)
+}
+
+func (s *GatewayApiStub) Update(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.UpdateResp, error) {
+	return *new(apitypes.UpdateResp), ErrNotSupported
 }
 
 var _ GatewayApi = new(GatewayApiStruct)

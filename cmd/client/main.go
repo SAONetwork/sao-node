@@ -62,6 +62,7 @@ func main() {
 			deleteCmd,
 			uploadCmd,
 			loadCmd,
+			updateCmd,
 			downloadCmd,
 			peerInfoCmd,
 		},
@@ -696,6 +697,166 @@ var downloadCmd = &cli.Command{
 			log.Infof("file downloaded to %s", path)
 		}
 
+		return nil
+	},
+}
+
+var updateCmd = &cli.Command{
+	Name: "update",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "data model owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "patch",
+			Required: false,
+		},
+		&cli.IntFlag{
+			Name:     "duration",
+			Usage:    "how long do you want to store the data.",
+			Value:    DEFAULT_DURATION,
+			Required: false,
+		},
+		&cli.BoolFlag{
+			Name:     "clientPublish",
+			Value:    false,
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "chainAddress",
+			Value:    "http://localhost:26657",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "name",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "cid",
+			Value:    "",
+			Required: true,
+		},
+		&cli.IntFlag{
+			Name:     "replica",
+			Usage:    "how many copies to store.",
+			Value:    DEFAULT_REPLICA,
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "extend-info",
+			Usage:    "extend information for the model",
+			Value:    "",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		// ---- check parameters ----
+		if !cctx.IsSet("patch") || cctx.String("patch") == "" {
+			return xerrors.Errorf("must provide non-empty --patch.")
+		}
+		patch := []byte(cctx.String("patch"))
+
+		if !cctx.IsSet("platform") {
+			return xerrors.Errorf("must provide --platform")
+		}
+		platform := cctx.String("platform")
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+		clientPublish := cctx.Bool("clientPublish")
+
+		if !cctx.IsSet("cid") || cctx.String("cid") == "" {
+			return xerrors.Errorf("must provide non-empty --cid.")
+		}
+		contentCid := cctx.String("cid")
+
+		// TODO: check valid range
+		duration := cctx.Int("duration")
+		replicas := cctx.Int("replica")
+		chainAddress := cctx.String("chainAddress")
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		extendInfo := cctx.String("extend-info")
+		if len(extendInfo) > 1024 {
+			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+		}
+
+		orderMeta := types.OrderMeta{
+			Creator:   owner,
+			GroupId:   platform,
+			Alias:     cctx.String("name"),
+			Duration:  int32(duration),
+			Replica:   int32(replicas),
+			ExtenInfo: extendInfo,
+		}
+
+		c, err := cid.Decode(contentCid)
+		if err != nil {
+			return err
+		}
+		orderMeta.Cid = c
+
+		if clientPublish {
+			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+			if err != nil {
+				return xerrors.Errorf("new cosmos chain: %w", err)
+			}
+
+			orderMeta.DataId = uuid.NewV4().String()
+			metadata := fmt.Sprintf(
+				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
+				orderMeta.Alias,
+				orderMeta.DataId,
+				orderMeta.ExtenInfo,
+				orderMeta.GroupId,
+			)
+			log.Info("metadata: ", metadata)
+
+			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, orderMeta.Cid, int32(duration), int32(replicas), metadata)
+			if err != nil {
+				return err
+			}
+			log.Infof("order id=%d, tx=%s", orderId, tx)
+			orderMeta.TxId = tx
+			orderMeta.OrderId = orderId
+			orderMeta.TxSent = true
+		}
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		resp, err := client.Update(ctx, orderMeta, patch)
+		if err != nil {
+			return err
+		}
+		log.Infof("alias: %s, data id: %s", resp.Alias, resp.DataId)
 		return nil
 	},
 }
