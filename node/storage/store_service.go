@@ -74,7 +74,7 @@ func (ss *StoreSvc) Start(ctx context.Context) error {
 }
 
 func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
-	log.Infof("processing task: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
+	log.Debugf("processing task: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
 
 	var shard []byte
 	var err error
@@ -93,7 +93,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		}
 	}
 
-	log.Info("store to backends.")
+	// store to backends
 	_, err = ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
 	if err != nil {
 		return err

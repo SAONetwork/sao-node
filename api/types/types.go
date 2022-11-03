@@ -4,7 +4,7 @@ type CreateResp struct {
 	DataId string
 	Alias  string
 	TxId   string
-	Cids   []string
+	Cid    string
 }
 
 type LoadResp struct {

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/hashicorp/go-uuid"
@@ -165,7 +166,7 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32) (uint64, string, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32, metadata string) (uint64, string, error) {
 	if signer != owner && signer != provider {
 		return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	}
@@ -183,6 +184,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, 
 		Provider: provider,
 		Duration: duration,
 		Replica:  replica,
+		Metadata: metadata,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -321,6 +323,28 @@ func (cs *ChainSvc) UnsubscribeShardTask(ctx context.Context, nodeAddr string) e
 		return err
 	}
 	return nil
+}
+
+func (c *ChainSvc) QueryMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
+	queryClient := modeltypes.NewQueryClient(c.cosmos.Context())
+	queryResp, err := queryClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
+		DataId: dataId,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("QueryMeta failed, " + err.Error())
+	}
+	return queryResp, nil
+}
+
+func (c *ChainSvc) QueryDataId(ctx context.Context, key string) (string, error) {
+	queryClient := modeltypes.NewQueryClient(c.cosmos.Context())
+	queryResp, err := queryClient.Model(ctx, &modeltypes.QueryGetModelRequest{
+		Key: key,
+	})
+	if err != nil {
+		return "", xerrors.Errorf("QueryDataId failed, " + err.Error())
+	}
+	return queryResp.Model.Data, nil
 }
 
 func QueryOrderShard(addr string) string {

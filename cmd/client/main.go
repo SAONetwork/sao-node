@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/multiformats/go-multicodec"
+	uuid "github.com/satori/go.uuid"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -157,6 +158,12 @@ var createCmd = &cli.Command{
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
+		&cli.StringFlag{
+			Name:     "extend-info",
+			Usage:    "extend information for the model",
+			Value:    "",
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -190,12 +197,18 @@ var createCmd = &cli.Command{
 		}
 		defer closer()
 
+		extendInfo := cctx.String("extend-info")
+		if len(extendInfo) > 1024 {
+			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+		}
+
 		orderMeta := types.OrderMeta{
-			Creator:  from,
-			GroupId:  platform,
-			Alias:    cctx.String("name"),
-			Duration: int32(duration),
-			Replica:  int32(replicas),
+			Creator:   from,
+			GroupId:   platform,
+			Alias:     cctx.String("name"),
+			Duration:  int32(duration),
+			Replica:   int32(replicas),
+			ExtenInfo: extendInfo,
 		}
 
 		pref := cid.Prefix{
@@ -221,7 +234,18 @@ var createCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, contentCid, int32(duration), int32(replicas))
+			orderMeta.DataId = uuid.NewV4().String()
+			metadata := fmt.Sprintf(
+				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
+				orderMeta.Alias,
+				orderMeta.DataId,
+				orderMeta.ExtenInfo,
+				orderMeta.GroupId,
+				// orderMeta.CommitId,
+			)
+			log.Info("metadata: ", metadata)
+
+			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
@@ -291,6 +315,12 @@ var createFileCmd = &cli.Command{
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
+		&cli.StringFlag{
+			Name:     "extend-info",
+			Usage:    "extend information for the model",
+			Value:    "",
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -328,12 +358,18 @@ var createFileCmd = &cli.Command{
 		}
 		defer closer()
 
+		extendInfo := cctx.String("extend-info")
+		if len(extendInfo) > 1024 {
+			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+		}
+
 		orderMeta := types.OrderMeta{
-			Creator:  from,
-			GroupId:  platform,
-			Alias:    fileName,
-			Duration: int32(duration),
-			Replica:  int32(replicas),
+			Creator:   from,
+			GroupId:   platform,
+			Alias:     fileName,
+			Duration:  int32(duration),
+			Replica:   int32(replicas),
+			ExtenInfo: extendInfo,
 		}
 		// TODO:
 		cid, err := cid.Decode(cctx.String("cid"))
@@ -351,7 +387,19 @@ var createFileCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
-			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, cid, int32(duration), int32(replicas))
+
+			orderMeta.DataId = uuid.NewV4().String()
+			metadata := fmt.Sprintf(
+				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
+				orderMeta.Alias,
+				orderMeta.DataId,
+				orderMeta.ExtenInfo,
+				orderMeta.GroupId,
+				// orderMeta.CommitId,
+			)
+			log.Info("metadata: ", metadata)
+
+			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, cid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
@@ -366,7 +414,7 @@ var createFileCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("file name: %s, data id: %s, cids: %v", resp.Alias, resp.DataId, resp.Cids)
+		log.Infof("file name: %s, data id: %s, cid: %v", resp.Alias, resp.DataId, resp.Cid)
 		return nil
 	},
 }
@@ -482,7 +530,7 @@ var loadCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias id: %d, data id: %s, content: %s", resp.Alias, resp.DataId, resp.Content)
+		log.Infof("alias id: %s, data id: %s, content: %s", resp.Alias, resp.DataId, resp.Content)
 
 		dumpFlag := cctx.Bool("dump")
 		if dumpFlag {
