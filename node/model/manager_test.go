@@ -3,39 +3,39 @@ package model
 import (
 	"context"
 	"sao-storage-node/node/config"
-	"sao-storage-node/node/order"
+	"sao-storage-node/node/gateway"
 	"sao-storage-node/types"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
-type MockOrderSvc struct {
+type MockGatewaySvc struct {
 }
 
-func (mcs *MockOrderSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*order.CommitResult, error) {
-	return &order.CommitResult{
+func (mcs *MockGatewaySvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*gateway.CommitResult, error) {
+	return &gateway.CommitResult{
 		OrderId:  100,
 		DataId:   GenerateDataId(),
 		CommitId: "888888",
 	}, nil
 }
 
-func (mcs *MockOrderSvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
+func (mcs *MockGatewaySvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
 	return &types.OrderMeta{
 		OrderId: 100,
 		DataId:  GenerateDataId(),
 	}, nil
 }
 
-func (os *MockOrderSvc) Fetch(ctx context.Context, orderId uint64) (*order.FetchResult, error) {
-	return &order.FetchResult{
+func (os *MockGatewaySvc) Fetch(ctx context.Context, orderId uint64) (*gateway.FetchResult, error) {
+	return &gateway.FetchResult{
 		Cid:     "123",
 		Content: make([]byte, 0),
 	}, nil
 }
 
-func (cs *MockOrderSvc) Stop(ctx context.Context) error {
+func (cs *MockGatewaySvc) Stop(ctx context.Context) error {
 	return nil
 }
 
@@ -46,9 +46,9 @@ func TestManager1(t *testing.T) {
 		ContentLimit:  1024 * 1024,
 	}
 
-	var mockOrderSvc order.OrderSvcApi = &MockOrderSvc{}
+	var mockGatewaySvc gateway.GatewaySvcApi = &MockGatewaySvc{}
 
-	manager := NewModelManager(config, mockOrderSvc)
+	manager := NewModelManager(config, mockGatewaySvc)
 	require.NotNil(t, manager)
 
 	orderMeta := types.OrderMeta{
@@ -90,9 +90,9 @@ func TestManager2(t *testing.T) {
 		ContentLimit:  1024 * 1024,
 	}
 
-	var mockOrderSvc order.OrderSvcApi = &MockOrderSvc{}
+	var mockGatewaySvc gateway.GatewaySvcApi = &MockGatewaySvc{}
 
-	manager := NewModelManager(config, mockOrderSvc)
+	manager := NewModelManager(config, mockGatewaySvc)
 	require.NotNil(t, manager)
 
 	creator := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"

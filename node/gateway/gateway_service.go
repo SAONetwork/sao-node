@@ -1,4 +1,4 @@
-package order
+package gateway
 
 import (
 	"context"
@@ -32,14 +32,14 @@ type FetchResult struct {
 	Content []byte
 }
 
-type OrderSvcApi interface {
+type GatewaySvcApi interface {
 	Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
 	Query(ctx context.Context, key string) (*types.OrderMeta, error)
 	Fetch(ctx context.Context, orderId uint64) (*FetchResult, error)
 	Stop(ctx context.Context) error
 }
 
-type OrderSvc struct {
+type GatewaySvc struct {
 	ctx                context.Context
 	chainSvc           *chain.ChainSvc
 	shardStreamHandler *ShardStreamHandler
@@ -48,8 +48,8 @@ type OrderSvc struct {
 	stagingPath        string
 }
 
-func NewOrderSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) *OrderSvc {
-	cs := &OrderSvc{
+func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) *GatewaySvc {
+	cs := &GatewaySvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
 		shardStreamHandler: NewShardStreamHandler(ctx, host, stagingPath),
@@ -61,7 +61,7 @@ func NewOrderSvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainS
 	return cs
 }
 
-func (os *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
+func (os *GatewaySvc) Commit(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
@@ -139,7 +139,7 @@ func (os *OrderSvc) Commit(ctx context.Context, creator string, orderMeta types.
 	}
 }
 
-func (os *OrderSvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
+func (os *GatewaySvc) Query(ctx context.Context, key string) (*types.OrderMeta, error) {
 	var cids = make([]string, 1)
 	fakeCid := "bafkreih36a72gdu7dwozyaegev47bscepunrlt64lcoyxcejuhnlnjnw6e"
 	cids[0] = fakeCid
@@ -156,7 +156,7 @@ func (os *OrderSvc) Query(ctx context.Context, key string) (*types.OrderMeta, er
 	}, nil
 }
 
-func (os *OrderSvc) Fetch(ctx context.Context, orderId uint64) (*FetchResult, error) {
+func (os *GatewaySvc) Fetch(ctx context.Context, orderId uint64) (*FetchResult, error) {
 	order, err := os.chainSvc.GetOrder(ctx, orderId)
 	if err != nil {
 		return nil, err
@@ -215,7 +215,7 @@ func (os *OrderSvc) Fetch(ctx context.Context, orderId uint64) (*FetchResult, er
 	}, nil
 }
 
-func (cs *OrderSvc) Stop(ctx context.Context) error {
+func (cs *GatewaySvc) Stop(ctx context.Context) error {
 	log.Info("stopping order service...")
 	cs.shardStreamHandler.Stop(ctx)
 

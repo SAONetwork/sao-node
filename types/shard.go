@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	ShardLoadProtocol  = "/sao/load/shard/1.0"
 	ShardStoreProtocol = "/sao/store/shard/1.0"
 )
 
@@ -18,19 +19,19 @@ type ShardStaging struct {
 }
 
 // TODO: store node should sign the request.
-type ShardStoreReq struct {
+type ShardReq struct {
 	Owner   string
 	OrderId uint64
 	Cid     cid.Cid
 }
 
-type ShardStoreResp struct {
+type ShardResp struct {
 	OrderId uint64
 	Cid     cid.Cid
 	Content []byte
 }
 
-func (f *ShardStoreReq) Unmarshal(r io.Reader, format string) (err error) {
+func (f *ShardReq) Unmarshal(r io.Reader, format string) (err error) {
 	if format == "json" {
 		buf := &bytes.Buffer{}
 		buf.ReadFrom(r)
@@ -45,7 +46,7 @@ func (f *ShardStoreReq) Unmarshal(r io.Reader, format string) (err error) {
 	return nil
 }
 
-func (f *ShardStoreReq) Marshal(w io.Writer, format string) error {
+func (f *ShardReq) Marshal(w io.Writer, format string) error {
 	if format == "json" {
 		bytes, err := json.Marshal(f)
 		if err != nil {
@@ -62,7 +63,7 @@ func (f *ShardStoreReq) Marshal(w io.Writer, format string) error {
 	return nil
 }
 
-func (f *ShardStoreResp) Marshal(w io.Writer, format string) error {
+func (f *ShardResp) Marshal(w io.Writer, format string) error {
 	if format == "json" {
 		bytes, err := json.Marshal(f)
 		if err != nil {
@@ -79,7 +80,7 @@ func (f *ShardStoreResp) Marshal(w io.Writer, format string) error {
 	return nil
 }
 
-func (f *ShardStoreResp) Unmarshal(r io.Reader, format string) (err error) {
+func (f *ShardResp) Unmarshal(r io.Reader, format string) (err error) {
 	if format == "json" {
 		buf := &bytes.Buffer{}
 		buf.ReadFrom(r)

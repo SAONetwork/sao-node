@@ -47,7 +47,7 @@ func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.Ch
 		ctx:          ctx,
 	}
 
-	host.SetStreamHandler(types.ShardStoreProtocol, ss.HandleShardStream)
+	host.SetStreamHandler(types.ShardLoadProtocol, ss.HandleShardStream)
 
 	if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
 		return nil, err
@@ -147,18 +147,18 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	defer stream.Close()
 	log.Infof("open stream(%s) to gateway %s", types.ShardStoreProtocol, conn)
 
-	req := types.ShardStoreReq{
+	req := types.ShardReq{
 		Owner:   owner,
 		OrderId: orderId,
 		Cid:     cid,
 	}
-	log.Debugf("send ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
-	var resp types.ShardStoreResp
-	if err = transport.DoTransport(ctx, stream, &req, &resp, "json"); err != nil {
+	log.Debugf("send ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+	var resp types.ShardResp
+	if err = transport.DoRequest(ctx, stream, &req, &resp, "json"); err != nil {
 		// TODO: handle error
 		return nil, err
 	}
-	log.Debugf("receive ShardStoreResp: content=%s", string(resp.Content))
+	log.Debugf("receive ShardResp: content=%s", string(resp.Content))
 	return resp.Content, nil
 }
 
@@ -177,14 +177,14 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
-	var req types.ShardStoreReq
+	var req types.ShardReq
 	err := req.Unmarshal(s, "json")
 	if err != nil {
 		log.Error(err)
 		// TODO: respond error
 		return
 	}
-	log.Debugf("receive ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
 
 	reader, err := ss.storeManager.Get(ss.ctx, req.Cid)
 	if err != nil {
@@ -197,12 +197,12 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 		return
 	}
 
-	var resp = &types.ShardStoreResp{
+	var resp = &types.ShardResp{
 		OrderId: req.OrderId,
 		Cid:     req.Cid,
 		Content: shardContent,
 	}
-	log.Debugf("send ShardStoreResp: Content len %d", len(shardContent))
+	log.Debugf("send ShardResp: Content len %d", len(shardContent))
 
 	err = resp.Marshal(s, "json")
 	if err != nil {

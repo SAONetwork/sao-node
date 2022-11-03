@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
+	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/model/json_patch"
 	"sao-storage-node/node/model/schema/validator"
-	"sao-storage-node/node/order"
 	"sao-storage-node/types"
 	"strings"
 	"sync"
@@ -41,7 +41,7 @@ type ModelManager struct {
 	CacheSvc     cache.CacheSvcApi
 	JsonpatchSvc *json_patch.JsonpatchSvc
 	// used by gateway module
-	OrderSvc order.OrderSvcApi
+	GatewaySvc gateway.GatewaySvcApi
 }
 
 var (
@@ -49,7 +49,7 @@ var (
 	once         sync.Once
 )
 
-func NewModelManager(cacheCfg *config.Cache, orderSvc order.OrderSvcApi) *ModelManager {
+func NewModelManager(cacheCfg *config.Cache, gatewaySvc gateway.GatewaySvcApi) *ModelManager {
 	once.Do(func() {
 		var cacheSvc cache.CacheSvcApi
 		if cacheCfg.RedisConn == "" {
@@ -62,7 +62,7 @@ func NewModelManager(cacheCfg *config.Cache, orderSvc order.OrderSvcApi) *ModelM
 			CacheCfg:     cacheCfg,
 			CacheSvc:     cacheSvc,
 			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
-			OrderSvc:     orderSvc,
+			GatewaySvc:   gatewaySvc,
 		}
 	})
 
@@ -72,13 +72,13 @@ func NewModelManager(cacheCfg *config.Cache, orderSvc order.OrderSvcApi) *ModelM
 func (mm *ModelManager) Stop(ctx context.Context) error {
 	log.Info("stopping model manager...")
 
-	mm.OrderSvc.Stop(ctx)
+	mm.GatewaySvc.Stop(ctx)
 
 	return nil
 }
 
 func (mm *ModelManager) Load(ctx context.Context, account string, key string) (*Model, error) {
-	orderMeta, err := mm.OrderSvc.Query(ctx, key)
+	orderMeta, err := mm.GatewaySvc.Query(ctx, key)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -93,7 +93,7 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string) (*
 
 	log.Info("model ", model)
 
-	result, err := mm.OrderSvc.Fetch(ctx, orderMeta.OrderId)
+	result, err := mm.GatewaySvc.Fetch(ctx, orderMeta.OrderId)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -143,7 +143,7 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 
 	// Commit
 	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := mm.OrderSvc.Commit(ctx, orderMeta.Creator, orderMeta, content)
+	result, err := mm.GatewaySvc.Commit(ctx, orderMeta.Creator, orderMeta, content)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}

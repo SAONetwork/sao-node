@@ -1,4 +1,4 @@
-package order
+package gateway
 
 import (
 	"context"
@@ -46,14 +46,14 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
-	var req types.ShardStoreReq
+	var req types.ShardReq
 	err := req.Unmarshal(s, "json")
 	if err != nil {
 		log.Error(err)
 		// TODO: respond error
 		return
 	}
-	log.Debugf("receive ShardStoreReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
 
 	contentBytes, err := GetStagedShard(ssh.stagingPath, req.Owner, req.Cid)
 	if err != nil {
@@ -61,12 +61,12 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 		// TODO: respond error
 		return
 	}
-	var resp = &types.ShardStoreResp{
+	var resp = &types.ShardResp{
 		OrderId: req.OrderId,
 		Cid:     req.Cid,
 		Content: contentBytes,
 	}
-	log.Debugf("send ShardStoreResp: Content=%v", string(contentBytes))
+	log.Debugf("send ShardResp: Content=%v", string(contentBytes))
 
 	err = resp.Marshal(s, "json")
 	if err != nil {
@@ -98,19 +98,19 @@ func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) ([]byte, err
 		return nil, err
 	}
 	defer stream.Close()
-	log.Infof("open stream(%s) to storage node %s", types.ShardStoreProtocol, addr)
+	log.Infof("open stream(%s) to storage node %s", types.ShardLoadProtocol, addr)
 
-	req := types.ShardStoreReq{
+	req := types.ShardReq{
 		Cid: shardCid,
 	}
-	log.Infof("send ShardStoreReq with cid:%v, to the storage node %s", req.Cid, addr)
+	log.Infof("send ShardReq with cid:%v, to the storage node %s", req.Cid, addr)
 
-	var resp types.ShardStoreResp
-	if err = transport.DoTransport(ssh.ctx, stream, &req, &resp, "json"); err != nil {
+	var resp types.ShardResp
+	if err = transport.DoRequest(ssh.ctx, stream, &req, &resp, "json"); err != nil {
 		return nil, err
 	}
 
-	log.Debugf("receive ShardStoreResp with content length:%d, from the storage node %s", len(resp.Content), addr)
+	log.Debugf("receive ShardResp with content length:%d, from the storage node %s", len(resp.Content), addr)
 
 	return resp.Content, nil
 }
