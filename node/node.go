@@ -81,6 +81,10 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, a := range host.Addrs() {
+		withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
+		log.Info("addr=", withP2p.String())
+	}
 
 	tds, err := repo.Datastore(ctx, "/transport")
 	if err != nil {

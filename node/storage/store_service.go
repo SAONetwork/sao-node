@@ -132,6 +132,8 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	if err != nil {
 		return nil, err
 	}
+	log.Info("conn: ", conn)
+	log.Info("a: ", conn)
 	pi, err := peer.AddrInfoFromP2pAddr(a)
 	if err != nil {
 		return nil, err
@@ -174,7 +176,7 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 	defer s.Close()
 
 	// Set a deadline on reading from the stream so it doesn't hang
-	_ = s.SetReadDeadline(time.Now().Add(10 * time.Second))
+	_ = s.SetReadDeadline(time.Now().Add(20 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
 	var req types.ShardReq

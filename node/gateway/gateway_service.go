@@ -62,19 +62,19 @@ func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.Chai
 	return cs
 }
 
-func (os *GatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, error) {
+func (gs *GatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, error) {
 	var res *modeltypes.QueryGetMetadataResponse = nil
 	var err error
 	var dataId string
 	if utils.IsDataId(key) {
 		dataId = key
 	} else {
-		dataId, err = os.chainSvc.QueryDataId(ctx, key)
+		dataId, err = gs.chainSvc.QueryDataId(ctx, key)
 		if err != nil {
 			return nil, err
 		}
 	}
-	res, err = os.chainSvc.QueryMeta(ctx, dataId)
+	res, err = gs.chainSvc.QueryMeta(ctx, dataId)
 	if err != nil {
 		return nil, err
 	}
@@ -103,26 +103,23 @@ func (os *GatewaySvc) QueryMeta(ctx context.Context, key string) (*types.Model, 
 	}, nil
 }
 
-func (os *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error) {
+func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error) {
 	contentList := make([][]byte, len(meta.Shards))
 	for key, shard := range meta.Shards {
+		log.Info("shard: ", shard)
+		log.Info("key: ", key)
 		shardCid, err := cid.Decode(shard.Cid)
 		if err != nil {
 			return nil, err
 		}
 
-		addr, err := os.chainSvc.GetNodePeer(ctx, key)
-		if err != nil {
-			return nil, err
-		}
-
 		var shardContent []byte
-		if key == os.nodeAddress {
+		if key == gs.nodeAddress {
 			// local shard
-			if os.storeManager == nil {
+			if gs.storeManager == nil {
 				return nil, xerrors.Errorf("local store manager not found")
 			}
-			reader, err := os.storeManager.Get(ctx, shardCid)
+			reader, err := gs.storeManager.Get(ctx, shardCid)
 			if err != nil {
 				return nil, err
 			}
@@ -132,12 +129,12 @@ func (os *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 			}
 		} else {
 			// remote shard
-			shardContent, err = os.shardStreamHandler.Fetch(addr, shardCid)
+			shardContent, err = gs.shardStreamHandler.Fetch(shard.Peer, shardCid)
 			if err != nil {
 				return nil, err
 			}
 		}
-		contentList[shard.Id] = shardContent
+		contentList[shard.ShardId] = shardContent
 	}
 
 	var content []byte
@@ -151,12 +148,12 @@ func (os *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	}, nil
 }
 
-func (os *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
+func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
 	// TODO: support marshal any content
-	err := StageShard(os.stagingPath, creator, orderMeta.Cid, content)
+	err := StageShard(gs.stagingPath, creator, orderMeta.Cid, content)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +176,7 @@ func (os *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 
 		log.Info("metadata: ", metadata)
 
-		orderId, txId, err := os.chainSvc.StoreOrder(ctx, os.nodeAddress, creator, os.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica, metadata)
+		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, creator, gs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica, metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -188,7 +185,7 @@ func (os *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		orderMeta.TxId = txId
 		orderMeta.TxSent = true
 	} else {
-		txId, err := os.chainSvc.OrderReady(ctx, os.nodeAddress, orderMeta.OrderId)
+		txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderMeta.OrderId)
 		if err != nil {
 			return nil, err
 		}
@@ -199,15 +196,17 @@ func (os *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 	}
 
 	doneChan := make(chan chain.OrderCompleteResult)
-	err = os.chainSvc.SubscribeOrderComplete(ctx, orderMeta.OrderId, doneChan)
+	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderMeta.OrderId, doneChan)
 	if err != nil {
 		return nil, err
 	}
 
+	log.Debugf("SubscribeOrderComplete")
+
 	timeout := false
 	select {
 	case _ = <-doneChan:
-		// dataId = result.DataId
+		log.Debugf("SubscribeOrderComplete 1")
 	case <-time.After(chain.Blocktime * time.Duration(orderMeta.CompleteTimeoutBlocks)):
 		timeout = true
 	case <-ctx.Done():
@@ -215,15 +214,15 @@ func (os *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 	}
 	close(doneChan)
 
-	err = os.chainSvc.UnsubscribeOrderComplete(ctx, orderMeta.OrderId)
+	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderMeta.OrderId)
 	if err != nil {
 		log.Error(err)
 	} else {
-		log.Debugf("UnsubscribeOrderComplete")
+		log.Debugf("UnsubscribeOrderComplete 2")
 	}
 
-	log.Debugf("unstage shard /%s/%v", creator, orderMeta.Cid)
-	err = UnstageShard(os.stagingPath, creator, orderMeta.Cid)
+	log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, creator, orderMeta.Cid)
+	err = UnstageShard(gs.stagingPath, creator, orderMeta.Cid)
 	if err != nil {
 		return nil, err
 	}

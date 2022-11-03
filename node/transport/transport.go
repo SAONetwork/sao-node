@@ -323,6 +323,10 @@ func DoRequest(ctx context.Context, s network.Stream, req interface{}, resp inte
 				errc <- fmt.Errorf("failed to send request: %w", err)
 				return
 			}
+			err := s.CloseWrite()
+			if err != nil {
+				log.Error(err.Error())
+			}
 		} else {
 			errc <- fmt.Errorf("failed to send request")
 			return

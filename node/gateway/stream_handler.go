@@ -93,7 +93,7 @@ func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	stream, err := ssh.host.NewStream(ssh.ctx, pi.ID, types.ShardStoreProtocol)
+	stream, err := ssh.host.NewStream(ssh.ctx, pi.ID, types.ShardLoadProtocol)
 	if err != nil {
 		return nil, err
 	}

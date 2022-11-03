@@ -9,7 +9,6 @@ import (
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"github.com/hashicorp/go-uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -39,8 +38,11 @@ type OrderCompleteResult struct {
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
-	cosmos   cosmosclient.Client
-	listener *http.HTTP
+	cosmos      cosmosclient.Client
+	orderClient saotypes.QueryClient
+	nodeClient  nodetypes.QueryClient
+	modelClient modeltypes.QueryClient
+	listener    *http.HTTP
 }
 
 func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
@@ -53,6 +55,10 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 		return nil, err
 	}
 
+	orderClient := saotypes.NewQueryClient(cosmos.Context())
+	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
+	modelClient := modeltypes.NewQueryClient(cosmos.Context())
+
 	log.Info("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
 	if err != nil {
@@ -63,8 +69,11 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 		return nil, err
 	}
 	return &ChainSvc{
-		cosmos:   cosmos,
-		listener: http,
+		cosmos:      cosmos,
+		orderClient: orderClient,
+		nodeClient:  nodeClient,
+		modelClient: modelClient,
+		listener:    http,
 	}, nil
 }
 
@@ -225,8 +234,7 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 }
 
 func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*saotypes.Order, error) {
-	queryClient := saotypes.NewQueryClient(c.cosmos.Context())
-	queryResp, err := queryClient.Order(ctx, &saotypes.QueryGetOrderRequest{
+	queryResp, err := c.orderClient.Order(ctx, &saotypes.QueryGetOrderRequest{
 		Id: orderId,
 	})
 	if err != nil {
@@ -236,8 +244,7 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*saotypes.Orde
 }
 
 func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, error) {
-	queryClient := nodetypes.NewQueryClient(c.cosmos.Context())
-	resp, err := queryClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
+	resp, err := c.nodeClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
 		Creator: creator,
 	})
 	if err != nil {
@@ -253,12 +260,10 @@ func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, 
 	}
 
 	go func() {
-		_ = <-ch
+		<-ch
 		// TODO: replace with real data id.
-		uuid, _ := uuid.GenerateUUID()
-		doneChan <- OrderCompleteResult{
-			DataId: uuid,
-		}
+		// uuid, _ := uuid.GenerateUUID()
+		doneChan <- OrderCompleteResult{}
 	}()
 	return nil
 }
@@ -326,8 +331,7 @@ func (cs *ChainSvc) UnsubscribeShardTask(ctx context.Context, nodeAddr string) e
 }
 
 func (c *ChainSvc) QueryMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
-	queryClient := modeltypes.NewQueryClient(c.cosmos.Context())
-	queryResp, err := queryClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
+	queryResp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
 		DataId: dataId,
 	})
 	if err != nil {
@@ -337,8 +341,7 @@ func (c *ChainSvc) QueryMeta(ctx context.Context, dataId string) (*modeltypes.Qu
 }
 
 func (c *ChainSvc) QueryDataId(ctx context.Context, key string) (string, error) {
-	queryClient := modeltypes.NewQueryClient(c.cosmos.Context())
-	queryResp, err := queryClient.Model(ctx, &modeltypes.QueryGetModelRequest{
+	queryResp, err := c.modelClient.Model(ctx, &modeltypes.QueryGetModelRequest{
 		Key: key,
 	})
 	if err != nil {
