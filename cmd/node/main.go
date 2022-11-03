@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/common-nighthawk/go-figure"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
@@ -270,6 +271,9 @@ var quitCmd = &cli.Command{
 var runCmd = &cli.Command{
 	Name: "run",
 	Action: func(cctx *cli.Context) error {
+		myFigure := figure.NewFigure("Sao Network", "", true)
+		myFigure.Print()
+
 		// there is no place to trigger shutdown signal now. may add somewhere later.
 		shutdownChan := make(chan struct{})
 		ctx := cctx.Context

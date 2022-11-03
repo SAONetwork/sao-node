@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
+	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/filecoin-project/go-jsonrpc v0.1.8
