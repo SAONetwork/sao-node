@@ -26,7 +26,7 @@ type RawCommit struct {
 }
 
 type OrderMeta struct {
-	Creator               string
+	Owner                 string
 	GroupId               string
 	DataId                string
 	Alias                 string

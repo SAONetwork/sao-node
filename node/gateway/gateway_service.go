@@ -91,10 +91,10 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 		DataId:  res.Metadata.DataId,
 		Alias:   res.Metadata.Alias,
 		GroupId: res.Metadata.FamilyId,
-		Creator: res.Metadata.Owner,
+		Owner:   res.Metadata.Owner,
 		OrderId: res.Metadata.OrderId,
 		Tags:    res.Metadata.Tags,
-		// Cid: N/a,
+		// Cid: res.Metadata.Cid,
 		Shards:   res.Shards,
 		CommitId: commitId,
 		Commits:  res.Metadata.Commits,
@@ -239,11 +239,11 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 			}
 		}
 		return &CommitResult{
-			OrderId:  orderMeta.OrderId,
+			OrderId:  order.Id,
 			DataId:   orderMeta.DataId,
 			CommitId: orderMeta.CommitId,
 			Shards:   shards,
-			Cid:      orderMeta.Cid.String(),
+			Cid:      order.Cid,
 		}, nil
 	}
 }
