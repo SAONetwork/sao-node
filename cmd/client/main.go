@@ -107,7 +107,7 @@ var createCmd = &cli.Command{
 	Name: "create",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "from",
+			Name:     "owner",
 			Usage:    "data model owner",
 			Required: true,
 		},
@@ -179,10 +179,10 @@ var createCmd = &cli.Command{
 		}
 		platform := cctx.String("platform")
 
-		if !cctx.IsSet("from") {
-			return xerrors.Errorf("must provide --from")
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
 		}
-		from := cctx.String("from")
+		owner := cctx.String("owner")
 		clientPublish := cctx.Bool("clientPublish")
 
 		// TODO: check valid range
@@ -203,7 +203,7 @@ var createCmd = &cli.Command{
 		}
 
 		orderMeta := types.OrderMeta{
-			Creator:   from,
+			Owner:     owner,
 			GroupId:   platform,
 			Alias:     cctx.String("name"),
 			Duration:  int32(duration),
@@ -239,7 +239,7 @@ var createCmd = &cli.Command{
 			)
 			log.Info("metadata: ", metadata)
 
-			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
@@ -263,7 +263,7 @@ var createFileCmd = &cli.Command{
 	Name: "create-file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "from",
+			Name:     "owner",
 			Usage:    "file owner",
 			Required: true,
 		},
@@ -328,10 +328,10 @@ var createFileCmd = &cli.Command{
 		}
 		platform := cctx.String("platform")
 
-		if !cctx.IsSet("from") {
-			return xerrors.Errorf("must provide --from")
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
 		}
-		from := cctx.String("from")
+		owner := cctx.String("owner")
 
 		if !cctx.IsSet("file-name") {
 			return xerrors.Errorf("must provide --file-name")
@@ -358,7 +358,7 @@ var createFileCmd = &cli.Command{
 		}
 
 		orderMeta := types.OrderMeta{
-			Creator:   from,
+			Owner:     owner,
 			GroupId:   platform,
 			Alias:     fileName,
 			Duration:  int32(duration),
@@ -393,7 +393,7 @@ var createFileCmd = &cli.Command{
 			)
 			log.Info("metadata: ", metadata)
 
-			orderId, tx, err := chain.StoreOrder(ctx, from, from, gatewayAddress, cid, int32(duration), int32(replicas), metadata)
+			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, cid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
@@ -796,7 +796,7 @@ var updateCmd = &cli.Command{
 		defer closer()
 
 		orderMeta := types.OrderMeta{
-			Creator:   owner,
+			Owner:     owner,
 			GroupId:   platform,
 			DataId:    cctx.String("data-id"),
 			Alias:     cctx.String("name"),

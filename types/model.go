@@ -7,7 +7,7 @@ type Model struct {
 	Alias      string
 	GroupId    string
 	OrderId    uint64
-	Creator    string
+	Owner      string
 	Tags       []string
 	Cid        string
 	Shards     map[string]*types.ShardMeta

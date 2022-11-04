@@ -55,7 +55,7 @@ func TestManager1(t *testing.T) {
 	require.NotNil(t, manager)
 
 	orderMeta := types.OrderMeta{
-		Creator:  "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h",
+		Owner:    "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h",
 		DataId:   "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
 		GroupId:  "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
 		Alias:    "test_model_1",
@@ -75,11 +75,11 @@ func TestManager1(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelLoad1, err := manager.Load(context.Background(), orderMeta.Creator, orderMeta.Alias, orderMeta.GroupId)
+	modelLoad1, err := manager.Load(context.Background(), orderMeta.Owner, orderMeta.Alias, orderMeta.GroupId)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
 	require.NoError(t, err)
 
-	modelLoad2, err := manager.Load(context.Background(), orderMeta.Creator, model.DataId, orderMeta.GroupId)
+	modelLoad2, err := manager.Load(context.Background(), orderMeta.Owner, model.DataId, orderMeta.GroupId)
 	require.Equal(t, model.Alias, modelLoad2.Alias)
 	require.NoError(t, err)
 
@@ -102,7 +102,7 @@ func TestManager2(t *testing.T) {
 	creator := "cosmos1080r7yvzd3ldveynuazy9ze63szn4m5tmjs60h"
 
 	schemaOrder1 := types.OrderMeta{
-		Creator:  creator,
+		Owner:    creator,
 		DataId:   "37743e1c-b4d0-42f6-9fee-89592425c1fb",
 		GroupId:  "37743e1c-b4d0-42f6-9fee-89592425c1fb",
 		Alias:    "addresses_schema_1",
@@ -141,7 +141,7 @@ func TestManager2(t *testing.T) {
 	require.NoError(t, err)
 
 	schemaOrder2 := types.OrderMeta{
-		Creator:  creator,
+		Owner:    creator,
 		DataId:   "ba8c31a3-e1ff-408d-858a-bd8da6b23b90",
 		GroupId:  "ba8c31a3-e1ff-408d-858a-bd8da6b23b90",
 		Alias:    "addresses_schema_2",
@@ -191,7 +191,7 @@ func TestManager2(t *testing.T) {
 		}
 	}`
 	modelOrder := types.OrderMeta{
-		Creator:  creator,
+		Owner:    creator,
 		DataId:   "94648406-8aeb-48ff-94c0-cc7f35e17978",
 		GroupId:  "94648406-8aeb-48ff-94c0-cc7f35e17978",
 		Alias:    "test_model",

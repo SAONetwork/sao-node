@@ -69,6 +69,17 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 }
 
 func (mm *ModelManager) Load(ctx context.Context, account string, key string, group string) (*types.Model, error) {
+	if !utils.IsDataId(key) {
+		value, err := mm.CacheSvc.Get(account, key+group)
+		if err != nil {
+			log.Warn(err.Error())
+		} else if value != nil {
+			dataId := value.(string)
+			if utils.IsDataId(dataId) {
+				key = dataId
+			}
+		}
+	}
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
@@ -80,21 +91,15 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string, gr
 			return model, nil
 		}
 	}
-
-	result, err := mm.GatewaySvc.FetchContent(ctx, meta)
-	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
-	}
-
 	if model == nil {
 		model = &types.Model{
-			DataId:  meta.DataId,
-			Alias:   meta.Alias,
-			GroupId: meta.GroupId,
-			OrderId: meta.OrderId,
-			Creator: meta.Creator,
-			Tags:    meta.Tags,
-			// Cid: N/a,
+			DataId:   meta.DataId,
+			Alias:    meta.Alias,
+			GroupId:  meta.GroupId,
+			OrderId:  meta.OrderId,
+			Owner:    meta.Owner,
+			Tags:     meta.Tags,
+			Cid:      meta.Cid,
 			Shards:   meta.Shards,
 			CommitId: meta.CommitId,
 			Commits:  meta.Commits,
@@ -102,8 +107,17 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string, gr
 			ExtendInfo: meta.ExtendInfo,
 		}
 	}
-	model.Cid = result.Cid
-	model.Content = result.Content
+
+	if len(meta.Shards) > 1 {
+		log.Warnf("large size content should go through P2P channel")
+	} else {
+		result, err := mm.GatewaySvc.FetchContent(ctx, meta)
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+		model.Cid = result.Cid
+		model.Content = result.Content
+	}
 
 	mm.cacheModel(account, model)
 
@@ -126,12 +140,12 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 		alias = orderMeta.Alias
 	}
 
-	oldModel := mm.loadModel(orderMeta.Creator, orderMeta.Alias)
+	oldModel := mm.loadModel(orderMeta.Owner, orderMeta.Alias)
 	if oldModel != nil {
 		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	err := mm.validateModel(orderMeta.Creator, alias, content, orderMeta.Rule)
+	err := mm.validateModel(orderMeta.Owner, alias, content, orderMeta.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
@@ -139,19 +153,19 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 
 	// Commit
 	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Creator, orderMeta, content)
+	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Owner, orderMeta, content)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &types.Model{
-		DataId:  result.DataId,
-		Alias:   alias,
-		GroupId: orderMeta.GroupId,
-		OrderId: result.OrderId,
-		Creator: orderMeta.Creator,
-		Tags:    orderMeta.Tags,
-		// Cid: N/a,
+		DataId:     result.DataId,
+		Alias:      alias,
+		GroupId:    orderMeta.GroupId,
+		OrderId:    result.OrderId,
+		Owner:      orderMeta.Owner,
+		Tags:       orderMeta.Tags,
+		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   result.CommitId,
 		Commits:    append(make([]string, 0), result.CommitId),
@@ -159,7 +173,7 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 		ExtendInfo: orderMeta.ExtenInfo,
 	}
 
-	mm.cacheModel(orderMeta.Creator, model)
+	mm.cacheModel(orderMeta.Owner, model)
 
 	return model, nil
 }
@@ -171,7 +185,7 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 	} else {
 		key = orderMeta.DataId
 	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Creator, key, orderMeta.GroupId)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -180,7 +194,7 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 	orderMeta.Alias = meta.Alias
 
 	var isFetch = true
-	orgModel := mm.loadModel(orderMeta.Creator, meta.DataId)
+	orgModel := mm.loadModel(orderMeta.Owner, meta.DataId)
 	if orgModel != nil {
 		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
@@ -188,13 +202,13 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		}
 	} else {
 		orgModel = &types.Model{
-			DataId:  meta.DataId,
-			Alias:   meta.Alias,
-			GroupId: meta.GroupId,
-			OrderId: meta.OrderId,
-			Creator: meta.Creator,
-			Tags:    meta.Tags,
-			// Cid: N/a,
+			DataId:   meta.DataId,
+			Alias:    meta.Alias,
+			GroupId:  meta.GroupId,
+			OrderId:  meta.OrderId,
+			Owner:    meta.Owner,
+			Tags:     meta.Tags,
+			Cid:      meta.Cid,
 			Shards:   meta.Shards,
 			CommitId: meta.CommitId,
 			Commits:  meta.Commits,
@@ -226,7 +240,7 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		return nil, xerrors.Errorf("cid mismatch")
 	}
 
-	err = mm.validateModel(orderMeta.Creator, orderMeta.Alias, newContent, orderMeta.Rule)
+	err = mm.validateModel(orderMeta.Owner, orderMeta.Alias, newContent, orderMeta.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
@@ -234,19 +248,19 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 
 	// Commit
 	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Creator, orderMeta, newContent)
+	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Owner, orderMeta, newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &types.Model{
-		DataId:  orderMeta.DataId,
-		Alias:   orderMeta.Alias,
-		GroupId: orderMeta.GroupId,
-		OrderId: result.OrderId,
-		Creator: orderMeta.Creator,
-		Tags:    orderMeta.Tags,
-		// Cid: N/a,
+		DataId:     orderMeta.DataId,
+		Alias:      orderMeta.Alias,
+		GroupId:    orderMeta.GroupId,
+		OrderId:    result.OrderId,
+		Owner:      orderMeta.Owner,
+		Tags:       orderMeta.Tags,
+		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   result.CommitId,
 		Commits:    append(meta.Commits, result.CommitId),
@@ -254,18 +268,23 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		ExtendInfo: orderMeta.ExtenInfo,
 	}
 
-	mm.cacheModel(orderMeta.Creator, model)
+	mm.cacheModel(orderMeta.Owner, model)
 
 	return model, nil
 }
 
 func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
-	model, _ := mm.CacheSvc.Get(account, key)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+
+	model, _ := mm.CacheSvc.Get(account, meta.DataId)
 	if model != nil {
 		m := model.(*types.Model)
 
 		mm.CacheSvc.Evict(account, m.DataId)
-		mm.CacheSvc.Evict(account, m.Alias)
+		mm.CacheSvc.Evict(account, m.Alias+m.GroupId)
 
 		return &types.Model{
 			DataId: m.DataId,
@@ -393,7 +412,7 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 		model.Content = make([]byte, 0)
 	}
 	mm.CacheSvc.Put(account, model.DataId, model)
-	mm.CacheSvc.Put(account, model.Alias, model.DataId)
+	mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
 
 	// Reserved for open data model search feature...
 	// for _, k := range model.Tags {
