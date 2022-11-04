@@ -305,7 +305,7 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 }
 
 func (n *Node) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
-	model, err := n.manager.Create(ctx, orderMeta, patch)
+	model, err := n.manager.Update(ctx, orderMeta, patch)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}

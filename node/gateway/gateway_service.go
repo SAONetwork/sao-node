@@ -184,7 +184,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderMeta.OrderId, txId)
+		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderMeta.OrderId, txId)
 
 		orderMeta.TxId = txId
 		orderMeta.TxSent = true

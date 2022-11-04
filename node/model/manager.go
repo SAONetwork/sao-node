@@ -165,16 +165,41 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 }
 
 func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Creator, orderMeta.Alias, orderMeta.GroupId)
+	var key string
+	if len(orderMeta.DataId) == 0 {
+		key = orderMeta.Alias
+	} else {
+		key = orderMeta.DataId
+	}
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Creator, key, orderMeta.GroupId)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
+
+	orderMeta.DataId = meta.DataId
+	orderMeta.Alias = meta.Alias
 
 	var isFetch = true
 	orgModel := mm.loadModel(orderMeta.Creator, meta.DataId)
 	if orgModel != nil {
 		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
+			// found latest data model in local cache
 			isFetch = false
+		}
+	} else {
+		orgModel = &types.Model{
+			DataId:  meta.DataId,
+			Alias:   meta.Alias,
+			GroupId: meta.GroupId,
+			OrderId: meta.OrderId,
+			Creator: meta.Creator,
+			Tags:    meta.Tags,
+			// Cid: N/a,
+			Shards:   meta.Shards,
+			CommitId: meta.CommitId,
+			Commits:  meta.Commits,
+			// Content: N/a,
+			ExtendInfo: meta.ExtendInfo,
 		}
 	}
 
@@ -183,12 +208,22 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
+		log.Info("result: ", result)
+		log.Info("orgModel: ", orgModel)
 		orgModel.Content = result.Content
 	}
 
 	newContent, err := mm.JsonpatchSvc.ApplyPatch(orgModel.Content, []byte(patch))
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
+	}
+
+	newContentCid, err := utils.CaculateCid(newContent)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+	if newContentCid != orderMeta.Cid {
+		return nil, xerrors.Errorf("cid mismatch")
 	}
 
 	err = mm.validateModel(orderMeta.Creator, orderMeta.Alias, newContent, orderMeta.Rule)
