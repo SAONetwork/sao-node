@@ -4,7 +4,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/ipfs/go-cid"
 	jsoniter "github.com/json-iterator/go"
+	"github.com/multiformats/go-multicodec"
+	"github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
 	"golang.org/x/xerrors"
 )
@@ -49,4 +52,20 @@ func Marshal(obj interface{}) ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+func CaculateCid(content []byte) (cid.Cid, error) {
+	pref := cid.Prefix{
+		Version:  1,
+		Codec:    uint64(multicodec.Raw),
+		MhType:   multihash.SHA2_256,
+		MhLength: -1, // default length
+	}
+
+	contentCid, err := pref.Sum(content)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return contentCid, nil
 }

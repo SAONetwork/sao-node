@@ -10,12 +10,12 @@ import (
 	"os/signal"
 	"path/filepath"
 	"sao-storage-node/node/config"
+	"sao-storage-node/node/utils"
 	"sao-storage-node/types"
 	"strings"
 	"sync"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
@@ -24,8 +24,6 @@ import (
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
-	mc "github.com/multiformats/go-multicodec"
-	mh "github.com/multiformats/go-multihash"
 )
 
 var log = logging.Logger("transport")
@@ -114,13 +112,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 		return
 	}
 
-	pref := cid.Prefix{
-		Version:  1,
-		Codec:    uint64(mc.Raw),
-		MhType:   mh.SHA2_256,
-		MhLength: -1, // default length
-	}
-	localCid, err := pref.Sum(req.Content)
+	localCid, err := utils.CaculateCid(req.Content)
 	if err != nil {
 		log.Error(err.Error())
 		return
@@ -220,13 +212,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 				fileContent = append(fileContent, content...)
 			}
 
-			pref := cid.Prefix{
-				Version:  1,
-				Codec:    uint64(mc.Raw),
-				MhType:   mh.SHA2_256,
-				MhLength: -1, // default length
-			}
-			contentCid, err := pref.Sum(fileContent)
+			contentCid, err := utils.CaculateCid(fileContent)
 			if err != nil {
 				log.Error(err.Error())
 				return

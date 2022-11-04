@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sao-storage-node/node/utils"
 	"sao-storage-node/types"
 
 	cid "github.com/ipfs/go-cid"
@@ -17,9 +18,6 @@ import (
 	ic "github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
-
-	mc "github.com/multiformats/go-multicodec"
-	mh "github.com/multiformats/go-multihash"
 
 	ma "github.com/multiformats/go-multiaddr"
 )
@@ -73,13 +71,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		return cid.Undef
 	}
 
-	pref := cid.Prefix{
-		Version:  1,
-		Codec:    uint64(mc.Raw),
-		MhType:   mh.SHA2_256,
-		MhLength: -1, // default length
-	}
-	contentCid, err := pref.Sum(content)
+	contentCid, err := utils.CaculateCid(content)
 	if err != nil {
 		log.Error(err)
 		return cid.Undef
@@ -98,13 +90,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 			chunk = make([]byte, 0)
 		}
 
-		pref := cid.Prefix{
-			Version:  1,
-			Codec:    uint64(mc.Raw),
-			MhType:   mh.SHA2_256,
-			MhLength: -1, // default length
-		}
-		chunkCid, err := pref.Sum(chunk)
+		chunkCid, err := utils.CaculateCid(chunk)
 		if err != nil {
 			log.Error(err)
 			return cid.Undef

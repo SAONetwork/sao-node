@@ -16,12 +16,10 @@ import (
 	"sao-storage-node/types"
 	"strings"
 
-	"github.com/multiformats/go-multicodec"
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -64,6 +62,7 @@ func main() {
 			loadCmd,
 			updateCmd,
 			downloadCmd,
+			patchGenCmd,
 			peerInfoCmd,
 		},
 	}
@@ -212,13 +211,7 @@ var createCmd = &cli.Command{
 			ExtenInfo: extendInfo,
 		}
 
-		pref := cid.Prefix{
-			Version:  1,
-			Codec:    uint64(multicodec.Raw),
-			MhType:   multihash.SHA2_256,
-			MhLength: -1, // default length
-		}
-		contentCid, err := pref.Sum(content)
+		contentCid, err := saoclient.CaculateCid(content)
 		if err != nil {
 			return err
 		}
@@ -716,7 +709,8 @@ var updateCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "patch",
-			Required: false,
+			Usage:    "patch to apply for the data model",
+			Required: true,
 		},
 		&cli.IntFlag{
 			Name:     "duration",
@@ -735,13 +729,15 @@ var updateCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
+			Name:     "data-id",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "name",
-			Value:    "",
 			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "cid",
-			Value:    "",
 			Required: true,
 		},
 		&cli.IntFlag{
@@ -759,7 +755,6 @@ var updateCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "extend-info",
 			Usage:    "extend information for the model",
-			Value:    "",
 			Required: false,
 		},
 	},
@@ -767,26 +762,26 @@ var updateCmd = &cli.Command{
 		ctx := cctx.Context
 
 		// ---- check parameters ----
-		if !cctx.IsSet("patch") || cctx.String("patch") == "" {
-			return xerrors.Errorf("must provide non-empty --patch.")
+		if !cctx.IsSet("data-id") && !cctx.IsSet("name") {
+			return xerrors.Errorf("please provide either --data-id or --name")
 		}
+
 		patch := []byte(cctx.String("patch"))
-
-		if !cctx.IsSet("platform") {
-			return xerrors.Errorf("must provide --platform")
-		}
-		platform := cctx.String("platform")
-
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
-		clientPublish := cctx.Bool("clientPublish")
-
-		if !cctx.IsSet("cid") || cctx.String("cid") == "" {
-			return xerrors.Errorf("must provide non-empty --cid.")
-		}
 		contentCid := cctx.String("cid")
+		newCid, err := cid.Decode(contentCid)
+		if err != nil {
+			return err
+		}
+
+		platform := cctx.String("platform")
+		owner := cctx.String("owner")
+
+		extendInfo := cctx.String("extend-info")
+		if len(extendInfo) > 1024 {
+			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+		}
+
+		clientPublish := cctx.Bool("clientPublish")
 
 		// TODO: check valid range
 		duration := cctx.Int("duration")
@@ -800,25 +795,16 @@ var updateCmd = &cli.Command{
 		}
 		defer closer()
 
-		extendInfo := cctx.String("extend-info")
-		if len(extendInfo) > 1024 {
-			return xerrors.Errorf("extend-info should no longer than 1024 characters")
-		}
-
 		orderMeta := types.OrderMeta{
 			Creator:   owner,
 			GroupId:   platform,
+			DataId:    cctx.String("data-id"),
 			Alias:     cctx.String("name"),
 			Duration:  int32(duration),
 			Replica:   int32(replicas),
 			ExtenInfo: extendInfo,
+			Cid:       newCid,
 		}
-
-		c, err := cid.Decode(contentCid)
-		if err != nil {
-			return err
-		}
-		orderMeta.Cid = c
 
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
@@ -831,7 +817,6 @@ var updateCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderMeta.DataId = uuid.NewV4().String()
 			metadata := fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
 				orderMeta.Alias,
@@ -857,6 +842,43 @@ var updateCmd = &cli.Command{
 			return err
 		}
 		log.Infof("alias: %s, data id: %s", resp.Alias, resp.DataId)
+		return nil
+	},
+}
+
+var patchGenCmd = &cli.Command{
+	Name:  "patch-gen",
+	Usage: "generate data model patch",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "origin",
+			Usage:    "the original data model\r\n",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "target",
+			Usage:    "the target data model\r\n",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.IsSet("origin") || !cctx.IsSet("target") {
+			return xerrors.Errorf("please provide both --origin and --target")
+		}
+
+		patch, err := saoclient.GeneratePatch(cctx.String("origin"), cctx.String("target"))
+		if err != nil {
+			return err
+		}
+
+		targetCid, err := saoclient.CaculateCid([]byte(cctx.String("target")))
+		if err != nil {
+			return err
+		}
+
+		log.Info("Patch: ", patch)
+		log.Info("Target cid: ", targetCid)
+
 		return nil
 	},
 }
