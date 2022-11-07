@@ -85,6 +85,7 @@ func StartTransportServer(ctx context.Context, address string, serverKey crypto.
 	}
 
 	h.Network().SetStreamHandler(ts.HandleStream)
+	// h.SetStreamHandler(types.ShardLoadProtocol, HandleRpc)
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

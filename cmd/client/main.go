@@ -17,8 +17,6 @@ import (
 	"sao-storage-node/utils"
 	"strings"
 
-	uuid "github.com/satori/go.uuid"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -205,12 +203,13 @@ var createCmd = &cli.Command{
 		}
 
 		orderMeta := types.OrderMeta{
-			Owner:     owner,
-			GroupId:   groupId,
-			Alias:     cctx.String("name"),
-			Duration:  int32(duration),
-			Replica:   int32(replicas),
-			ExtenInfo: extendInfo,
+			Owner:      owner,
+			GroupId:    groupId,
+			Alias:      cctx.String("name"),
+			Duration:   int32(duration),
+			Replica:    int32(replicas),
+			ExtendInfo: extendInfo,
+			IsUpdate:   false,
 		}
 
 		contentCid, err := utils.CaculateCid(content)
@@ -230,14 +229,15 @@ var createCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderMeta.DataId = uuid.NewV4().String()
+			orderMeta.DataId = utils.GenerateDataId()
+			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
+				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
 				orderMeta.Alias,
 				orderMeta.DataId,
-				orderMeta.ExtenInfo,
+				orderMeta.ExtendInfo,
 				orderMeta.GroupId,
-				// orderMeta.CommitId,
+				orderMeta.CommitId,
 			)
 			log.Info("metadata: ", metadata)
 
@@ -360,12 +360,13 @@ var createFileCmd = &cli.Command{
 		}
 
 		orderMeta := types.OrderMeta{
-			Owner:     owner,
-			GroupId:   groupId,
-			Alias:     fileName,
-			Duration:  int32(duration),
-			Replica:   int32(replicas),
-			ExtenInfo: extendInfo,
+			Owner:      owner,
+			GroupId:    groupId,
+			Alias:      fileName,
+			Duration:   int32(duration),
+			Replica:    int32(replicas),
+			ExtendInfo: extendInfo,
+			IsUpdate:   false,
 		}
 		// TODO:
 		cid, err := cid.Decode(cctx.String("cid"))
@@ -384,14 +385,15 @@ var createFileCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderMeta.DataId = uuid.NewV4().String()
+			orderMeta.DataId = utils.GenerateDataId()
+			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
+				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
 				orderMeta.Alias,
 				orderMeta.DataId,
-				orderMeta.ExtenInfo,
+				orderMeta.ExtendInfo,
 				orderMeta.GroupId,
-				// orderMeta.CommitId,
+				orderMeta.CommitId,
 			)
 			log.Info("metadata: ", metadata)
 
@@ -802,14 +804,15 @@ var updateCmd = &cli.Command{
 		}
 
 		orderMeta := types.OrderMeta{
-			Owner:     owner,
-			GroupId:   groupId,
-			DataId:    cctx.String("data-id"),
-			Alias:     cctx.String("name"),
-			Duration:  int32(duration),
-			Replica:   int32(replicas),
-			ExtenInfo: extendInfo,
-			Cid:       newCid,
+			Owner:      owner,
+			GroupId:    groupId,
+			DataId:     cctx.String("data-id"),
+			Alias:      cctx.String("name"),
+			Duration:   int32(duration),
+			Replica:    int32(replicas),
+			ExtendInfo: extendInfo,
+			Cid:        newCid,
+			IsUpdate:   true,
 		}
 
 		if clientPublish {
@@ -834,14 +837,9 @@ var updateCmd = &cli.Command{
 			log.Debugf("meta: DataId=%s, Alias=%s", meta.Metadata.DataId, meta.Metadata.Alias)
 			orderMeta.Alias = meta.Metadata.Alias
 			orderMeta.DataId = meta.Metadata.DataId
+			orderMeta.CommitId = utils.GenerateCommitId()
 
-			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
-				orderMeta.Alias,
-				orderMeta.DataId,
-				orderMeta.ExtenInfo,
-				orderMeta.GroupId,
-			)
+			metadata := fmt.Sprintf(`{"dataId": "%s", "commitId": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
 			log.Info("metadata: ", metadata)
 
 			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, orderMeta.Cid, int32(duration), int32(replicas), metadata)
