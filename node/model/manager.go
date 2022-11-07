@@ -113,7 +113,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 	if orderMeta.CommitId != "" {
 		for _, commit := range meta.Commits {
 			if strings.HasPrefix(commit, orderMeta.CommitId) {
-				commitInfo := strings.Split(commit, "\026")
+				commitInfo := strings.Split(commit, "\032")
 				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 					return nil, xerrors.Errorf("invalid commit information: %s", commit)
 				}
