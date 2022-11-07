@@ -106,6 +106,10 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error) {
 	contentList := make([][]byte, len(meta.Shards))
 	for key, shard := range meta.Shards {
+		if contentList[shard.ShardId] != nil {
+			continue
+		}
+
 		shardCid, err := cid.Decode(shard.Cid)
 		if err != nil {
 			return nil, err
