@@ -8,10 +8,11 @@ type CreateResp struct {
 }
 
 type UpdateResp struct {
-	DataId string
-	Alias  string
-	TxId   string
-	Cid    string
+	DataId   string
+	CommitId string
+	Alias    string
+	TxId     string
+	Cid      string
 }
 
 type LoadResp struct {
