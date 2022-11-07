@@ -830,7 +830,7 @@ var updateCmd = &cli.Command{
 			if key != "" {
 				key = orderMeta.Alias
 			}
-			meta, err := chain.QueryMeta(ctx, key)
+			meta, err := chain.QueryMeta(ctx, key, 0)
 			if err != nil {
 				return err
 			}

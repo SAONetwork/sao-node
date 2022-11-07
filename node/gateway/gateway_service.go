@@ -75,7 +75,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 			return nil, err
 		}
 	}
-	res, err = gs.chainSvc.QueryMeta(ctx, dataId)
+	res, err = gs.chainSvc.QueryMeta(ctx, dataId, 0)
 	if err != nil {
 		return nil, err
 	}

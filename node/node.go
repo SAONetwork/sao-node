@@ -310,9 +310,10 @@ func (n *Node) Update(ctx context.Context, orderMeta types.OrderMeta, patch []by
 		return apitypes.UpdateResp{}, err
 	}
 	return apitypes.UpdateResp{
-		Alias:  model.Alias,
-		DataId: model.DataId,
-		Cid:    model.Cid,
+		Alias:    model.Alias,
+		DataId:   model.DataId,
+		CommitId: model.CommitId,
+		Cid:      model.Cid,
 	}, nil
 }
 
