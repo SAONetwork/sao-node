@@ -172,13 +172,13 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		var metadata string
 		if orderMeta.IsUpdate {
 			metadata = fmt.Sprintf(
-				`{"dataId": "%s", "commitId": "%s", "update": true}`,
+				`{"dataId": "%s", "commit": "%s", "update": true}`,
 				orderMeta.DataId,
 				orderMeta.CommitId,
 			)
 		} else {
 			metadata = fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
+				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				orderMeta.Alias,
 				orderMeta.DataId,
 				orderMeta.ExtendInfo,

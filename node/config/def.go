@@ -62,6 +62,7 @@ type Cache struct {
 	RedisConn     string
 	RedisPassword string
 	RedisPoolSize int
+	MemcachedConn string
 }
 
 type Transport struct {
