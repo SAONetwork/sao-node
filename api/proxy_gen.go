@@ -22,9 +22,11 @@ type GatewayApiStruct struct {
 
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) ``
 
-		Load func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.LoadResp, error) ``
+		Load func(p0 context.Context, p1 types.OrderMeta) (apitypes.LoadResp, error) ``
 
 		NodeAddress func(p0 context.Context) (string, error) ``
+
+		ShowCommits func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) ``
 
 		Test func(p0 context.Context, p1 string) (string, error) ``
 
@@ -79,14 +81,14 @@ func (s *GatewayApiStub) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoRe
 	return *new(apitypes.GetPeerInfoResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Load(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.LoadResp, error) {
+func (s *GatewayApiStruct) Load(p0 context.Context, p1 types.OrderMeta) (apitypes.LoadResp, error) {
 	if s.Internal.Load == nil {
 		return *new(apitypes.LoadResp), ErrNotSupported
 	}
-	return s.Internal.Load(p0, p1, p2, p3)
+	return s.Internal.Load(p0, p1)
 }
 
-func (s *GatewayApiStub) Load(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.LoadResp, error) {
+func (s *GatewayApiStub) Load(p0 context.Context, p1 types.OrderMeta) (apitypes.LoadResp, error) {
 	return *new(apitypes.LoadResp), ErrNotSupported
 }
 
@@ -99,6 +101,17 @@ func (s *GatewayApiStruct) NodeAddress(p0 context.Context) (string, error) {
 
 func (s *GatewayApiStub) NodeAddress(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
+}
+
+func (s *GatewayApiStruct) ShowCommits(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) {
+	if s.Internal.ShowCommits == nil {
+		return *new(apitypes.ShowCommitsResp), ErrNotSupported
+	}
+	return s.Internal.ShowCommits(p0, p1, p2, p3)
+}
+
+func (s *GatewayApiStub) ShowCommits(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) {
+	return *new(apitypes.ShowCommitsResp), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) Test(p0 context.Context, p1 string) (string, error) {

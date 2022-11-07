@@ -35,7 +35,7 @@ type FetchResult struct {
 }
 
 type GatewaySvcApi interface {
-	QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error)
+	QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error)
 	CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
@@ -63,7 +63,7 @@ func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.Chai
 	return cs
 }
 
-func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error) {
+func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error) {
 	var res *modeltypes.QueryGetMetadataResponse = nil
 	var err error
 	var dataId string
@@ -75,7 +75,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 			return nil, err
 		}
 	}
-	res, err = gs.chainSvc.QueryMeta(ctx, dataId, 0)
+	res, err = gs.chainSvc.QueryMeta(ctx, dataId, height)
 	if err != nil {
 		return nil, err
 	}

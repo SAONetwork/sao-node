@@ -100,12 +100,16 @@ func (sc SaoClient) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (
 	return sc.gatewayApi.CreateFile(ctx, orderMeta)
 }
 
-func (sc SaoClient) Load(ctx context.Context, owner string, key string, group string) (apitypes.LoadResp, error) {
-	return sc.gatewayApi.Load(ctx, owner, key, group)
+func (sc SaoClient) Load(ctx context.Context, orderMeta types.OrderMeta) (apitypes.LoadResp, error) {
+	return sc.gatewayApi.Load(ctx, orderMeta)
 }
 
 func (sc SaoClient) Delete(ctx context.Context, owner string, key string, group string) (apitypes.DeleteResp, error) {
 	return sc.gatewayApi.Delete(ctx, owner, key, group)
+}
+
+func (sc SaoClient) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {
+	return sc.gatewayApi.ShowCommits(ctx, owner, key, group)
 }
 
 func (sc SaoClient) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
