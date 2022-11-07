@@ -881,12 +881,19 @@ var patchGenCmd = &cli.Command{
 			return xerrors.Errorf("please provide both --origin and --target")
 		}
 
-		patch, err := saoclient.GeneratePatch(cctx.String("origin"), cctx.String("target"))
+		origin := cctx.String("origin")
+		target := cctx.String("target")
+		patch, err := utils.GeneratePatch(origin, target)
 		if err != nil {
 			return err
 		}
 
-		targetCid, err := utils.CaculateCid([]byte(cctx.String("target")))
+		content, err := utils.ApplyPatch([]byte(origin), []byte(patch))
+		if err != nil {
+			return err
+		}
+
+		targetCid, err := utils.CaculateCid(content)
 		if err != nil {
 			return err
 		}
