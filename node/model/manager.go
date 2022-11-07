@@ -170,7 +170,7 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 		CommitId:   result.CommitId,
 		Commits:    append(make([]string, 0), result.CommitId),
 		Content:    content,
-		ExtendInfo: orderMeta.ExtenInfo,
+		ExtendInfo: orderMeta.ExtendInfo,
 	}
 
 	mm.cacheModel(orderMeta.Owner, model)
@@ -180,7 +180,7 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 
 func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (*types.Model, error) {
 	var key string
-	if len(orderMeta.DataId) == 0 {
+	if orderMeta.DataId == "" {
 		key = orderMeta.Alias
 	} else {
 		key = orderMeta.DataId
@@ -265,7 +265,7 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		CommitId:   result.CommitId,
 		Commits:    append(meta.Commits, result.CommitId),
 		Content:    newContent,
-		ExtendInfo: orderMeta.ExtenInfo,
+		ExtendInfo: orderMeta.ExtendInfo,
 	}
 
 	mm.cacheModel(orderMeta.Owner, model)
