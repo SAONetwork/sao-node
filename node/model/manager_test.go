@@ -136,13 +136,7 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema1)
 	require.NoError(t, err1)
 
-	orderMeta1 := types.OrderMeta{
-		Alias:   "addresses_schema_1",
-		Owner:   creator,
-		GroupId: "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
-	}
-
-	schemaLoad1, err := manager.Load(context.Background(), orderMeta1)
+	schemaLoad1, err := manager.Load(context.Background(), schemaOrder1)
 	require.Equal(t, schema1.Alias, schemaLoad1.Alias)
 	require.NoError(t, err)
 
@@ -181,13 +175,7 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema2)
 	require.NoError(t, err2)
 
-	orderMeta2 := types.OrderMeta{
-		Alias:   "addresses_schema_2",
-		Owner:   creator,
-		GroupId: "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
-	}
-
-	schemaLoad2, err2 := manager.Load(context.Background(), orderMeta2)
+	schemaLoad2, err2 := manager.Load(context.Background(), schemaOrder2)
 	require.Equal(t, schema2.Alias, schemaLoad2.Alias)
 	require.NoError(t, err2)
 
@@ -219,19 +207,9 @@ func TestManager2(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelMeta := types.OrderMeta{
-		Alias:   "test_model",
-		Owner:   creator,
-		GroupId: "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
-	}
-
-	modelLoad1, err := manager.Load(context.Background(), modelMeta)
+	modelLoad1, err := manager.Load(context.Background(), modelOrder)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
-	require.NoError(t, err)
-
-	modelMeta.DataId = model.DataId
-	modelLoad2, err := manager.Load(context.Background(), modelMeta)
-	require.Equal(t, model.Alias, modelLoad2.Alias)
+	require.Equal(t, model.Alias, modelLoad1.Alias)
 	require.NoError(t, err)
 
 	t.Log("model alias: ", model.Alias)
