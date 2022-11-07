@@ -9,6 +9,7 @@ import (
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+	"strings"
 
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -416,9 +417,14 @@ var commitsCmd = &cli.Command{
 		}
 		log.Infof("Model[%s] - %s", resp.DataId, resp.Alias)
 		log.Info("---------------------------------------------------------------")
-		log.Infof("Version  Commit                               Height")
+		log.Infof("Version\tCommit                              \tHeight")
 		for i, commit := range resp.Commits {
-			log.Infof("v%d      : %s", i, commit)
+			commitInfo := strings.Split(commit, "\032")
+			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+				return xerrors.Errorf("invalid commit information: %s", commit)
+			}
+
+			log.Infof("v%d\t\t|%s|%s", i, commitInfo[0], commitInfo[1])
 		}
 		log.Info("---------------------------------------------------------------")
 

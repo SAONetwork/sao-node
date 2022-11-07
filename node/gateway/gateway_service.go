@@ -23,11 +23,12 @@ import (
 var log = logging.Logger("order")
 
 type CommitResult struct {
-	OrderId  uint64
-	DataId   string
-	CommitId string
-	Cid      string
-	Shards   map[string]*modeltypes.ShardMeta
+	OrderId uint64
+	DataId  string
+	Commit  string
+	Commits []string
+	Cid     string
+	Shards  map[string]*modeltypes.ShardMeta
 }
 
 type FetchResult struct {
@@ -146,8 +147,16 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 		content = append(content, c...)
 	}
 
+	contentCid, err := utils.CaculateCid(content)
+	if err != nil {
+		return nil, err
+	}
+	if contentCid.String() != meta.Cid {
+		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
+	}
+
 	return &FetchResult{
-		Cid:     meta.Cid,
+		Cid:     contentCid.String(),
 		Content: content,
 	}, nil
 }
@@ -243,25 +252,19 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		// TODO: timeout handling
 		return nil, errors.Errorf("process order %d timeout.", orderMeta.OrderId)
 	} else {
-		order, err := gs.chainSvc.GetOrder(ctx, orderMeta.OrderId)
+		meta, err := gs.chainSvc.QueryMeta(ctx, orderMeta.DataId, 0)
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("order %d complete: dataId=%s", order.Id, orderMeta.DataId)
+		log.Debugf("order %d complete: dataId=%s", meta.Metadata.OrderId, &meta.Metadata.DataId)
 
-		shards := make(map[string]*modeltypes.ShardMeta)
-		for k, v := range order.Shards {
-			shards[k] = &modeltypes.ShardMeta{
-				ShardId: v.Id,
-				Cid:     v.Cid,
-			}
-		}
 		return &CommitResult{
-			OrderId:  order.Id,
-			DataId:   orderMeta.DataId,
-			CommitId: orderMeta.CommitId,
-			Shards:   shards,
-			Cid:      order.Cid,
+			OrderId: meta.Metadata.OrderId,
+			DataId:  meta.Metadata.DataId,
+			Commit:  meta.Metadata.Commit,
+			Commits: meta.Metadata.Commits,
+			Shards:  meta.Shards,
+			Cid:     orderMeta.Cid.String(),
 		}, nil
 	}
 }
