@@ -90,7 +90,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 	return &types.Model{
 		DataId:  res.Metadata.DataId,
 		Alias:   res.Metadata.Alias,
-		GroupId: res.Metadata.FamilyId,
+		GroupId: res.Metadata.GroupId,
 		Owner:   res.Metadata.Owner,
 		OrderId: res.Metadata.OrderId,
 		Tags:    res.Metadata.Tags,
@@ -145,7 +145,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	}
 
 	return &FetchResult{
-		Cid:     "123456",
+		Cid:     meta.Cid,
 		Content: content,
 	}, nil
 }
@@ -164,16 +164,28 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 	if orderMeta.DataId == "" {
 		orderMeta.DataId = commitId
 	}
-	orderMeta.CommitId = commitId
+	if orderMeta.CommitId == "" {
+		orderMeta.CommitId = commitId
+	}
 
 	if !orderMeta.TxSent {
-		metadata := fmt.Sprintf(
-			`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
-			orderMeta.Alias,
-			orderMeta.DataId,
-			orderMeta.ExtenInfo,
-			orderMeta.GroupId,
-		)
+		var metadata string
+		if orderMeta.IsUpdate {
+			metadata = fmt.Sprintf(
+				`{"dataId": "%s", "commitId": "%s", "update": true}`,
+				orderMeta.DataId,
+				orderMeta.CommitId,
+			)
+		} else {
+			metadata = fmt.Sprintf(
+				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
+				orderMeta.Alias,
+				orderMeta.DataId,
+				orderMeta.ExtendInfo,
+				orderMeta.GroupId,
+				orderMeta.CommitId,
+			)
+		}
 
 		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, creator, gs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica, metadata)
 		if err != nil {
