@@ -8,6 +8,7 @@ import (
 	"sao-storage-node/store"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+	"strings"
 	"time"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
@@ -82,9 +83,10 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 
 	log.Debugf("QueryMeta succeed. meta=%v", res.Metadata)
 
-	commitId := res.Metadata.DataId
-	if len(res.Metadata.Commits) > 1 {
-		commitId = res.Metadata.Commits[len(res.Metadata.Commits)-1]
+	commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
+	commitInfo := strings.Split(commit, "\032")
+	if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+		return nil, xerrors.Errorf("invalid commit information: %s", commit)
 	}
 
 	return &types.Model{
@@ -96,7 +98,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 		Tags:    res.Metadata.Tags,
 		// Cid: res.Metadata.Cid,
 		Shards:   res.Shards,
-		CommitId: commitId,
+		CommitId: commitInfo[0],
 		Commits:  res.Metadata.Commits,
 		// Content: N/a,
 		ExtendInfo: res.Metadata.ExtendInfo,
