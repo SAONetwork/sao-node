@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
+	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/evanphx/json-patch v4.9.0+incompatible

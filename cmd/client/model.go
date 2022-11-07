@@ -158,7 +158,7 @@ var createCmd = &cli.Command{
 			orderMeta.DataId = utils.GenerateDataId()
 			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
+				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				orderMeta.Alias,
 				orderMeta.DataId,
 				orderMeta.ExtendInfo,
@@ -414,10 +414,11 @@ var commitsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Info("Model[%s] - %s", resp.DataId, resp.Alias)
+		log.Infof("Model[%s] - %s", resp.DataId, resp.Alias)
 		log.Info("---------------------------------------------------------------")
-		for i, commitId := range resp.Commits {
-			log.Infof("v%d: %s", i, commitId)
+		log.Infof("Version  Commit                               Height")
+		for i, commit := range resp.Commits {
+			log.Infof("v%d      : %s", i, commit)
 		}
 		log.Info("---------------------------------------------------------------")
 
@@ -567,7 +568,7 @@ var updateCmd = &cli.Command{
 			orderMeta.DataId = meta.Metadata.DataId
 			orderMeta.CommitId = utils.GenerateCommitId()
 
-			metadata := fmt.Sprintf(`{"dataId": "%s", "commitId": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
+			metadata := fmt.Sprintf(`{"dataId": "%s", "commit": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
 			log.Info("metadata: ", metadata)
 
 			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, orderMeta.Cid, int32(duration), int32(replicas), metadata)

@@ -56,12 +56,12 @@ func (svc *RedisCacheSvc) CreateCache(name string, capacity int) error {
 }
 
 func (svc *RedisCacheSvc) Get(name string, key string) (interface{}, error) {
-	exists, err := svc.Client.Exists(svc.Ctx, name+key).Result()
+	exists, err := svc.Client.Exists(svc.Ctx, name+"_"+key).Result()
 	if err != nil {
 		return nil, err
 	}
 	if exists == 1 {
-		value, err := svc.Client.Get(svc.Ctx, name+key).Result()
+		value, err := svc.Client.Get(svc.Ctx, name+"_"+key).Result()
 		if err != nil {
 			return nil, err
 		}
@@ -79,7 +79,7 @@ func (svc *RedisCacheSvc) Put(name string, key string, value interface{}) {
 }
 
 func (svc *RedisCacheSvc) Evict(name string, key string) {
-	_, err := svc.Client.Del(svc.Ctx, key, name+key).Result()
+	_, err := svc.Client.Del(svc.Ctx, key, name+"_"+key).Result()
 	if err != nil {
 		log.Error(err.Error())
 	}

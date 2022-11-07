@@ -155,7 +155,7 @@ var createFileCmd = &cli.Command{
 			orderMeta.DataId = utils.GenerateDataId()
 			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
+				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				orderMeta.Alias,
 				orderMeta.DataId,
 				orderMeta.ExtendInfo,

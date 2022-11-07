@@ -42,10 +42,12 @@ var (
 func NewModelManager(cacheCfg *config.Cache, gatewaySvc gateway.GatewaySvcApi) *ModelManager {
 	once.Do(func() {
 		var cacheSvc cache.CacheSvcApi
-		if cacheCfg.RedisConn == "" {
+		if cacheCfg.RedisConn == "" && cacheCfg.MemcachedConn == "" {
 			cacheSvc = cache.NewLruCacheSvc()
-		} else {
+		} else if cacheCfg.RedisConn != "" {
 			cacheSvc = cache.NewRedisCacheSvc(cacheCfg.RedisConn, cacheCfg.RedisPassword, cacheCfg.RedisPoolSize)
+		} else if cacheCfg.MemcachedConn != "" {
+			cacheSvc = cache.NewMemcachedCacheSvc(cacheCfg.MemcachedConn)
 		}
 
 		modelManager = &ModelManager{
@@ -95,7 +97,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 
 		if len(meta.Commits) > index {
 			commit := meta.Commits[index]
-			commitInfo := strings.Split(meta.Commits[index], "\026")
+			commitInfo := strings.Split(meta.Commits[index], "\032")
 			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 				return nil, xerrors.Errorf("invalid commit information: %s", commit)
 			}
