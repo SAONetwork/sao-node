@@ -75,7 +75,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 			return nil, err
 		}
 	}
-	res, err = gs.chainSvc.QueryMeta(ctx, dataId)
+	res, err = gs.chainSvc.QueryMeta(ctx, dataId, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +90,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 	return &types.Model{
 		DataId:  res.Metadata.DataId,
 		Alias:   res.Metadata.Alias,
-		GroupId: res.Metadata.FamilyId,
+		GroupId: res.Metadata.GroupId,
 		Owner:   res.Metadata.Owner,
 		OrderId: res.Metadata.OrderId,
 		Tags:    res.Metadata.Tags,
