@@ -39,6 +39,10 @@ func GenerateCommitId() string {
 	return uuid.NewV4().String()
 }
 
+func GenerateGroupId() string {
+	return uuid.NewV4().String()
+}
+
 func UnMarshal(jsonString []byte, path ...interface{}) (interface{}, error) {
 	result := jsoniter.Get(jsonString, path)
 	return result.GetInterface(), result.LastError()

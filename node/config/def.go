@@ -1,12 +1,7 @@
 package config
 
 import (
-	"bytes"
-
 	"time"
-
-	"github.com/BurntSushi/toml"
-	"golang.org/x/xerrors"
 )
 
 type Common struct {
@@ -121,14 +116,4 @@ func defCommon() Common {
 			},
 		},
 	}
-}
-
-func NodeBytes(cfg interface{}) ([]byte, error) {
-	buf := new(bytes.Buffer)
-	e := toml.NewEncoder(buf)
-	if err := e.Encode(cfg); err != nil {
-		return nil, xerrors.Errorf("encoding node config: %w", err)
-	}
-
-	return buf.Bytes(), nil
 }

@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sao-storage-node/node/utils"
 	"sao-storage-node/types"
+	"sao-storage-node/utils"
 
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -23,8 +23,6 @@ import (
 )
 
 var log = logging.Logger("transport-client")
-
-const SAO_CLI_KEY_PATH = "~/.sao_cli_key/"
 
 func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
 	file, err := os.Open(fpath)
@@ -149,7 +147,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 }
 
 func fetchKey() ic.PrivKey {
-	kstorePath, err := homedir.Expand(SAO_CLI_KEY_PATH)
+	kstorePath, err := homedir.Expand(filepath.Join(SAO_CLI_PATH, "keystore"))
 	if err != nil {
 		log.Error(err.Error())
 		return nil

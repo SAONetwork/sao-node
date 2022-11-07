@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sao-storage-node/node/config"
+	"sao-storage-node/utils"
 	"sync"
 
 	"github.com/ipfs/go-datastore"
@@ -123,7 +124,7 @@ func (r *Repo) setPeerId(data []byte) error {
 }
 
 func (r *Repo) Config() (interface{}, error) {
-	return config.FromFile(r.configPath, r.defaultConfig())
+	return utils.FromFile(r.configPath, r.defaultConfig())
 }
 
 func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, error) {
@@ -155,7 +156,7 @@ func (r *Repo) initConfig() error {
 		return err
 	}
 
-	comm, err := config.NodeBytes(r.defaultConfig())
+	comm, err := utils.NodeBytes(r.defaultConfig())
 	if err != nil {
 		return xerrors.Errorf("load default: %w", err)
 	}

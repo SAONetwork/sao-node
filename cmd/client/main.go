@@ -14,6 +14,7 @@ import (
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
+	"sao-storage-node/utils"
 	"strings"
 
 	uuid "github.com/satori/go.uuid"
@@ -114,7 +115,7 @@ var createCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the data model",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "content",
@@ -174,11 +175,6 @@ var createCmd = &cli.Command{
 		}
 		content := []byte(cctx.String("content"))
 
-		if !cctx.IsSet("platform") {
-			return xerrors.Errorf("must provide --platform")
-		}
-		platform := cctx.String("platform")
-
 		if !cctx.IsSet("owner") {
 			return xerrors.Errorf("must provide --owner")
 		}
@@ -202,16 +198,22 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
+		client := saoclient.NewSaoClient(gatewayApi)
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
 		orderMeta := types.OrderMeta{
 			Owner:     owner,
-			GroupId:   platform,
+			GroupId:   groupId,
 			Alias:     cctx.String("name"),
 			Duration:  int32(duration),
 			Replica:   int32(replicas),
 			ExtenInfo: extendInfo,
 		}
 
-		contentCid, err := saoclient.CaculateCid(content)
+		contentCid, err := utils.CaculateCid(content)
 		if err != nil {
 			return err
 		}
@@ -249,7 +251,6 @@ var createCmd = &cli.Command{
 			orderMeta.TxSent = true
 		}
 
-		client := saoclient.NewSaoClient(gatewayApi)
 		resp, err := client.Create(ctx, orderMeta, content)
 		if err != nil {
 			return err
@@ -270,7 +271,7 @@ var createFileCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the file",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "file-name",
@@ -323,11 +324,6 @@ var createFileCmd = &cli.Command{
 		// if !cctx.IsSet("content") || cctx.String("content") == "" {
 		// 	return xerrors.Errorf("must provide non-empty --content.")
 		// }
-		if !cctx.IsSet("platform") {
-			return xerrors.Errorf("must provide --platform")
-		}
-		platform := cctx.String("platform")
-
 		if !cctx.IsSet("owner") {
 			return xerrors.Errorf("must provide --owner")
 		}
@@ -357,9 +353,15 @@ var createFileCmd = &cli.Command{
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
+		client := saoclient.NewSaoClient(gatewayApi)
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
 		orderMeta := types.OrderMeta{
 			Owner:     owner,
-			GroupId:   platform,
+			GroupId:   groupId,
 			Alias:     fileName,
 			Duration:  int32(duration),
 			Replica:   int32(replicas),
@@ -403,7 +405,6 @@ var createFileCmd = &cli.Command{
 			orderMeta.TxSent = true
 		}
 
-		client := saoclient.NewSaoClient(gatewayApi)
 		resp, err := client.CreateFile(ctx, orderMeta)
 		if err != nil {
 			return err
@@ -489,7 +490,7 @@ var loadCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the data model",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
@@ -519,17 +520,17 @@ var loadCmd = &cli.Command{
 		}
 		owner := cctx.String("owner")
 
-		if !cctx.IsSet("platform") {
-			return xerrors.Errorf("must provide --platform")
-		}
-		groupId := cctx.String("platform")
-
 		if !cctx.IsSet("key") {
 			return xerrors.Errorf("must provide --key")
 		}
 		key := cctx.String("key")
 
 		client := saoclient.NewSaoClient(gatewayApi)
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
 		resp, err := client.Load(ctx, owner, key, groupId)
 		if err != nil {
 			return err
@@ -572,7 +573,7 @@ var deleteCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the data model",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
@@ -601,12 +602,12 @@ var deleteCmd = &cli.Command{
 		}
 		key := cctx.String("key")
 
-		if !cctx.IsSet("platform") {
-			return xerrors.Errorf("must provide --platform")
-		}
-		groupId := cctx.String("platform")
-
 		client := saoclient.NewSaoClient(gatewayApi)
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
 		resp, err := client.Delete(ctx, owner, key, groupId)
 		if err != nil {
 			return err
@@ -634,7 +635,7 @@ var downloadCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the data model",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
@@ -663,12 +664,12 @@ var downloadCmd = &cli.Command{
 		}
 		keys := cctx.StringSlice("keys")
 
-		if !cctx.IsSet("platform") {
-			return xerrors.Errorf("must provide --platform")
-		}
-		groupId := cctx.String("platform")
-
 		client := saoclient.NewSaoClient(gatewayApi)
+
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
 
 		for _, key := range keys {
 			resp, err := client.Load(ctx, owner, key, groupId)
@@ -705,7 +706,7 @@ var updateCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the data model",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "patch",
@@ -773,7 +774,6 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		platform := cctx.String("platform")
 		owner := cctx.String("owner")
 
 		extendInfo := cctx.String("extend-info")
@@ -795,9 +795,15 @@ var updateCmd = &cli.Command{
 		}
 		defer closer()
 
+		client := saoclient.NewSaoClient(gatewayApi)
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
 		orderMeta := types.OrderMeta{
 			Owner:     owner,
-			GroupId:   platform,
+			GroupId:   groupId,
 			DataId:    cctx.String("data-id"),
 			Alias:     cctx.String("name"),
 			Duration:  int32(duration),
@@ -816,6 +822,18 @@ var updateCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
+
+			key := orderMeta.DataId
+			if key != "" {
+				key = orderMeta.Alias
+			}
+			meta, err := chain.QueryMeta(ctx, key)
+			if err != nil {
+				return err
+			}
+			log.Debugf("meta: DataId=%s, Alias=%s", meta.Metadata.DataId, meta.Metadata.Alias)
+			orderMeta.Alias = meta.Metadata.Alias
+			orderMeta.DataId = meta.Metadata.DataId
 
 			metadata := fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "extenInfo": "%s", "familyId": "%s"}`,
@@ -836,7 +854,6 @@ var updateCmd = &cli.Command{
 			orderMeta.TxSent = true
 		}
 
-		client := saoclient.NewSaoClient(gatewayApi)
 		resp, err := client.Update(ctx, orderMeta, patch)
 		if err != nil {
 			return err
@@ -871,7 +888,7 @@ var patchGenCmd = &cli.Command{
 			return err
 		}
 
-		targetCid, err := saoclient.CaculateCid([]byte(cctx.String("target")))
+		targetCid, err := utils.CaculateCid([]byte(cctx.String("target")))
 		if err != nil {
 			return err
 		}

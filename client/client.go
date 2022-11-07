@@ -2,18 +2,85 @@ package client
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"sao-storage-node/api"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/types"
+	"sao-storage-node/utils"
+
+	"github.com/mitchellh/go-homedir"
 )
 
+type SaoClientConfig struct {
+	GroupId string
+}
+
 type SaoClient struct {
+	Cfg        *SaoClientConfig
 	gatewayApi api.GatewayApi
 }
 
-func NewSaoClient(api api.GatewayApi) SaoClient {
-	return SaoClient{
+func NewSaoClient(api api.GatewayApi) *SaoClient {
+	cliPath, err := homedir.Expand(SAO_CLI_PATH)
+	if err != nil {
+		log.Error(err.Error())
+		return nil
+	}
+
+	configPath := filepath.Join(cliPath, "config.toml")
+	_, err = os.Stat(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(cliPath, 0755) //nolint: gosec
+			if err != nil && !os.IsExist(err) {
+				log.Error(err.Error())
+				return nil
+			}
+
+			c, err := os.Create(configPath)
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+
+			dc, err := utils.NodeBytes(defaultSaoClientConfig())
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+			_, err = c.Write(dc)
+			if err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+
+			if err := c.Close(); err != nil {
+				log.Error(err.Error())
+				return nil
+			}
+		}
+	}
+	c, err := utils.FromFile(configPath, defaultSaoClientConfig())
+	if err != nil {
+		log.Error(err.Error())
+		return nil
+	}
+	cfg, ok := c.(*SaoClientConfig)
+	if !ok {
+		log.Error("invalid config: ", c)
+		return nil
+	}
+
+	return &SaoClient{
+		Cfg:        cfg,
 		gatewayApi: api,
+	}
+}
+
+func defaultSaoClientConfig() *SaoClientConfig {
+	return &SaoClientConfig{
+		GroupId: utils.GenerateGroupId(),
 	}
 }
 
