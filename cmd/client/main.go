@@ -54,15 +54,8 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			testCmd,
-			createCmd,
-			createFileCmd,
-			deleteCmd,
-			uploadCmd,
-			loadCmd,
-			updateCmd,
-			downloadCmd,
-			patchGenCmd,
-			peerInfoCmd,
+			modelCmd,
+			fileCmd,
 		},
 	}
 	app.Setup()
@@ -99,6 +92,30 @@ var testCmd = &cli.Command{
 		}
 		log.Info(resp)
 		return nil
+	},
+}
+
+var modelCmd = &cli.Command{
+	Name:  "model",
+	Usage: "data model management",
+	Subcommands: []*cli.Command{
+		createCmd,
+		patchGenCmd,
+		updateCmd,
+		loadCmd,
+		deleteCmd,
+		commitsCmd,
+	},
+}
+
+var fileCmd = &cli.Command{
+	Name:  "file",
+	Usage: "file management",
+	Subcommands: []*cli.Command{
+		createFileCmd,
+		peerInfoCmd,
+		uploadCmd,
+		downloadCmd,
 	},
 }
 
@@ -495,6 +512,16 @@ var loadCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
+			Name:     "version",
+			Usage:    "data model's version",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "commit-id",
+			Usage:    "data model's commitId",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "gateway",
 			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
@@ -527,13 +554,30 @@ var loadCmd = &cli.Command{
 		}
 		key := cctx.String("key")
 
+		version := cctx.String("version")
+		commitId := cctx.String("commit-id")
+		if cctx.IsSet("version") && cctx.IsSet("commit-id") {
+			log.Warn("--version is to be ignored once --commit-id is specified")
+			version = ""
+		}
+
 		client := saoclient.NewSaoClient(gatewayApi)
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
 		}
 
-		resp, err := client.Load(ctx, owner, key, groupId)
+		orderMeta := types.OrderMeta{
+			Owner:    owner,
+			GroupId:  groupId,
+			DataId:   key,
+			Alias:    key,
+			CommitId: commitId,
+			Version:  version,
+			IsUpdate: false,
+		}
+
+		resp, err := client.Load(ctx, orderMeta)
 		if err != nil {
 			return err
 		}
@@ -620,6 +664,73 @@ var deleteCmd = &cli.Command{
 	},
 }
 
+var commitsCmd = &cli.Command{
+	Name:  "commits",
+	Usage: "list data model historical commits",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "data model's owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "key",
+			Usage:    "data model's alias, dataId or tag",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
+		if !cctx.IsSet("key") {
+			return xerrors.Errorf("must provide --key")
+		}
+		key := cctx.String("key")
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
+		resp, err := client.ShowCommits(ctx, owner, key, groupId)
+		if err != nil {
+			return err
+		}
+		log.Info("Model[%s] - %s", resp.DataId, resp.Alias)
+		log.Info("---------------------------------------------------------------")
+		for i, commitId := range resp.Commits {
+			log.Infof("v%d: %s", i, commitId)
+		}
+		log.Info("---------------------------------------------------------------")
+
+		return nil
+	},
+}
+
 var downloadCmd = &cli.Command{
 	Name:  "download",
 	Usage: "download file(s) from storage network",
@@ -674,7 +785,15 @@ var downloadCmd = &cli.Command{
 		}
 
 		for _, key := range keys {
-			resp, err := client.Load(ctx, owner, key, groupId)
+			orderMeta := types.OrderMeta{
+				Owner:    owner,
+				GroupId:  groupId,
+				DataId:   key,
+				Alias:    key,
+				IsUpdate: false,
+			}
+
+			resp, err := client.Load(ctx, orderMeta)
 			if err != nil {
 				return err
 			}

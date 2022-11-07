@@ -281,8 +281,8 @@ func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apity
 	}
 }
 
-func (n *Node) Load(ctx context.Context, owner string, key string, group string) (apitypes.LoadResp, error) {
-	model, err := n.manager.Load(ctx, owner, key, group)
+func (n *Node) Load(ctx context.Context, orderMeta types.OrderMeta) (apitypes.LoadResp, error) {
+	model, err := n.manager.Load(ctx, orderMeta)
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
@@ -314,6 +314,18 @@ func (n *Node) Update(ctx context.Context, orderMeta types.OrderMeta, patch []by
 		DataId:   model.DataId,
 		CommitId: model.CommitId,
 		Cid:      model.Cid,
+	}, nil
+}
+
+func (n *Node) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {
+	model, err := n.manager.ShowCommits(ctx, owner, key, group)
+	if err != nil {
+		return apitypes.ShowCommitsResp{}, err
+	}
+	return apitypes.ShowCommitsResp{
+		DataId:  model.DataId,
+		Alias:   model.Alias,
+		Commits: model.Commits,
 	}, nil
 }
 

@@ -94,12 +94,14 @@ func (l *LruCache) refreshNode(node *Node) {
 func (l *LruCache) get(key string) interface{} {
 	value := l.Map.Find(hamt.Entry(entryString(key)))
 	if value != nil {
-		node := value.(*Node)
-		l.refreshNode(node)
-		return node.Value
-	} else {
-		return nil
+		node, ok := value.(*Node)
+		if ok {
+			l.refreshNode(node)
+			return node.Value
+		}
 	}
+
+	return nil
 }
 
 func (l *LruCache) put(keyStr string, value interface{}) {
@@ -115,10 +117,14 @@ func (l *LruCache) put(keyStr string, value interface{}) {
 		}
 		l.addNode(&node)
 	} else {
-		node := oldValue.(*Node)
-		node.Value = value
-		l.refreshNode(node)
-		l.Map = l.Map.Insert(key, node)
+		node, ok := oldValue.(*Node)
+		if ok {
+			node.Value = value
+			l.refreshNode(node)
+			l.Map = l.Map.Insert(key, node)
+		} else {
+			return
+		}
 	}
 	l.Size = l.Map.Size()
 }
@@ -126,9 +132,12 @@ func (l *LruCache) put(keyStr string, value interface{}) {
 func (l *LruCache) evict(key string) {
 	value := l.Map.Find(hamt.Entry(entryString(key)))
 	if value != nil {
-		oldKey := l.removeNode(value.(*Node))
-		l.Map = l.Map.Delete(oldKey)
-		l.Size = l.Map.Size()
+		node, ok := value.(*Node)
+		if ok {
+			oldKey := l.removeNode(node)
+			l.Map = l.Map.Delete(oldKey)
+			l.Size = l.Map.Size()
+		}
 	}
 }
 

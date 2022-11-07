@@ -7,10 +7,10 @@ import (
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/gateway"
-	"sao-storage-node/node/model/json_patch"
 	"sao-storage-node/node/model/schema/validator"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -28,9 +28,8 @@ const MODEL_TYPE_FILE = "File"
 var log = logging.Logger("model")
 
 type ModelManager struct {
-	CacheCfg     *config.Cache
-	CacheSvc     cache.CacheSvcApi
-	JsonpatchSvc *json_patch.JsonpatchSvc
+	CacheCfg *config.Cache
+	CacheSvc cache.CacheSvcApi
 	// used by gateway module
 	GatewaySvc gateway.GatewaySvcApi
 }
@@ -50,10 +49,9 @@ func NewModelManager(cacheCfg *config.Cache, gatewaySvc gateway.GatewaySvcApi) *
 		}
 
 		modelManager = &ModelManager{
-			CacheCfg:     cacheCfg,
-			CacheSvc:     cacheSvc,
-			JsonpatchSvc: json_patch.NewJsonpatchSvc(),
-			GatewaySvc:   gatewaySvc,
+			CacheCfg:   cacheCfg,
+			CacheSvc:   cacheSvc,
+			GatewaySvc: gatewaySvc,
 		}
 	})
 
@@ -68,24 +66,71 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (mm *ModelManager) Load(ctx context.Context, account string, key string, group string) (*types.Model, error) {
+func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*types.Model, error) {
+	key := orderMeta.DataId
 	if !utils.IsDataId(key) {
-		value, err := mm.CacheSvc.Get(account, key+group)
+		value, err := mm.CacheSvc.Get(orderMeta.Owner, orderMeta.Alias+orderMeta.GroupId)
 		if err != nil {
 			log.Warn(err.Error())
 		} else if value != nil {
-			dataId := value.(string)
-			if utils.IsDataId(dataId) {
+			dataId, ok := value.(string)
+			if ok && utils.IsDataId(dataId) {
 				key = dataId
 			}
 		}
 	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group)
+
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
+	orderMeta.Alias = meta.Alias
+	orderMeta.DataId = meta.DataId
 
-	model := mm.loadModel(account, meta.DataId)
+	if orderMeta.Version != "" {
+		index, err := strconv.Atoi(strings.ReplaceAll(orderMeta.Version, "v", ""))
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+
+		if len(meta.Commits) > index {
+			commit := meta.Commits[index]
+			commitInfo := strings.Split(meta.Commits[index], "\026")
+			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+				return nil, xerrors.Errorf("invalid commit information: %s", commit)
+			}
+			height, err := strconv.ParseInt(commitInfo[1], 10, 64)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+			meta, err = mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, height)
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+		}
+	}
+
+	if orderMeta.CommitId != "" {
+		for _, commit := range meta.Commits {
+			if strings.HasPrefix(commit, orderMeta.CommitId) {
+				commitInfo := strings.Split(commit, "\026")
+				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+					return nil, xerrors.Errorf("invalid commit information: %s", commit)
+				}
+				height, err := strconv.ParseInt(commitInfo[1], 10, 64)
+				if err != nil {
+					return nil, xerrors.Errorf(err.Error())
+				}
+				meta, err = mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, height)
+				if err != nil {
+					return nil, xerrors.Errorf(err.Error())
+				}
+				break
+			}
+		}
+	}
+
+	model := mm.loadModel(orderMeta.Owner, meta.DataId)
 	if model != nil {
 		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
 			return model, nil
@@ -119,7 +164,7 @@ func (mm *ModelManager) Load(ctx context.Context, account string, key string, gr
 		model.Content = result.Content
 	}
 
-	mm.cacheModel(account, model)
+	mm.cacheModel(orderMeta.Owner, model)
 
 	return model, nil
 }
@@ -185,7 +230,7 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 	} else {
 		key = orderMeta.DataId
 	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -198,6 +243,8 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 	if orgModel != nil {
 		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
+			log.Debugf("load the model[%s]-%s from cache", meta.DataId, meta.Alias)
+			log.Debugf("model: ", string(orgModel.Content))
 			isFetch = false
 		}
 	} else {
@@ -227,17 +274,19 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		orgModel.Content = result.Content
 	}
 
-	newContent, err := mm.JsonpatchSvc.ApplyPatch(orgModel.Content, []byte(patch))
+	newContent, err := utils.ApplyPatch(orgModel.Content, []byte(patch))
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
+	log.Debugf("newContent: ", string(newContent))
+	log.Debugf("orgModel: ", string(orgModel.Content))
 
 	newContentCid, err := utils.CaculateCid(newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 	if newContentCid != orderMeta.Cid {
-		return nil, xerrors.Errorf("cid mismatch")
+		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", orderMeta.Cid, newContentCid)
 	}
 
 	err = mm.validateModel(orderMeta.Owner, orderMeta.Alias, newContent, orderMeta.Rule)
@@ -274,25 +323,50 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 }
 
 func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model, _ := mm.CacheSvc.Get(account, meta.DataId)
 	if model != nil {
-		m := model.(*types.Model)
+		m, ok := model.(*types.Model)
+		if ok {
+			mm.CacheSvc.Evict(account, m.DataId)
+			mm.CacheSvc.Evict(account, m.Alias+m.GroupId)
 
-		mm.CacheSvc.Evict(account, m.DataId)
-		mm.CacheSvc.Evict(account, m.Alias+m.GroupId)
-
-		return &types.Model{
-			DataId: m.DataId,
-			Alias:  m.Alias,
-		}, nil
+			return &types.Model{
+				DataId: m.DataId,
+				Alias:  m.Alias,
+			}, nil
+		}
 	}
 
 	return nil, nil
+}
+
+func (mm *ModelManager) ShowCommits(ctx context.Context, account string, key string, group string) (*types.Model, error) {
+	if !utils.IsDataId(key) {
+		value, err := mm.CacheSvc.Get(account, key+group)
+		if err != nil {
+			log.Warn(err.Error())
+		} else if value != nil {
+			dataId, ok := value.(string)
+			if ok && utils.IsDataId(dataId) {
+				key = dataId
+			}
+		}
+	}
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group, 0)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+
+	return &types.Model{
+		DataId:  meta.DataId,
+		Alias:   meta.Alias,
+		Commits: meta.Commits,
+	}, nil
 }
 
 func (mm *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
@@ -317,14 +391,19 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 		})
 
 		for _, schema := range schemas {
-			sch := schema.(string)
-			if sch != "" {
+			sch, ok := schema.(string)
+			if ok && sch != "" {
 				if utils.IsDataId(sch) {
 					model, err := mm.CacheSvc.Get(account, sch)
 					if err != nil {
 						return xerrors.Errorf(err.Error())
 					}
-					sch = string(model.(*types.Model).Content)
+					m, ok := model.(*types.Model)
+					if ok {
+						sch = string(m.Content)
+					} else {
+						return xerrors.Errorf("invalid schema: %v", m)
+					}
 				}
 
 				validator, err := validator.NewDataModelValidator(alias, sch, rule)
@@ -335,6 +414,8 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 				if err != nil {
 					return xerrors.Errorf(err.Error())
 				}
+			} else {
+				return xerrors.Errorf("invalid schema: %v", schema)
 			}
 		}
 	} else {
@@ -346,7 +427,12 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 			if err != nil {
 				return xerrors.Errorf(err.Error())
 			}
-			schema = string(model.(*types.Model).Content)
+			m, ok := model.(*types.Model)
+			if ok {
+				schema = string(m.Content)
+			} else {
+				return xerrors.Errorf("invalid schema: %v", m)
+			}
 		} else {
 			schema = iter.ReadObject()
 		}
@@ -384,19 +470,25 @@ func (mm *ModelManager) loadModel(account string, key string) *types.Model {
 	}
 
 	if value != nil {
-		var model *types.Model
-		if !utils.IsDataId(key) {
-			value, err = mm.CacheSvc.Get(account, value.(string))
+		dataId, ok := value.(string)
+		if ok {
+			value, err = mm.CacheSvc.Get(account, dataId)
 			if err != nil {
 				log.Warn(err.Error())
 			}
+
+			if value == nil {
+				return nil
+			}
 		}
 
-		model = value.(*types.Model)
-		if len(model.Content) == 0 && len(model.Shards) > 0 {
-			log.Warnf("large size content should go through P2P channel")
+		model, ok := value.(*types.Model)
+		if ok {
+			if len(model.Content) == 0 && len(model.Shards) > 0 {
+				log.Warnf("large size content should go through P2P channel")
+			}
+			return model
 		}
-		return model
 	}
 
 	return nil

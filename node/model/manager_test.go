@@ -21,7 +21,7 @@ func (mcs *MockGatewaySvc) CommitModel(ctx context.Context, creator string, orde
 	}, nil
 }
 
-func (mcs *MockGatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string) (*types.Model, error) {
+func (mcs *MockGatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error) {
 	return &types.Model{
 		OrderId:  100,
 		DataId:   group,
@@ -75,11 +75,11 @@ func TestManager1(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelLoad1, err := manager.Load(context.Background(), orderMeta.Owner, orderMeta.Alias, orderMeta.GroupId)
+	modelLoad1, err := manager.Load(context.Background(), orderMeta)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
 	require.NoError(t, err)
 
-	modelLoad2, err := manager.Load(context.Background(), orderMeta.Owner, model.DataId, orderMeta.GroupId)
+	modelLoad2, err := manager.Load(context.Background(), orderMeta)
 	require.Equal(t, model.Alias, modelLoad2.Alias)
 	require.NoError(t, err)
 
@@ -136,7 +136,13 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema1)
 	require.NoError(t, err1)
 
-	schemaLoad1, err := manager.Load(context.Background(), creator, "addresses_schema_1", schemaOrder1.GroupId)
+	orderMeta1 := types.OrderMeta{
+		Alias:   "addresses_schema_1",
+		Owner:   creator,
+		GroupId: "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
+	}
+
+	schemaLoad1, err := manager.Load(context.Background(), orderMeta1)
 	require.Equal(t, schema1.Alias, schemaLoad1.Alias)
 	require.NoError(t, err)
 
@@ -175,7 +181,13 @@ func TestManager2(t *testing.T) {
 	require.NotNil(t, schema2)
 	require.NoError(t, err2)
 
-	schemaLoad2, err2 := manager.Load(context.Background(), creator, "addresses_schema_2", schemaOrder2.GroupId)
+	orderMeta2 := types.OrderMeta{
+		Alias:   "addresses_schema_2",
+		Owner:   creator,
+		GroupId: "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
+	}
+
+	schemaLoad2, err2 := manager.Load(context.Background(), orderMeta2)
 	require.Equal(t, schema2.Alias, schemaLoad2.Alias)
 	require.NoError(t, err2)
 
@@ -207,11 +219,18 @@ func TestManager2(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, model)
 
-	modelLoad1, err := manager.Load(context.Background(), creator, "test_model", modelOrder.GroupId)
+	modelMeta := types.OrderMeta{
+		Alias:   "test_model",
+		Owner:   creator,
+		GroupId: "5e1f67df-0a22-4798-a9dc-a9d9a74722a3",
+	}
+
+	modelLoad1, err := manager.Load(context.Background(), modelMeta)
 	require.Equal(t, model.DataId, modelLoad1.DataId)
 	require.NoError(t, err)
 
-	modelLoad2, err := manager.Load(context.Background(), creator, model.DataId, modelOrder.GroupId)
+	modelMeta.DataId = model.DataId
+	modelLoad2, err := manager.Load(context.Background(), modelMeta)
 	require.Equal(t, model.Alias, modelLoad2.Alias)
 	require.NoError(t, err)
 

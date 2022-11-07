@@ -26,6 +26,12 @@ type DeleteResp struct {
 	Alias  string
 }
 
+type ShowCommitsResp struct {
+	DataId  string
+	Alias   string
+	Commits []string
+}
+
 type GetPeerInfoResp struct {
 	PeerInfo string
 }

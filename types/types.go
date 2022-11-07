@@ -43,6 +43,7 @@ type OrderMeta struct {
 	Rule                  string
 	ExtendInfo            string
 	IsUpdate              bool
+	Version               string
 }
 
 const (
