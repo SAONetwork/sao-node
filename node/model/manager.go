@@ -14,10 +14,8 @@ import (
 	"strings"
 	"sync"
 
-	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/tendermint/tendermint/types/time"
 	"golang.org/x/xerrors"
 )
 
@@ -153,6 +151,13 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 			// Content: N/a,
 			ExtendInfo: meta.ExtendInfo,
 		}
+	} else {
+		model.OrderId = meta.OrderId
+		model.Cid = meta.Cid
+		model.Shards = meta.Shards
+		model.CommitId = meta.CommitId
+		model.Commits = meta.Commits
+		model.ExtendInfo = meta.ExtendInfo
 	}
 
 	if len(meta.Shards) > 1 {
@@ -174,14 +179,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (*types.Model, error) {
 	var alias string
 	if orderMeta.Alias == "" {
-		if orderMeta.Cid != cid.Undef {
-			alias = orderMeta.Cid.String()
-		} else if len(content) > 0 {
-			alias = utils.GenerateAlias(content)
-		} else {
-			alias = utils.GenerateAlias([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
-		}
-		log.Debug("use a system generated alias ", alias)
+		alias = orderMeta.Cid.String()
 		orderMeta.Alias = alias
 	} else {
 		alias = orderMeta.Alias
@@ -214,8 +212,8 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 		Tags:       orderMeta.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.CommitId,
-		Commits:    append(make([]string, 0), result.CommitId),
+		CommitId:   result.Commit,
+		Commits:    append(make([]string, 0), result.Commit),
 		Content:    content,
 		ExtendInfo: orderMeta.ExtendInfo,
 	}
@@ -313,8 +311,8 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		Tags:       orderMeta.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.CommitId,
-		Commits:    append(meta.Commits, result.CommitId),
+		CommitId:   result.Commit,
+		Commits:    append(meta.Commits, result.Commit),
 		Content:    newContent,
 		ExtendInfo: orderMeta.ExtendInfo,
 	}
