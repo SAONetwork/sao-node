@@ -330,8 +330,13 @@ func (cs *ChainSvc) UnsubscribeShardTask(ctx context.Context, nodeAddr string) e
 	return nil
 }
 
-func (c *ChainSvc) QueryMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
-	queryResp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
+func (c *ChainSvc) QueryMeta(ctx context.Context, dataId string, height int64) (*modeltypes.QueryGetMetadataResponse, error) {
+	clientctx := c.cosmos.Context()
+	if height > 0 {
+		clientctx = clientctx.WithHeight(height)
+	}
+	modelClient := modeltypes.NewQueryClient(clientctx)
+	queryResp, err := modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
 		DataId: dataId,
 	})
 	if err != nil {
