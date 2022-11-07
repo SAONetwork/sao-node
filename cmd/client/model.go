@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -626,6 +627,60 @@ var patchGenCmd = &cli.Command{
 		content, err := utils.ApplyPatch([]byte(origin), []byte(patch))
 		if err != nil {
 			return err
+		}
+
+		var newModel interface{}
+		err = json.Unmarshal(content, &newModel)
+		if err != nil {
+			return err
+		}
+
+		var targetModel interface{}
+		err = json.Unmarshal([]byte(target), &targetModel)
+		if err != nil {
+			return err
+		}
+
+		log.Info("newModel: ", newModel)
+		log.Info("targetModel: ", targetModel)
+
+		keySlice := make([]string, 0)
+		valueSliceNew := make([]interface{}, 0)
+		newModelMap, ok := newModel.(map[string]interface{})
+		if !ok {
+			return err
+		}
+
+		for key, value := range newModelMap {
+			keySlice = append(keySlice, key)
+			valueSliceNew = append(valueSliceNew, value)
+		}
+
+		valueSliceTarget := make([]interface{}, 0)
+		targetModelMap, ok := targetModel.(map[string]interface{})
+		if !ok {
+			return xerrors.Errorf("failed to generate the patch")
+		}
+		for _, key := range keySlice {
+			if data, ok := targetModelMap[key]; ok {
+				valueSliceTarget = append(valueSliceTarget, data)
+			} else {
+				return xerrors.Errorf("failed to generate the patch")
+			}
+		}
+
+		valueStrNew, err := json.Marshal(valueSliceNew)
+		if err != nil {
+			return err
+		}
+
+		valueStrTarget, err := json.Marshal(valueSliceTarget)
+		if err != nil {
+			return err
+		}
+
+		if string(valueStrNew) != string(valueStrTarget) {
+			return xerrors.Errorf("failed to generate the patch")
 		}
 
 		targetCid, err := utils.CaculateCid(content)
