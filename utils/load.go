@@ -1,12 +1,14 @@
-package config
+package utils
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/BurntSushi/toml"
 	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/xerrors"
 )
 
 // FromFile loads config from a specified file overriding defaults specified in
@@ -38,4 +40,14 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	}
 
 	return cfg, nil
+}
+
+func NodeBytes(cfg interface{}) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	e := toml.NewEncoder(buf)
+	if err := e.Encode(cfg); err != nil {
+		return nil, xerrors.Errorf("encoding node config: %w", err)
+	}
+
+	return buf.Bytes(), nil
 }

@@ -9,8 +9,8 @@ import (
 	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/model/json_patch"
 	"sao-storage-node/node/model/schema/validator"
-	"sao-storage-node/node/utils"
 	"sao-storage-node/types"
+	"sao-storage-node/utils"
 	"strings"
 	"sync"
 

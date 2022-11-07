@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"sao-storage-node/node/chain"
-	"sao-storage-node/node/utils"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
+	"sao-storage-node/utils"
 	"time"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
