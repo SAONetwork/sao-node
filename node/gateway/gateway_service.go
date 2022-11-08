@@ -1,32 +1,39 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 	"io"
+	"os"
+	"path/filepath"
 	"sao-storage-node/node/chain"
+	"sao-storage-node/node/config"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+	"strings"
 	"time"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	"golang.org/x/xerrors"
 
-	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
 )
 
-var log = logging.Logger("order")
+var log = logging.Logger("gateway")
 
 type CommitResult struct {
-	OrderId  uint64
-	DataId   string
-	CommitId string
-	Cid      string
-	Shards   map[string]*modeltypes.ShardMeta
+	OrderId uint64
+	DataId  string
+	Commit  string
+	Commits []string
+	Cid     string
+	Shards  map[string]*modeltypes.ShardMeta
 }
 
 type FetchResult struct {
@@ -48,16 +55,18 @@ type GatewaySvc struct {
 	storeManager       *store.StoreManager
 	nodeAddress        string
 	stagingPath        string
+	cfg                *config.Node
 }
 
-func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) *GatewaySvc {
+func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, cfg *config.Node, storeManager *store.StoreManager) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
-		shardStreamHandler: NewShardStreamHandler(ctx, host, stagingPath),
+		shardStreamHandler: NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath),
 		storeManager:       storeManager,
 		nodeAddress:        nodeAddress,
-		stagingPath:        stagingPath,
+		stagingPath:        cfg.Transport.StagingPath,
+		cfg:                cfg,
 	}
 
 	return cs
@@ -82,9 +91,10 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 
 	log.Debugf("QueryMeta succeed. meta=%v", res.Metadata)
 
-	commitId := res.Metadata.DataId
-	if len(res.Metadata.Commits) > 1 {
-		commitId = res.Metadata.Commits[len(res.Metadata.Commits)-1]
+	commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
+	commitInfo := strings.Split(commit, "\032")
+	if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+		return nil, xerrors.Errorf("invalid commit information: %s", commit)
 	}
 
 	return &types.Model{
@@ -96,7 +106,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string,
 		Tags:    res.Metadata.Tags,
 		// Cid: res.Metadata.Cid,
 		Shards:   res.Shards,
-		CommitId: commitId,
+		CommitId: commitInfo[0],
 		Commits:  res.Metadata.Commits,
 		// Content: N/a,
 		ExtendInfo: res.Metadata.ExtendInfo,
@@ -144,8 +154,44 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 		content = append(content, c...)
 	}
 
+	contentCid, err := utils.CaculateCid(content)
+	if err != nil {
+		return nil, err
+	}
+	if contentCid.String() != meta.Cid {
+		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
+	}
+
+	if len(content) > gs.cfg.Cache.ContentLimit {
+		// large size content should go through P2P channel
+
+		path, err := homedir.Expand(gs.cfg.Gateway.HttpFileServerPath)
+		if err != nil {
+			return nil, err
+		}
+
+		file, err := os.Create(filepath.Join(path, meta.DataId))
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+
+		_, err = file.Write([]byte(content))
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+
+		if gs.cfg.SaoIpfs.Enable {
+			_, err = gs.storeManager.Store(ctx, contentCid, bytes.NewReader(content))
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+		}
+
+		content = make([]byte, 0)
+	}
+
 	return &FetchResult{
-		Cid:     meta.Cid,
+		Cid:     contentCid.String(),
 		Content: content,
 	}, nil
 }
@@ -173,13 +219,13 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		var metadata string
 		if orderProposal.IsUpdate {
 			metadata = fmt.Sprintf(
-				`{"dataId": "%s", "commitId": "%s", "update": true}`,
+				`{"dataId": "%s", "commit": "%s", "update": true}`,
 				orderMeta.DataId,
 				orderMeta.CommitId,
 			)
 		} else {
 			metadata = fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
+				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				orderProposal.Alias,
 				orderMeta.DataId,
 				orderProposal.ExtendInfo,
@@ -246,25 +292,19 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		// TODO: timeout handling
 		return nil, errors.Errorf("process order %d timeout.", orderMeta.OrderId)
 	} else {
-		order, err := gs.chainSvc.GetOrder(ctx, orderMeta.OrderId)
+		meta, err := gs.chainSvc.QueryMeta(ctx, orderMeta.DataId, 0)
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("order %d complete: dataId=%s", order.Id, orderMeta.DataId)
+		log.Debugf("order %d complete: dataId=%s", meta.Metadata.OrderId, &meta.Metadata.DataId)
 
-		shards := make(map[string]*modeltypes.ShardMeta)
-		for k, v := range order.Shards {
-			shards[k] = &modeltypes.ShardMeta{
-				ShardId: v.Id,
-				Cid:     v.Cid,
-			}
-		}
 		return &CommitResult{
-			OrderId:  order.Id,
-			DataId:   orderMeta.DataId,
-			CommitId: orderMeta.CommitId,
-			Shards:   shards,
-			Cid:      order.Cid,
+			OrderId: meta.Metadata.OrderId,
+			DataId:  meta.Metadata.DataId,
+			Commit:  meta.Metadata.Commit,
+			Commits: meta.Metadata.Commits,
+			Shards:  meta.Shards,
+			Cid:     orderMeta.Cid.String(),
 		}, nil
 	}
 }

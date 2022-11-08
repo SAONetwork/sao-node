@@ -16,9 +16,12 @@ type UpdateResp struct {
 }
 
 type LoadResp struct {
-	DataId  string
-	Alias   string
-	Content string
+	DataId   string
+	Alias    string
+	CommitId string
+	Version  string
+	Cid      string
+	Content  string
 }
 
 type DeleteResp struct {
@@ -34,4 +37,12 @@ type ShowCommitsResp struct {
 
 type GetPeerInfoResp struct {
 	PeerInfo string
+}
+
+type GenerateTokenResp struct {
+	Token string
+}
+
+type GetUrlResp struct {
+	Url string
 }
