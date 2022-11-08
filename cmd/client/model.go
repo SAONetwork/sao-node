@@ -277,7 +277,13 @@ var loadCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias id: %s, data id: %s, content: %s", resp.Alias, resp.DataId, resp.Content)
+
+		log.Info("Model DataId: ", resp.DataId)
+		log.Info("Model Alias: ", resp.Alias)
+		log.Info("Model CommitId: ", resp.CommitId)
+		log.Info("Model Version: ", resp.Version)
+		log.Info("Model Cid: ", resp.Cid)
+		log.Info("Model Content: ", resp.Content)
 
 		dumpFlag := cctx.Bool("dump")
 		if dumpFlag {
@@ -416,18 +422,20 @@ var commitsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("Model[%s] - %s", resp.DataId, resp.Alias)
-		log.Info("---------------------------------------------------------------")
-		log.Infof("Version\tCommit                              \tHeight")
+		log.Info("Model DataID: ", resp.DataId)
+		log.Info("Model Alias: ", resp.Alias)
+		log.Info("-------------------------------------------------------")
+		log.Info("Version\t|Commit                              |Height")
+		log.Info("-------------------------------------------------------")
 		for i, commit := range resp.Commits {
 			commitInfo := strings.Split(commit, "\032")
 			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 				return xerrors.Errorf("invalid commit information: %s", commit)
 			}
 
-			log.Infof("v%d\t\t|%s|%s", i, commitInfo[0], commitInfo[1])
+			log.Infof("v%d\t|%s|%s", i, commitInfo[0], commitInfo[1])
 		}
-		log.Info("---------------------------------------------------------------")
+		log.Info("-------------------------------------------------------")
 
 		return nil
 	},

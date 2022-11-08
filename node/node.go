@@ -286,10 +286,14 @@ func (n *Node) Load(ctx context.Context, orderMeta types.OrderMeta) (apitypes.Lo
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
+
 	return apitypes.LoadResp{
-		DataId:  model.DataId,
-		Alias:   model.Alias,
-		Content: string(model.Content),
+		DataId:   model.DataId,
+		Alias:    model.Alias,
+		CommitId: model.CommitId,
+		Version:  model.Version,
+		Cid:      model.Cid,
+		Content:  string(model.Content),
 	}, nil
 }
 
