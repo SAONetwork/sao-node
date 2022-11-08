@@ -1,10 +1,14 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sao-storage-node/node/chain"
+	"sao-storage-node/node/config"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
@@ -12,6 +16,7 @@ import (
 	"time"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
@@ -50,16 +55,18 @@ type GatewaySvc struct {
 	storeManager       *store.StoreManager
 	nodeAddress        string
 	stagingPath        string
+	cfg                *config.Node
 }
 
-func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) *GatewaySvc {
+func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, cfg *config.Node, storeManager *store.StoreManager) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
-		shardStreamHandler: NewShardStreamHandler(ctx, host, stagingPath),
+		shardStreamHandler: NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath),
 		storeManager:       storeManager,
 		nodeAddress:        nodeAddress,
-		stagingPath:        stagingPath,
+		stagingPath:        cfg.Transport.StagingPath,
+		cfg:                cfg,
 	}
 
 	return cs
@@ -153,6 +160,34 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	}
 	if contentCid.String() != meta.Cid {
 		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
+	}
+
+	if len(content) > gs.cfg.Cache.ContentLimit {
+		// large size content should go through P2P channel
+
+		path, err := homedir.Expand(gs.cfg.Gateway.HttpFileServerPath)
+		if err != nil {
+			return nil, err
+		}
+
+		file, err := os.Create(filepath.Join(path, meta.DataId))
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+
+		_, err = file.Write([]byte(content))
+		if err != nil {
+			return nil, xerrors.Errorf(err.Error())
+		}
+
+		if gs.cfg.SaoIpfs.Enable {
+			_, err = gs.storeManager.Store(ctx, contentCid, bytes.NewReader(content))
+			if err != nil {
+				return nil, xerrors.Errorf(err.Error())
+			}
+		}
+
+		content = make([]byte, 0)
 	}
 
 	return &FetchResult{

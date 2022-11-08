@@ -22,6 +22,7 @@ var fileCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		createFileCmd,
 		peerInfoCmd,
+		tokenGenCmd,
 		uploadCmd,
 		downloadCmd,
 	},
@@ -379,6 +380,48 @@ var peerInfoCmd = &cli.Command{
 			return err
 		}
 		log.Info("peer info: ", resp.PeerInfo)
+
+		return nil
+	},
+}
+
+var tokenGenCmd = &cli.Command{
+	Name:  "token-gen",
+	Usage: "generate token to access http file server",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "token owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			Value:    "http://127.0.0.1:8888/rpc/v0",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
+		gateway := cctx.String("gateway")
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		client := saoclient.NewSaoClient(gatewayApi)
+		resp, err := client.GenerateToken(ctx, owner)
+		if err != nil {
+			return err
+		}
+		log.Info("Token: ", resp.Token)
 
 		return nil
 	},

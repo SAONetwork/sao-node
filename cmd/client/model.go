@@ -283,7 +283,24 @@ var loadCmd = &cli.Command{
 		log.Info("Model CommitId: ", resp.CommitId)
 		log.Info("Model Version: ", resp.Version)
 		log.Info("Model Cid: ", resp.Cid)
-		log.Info("Model Content: ", resp.Content)
+
+		if len(resp.Content) == 0 {
+			log.Info("Model Content SAO Link: ", "sao://"+resp.DataId)
+
+			httpUrl, err := client.GetHttpUrl(ctx, resp.DataId)
+			if err != nil {
+				return err
+			}
+			log.Info("Model Content HTTP Link: ", httpUrl)
+
+			ipfsUrl, err := client.GetIpfsUrl(ctx, resp.DataId)
+			if err != nil {
+				return err
+			}
+			log.Info("Model Content IPFS Link: ", ipfsUrl)
+		} else {
+			log.Info("Model Content: ", resp.Content)
+		}
 
 		dumpFlag := cctx.Bool("dump")
 		if dumpFlag {

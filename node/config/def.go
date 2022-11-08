@@ -16,15 +16,22 @@ type Node struct {
 	Transport Transport
 	Api       API
 	Module    Module
+	Gateway   Gateway
 	Storage   Storage
 	SaoIpfs   SaoIpfs
+}
+
+type Gateway struct {
+	HttpFileServerAddress   string
+	HttpFileServerPath      string
+	EnableHttpFileServerLog bool
+	TokenPeriod             time.Duration
 }
 
 type SaoIpfs struct {
 	Enable bool
 	Repo   string
 }
-
 type Storage struct {
 	Ipfs []Ipfs
 }
@@ -71,7 +78,7 @@ type Transport struct {
 	StagingSapceSize       int64
 }
 
-func DefaultGatewayNode() *Node {
+func DefaultSaoNode() *Node {
 	return &Node{
 		Common: defCommon(),
 		Api: API{
@@ -93,6 +100,12 @@ func DefaultGatewayNode() *Node {
 		Module: Module{
 			GatewayEnable: true,
 			StorageEnable: true,
+		},
+		Gateway: Gateway{
+			HttpFileServerAddress:   ":8886",
+			HttpFileServerPath:      "~/.sao_http_file",
+			EnableHttpFileServerLog: false,
+			TokenPeriod:             24 * time.Hour,
 		},
 		Storage: Storage{
 			Ipfs: []Ipfs{},
