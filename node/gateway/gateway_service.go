@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-var log = logging.Logger("order")
+var log = logging.Logger("gateway")
 
 type CommitResult struct {
 	OrderId uint64

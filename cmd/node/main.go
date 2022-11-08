@@ -6,11 +6,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/common-nighthawk/go-figure"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
 	"sao-storage-node/node/repo"
+
+	"github.com/common-nighthawk/go-figure"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
@@ -44,7 +45,7 @@ func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("node", "INFO")
 	_ = logging.SetLogLevel("rpc", "INFO")
 	_ = logging.SetLogLevel("chain", "INFO")
-	_ = logging.SetLogLevel("order", "INFO")
+	_ = logging.SetLogLevel("gateway", "INFO")
 	_ = logging.SetLogLevel("storage", "INFO")
 	_ = logging.SetLogLevel("transport", "INFO")
 	_ = logging.SetLogLevel("store", "INFO")
@@ -54,7 +55,7 @@ func before(cctx *cli.Context) error {
 		_ = logging.SetLogLevel("node", "DEBUG")
 		_ = logging.SetLogLevel("rpc", "DEBUG")
 		_ = logging.SetLogLevel("chain", "DEBUG")
-		_ = logging.SetLogLevel("order", "DEBUG")
+		_ = logging.SetLogLevel("gateway", "DEBUG")
 		_ = logging.SetLogLevel("storage", "DEBUG")
 		_ = logging.SetLogLevel("transport", "DEBUG")
 		_ = logging.SetLogLevel("store", "DEBUG")
@@ -279,6 +280,9 @@ var runCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repo, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
 
 		snode, err := node.NewNode(ctx, repo)
 		if err != nil {
