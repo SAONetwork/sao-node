@@ -128,6 +128,6 @@ func (sc SaoClient) GetHttpUrl(ctx context.Context, dataId string) (apitypes.Get
 	return sc.gatewayApi.GetHttpUrl(ctx, dataId)
 }
 
-func (sc SaoClient) GetIpfsUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
-	return sc.gatewayApi.GetIpfsUrl(ctx, dataId)
+func (sc SaoClient) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
+	return sc.gatewayApi.GetIpfsUrl(ctx, cid)
 }

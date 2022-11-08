@@ -375,16 +375,11 @@ func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlRe
 	}
 }
 
-func (n *Node) GetIpfsUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
+func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
 	if n.cfg.SaoIpfs.Enable {
-		meta, err := n.manager.GatewaySvc.QueryMeta(ctx, "", dataId, "", 0)
-		if err != nil {
-			return apitypes.GetUrlResp{}, xerrors.Errorf(err.Error())
-		} else {
-			return apitypes.GetUrlResp{
-				Url: "ipfs://" + n.cfg.Gateway.HttpFileServerAddress + "/ipfs/" + meta.Cid,
-			}, nil
-		}
+		return apitypes.GetUrlResp{
+			Url: "ipfs://" + n.cfg.Gateway.HttpFileServerAddress + "/ipfs/" + cid,
+		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get ipfs url")
 	}

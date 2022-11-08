@@ -17,6 +17,6 @@ type GatewayApi interface {
 	GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error)
 	GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error)
 	GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error)
-	GetIpfsUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error)
+	GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error)
 	NodeAddress(ctx context.Context) (string, error)
 }
