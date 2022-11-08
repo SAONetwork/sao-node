@@ -44,6 +44,7 @@ type Node struct {
 	storeSvc *storage.StoreSvc
 	manager  *model.ModelManager
 	tds      datastore.Read
+	hfs      *gateway.HttpFileServer
 }
 
 func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
@@ -171,9 +172,18 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.GatewayEnable {
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
+
+		// http file server
+		log.Info("initialize http file server")
+		hfs, err := gateway.StartHttpFileServer(&cfg.Gateway)
+		if err != nil {
+			return nil, err
+		}
+		sn.hfs = hfs
+		sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 
 		// api server
 		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
@@ -341,6 +351,42 @@ func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error
 		}, nil
 	} else {
 		return apitypes.GetPeerInfoResp{}, err
+	}
+}
+
+func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error) {
+	token := n.hfs.GenerateToken(owner)
+	if token != "" {
+		return apitypes.GenerateTokenResp{
+			Token: string(token),
+		}, nil
+	} else {
+		return apitypes.GenerateTokenResp{}, xerrors.Errorf("failed to generate http file sever token")
+	}
+}
+
+func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
+	if n.cfg.Gateway.HttpFileServerAddress != "" {
+		return apitypes.GetUrlResp{
+			Url: "https://" + n.cfg.Gateway.HttpFileServerAddress + "/saonetwork/" + dataId,
+		}, nil
+	} else {
+		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get http url")
+	}
+}
+
+func (n *Node) GetIpfsUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
+	if n.cfg.SaoIpfs.Enable {
+		meta, err := n.manager.GatewaySvc.QueryMeta(ctx, "", dataId, "", 0)
+		if err != nil {
+			return apitypes.GetUrlResp{}, xerrors.Errorf(err.Error())
+		} else {
+			return apitypes.GetUrlResp{
+				Url: "ipfs://" + n.cfg.Gateway.HttpFileServerAddress + "/ipfs/" + meta.Cid,
+			}, nil
+		}
+	} else {
+		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get ipfs url")
 	}
 }
 

@@ -38,3 +38,11 @@ type ShowCommitsResp struct {
 type GetPeerInfoResp struct {
 	PeerInfo string
 }
+
+type GenerateTokenResp struct {
+	Token string
+}
+
+type GetUrlResp struct {
+	Url string
+}

@@ -20,6 +20,12 @@ type GatewayApiStruct struct {
 
 		Delete func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) ``
 
+		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) ``
+
+		GetHttpUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) ``
+
+		GetIpfsUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) ``
+
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) ``
 
 		Load func(p0 context.Context, p1 types.OrderMeta) (apitypes.LoadResp, error) ``
@@ -68,6 +74,39 @@ func (s *GatewayApiStruct) Delete(p0 context.Context, p1 string, p2 string, p3 s
 
 func (s *GatewayApiStub) Delete(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) {
 	return *new(apitypes.DeleteResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) GenerateToken(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) {
+	if s.Internal.GenerateToken == nil {
+		return *new(apitypes.GenerateTokenResp), ErrNotSupported
+	}
+	return s.Internal.GenerateToken(p0, p1)
+}
+
+func (s *GatewayApiStub) GenerateToken(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) {
+	return *new(apitypes.GenerateTokenResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) GetHttpUrl(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) {
+	if s.Internal.GetHttpUrl == nil {
+		return *new(apitypes.GetUrlResp), ErrNotSupported
+	}
+	return s.Internal.GetHttpUrl(p0, p1)
+}
+
+func (s *GatewayApiStub) GetHttpUrl(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) {
+	return *new(apitypes.GetUrlResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) GetIpfsUrl(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) {
+	if s.Internal.GetIpfsUrl == nil {
+		return *new(apitypes.GetUrlResp), ErrNotSupported
+	}
+	return s.Internal.GetIpfsUrl(p0, p1)
+}
+
+func (s *GatewayApiStub) GetIpfsUrl(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) {
+	return *new(apitypes.GetUrlResp), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoResp, error) {
