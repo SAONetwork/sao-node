@@ -11,6 +11,7 @@ require (
 
 require (
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
+	github.com/SaoNetwork/sao-did v0.0.0-20221107105548-483bd555a873
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/evanphx/json-patch v4.9.0+incompatible
@@ -32,7 +33,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/mattbaird/jsonpatch v0.0.0-20200820163806-098863c1fc24
 	github.com/multiformats/go-multiaddr v0.7.0
-	github.com/multiformats/go-multicodec v0.6.0
+	github.com/multiformats/go-multicodec v0.7.0
 	github.com/multiformats/go-multihash v0.2.1
 	github.com/pkg/errors v0.9.1
 	github.com/raviqqe/hamt v0.0.0-20220630081707-76400bd6195c
@@ -41,6 +42,7 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.22
+	github.com/thanhpk/randstr v1.0.4
 	github.com/urfave/cli/v2 v2.23.2
 )
 
@@ -246,6 +248,7 @@ require (
 	github.com/multiformats/go-multistream v0.3.3 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/ockam-network/did v0.1.3 // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.20.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
@@ -341,3 +344,5 @@ require (
 replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+
+replace github.com/SaoNetwork/sao-did => ../sao-did

@@ -36,7 +36,7 @@ type FetchResult struct {
 
 type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error)
-	CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
+	CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
 }
@@ -150,12 +150,13 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	}, nil
 }
 
-func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
+func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
 	// TODO: support marshal any content
-	err := StageShard(gs.stagingPath, creator, orderMeta.Cid, content)
+	orderProposal := clientProposal.Proposal
+	err := StageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid, content)
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +171,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 
 	if !orderMeta.TxSent {
 		var metadata string
-		if orderMeta.IsUpdate {
+		if orderProposal.IsUpdate {
 			metadata = fmt.Sprintf(
 				`{"dataId": "%s", "commitId": "%s", "update": true}`,
 				orderMeta.DataId,
@@ -179,15 +180,15 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		} else {
 			metadata = fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
-				orderMeta.Alias,
+				orderProposal.Alias,
 				orderMeta.DataId,
-				orderMeta.ExtendInfo,
-				orderMeta.GroupId,
+				orderProposal.ExtendInfo,
+				orderProposal.GroupId,
 				orderMeta.CommitId,
 			)
 		}
 
-		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, creator, gs.nodeAddress, orderMeta.Cid, orderMeta.Duration, orderMeta.Replica, metadata)
+		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, orderProposal.Owner, gs.nodeAddress, orderProposal.Cid, orderProposal.Duration, orderProposal.Replica, metadata)
 		if err != nil {
 			return nil, err
 		}
@@ -214,10 +215,14 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 
 	log.Debugf("SubscribeOrderComplete")
 
+	var delay = orderProposal.Timeout
+	if orderProposal.Timeout <= 0 {
+		delay = 24 * 60 * 60
+	}
 	timeout := false
 	select {
 	case <-doneChan:
-	case <-time.After(chain.Blocktime * time.Duration(orderMeta.CompleteTimeoutBlocks)):
+	case <-time.After(chain.Blocktime * time.Duration(delay)):
 		timeout = true
 	case <-ctx.Done():
 		timeout = true
@@ -231,8 +236,8 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta
 		log.Debugf("UnsubscribeOrderComplete")
 	}
 
-	log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, creator, orderMeta.Cid)
-	err = UnstageShard(gs.stagingPath, creator, orderMeta.Cid)
+	log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, orderProposal.Owner, orderProposal.Cid)
+	err = UnstageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid)
 	if err != nil {
 		return nil, err
 	}

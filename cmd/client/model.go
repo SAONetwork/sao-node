@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	apiclient "sao-storage-node/api/client"
 	saoclient "sao-storage-node/client"
+	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
@@ -128,21 +129,44 @@ var createCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		orderMeta := types.OrderMeta{
-			Owner:      owner,
-			GroupId:    groupId,
-			Alias:      cctx.String("name"),
-			Duration:   int32(duration),
-			Replica:    int32(replicas),
-			ExtendInfo: extendInfo,
-			IsUpdate:   false,
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
 		}
 
 		contentCid, err := utils.CaculateCid(content)
 		if err != nil {
 			return err
 		}
-		orderMeta.Cid = contentCid
+
+		proposal := types.OrderProposal{
+			Owner:      didManager.Id,
+			Provider:   gateway,
+			GroupId:    groupId,
+			Duration:   int32(duration),
+			Replica:    int32(replicas),
+			Timeout:    0,
+			Alias:      cctx.String("name"),
+			Tags:       []string{},
+			Cid:        contentCid,
+			Rule:       "",
+			IsUpdate:   false,
+			ExtendInfo: extendInfo,
+		}
+		proposalJsonBytes, err := proposal.Marshal()
+		if err != nil {
+			return err
+		}
+		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		if err != nil {
+			return err
+		}
+		clientProposal := types.ClientOrderProposal{
+			Proposal:        proposal,
+			ClientSignature: jws.Signatures[0],
+		}
+
+		orderMeta := types.OrderMeta{}
 
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
@@ -159,15 +183,15 @@ var createCmd = &cli.Command{
 			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
-				orderMeta.Alias,
+				proposal.Alias,
 				orderMeta.DataId,
-				orderMeta.ExtendInfo,
-				orderMeta.GroupId,
+				proposal.ExtendInfo,
+				proposal.GroupId,
 				orderMeta.CommitId,
 			)
 			log.Info("metadata: ", metadata)
 
-			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			orderId, tx, err := chain.StoreOrder(ctx, owner, proposal.Owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
@@ -177,7 +201,7 @@ var createCmd = &cli.Command{
 			orderMeta.TxSent = true
 		}
 
-		resp, err := client.Create(ctx, orderMeta, content)
+		resp, err := client.Create(ctx, clientProposal, orderMeta, content)
 		if err != nil {
 			return err
 		}
@@ -531,17 +555,40 @@ var updateCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		orderMeta := types.OrderMeta{
-			Owner:      owner,
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		proposal := types.OrderProposal{
+			Owner:      didManager.Id,
+			Provider:   gateway,
 			GroupId:    groupId,
-			DataId:     cctx.String("data-id"),
-			Alias:      cctx.String("name"),
 			Duration:   int32(duration),
 			Replica:    int32(replicas),
-			ExtendInfo: extendInfo,
+			Timeout:    0,
+			DataId:     cctx.String("data-id"),
+			Alias:      cctx.String("name"),
+			Tags:       []string{},
 			Cid:        newCid,
-			IsUpdate:   true,
+			Rule:       "",
+			IsUpdate:   false,
+			ExtendInfo: extendInfo,
 		}
+		proposalJsonBytes, err := proposal.Marshal()
+		if err != nil {
+			return err
+		}
+		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		if err != nil {
+			return err
+		}
+		clientProposal := types.ClientOrderProposal{
+			Proposal:        proposal,
+			ClientSignature: jws.Signatures[0],
+		}
+
+		orderMeta := types.OrderMeta{}
 
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
@@ -580,7 +627,7 @@ var updateCmd = &cli.Command{
 			orderMeta.TxSent = true
 		}
 
-		resp, err := client.Update(ctx, orderMeta, patch)
+		resp, err := client.Update(ctx, clientProposal, orderMeta, patch)
 		if err != nil {
 			return err
 		}

@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"encoding/hex"
+	"github.com/thanhpk/randstr"
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
@@ -14,6 +16,8 @@ import (
 
 type SaoClientConfig struct {
 	GroupId string
+	Seed    string
+	Alg     string
 }
 
 type SaoClient struct {
@@ -81,6 +85,8 @@ func NewSaoClient(api api.GatewayApi) *SaoClient {
 func defaultSaoClientConfig() *SaoClientConfig {
 	return &SaoClientConfig{
 		GroupId: utils.GenerateGroupId(),
+		Alg:     "secp256k1",
+		Seed:    hex.EncodeToString(randstr.Bytes(32)),
 	}
 }
 
@@ -92,8 +98,8 @@ func (sc SaoClient) Test(ctx context.Context) (string, error) {
 	return resp, nil
 }
 
-func (sc SaoClient) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.Create(ctx, orderMeta, content)
+func (sc SaoClient) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
+	return sc.gatewayApi.Create(ctx, orderProposal, orderMeta, content)
 }
 
 func (sc SaoClient) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
@@ -112,8 +118,8 @@ func (sc SaoClient) ShowCommits(ctx context.Context, owner string, key string, g
 	return sc.gatewayApi.ShowCommits(ctx, owner, key, group)
 }
 
-func (sc SaoClient) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
-	return sc.gatewayApi.Update(ctx, orderMeta, patch)
+func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
+	return sc.gatewayApi.Update(ctx, orderProposal, orderMeta, patch)
 }
 
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {

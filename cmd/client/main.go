@@ -46,6 +46,7 @@ func main() {
 			testCmd,
 			modelCmd,
 			fileCmd,
+			didCmd,
 		},
 	}
 	app.Setup()
