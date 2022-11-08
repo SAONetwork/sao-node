@@ -69,7 +69,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		return cid.Undef
 	}
 
-	contentCid, err := utils.CaculateCid(content)
+	contentCid, err := utils.CalculateCid(content)
 	if err != nil {
 		log.Error(err)
 		return cid.Undef
@@ -88,7 +88,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 			chunk = make([]byte, 0)
 		}
 
-		chunkCid, err := utils.CaculateCid(chunk)
+		chunkCid, err := utils.CalculateCid(chunk)
 		if err != nil {
 			log.Error(err)
 			return cid.Undef

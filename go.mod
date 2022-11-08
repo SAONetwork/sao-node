@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
-	github.com/SaoNetwork/sao-did v0.0.0-20221107105548-483bd555a873
+	github.com/SaoNetwork/sao-did v0.0.0-20221108085632-4aaf3bdc00bb
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/dgraph-io/badger/v2 v2.2007.4
@@ -353,4 +353,4 @@ replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-replace github.com/SaoNetwork/sao-did => ../sao-did
+//replace github.com/SaoNetwork/sao-did => ../sao-did

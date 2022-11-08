@@ -285,7 +285,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	log.Debugf("newContent: ", string(newContent))
 	log.Debugf("orgModel: ", string(orgModel.Content))
 
-	newContentCid, err := utils.CaculateCid(newContent)
+	newContentCid, err := utils.CalculateCid(newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -300,14 +300,13 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	}
 
 	// Commit
-	clientProposal.Proposal.Timeout = 24 * 60 * 60
 	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderMeta, newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &types.Model{
-		DataId:     orderMeta.DataId,
+		DataId:     clientProposal.Proposal.DataId,
 		Alias:      clientProposal.Proposal.Alias,
 		GroupId:    clientProposal.Proposal.GroupId,
 		OrderId:    result.OrderId,
