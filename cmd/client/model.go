@@ -3,8 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	apiclient "sao-storage-node/api/client"
@@ -14,6 +12,9 @@ import (
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
 	"strings"
+
+	"github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
 
 	"golang.org/x/xerrors"
 )
@@ -34,6 +35,11 @@ var modelCmd = &cli.Command{
 var createCmd = &cli.Command{
 	Name: "create",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
+		},
 		&cli.StringFlag{
 			Name:     "owner",
 			Usage:    "data model owner",
@@ -136,18 +142,19 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		contentCid, err := utils.CaculateCid(content)
+		contentCid, err := utils.CalculateCid(content)
 		if err != nil {
 			return err
 		}
 
 		proposal := types.OrderProposal{
+			User:       owner,
 			Owner:      didManager.Id,
 			Provider:   gateway,
 			GroupId:    groupId,
 			Duration:   int32(duration),
 			Replica:    int32(replicas),
-			Timeout:    0,
+			Timeout:    24 * 60 * 60,
 			Alias:      cctx.String("name"),
 			Tags:       []string{},
 			Cid:        contentCid,
@@ -755,7 +762,7 @@ var patchGenCmd = &cli.Command{
 			return xerrors.Errorf("failed to generate the patch")
 		}
 
-		targetCid, err := utils.CaculateCid(content)
+		targetCid, err := utils.CalculateCid(content)
 		if err != nil {
 			return err
 		}

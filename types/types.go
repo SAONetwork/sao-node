@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+
 	did "github.com/SaoNetwork/sao-did"
 	"github.com/ipfs/go-cid"
 )
@@ -52,6 +53,7 @@ type OrderMeta struct {
 }
 
 type OrderProposal struct {
+	User       string
 	Owner      string
 	Provider   string
 	GroupId    string

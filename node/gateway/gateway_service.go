@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	"github.com/mitchellh/go-homedir"
 	"io"
 	"os"
 	"path/filepath"
@@ -16,6 +14,9 @@ import (
 	"sao-storage-node/utils"
 	"strings"
 	"time"
+
+	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	"golang.org/x/xerrors"
@@ -154,7 +155,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 		content = append(content, c...)
 	}
 
-	contentCid, err := utils.CaculateCid(content)
+	contentCid, err := utils.CalculateCid(content)
 	if err != nil {
 		return nil, err
 	}
