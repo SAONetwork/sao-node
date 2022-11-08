@@ -293,7 +293,7 @@ var loadCmd = &cli.Command{
 			}
 			log.Info("Model Content HTTP Link: ", httpUrl)
 
-			ipfsUrl, err := client.GetIpfsUrl(ctx, resp.DataId)
+			ipfsUrl, err := client.GetIpfsUrl(ctx, resp.Cid)
 			if err != nil {
 				return err
 			}

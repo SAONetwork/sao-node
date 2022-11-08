@@ -59,7 +59,6 @@ func StartHttpFileServer(cfg *config.Gateway) (*HttpFileServer, error) {
 
 	go func() {
 		err := e.Start(cfg.HttpFileServerAddress)
-		// err := e.Start(cfg.HttpFileServerAddress)
 		if err != nil {
 			log.Error(err.Error())
 		}
