@@ -13,6 +13,7 @@ type Model struct {
 	Shards     map[string]*types.ShardMeta
 	CommitId   string
 	Commits    []string
+	Version    string
 	Content    []byte
 	ExtendInfo string
 }

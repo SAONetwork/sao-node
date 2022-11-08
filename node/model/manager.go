@@ -111,7 +111,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 	}
 
 	if orderMeta.CommitId != "" {
-		for _, commit := range meta.Commits {
+		for i, commit := range meta.Commits {
 			if strings.HasPrefix(commit, orderMeta.CommitId) {
 				commitInfo := strings.Split(commit, "\032")
 				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
@@ -125,6 +125,8 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
 				}
+
+				orderMeta.Version = fmt.Sprintf("v%d", i)
 				break
 			}
 		}
@@ -133,6 +135,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 	model := mm.loadModel(orderMeta.Owner, meta.DataId)
 	if model != nil {
 		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
+			model.Version = orderMeta.Version
 			return model, nil
 		}
 	}
@@ -169,6 +172,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 		}
 		model.Cid = result.Cid
 		model.Content = result.Content
+		model.Version = orderMeta.Version
 	}
 
 	mm.cacheModel(orderMeta.Owner, model)
@@ -213,7 +217,7 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   result.Commit,
-		Commits:    append(make([]string, 0), result.Commit),
+		Commits:    result.Commits,
 		Content:    content,
 		ExtendInfo: orderMeta.ExtendInfo,
 	}
@@ -312,7 +316,7 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   result.Commit,
-		Commits:    append(meta.Commits, result.Commit),
+		Commits:    result.Commits,
 		Content:    newContent,
 		ExtendInfo: orderMeta.ExtendInfo,
 	}

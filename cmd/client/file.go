@@ -248,7 +248,7 @@ var downloadCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "owner",
-			Usage:    "data model's owner",
+			Usage:    "file owner",
 			Required: true,
 		},
 		&cli.StringSliceFlag{
@@ -259,6 +259,16 @@ var downloadCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "platform",
 			Usage:    "platform to manage the data model",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "version",
+			Usage:    "file version",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "commit-id",
+			Usage:    "file commitId",
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -295,12 +305,21 @@ var downloadCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
+		version := cctx.String("version")
+		commitId := cctx.String("commit-id")
+		if cctx.IsSet("version") && cctx.IsSet("commit-id") {
+			log.Warn("--version is to be ignored once --commit-id is specified")
+			version = ""
+		}
+
 		for _, key := range keys {
 			orderMeta := types.OrderMeta{
 				Owner:    owner,
 				GroupId:  groupId,
 				DataId:   key,
 				Alias:    key,
+				CommitId: commitId,
+				Version:  version,
 				IsUpdate: false,
 			}
 
@@ -308,7 +327,13 @@ var downloadCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			log.Infof("file name: %d, data id: %s", resp.Alias, resp.DataId)
+
+			log.Info("File DataId: ", resp.DataId)
+			log.Info("File Name: ", resp.Alias)
+			log.Info("File CommitId: ", resp.CommitId)
+			log.Info("File Version: ", resp.Version)
+			log.Info("File Cid: ", resp.Cid)
+			log.Debugf("File Content: ", resp.Content)
 
 			path := filepath.Join("./", resp.Alias)
 			file, err := os.Create(path)
