@@ -2,22 +2,20 @@ package node
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"os"
-	"path/filepath"
+	saodid "github.com/SaoNetwork/sao-did"
+	saokey "github.com/SaoNetwork/sao-did/key"
+	"github.com/dvsekhvalnov/jose2go/base64url"
+	did "github.com/ockam-network/did"
 	"sao-storage-node/api"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 
+	"fmt"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/mitchellh/go-homedir"
-
-	"fmt"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model"
@@ -228,11 +226,38 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 	return "world", nil
 }
 
-func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
-	model, err := n.manager.Create(ctx, orderMeta, content)
+func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
+	// verify signature
+	did, err := did.Parse(orderProposal.Proposal.Owner)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
+	var resolver saodid.DidResolver
+	if did.Method == "key" {
+		resolver = saokey.NewKeyResolver()
+	}
+	didManager := saodid.NewDidManager(nil, resolver)
+	proposalBytes, err := orderProposal.Proposal.Marshal()
+	if err != nil {
+		return apitypes.CreateResp{}, err
+	}
+
+	_, err = didManager.VerifyJWS(saodid.GeneralJWS{
+		Payload: base64url.Encode(proposalBytes),
+		Signatures: []saodid.JwsSignature{
+			orderProposal.ClientSignature,
+		},
+	})
+	if err != nil {
+		return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
+	}
+
+	// model process
+	model, err := n.manager.Create(ctx, orderProposal, orderMeta, content)
+	if err != nil {
+		return apitypes.CreateResp{}, err
+	}
+
 	return apitypes.CreateResp{
 		Alias:  model.Alias,
 		DataId: model.DataId,
@@ -241,44 +266,45 @@ func (n *Node) Create(ctx context.Context, orderMeta types.OrderMeta, content []
 }
 
 func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
+	return apitypes.CreateResp{}, xerrors.New("debug")
 	// Asynchronous order and the content has been uploaded already
-	key := datastore.NewKey(types.FILE_INFO_PREFIX + orderMeta.Cid.String())
-	if info, err := n.tds.Get(ctx, key); err == nil {
-		var fileInfo *types.ReceivedFileInfo
-		err := json.Unmarshal(info, &fileInfo)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-
-		basePath, err := homedir.Expand(fileInfo.Path)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-		log.Info("path: ", basePath)
-
-		var path = filepath.Join(basePath, orderMeta.Cid.String())
-		file, err := os.Open(path)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-
-		content, err := io.ReadAll(file)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-
-		model, err := n.manager.Create(ctx, orderMeta, content)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-		return apitypes.CreateResp{
-			Alias:  model.Alias,
-			DataId: model.DataId,
-			Cid:    model.Cid,
-		}, nil
-	} else {
-		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())
-	}
+	//key := datastore.NewKey(types.FILE_INFO_PREFIX + orderMeta.Cid.String())
+	//if info, err := n.tds.Get(ctx, key); err == nil {
+	//	var fileInfo *types.ReceivedFileInfo
+	//	err := json.Unmarshal(info, &fileInfo)
+	//	if err != nil {
+	//		return apitypes.CreateResp{}, err
+	//	}
+	//
+	//	basePath, err := homedir.Expand(fileInfo.Path)
+	//	if err != nil {
+	//		return apitypes.CreateResp{}, err
+	//	}
+	//	log.Info("path: ", basePath)
+	//
+	//	var path = filepath.Join(basePath, orderMeta.Cid.String())
+	//	file, err := os.Open(path)
+	//	if err != nil {
+	//		return apitypes.CreateResp{}, err
+	//	}
+	//
+	//	content, err := io.ReadAll(file)
+	//	if err != nil {
+	//		return apitypes.CreateResp{}, err
+	//	}
+	//
+	//	model, err := n.manager.Create(ctx, orderMeta, content)
+	//	if err != nil {
+	//		return apitypes.CreateResp{}, err
+	//	}
+	//	return apitypes.CreateResp{
+	//		Alias:  model.Alias,
+	//		DataId: model.DataId,
+	//		Cid:    model.Cid,
+	//	}, nil
+	//} else {
+	//	return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())
+	//}
 }
 
 func (n *Node) Load(ctx context.Context, orderMeta types.OrderMeta) (apitypes.LoadResp, error) {
@@ -304,8 +330,33 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 	}, nil
 }
 
-func (n *Node) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
-	model, err := n.manager.Update(ctx, orderMeta, patch)
+func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
+	// verify signature
+	did, err := did.Parse(orderProposal.Proposal.Owner)
+	if err != nil {
+		return apitypes.UpdateResp{}, err
+	}
+	var resolver saodid.DidResolver
+	if did.Method == "key" {
+		resolver = saokey.NewKeyResolver()
+	}
+	didManager := saodid.NewDidManager(nil, resolver)
+	proposalBytes, err := orderProposal.Proposal.Marshal()
+	if err != nil {
+		return apitypes.UpdateResp{}, err
+	}
+
+	_, err = didManager.VerifyJWS(saodid.GeneralJWS{
+		Payload: base64url.Encode(proposalBytes),
+		Signatures: []saodid.JwsSignature{
+			orderProposal.ClientSignature,
+		},
+	})
+	if err != nil {
+		return apitypes.UpdateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
+	}
+
+	model, err := n.manager.Update(ctx, orderProposal, orderMeta, patch)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}

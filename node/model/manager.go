@@ -169,36 +169,36 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 	return model, nil
 }
 
-func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, content []byte) (*types.Model, error) {
+func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (*types.Model, error) {
+	orderProposal := clientProposal.Proposal
 	var alias string
-	if orderMeta.Alias == "" {
-		if orderMeta.Cid != cid.Undef {
-			alias = orderMeta.Cid.String()
+	if orderProposal.Alias == "" {
+		if orderProposal.Cid != cid.Undef {
+			alias = orderProposal.Cid.String()
 		} else if len(content) > 0 {
 			alias = utils.GenerateAlias(content)
 		} else {
 			alias = utils.GenerateAlias([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
 		}
 		log.Debug("use a system generated alias ", alias)
-		orderMeta.Alias = alias
+		orderProposal.Alias = alias
 	} else {
-		alias = orderMeta.Alias
+		alias = orderProposal.Alias
 	}
 
-	oldModel := mm.loadModel(orderMeta.Owner, orderMeta.Alias)
+	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.Alias)
 	if oldModel != nil {
 		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	err := mm.validateModel(orderMeta.Owner, alias, content, orderMeta.Rule)
+	err := mm.validateModel(orderProposal.Owner, alias, content, orderProposal.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	// Commit
-	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Owner, orderMeta, content)
+	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderMeta, content)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -206,40 +206,40 @@ func (mm *ModelManager) Create(ctx context.Context, orderMeta types.OrderMeta, c
 	model := &types.Model{
 		DataId:     result.DataId,
 		Alias:      alias,
-		GroupId:    orderMeta.GroupId,
+		GroupId:    orderProposal.GroupId,
 		OrderId:    result.OrderId,
-		Owner:      orderMeta.Owner,
-		Tags:       orderMeta.Tags,
+		Owner:      orderProposal.Owner,
+		Tags:       orderProposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   result.CommitId,
 		Commits:    append(make([]string, 0), result.CommitId),
 		Content:    content,
-		ExtendInfo: orderMeta.ExtendInfo,
+		ExtendInfo: orderProposal.ExtendInfo,
 	}
 
-	mm.cacheModel(orderMeta.Owner, model)
+	mm.cacheModel(orderProposal.Owner, model)
 
 	return model, nil
 }
 
-func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, patch []byte) (*types.Model, error) {
+func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, patch []byte) (*types.Model, error) {
 	var key string
-	if orderMeta.DataId == "" {
-		key = orderMeta.Alias
+	if clientProposal.Proposal.DataId == "" {
+		key = clientProposal.Proposal.Alias
 	} else {
 		key = orderMeta.DataId
 	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, clientProposal.Proposal.Owner, key, clientProposal.Proposal.GroupId, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	orderMeta.DataId = meta.DataId
-	orderMeta.Alias = meta.Alias
+	clientProposal.Proposal.DataId = meta.DataId
+	clientProposal.Proposal.Alias = meta.Alias
 
 	var isFetch = true
-	orgModel := mm.loadModel(orderMeta.Owner, meta.DataId)
+	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
 	if orgModel != nil {
 		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
@@ -285,39 +285,39 @@ func (mm *ModelManager) Update(ctx context.Context, orderMeta types.OrderMeta, p
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
-	if newContentCid != orderMeta.Cid {
-		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", orderMeta.Cid, newContentCid)
+	if newContentCid != clientProposal.Proposal.Cid {
+		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)
 	}
 
-	err = mm.validateModel(orderMeta.Owner, orderMeta.Alias, newContent, orderMeta.Rule)
+	err = mm.validateModel(clientProposal.Proposal.Owner, clientProposal.Proposal.Alias, newContent, clientProposal.Proposal.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	// Commit
-	orderMeta.CompleteTimeoutBlocks = 24 * 60 * 60
-	result, err := mm.GatewaySvc.CommitModel(ctx, orderMeta.Owner, orderMeta, newContent)
+	clientProposal.Proposal.Timeout = 24 * 60 * 60
+	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderMeta, newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &types.Model{
 		DataId:     orderMeta.DataId,
-		Alias:      orderMeta.Alias,
-		GroupId:    orderMeta.GroupId,
+		Alias:      clientProposal.Proposal.Alias,
+		GroupId:    clientProposal.Proposal.GroupId,
 		OrderId:    result.OrderId,
-		Owner:      orderMeta.Owner,
-		Tags:       orderMeta.Tags,
+		Owner:      clientProposal.Proposal.Owner,
+		Tags:       clientProposal.Proposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   result.CommitId,
 		Commits:    append(meta.Commits, result.CommitId),
 		Content:    newContent,
-		ExtendInfo: orderMeta.ExtendInfo,
+		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}
 
-	mm.cacheModel(orderMeta.Owner, model)
+	mm.cacheModel(clientProposal.Proposal.Owner, model)
 
 	return model, nil
 }

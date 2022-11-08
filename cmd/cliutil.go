@@ -1,6 +1,16 @@
 package cliutil
 
-import "github.com/urfave/cli/v2"
+import (
+	"encoding/hex"
+	did "github.com/SaoNetwork/sao-did"
+	saokey "github.com/SaoNetwork/sao-did/key"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+)
+
+const (
+	SECP256K1 = "secp256k1"
+)
 
 // IsVeryVerbose is a global var signalling if the CLI is running in very
 // verbose mode or not (default: false).
@@ -13,4 +23,44 @@ var FlagVeryVerbose = &cli.BoolFlag{
 	Name:        "vv",
 	Usage:       "enables very verbose mode, useful for debugging the CLI",
 	Destination: &IsVeryVerbose,
+}
+
+func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*did.DidManager, error) {
+	var secret []byte
+	var err error
+	if cctx.IsSet("key") {
+		seed := cctx.String("key")
+		secret, err = hex.DecodeString(seed)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		secret, err = hex.DecodeString(defaultSeed)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	alg := defaultAlg
+	if cctx.IsSet("alg") {
+		alg := cctx.String("alg")
+		if alg != SECP256K1 {
+			return nil, xerrors.Errorf("unsupported alg %s", alg)
+		}
+	}
+
+	var provider did.DidProvider
+	if alg == SECP256K1 {
+		provider, err = saokey.NewSecp256k1Provider(secret)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	didManager := did.NewDidManager(provider, saokey.NewKeyResolver())
+	_, err = didManager.Authenticate([]string{}, "")
+	if err != nil {
+		return nil, err
+	}
+	return &didManager, nil
 }

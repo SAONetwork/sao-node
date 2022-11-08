@@ -176,9 +176,9 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 }
 
 func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32, metadata string) (uint64, string, error) {
-	if signer != owner && signer != provider {
-		return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
-	}
+	//if signer != owner && signer != provider {
+	//	return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
+	//}
 
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {

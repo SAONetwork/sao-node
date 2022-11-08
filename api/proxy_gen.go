@@ -14,7 +14,7 @@ var ErrNotSupported = xerrors.New("method not supported")
 
 type GatewayApiStruct struct {
 	Internal struct {
-		Create func(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.CreateResp, error) ``
+		Create func(p0 context.Context, p1 types.ClientOrderProposal, p2 types.OrderMeta, p3 []byte) (apitypes.CreateResp, error) ``
 
 		CreateFile func(p0 context.Context, p1 types.OrderMeta) (apitypes.CreateResp, error) ``
 
@@ -30,21 +30,21 @@ type GatewayApiStruct struct {
 
 		Test func(p0 context.Context, p1 string) (string, error) ``
 
-		Update func(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.UpdateResp, error) ``
+		Update func(p0 context.Context, p1 types.ClientOrderProposal, p2 types.OrderMeta, p3 []byte) (apitypes.UpdateResp, error) ``
 	}
 }
 
 type GatewayApiStub struct {
 }
 
-func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.CreateResp, error) {
+func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.ClientOrderProposal, p2 types.OrderMeta, p3 []byte) (apitypes.CreateResp, error) {
 	if s.Internal.Create == nil {
 		return *new(apitypes.CreateResp), ErrNotSupported
 	}
-	return s.Internal.Create(p0, p1, p2)
+	return s.Internal.Create(p0, p1, p2, p3)
 }
 
-func (s *GatewayApiStub) Create(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.CreateResp, error) {
+func (s *GatewayApiStub) Create(p0 context.Context, p1 types.ClientOrderProposal, p2 types.OrderMeta, p3 []byte) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
@@ -125,14 +125,14 @@ func (s *GatewayApiStub) Test(p0 context.Context, p1 string) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Update(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.UpdateResp, error) {
+func (s *GatewayApiStruct) Update(p0 context.Context, p1 types.ClientOrderProposal, p2 types.OrderMeta, p3 []byte) (apitypes.UpdateResp, error) {
 	if s.Internal.Update == nil {
 		return *new(apitypes.UpdateResp), ErrNotSupported
 	}
-	return s.Internal.Update(p0, p1, p2)
+	return s.Internal.Update(p0, p1, p2, p3)
 }
 
-func (s *GatewayApiStub) Update(p0 context.Context, p1 types.OrderMeta, p2 []byte) (apitypes.UpdateResp, error) {
+func (s *GatewayApiStub) Update(p0 context.Context, p1 types.ClientOrderProposal, p2 types.OrderMeta, p3 []byte) (apitypes.UpdateResp, error) {
 	return *new(apitypes.UpdateResp), ErrNotSupported
 }
 
