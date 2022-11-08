@@ -15,9 +15,9 @@ type MockGatewaySvc struct {
 
 func (mcs *MockGatewaySvc) CommitModel(ctx context.Context, creator string, orderMeta types.OrderMeta, content []byte) (*gateway.CommitResult, error) {
 	return &gateway.CommitResult{
-		OrderId:  100,
-		DataId:   orderMeta.DataId,
-		CommitId: orderMeta.DataId,
+		OrderId: 100,
+		DataId:  orderMeta.DataId,
+		Commit:  orderMeta.DataId,
 	}, nil
 }
 

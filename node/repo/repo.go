@@ -172,7 +172,7 @@ func (r *Repo) initConfig() error {
 }
 
 func (r *Repo) defaultConfig() interface{} {
-	return config.DefaultGatewayNode()
+	return config.DefaultSaoNode()
 }
 
 func (r *Repo) initKeystore() error {

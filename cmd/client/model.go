@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
 	"os"
 	"path/filepath"
 	apiclient "sao-storage-node/api/client"
@@ -10,9 +13,8 @@ import (
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+	"strings"
 
-	"github.com/ipfs/go-cid"
-	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
 
@@ -182,7 +184,7 @@ var createCmd = &cli.Command{
 			orderMeta.DataId = utils.GenerateDataId()
 			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commitId": "%s", "update": false}`,
+				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				proposal.Alias,
 				orderMeta.DataId,
 				proposal.ExtendInfo,
@@ -299,7 +301,30 @@ var loadCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias id: %s, data id: %s, content: %s", resp.Alias, resp.DataId, resp.Content)
+
+		log.Info("Model DataId: ", resp.DataId)
+		log.Info("Model Alias: ", resp.Alias)
+		log.Info("Model CommitId: ", resp.CommitId)
+		log.Info("Model Version: ", resp.Version)
+		log.Info("Model Cid: ", resp.Cid)
+
+		if len(resp.Content) == 0 {
+			log.Info("Model Content SAO Link: ", "sao://"+resp.DataId)
+
+			httpUrl, err := client.GetHttpUrl(ctx, resp.DataId)
+			if err != nil {
+				return err
+			}
+			log.Info("Model Content HTTP Link: ", httpUrl)
+
+			ipfsUrl, err := client.GetIpfsUrl(ctx, resp.Cid)
+			if err != nil {
+				return err
+			}
+			log.Info("Model Content IPFS Link: ", ipfsUrl)
+		} else {
+			log.Info("Model Content: ", resp.Content)
+		}
 
 		dumpFlag := cctx.Bool("dump")
 		if dumpFlag {
@@ -438,12 +463,20 @@ var commitsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Info("Model[%s] - %s", resp.DataId, resp.Alias)
-		log.Info("---------------------------------------------------------------")
-		for i, commitId := range resp.Commits {
-			log.Infof("v%d: %s", i, commitId)
+		log.Info("Model DataID: ", resp.DataId)
+		log.Info("Model Alias: ", resp.Alias)
+		log.Info("-------------------------------------------------------")
+		log.Info("Version\t|Commit                              |Height")
+		log.Info("-------------------------------------------------------")
+		for i, commit := range resp.Commits {
+			commitInfo := strings.Split(commit, "\032")
+			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+				return xerrors.Errorf("invalid commit information: %s", commit)
+			}
+
+			log.Infof("v%d\t|%s|%s", i, commitInfo[0], commitInfo[1])
 		}
-		log.Info("---------------------------------------------------------------")
+		log.Info("-------------------------------------------------------")
 
 		return nil
 	},
@@ -614,7 +647,7 @@ var updateCmd = &cli.Command{
 			orderMeta.DataId = meta.Metadata.DataId
 			orderMeta.CommitId = utils.GenerateCommitId()
 
-			metadata := fmt.Sprintf(`{"dataId": "%s", "commitId": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
+			metadata := fmt.Sprintf(`{"dataId": "%s", "commit": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
 			log.Info("metadata: ", metadata)
 
 			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, orderMeta.Cid, int32(duration), int32(replicas), metadata)
@@ -666,6 +699,60 @@ var patchGenCmd = &cli.Command{
 		content, err := utils.ApplyPatch([]byte(origin), []byte(patch))
 		if err != nil {
 			return err
+		}
+
+		var newModel interface{}
+		err = json.Unmarshal(content, &newModel)
+		if err != nil {
+			return err
+		}
+
+		var targetModel interface{}
+		err = json.Unmarshal([]byte(target), &targetModel)
+		if err != nil {
+			return err
+		}
+
+		log.Info("newModel: ", newModel)
+		log.Info("targetModel: ", targetModel)
+
+		keySlice := make([]string, 0)
+		valueSliceNew := make([]interface{}, 0)
+		newModelMap, ok := newModel.(map[string]interface{})
+		if !ok {
+			return err
+		}
+
+		for key, value := range newModelMap {
+			keySlice = append(keySlice, key)
+			valueSliceNew = append(valueSliceNew, value)
+		}
+
+		valueSliceTarget := make([]interface{}, 0)
+		targetModelMap, ok := targetModel.(map[string]interface{})
+		if !ok {
+			return xerrors.Errorf("failed to generate the patch")
+		}
+		for _, key := range keySlice {
+			if data, ok := targetModelMap[key]; ok {
+				valueSliceTarget = append(valueSliceTarget, data)
+			} else {
+				return xerrors.Errorf("failed to generate the patch")
+			}
+		}
+
+		valueStrNew, err := json.Marshal(valueSliceNew)
+		if err != nil {
+			return err
+		}
+
+		valueStrTarget, err := json.Marshal(valueSliceTarget)
+		if err != nil {
+			return err
+		}
+
+		if string(valueStrNew) != string(valueStrTarget) {
+			return xerrors.Errorf("failed to generate the patch")
 		}
 
 		targetCid, err := utils.CaculateCid(content)

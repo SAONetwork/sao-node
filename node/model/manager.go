@@ -14,10 +14,8 @@ import (
 	"strings"
 	"sync"
 
-	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/tendermint/tendermint/types/time"
 	"golang.org/x/xerrors"
 )
 
@@ -42,10 +40,12 @@ var (
 func NewModelManager(cacheCfg *config.Cache, gatewaySvc gateway.GatewaySvcApi) *ModelManager {
 	once.Do(func() {
 		var cacheSvc cache.CacheSvcApi
-		if cacheCfg.RedisConn == "" {
+		if cacheCfg.RedisConn == "" && cacheCfg.MemcachedConn == "" {
 			cacheSvc = cache.NewLruCacheSvc()
-		} else {
+		} else if cacheCfg.RedisConn != "" {
 			cacheSvc = cache.NewRedisCacheSvc(cacheCfg.RedisConn, cacheCfg.RedisPassword, cacheCfg.RedisPoolSize)
+		} else if cacheCfg.MemcachedConn != "" {
+			cacheSvc = cache.NewMemcachedCacheSvc(cacheCfg.MemcachedConn)
 		}
 
 		modelManager = &ModelManager{
@@ -95,7 +95,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 
 		if len(meta.Commits) > index {
 			commit := meta.Commits[index]
-			commitInfo := strings.Split(meta.Commits[index], "\026")
+			commitInfo := strings.Split(meta.Commits[index], "\032")
 			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 				return nil, xerrors.Errorf("invalid commit information: %s", commit)
 			}
@@ -111,7 +111,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 	}
 
 	if orderMeta.CommitId != "" {
-		for _, commit := range meta.Commits {
+		for i, commit := range meta.Commits {
 			if strings.HasPrefix(commit, orderMeta.CommitId) {
 				commitInfo := strings.Split(commit, "\032")
 				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
@@ -125,6 +125,8 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
 				}
+
+				orderMeta.Version = fmt.Sprintf("v%d", i)
 				break
 			}
 		}
@@ -133,6 +135,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 	model := mm.loadModel(orderMeta.Owner, meta.DataId)
 	if model != nil {
 		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
+			model.Version = orderMeta.Version
 			return model, nil
 		}
 	}
@@ -151,6 +154,13 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 			// Content: N/a,
 			ExtendInfo: meta.ExtendInfo,
 		}
+	} else {
+		model.OrderId = meta.OrderId
+		model.Cid = meta.Cid
+		model.Shards = meta.Shards
+		model.CommitId = meta.CommitId
+		model.Commits = meta.Commits
+		model.ExtendInfo = meta.ExtendInfo
 	}
 
 	if len(meta.Shards) > 1 {
@@ -162,6 +172,7 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 		}
 		model.Cid = result.Cid
 		model.Content = result.Content
+		model.Version = orderMeta.Version
 	}
 
 	mm.cacheModel(orderMeta.Owner, model)
@@ -173,14 +184,7 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 	orderProposal := clientProposal.Proposal
 	var alias string
 	if orderProposal.Alias == "" {
-		if orderProposal.Cid != cid.Undef {
-			alias = orderProposal.Cid.String()
-		} else if len(content) > 0 {
-			alias = utils.GenerateAlias(content)
-		} else {
-			alias = utils.GenerateAlias([]byte(fmt.Sprintf("%d", time.Now().UnixNano())))
-		}
-		log.Debug("use a system generated alias ", alias)
+		alias = orderProposal.Cid.String()
 		orderProposal.Alias = alias
 	} else {
 		alias = orderProposal.Alias
@@ -212,8 +216,8 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 		Tags:       orderProposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.CommitId,
-		Commits:    append(make([]string, 0), result.CommitId),
+		CommitId:   result.Commit,
+		Commits:    result.Commits,
 		Content:    content,
 		ExtendInfo: orderProposal.ExtendInfo,
 	}
@@ -311,8 +315,8 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 		Tags:       clientProposal.Proposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.CommitId,
-		Commits:    append(meta.Commits, result.CommitId),
+		CommitId:   result.Commit,
+		Commits:    result.Commits,
 		Content:    newContent,
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}

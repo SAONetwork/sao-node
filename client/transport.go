@@ -138,7 +138,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		} else if remoteCid == contentCid.String() && len(chunk) == 0 {
 			break
 		} else {
-			log.Error("file cid mismatch, ", chunkCid, " vs. ", remoteCid)
+			log.Errorf("file cid mismatch, expected %s, but got %s", remoteCid, chunkCid)
 			return cid.Undef
 		}
 	}

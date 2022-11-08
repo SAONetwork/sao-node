@@ -125,3 +125,15 @@ func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderP
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
 	return sc.gatewayApi.GetPeerInfo(ctx)
 }
+
+func (sc SaoClient) GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error) {
+	return sc.gatewayApi.GenerateToken(ctx, owner)
+}
+
+func (sc SaoClient) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
+	return sc.gatewayApi.GetHttpUrl(ctx, dataId)
+}
+
+func (sc SaoClient) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
+	return sc.gatewayApi.GetIpfsUrl(ctx, cid)
+}
