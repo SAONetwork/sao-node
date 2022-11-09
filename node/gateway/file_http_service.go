@@ -29,6 +29,7 @@ type jwtClaims struct {
 func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error) {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = true
 
 	if cfg.EnableHttpFileServerLog {
 		// Middleware
