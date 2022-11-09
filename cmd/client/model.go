@@ -13,6 +13,7 @@ import (
 	"sao-storage-node/utils"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
@@ -198,13 +199,11 @@ var createCmd = &cli.Command{
 				proposal.GroupId,
 				orderMeta.CommitId,
 			)
-			log.Info("metadata: ", metadata)
 
 			orderId, tx, err := chain.StoreOrder(ctx, owner, proposal.Owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
-			log.Infof("order id=%d, tx=%s", orderId, tx)
 			orderMeta.TxId = tx
 			orderMeta.OrderId = orderId
 			orderMeta.TxSent = true
@@ -214,7 +213,7 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias: %s, data id: %s", resp.Alias, resp.DataId)
+		fmt.Printf("alias: %s, data id: %s\r\n", resp.Alias, resp.DataId)
 		return nil
 	},
 }
@@ -284,7 +283,7 @@ var loadCmd = &cli.Command{
 		version := cctx.String("version")
 		commitId := cctx.String("commit-id")
 		if cctx.IsSet("version") && cctx.IsSet("commit-id") {
-			log.Warn("--version is to be ignored once --commit-id is specified")
+			fmt.Println("--version is to be ignored once --commit-id is specified")
 			version = ""
 		}
 
@@ -309,28 +308,43 @@ var loadCmd = &cli.Command{
 			return err
 		}
 
-		log.Info("Model DataId: ", resp.DataId)
-		log.Info("Model Alias: ", resp.Alias)
-		log.Info("Model CommitId: ", resp.CommitId)
-		log.Info("Model Version: ", resp.Version)
-		log.Info("Model Cid: ", resp.Cid)
+		console := color.New(color.FgMagenta, color.Bold)
 
-		if len(resp.Content) == 0 {
-			log.Info("Model Content SAO Link: ", "sao://"+resp.DataId)
+		fmt.Print("  DataId    : ")
+		console.Println(resp.DataId)
+
+		fmt.Print("  Alias     : ")
+		console.Println(resp.Alias)
+
+		fmt.Print("  CommitId  : ")
+		console.Println(resp.CommitId)
+
+		fmt.Print("  Version   : ")
+		console.Println(resp.Version)
+
+		fmt.Print("  Cid       : ")
+		console.Println(resp.Cid)
+
+		if len(resp.Content) != 0 {
+			fmt.Print("  SAO Link  : ")
+			console.Println("sao://" + resp.DataId)
 
 			httpUrl, err := client.GetHttpUrl(ctx, resp.DataId)
 			if err != nil {
 				return err
 			}
-			log.Info("Model Content HTTP Link: ", httpUrl)
+			fmt.Print("  HTTP Link : ")
+			console.Println(httpUrl.Url)
 
 			ipfsUrl, err := client.GetIpfsUrl(ctx, resp.Cid)
 			if err != nil {
 				return err
 			}
-			log.Info("Model Content IPFS Link: ", ipfsUrl)
+			fmt.Print("  IPFS Link : ")
+			console.Println(ipfsUrl.Url)
 		} else {
-			log.Info("Model Content: ", resp.Content)
+			fmt.Print("  Content\t  : ")
+			console.Println(resp.Content)
 		}
 
 		dumpFlag := cctx.Bool("dump")
@@ -345,7 +359,7 @@ var loadCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			log.Infof("data model dumped to %s", path)
+			fmt.Printf("data model dumped to %s.\r\n", path)
 		}
 
 		return nil
@@ -408,7 +422,7 @@ var deleteCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("data model %s deleted", resp.Alias)
+		fmt.Printf("data model %s deleted.\r\n", resp.Alias)
 
 		return nil
 	},
@@ -470,20 +484,27 @@ var commitsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Info("Model DataID: ", resp.DataId)
-		log.Info("Model Alias: ", resp.Alias)
-		log.Info("-------------------------------------------------------")
-		log.Info("Version\t|Commit                              |Height")
-		log.Info("-------------------------------------------------------")
+
+		console := color.New(color.FgMagenta, color.Bold)
+
+		fmt.Print("  Model DataId : ")
+		console.Println(resp.DataId)
+
+		fmt.Print("  Model Alias  : ")
+		console.Println(resp.Alias)
+
+		fmt.Println("  -----------------------------------------------------------")
+		fmt.Println("  Version |Commit                              |Height")
+		fmt.Println("  -----------------------------------------------------------")
 		for i, commit := range resp.Commits {
 			commitInfo := strings.Split(commit, "\032")
 			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 				return xerrors.Errorf("invalid commit information: %s", commit)
 			}
 
-			log.Infof("v%d\t|%s|%s", i, commitInfo[0], commitInfo[1])
+			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo[0], commitInfo[1])
 		}
-		log.Info("-------------------------------------------------------")
+		fmt.Println("  -----------------------------------------------------------")
 
 		return nil
 	},
@@ -649,19 +670,16 @@ var updateCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			log.Debugf("meta: DataId=%s, Alias=%s", meta.Metadata.DataId, meta.Metadata.Alias)
 			orderMeta.Alias = meta.Metadata.Alias
 			orderMeta.DataId = meta.Metadata.DataId
 			orderMeta.CommitId = utils.GenerateCommitId()
 
 			metadata := fmt.Sprintf(`{"dataId": "%s", "commit": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
-			log.Info("metadata: ", metadata)
 
 			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, orderMeta.Cid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
-			log.Infof("order id=%d, tx=%s", orderId, tx)
 			orderMeta.TxId = tx
 			orderMeta.OrderId = orderId
 			orderMeta.TxSent = true
@@ -671,7 +689,7 @@ var updateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("alias: %s, data id: %s", resp.Alias, resp.DataId)
+		fmt.Printf("alias: %s, data id: %s.\r\n", resp.Alias, resp.DataId)
 		return nil
 	},
 }
@@ -720,9 +738,6 @@ var patchGenCmd = &cli.Command{
 			return err
 		}
 
-		log.Info("newModel: ", newModel)
-		log.Info("targetModel: ", targetModel)
-
 		keySlice := make([]string, 0)
 		valueSliceNew := make([]interface{}, 0)
 		newModelMap, ok := newModel.(map[string]interface{})
@@ -767,8 +782,13 @@ var patchGenCmd = &cli.Command{
 			return err
 		}
 
-		log.Info("Patch: ", patch)
-		log.Info("Target cid: ", targetCid)
+		console := color.New(color.FgMagenta, color.Bold)
+
+		fmt.Print("  Patch      : ")
+		console.Println(patch)
+
+		fmt.Print("  Target Cid : ")
+		console.Println(targetCid)
 
 		return nil
 	},

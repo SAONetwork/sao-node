@@ -11,6 +11,7 @@ import (
 	"sao-storage-node/utils"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -163,13 +164,11 @@ var createFileCmd = &cli.Command{
 				orderMeta.GroupId,
 				orderMeta.CommitId,
 			)
-			log.Info("metadata: ", metadata)
 
 			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, cid, int32(duration), int32(replicas), metadata)
 			if err != nil {
 				return err
 			}
-			log.Infof("order id=%d, tx=%s", orderId, tx)
 			orderMeta.TxId = tx
 			orderMeta.OrderId = orderId
 			orderMeta.TxSent = true
@@ -179,7 +178,10 @@ var createFileCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Infof("file name: %s, data id: %s, cid: %v", resp.Alias, resp.DataId, resp.Cid)
+
+		console := color.New(color.FgMagenta, color.Bold)
+		console.Printf("file name: %s, data id: %s, cid: %v\r\n", resp.Alias, resp.DataId, resp.Cid)
+
 		return nil
 	},
 }
@@ -218,24 +220,22 @@ var uploadCmd = &cli.Command{
 			if !info.IsDir() {
 				files = append(files, path)
 			} else {
-				log.Warn("skip directory ", path)
+				fmt.Printf("skip directory %s\r\n", path)
 			}
 
 			return nil
 		})
 
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
 
 		for _, file := range files {
-			log.Info("uploading file ", file)
-
 			c := saoclient.DoTransport(ctx, multiaddr, peerId, file)
 			if c != cid.Undef {
-				log.Info("file [", file, "] successfully uploaded, CID is ", c.String())
+				fmt.Printf("file [%s] successfully uploaded, CID is %s.\r\n", file, c.String())
 			} else {
-				log.Warn("failed to uploaded the file [", file, "], please try again")
+				fmt.Printf("failed to uploaded the file [%s], please try again", file)
 			}
 		}
 
@@ -309,7 +309,7 @@ var downloadCmd = &cli.Command{
 		version := cctx.String("version")
 		commitId := cctx.String("commit-id")
 		if cctx.IsSet("version") && cctx.IsSet("commit-id") {
-			log.Warn("--version is to be ignored once --commit-id is specified")
+			fmt.Println("--version is to be ignored once --commit-id is specified")
 			version = ""
 		}
 
@@ -329,12 +329,22 @@ var downloadCmd = &cli.Command{
 				return err
 			}
 
-			log.Info("File DataId: ", resp.DataId)
-			log.Info("File Name: ", resp.Alias)
-			log.Info("File CommitId: ", resp.CommitId)
-			log.Info("File Version: ", resp.Version)
-			log.Info("File Cid: ", resp.Cid)
-			log.Debugf("File Content: ", resp.Content)
+			console := color.New(color.FgMagenta, color.Bold)
+
+			fmt.Print("  File DataId   : ")
+			console.Println(resp.DataId)
+
+			fmt.Print("  File Name     : ")
+			console.Println(resp.Alias)
+
+			fmt.Print("  File CommitId : ")
+			console.Println(resp.CommitId)
+
+			fmt.Print("  File Version  : ")
+			console.Println(resp.Version)
+
+			fmt.Print("  File Cid      : ")
+			console.Println(resp.Cid)
 
 			path := filepath.Join("./", resp.Alias)
 			file, err := os.Create(path)
@@ -346,7 +356,7 @@ var downloadCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			log.Infof("file downloaded to %s", path)
+			fmt.Printf("file downloaded to %s\r\n", path)
 		}
 
 		return nil
@@ -379,7 +389,14 @@ var peerInfoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Info("peer info: ", resp.PeerInfo)
+
+		console := color.New(color.FgMagenta, color.Bold)
+
+		fmt.Print("  GateWay : ")
+		console.Println(gateway)
+
+		fmt.Print("  Peer Info : ")
+		console.Println(resp.PeerInfo)
 
 		return nil
 	},
@@ -421,7 +438,17 @@ var tokenGenCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		log.Info("Token: ", resp.Token)
+
+		console := color.New(color.FgMagenta, color.Bold)
+
+		fmt.Print("  Owner   : ")
+		console.Println(owner)
+
+		fmt.Print("  GateWay : ")
+		console.Println(gateway)
+
+		fmt.Print("  Token : ")
+		console.Println(resp.Token)
 
 		return nil
 	},
