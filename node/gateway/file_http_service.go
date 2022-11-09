@@ -74,7 +74,7 @@ func (hfs *HttpFileServer) Stop(ctx context.Context) error {
 	return hfs.Server.Shutdown(ctx)
 }
 
-func (hfs *HttpFileServer) GenerateToken(owner string) string {
+func (hfs *HttpFileServer) GenerateToken(owner string) (string, string) {
 	// Set custom claims
 	claims := &jwtClaims{
 		owner,
@@ -87,17 +87,17 @@ func (hfs *HttpFileServer) GenerateToken(owner string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	if token == nil {
 		log.Error("failed to generate token")
-		return ""
+		return "", ""
 	}
 
 	// Generate encoded token and send it as response.
 	tokenStr, err := token.SignedString(secret)
 	if err != nil {
 		log.Error(err.Error())
-		return ""
+		return "", ""
 	}
 
-	return tokenStr
+	return hfs.Cfg.HttpFileServerAddress, tokenStr
 }
 
 func test(c echo.Context) error {

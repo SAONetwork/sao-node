@@ -49,7 +49,8 @@ type GetPeerInfoResp struct {
 }
 
 type GenerateTokenResp struct {
-	Token string
+	Server string
+	Token  string
 }
 
 type GetUrlResp struct {

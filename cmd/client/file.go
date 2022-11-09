@@ -455,9 +455,9 @@ var tokenGenCmd = &cli.Command{
 	Usage: "generate token to access http file server",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "token owner",
-			Required: true,
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
@@ -469,11 +469,6 @@ var tokenGenCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
-
 		gateway := cctx.String("gateway")
 		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
 		if err != nil {
@@ -482,20 +477,26 @@ var tokenGenCmd = &cli.Command{
 		defer closer()
 
 		client := saoclient.NewSaoClient(gatewayApi)
-		resp, err := client.GenerateToken(ctx, owner)
+
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		resp, err := client.GenerateToken(ctx, didManager.Id)
 		if err != nil {
 			return err
 		}
 
 		console := color.New(color.FgMagenta, color.Bold)
 
-		fmt.Print("  Owner   : ")
-		console.Println(owner)
+		fmt.Print("  DID     : ")
+		console.Println(didManager.Id)
 
-		fmt.Print("  GateWay : ")
-		console.Println(gateway)
+		fmt.Print("  Server  : ")
+		console.Println(resp.Server)
 
-		fmt.Print("  Token : ")
+		fmt.Print("  Token   : ")
 		console.Println(resp.Token)
 
 		return nil

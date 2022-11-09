@@ -412,10 +412,11 @@ func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error
 }
 
 func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error) {
-	token := n.hfs.GenerateToken(owner)
+	server, token := n.hfs.GenerateToken(owner)
 	if token != "" {
 		return apitypes.GenerateTokenResp{
-			Token: string(token),
+			Server: server,
+			Token:  token,
 		}, nil
 	} else {
 		return apitypes.GenerateTokenResp{}, xerrors.Errorf("failed to generate http file sever token")
