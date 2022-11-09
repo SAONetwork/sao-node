@@ -204,7 +204,7 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	err = mm.validateModel(orderProposal.Owner, orderProposal.Alias, content, orderProposal.Rule)
+	err = mm.validateModel(ctx, orderProposal.Owner, orderProposal.Alias, content, orderProposal.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
@@ -299,7 +299,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)
 	}
 
-	err = mm.validateModel(clientProposal.Proposal.Owner, clientProposal.Proposal.Alias, newContent, clientProposal.Proposal.Rule)
+	err = mm.validateModel(ctx, clientProposal.Proposal.Owner, clientProposal.Proposal.Alias, newContent, clientProposal.Proposal.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
@@ -378,7 +378,7 @@ func (mm *ModelManager) ShowCommits(ctx context.Context, account string, key str
 	}, nil
 }
 
-func (mm *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
+func (mm *ModelManager) validateModel(ctx context.Context, account string, alias string, contentBytes []byte, rule string) error {
 	schemaStr := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
 	if schemaStr == "" {
 		return nil
@@ -406,6 +406,18 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 					model, err := mm.CacheSvc.Get(account, sch)
 					if err != nil {
 						return xerrors.Errorf(err.Error())
+					}
+
+					if model == nil {
+						req := &apitypes.LoadReq{
+							KeyWord:   sch,
+							PublicKey: account,
+						}
+
+						model, err = mm.Load(ctx, req)
+						if err != nil {
+							return xerrors.Errorf(err.Error())
+						}
 					}
 					m, ok := model.(*types.Model)
 					if ok {
@@ -436,6 +448,19 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 			if err != nil {
 				return xerrors.Errorf(err.Error())
 			}
+
+			if model == nil {
+				req := &apitypes.LoadReq{
+					KeyWord:   dataId,
+					PublicKey: account,
+				}
+
+				model, err = mm.Load(ctx, req)
+				if err != nil {
+					return xerrors.Errorf(err.Error())
+				}
+			}
+
 			m, ok := model.(*types.Model)
 			if ok {
 				schema = string(m.Content)

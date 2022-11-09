@@ -167,7 +167,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	if len(content) > gs.cfg.Cache.ContentLimit {
 		// large size content should go through P2P channel
 
-		path, err := homedir.Expand(gs.cfg.Gateway.HttpFileServerPath)
+		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
 		if err != nil {
 			return nil, err
 		}

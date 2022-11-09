@@ -440,7 +440,7 @@ var peerInfoCmd = &cli.Command{
 
 		console := color.New(color.FgMagenta, color.Bold)
 
-		fmt.Print("  GateWay : ")
+		fmt.Print("  GateWay   : ")
 		console.Println(gateway)
 
 		fmt.Print("  Peer Info : ")
@@ -492,6 +492,9 @@ var tokenGenCmd = &cli.Command{
 
 		fmt.Print("  DID     : ")
 		console.Println(didManager.Id)
+
+		fmt.Print("  GateWay : ")
+		console.Println(gateway)
 
 		fmt.Print("  Server  : ")
 		console.Println(resp.Server)

@@ -182,13 +182,16 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// http file server
-		log.Info("initialize http file server")
-		hfs, err := gateway.StartHttpFileServer(&cfg.Gateway)
-		if err != nil {
-			return nil, err
+		if cfg.SaoHttpFileServer.Enable {
+			log.Info("initialize http file server")
+
+			hfs, err := gateway.StartHttpFileServer(&cfg.SaoHttpFileServer)
+			if err != nil {
+				return nil, err
+			}
+			sn.hfs = hfs
+			sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 		}
-		sn.hfs = hfs
-		sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 
 		// api server
 		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
@@ -424,9 +427,9 @@ func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.Genera
 }
 
 func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
-	if n.cfg.Gateway.HttpFileServerAddress != "" {
+	if n.cfg.SaoHttpFileServer.HttpFileServerAddress != "" {
 		return apitypes.GetUrlResp{
-			Url: "https://" + n.cfg.Gateway.HttpFileServerAddress + "/saonetwork/" + dataId,
+			Url: "https://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/saonetwork/" + dataId,
 		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get http url")
@@ -436,7 +439,7 @@ func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlRe
 func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
 	if n.cfg.SaoIpfs.Enable {
 		return apitypes.GetUrlResp{
-			Url: "ipfs://" + n.cfg.Gateway.HttpFileServerAddress + "/ipfs/" + cid,
+			Url: "ipfs://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/ipfs/" + cid,
 		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get ipfs url")
