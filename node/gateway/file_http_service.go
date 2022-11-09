@@ -17,7 +17,7 @@ import (
 var secret = []byte("SAO Network")
 
 type HttpFileServer struct {
-	Cfg    *config.Gateway
+	Cfg    *config.SaoHttpFileServer
 	Server *echo.Echo
 }
 
@@ -26,7 +26,7 @@ type jwtClaims struct {
 	jwt.StandardClaims
 }
 
-func StartHttpFileServer(cfg *config.Gateway) (*HttpFileServer, error) {
+func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error) {
 	e := echo.New()
 	e.HideBanner = true
 
