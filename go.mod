@@ -17,6 +17,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/dvsekhvalnov/jose2go v1.5.0
 	github.com/evanphx/json-patch v4.9.0+incompatible
+	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt v3.2.2+incompatible

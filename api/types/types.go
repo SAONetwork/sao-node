@@ -1,5 +1,14 @@
 package apitypes
 
+type LoadReq struct {
+	User      string
+	KeyWord   string
+	PublicKey string
+	GroupId   string
+	CommitId  string
+	Version   string
+}
+
 type CreateResp struct {
 	DataId string
 	Alias  string

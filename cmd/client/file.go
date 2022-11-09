@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	apiclient "sao-storage-node/api/client"
+	apitypes "sao-storage-node/api/types"
 	saoclient "sao-storage-node/client"
+	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
@@ -33,6 +36,11 @@ var createFileCmd = &cli.Command{
 	Name: "create-file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "owner",
 			Usage:    "file owner",
 			Required: true,
@@ -52,6 +60,12 @@ var createFileCmd = &cli.Command{
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
+		&cli.IntFlag{
+			Name:     "delay",
+			Usage:    "how long to wait for the file ready",
+			Value:    24 * 60 * 60,
+			Required: false,
+		},
 		&cli.BoolFlag{
 			Name:     "clientPublish",
 			Value:    false,
@@ -60,6 +74,15 @@ var createFileCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "chainAddress",
 			Value:    "http://localhost:26657",
+			Required: false,
+		},
+		&cli.StringSliceFlag{
+			Name:     "tags",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "rule",
+			Value:    "",
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -108,6 +131,7 @@ var createFileCmd = &cli.Command{
 		// TODO: check valid range
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
+		delay := cctx.Int("delay")
 		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
@@ -128,21 +152,48 @@ var createFileCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		orderMeta := types.OrderMeta{
-			Owner:      owner,
-			GroupId:    groupId,
-			Alias:      fileName,
-			Duration:   int32(duration),
-			Replica:    int32(replicas),
-			ExtendInfo: extendInfo,
-			IsUpdate:   false,
-		}
-		// TODO:
-		cid, err := cid.Decode(cctx.String("cid"))
-		if err == nil {
-			orderMeta.Cid = cid
+		contentCid, err := cid.Decode(cctx.String("cid"))
+		if err != nil {
+			return err
 		}
 
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		dataId := utils.GenerateDataId()
+		proposal := types.OrderProposal{
+			DataId:     dataId,
+			Owner:      didManager.Id,
+			Provider:   gateway,
+			GroupId:    groupId,
+			Duration:   int32(duration),
+			Replica:    int32(replicas),
+			Timeout:    int32(delay),
+			Alias:      fileName,
+			Tags:       cctx.StringSlice("tags"),
+			Cid:        contentCid,
+			CommitId:   dataId,
+			Rule:       cctx.String("rule"),
+			IsUpdate:   false,
+			ExtendInfo: extendInfo,
+		}
+
+		proposalJsonBytes, err := proposal.Marshal()
+		if err != nil {
+			return err
+		}
+		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		if err != nil {
+			return err
+		}
+		clientProposal := types.ClientOrderProposal{
+			Proposal:        proposal,
+			ClientSignature: jws.Signatures[0],
+		}
+
+		var orderId uint64 = 0
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
 			if err != nil {
@@ -154,34 +205,33 @@ var createFileCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderMeta.DataId = utils.GenerateDataId()
-			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
-				orderMeta.Alias,
-				orderMeta.DataId,
-				orderMeta.ExtendInfo,
-				orderMeta.GroupId,
-				orderMeta.CommitId,
+				proposal.Alias,
+				dataId,
+				proposal.ExtendInfo,
+				proposal.GroupId,
+				dataId,
 			)
 
-			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, cid, int32(duration), int32(replicas), metadata)
+			m, err := json.Marshal(clientProposal)
 			if err != nil {
 				return err
 			}
-			orderMeta.TxId = tx
-			orderMeta.OrderId = orderId
-			orderMeta.TxSent = true
+			log.Info("metadata1: ", string(m))
+			log.Info("metadata2: ", metadata)
+
+			orderId, _, err = chain.StoreOrder(ctx, owner, owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			if err != nil {
+				return err
+			}
 		}
 
-		resp, err := client.CreateFile(ctx, orderMeta)
+		resp, err := client.CreateFile(ctx, clientProposal, orderId)
 		if err != nil {
 			return err
 		}
-
-		console := color.New(color.FgMagenta, color.Bold)
-		console.Printf("file name: %s, data id: %s, cid: %v\r\n", resp.Alias, resp.DataId, resp.Cid)
-
+		fmt.Printf("file name: %s, data id: %s\r\n", resp.Alias, resp.DataId)
 		return nil
 	},
 }
@@ -248,12 +298,12 @@ var downloadCmd = &cli.Command{
 	Usage: "download file(s) from storage network",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "file owner",
-			Required: true,
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
 		},
 		&cli.StringSliceFlag{
-			Name:     "keys",
+			Name:     "keywords",
 			Usage:    "storage network dataId(s) of the file(s)",
 			Required: true,
 		},
@@ -289,15 +339,10 @@ var downloadCmd = &cli.Command{
 		}
 		defer closer()
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
-
 		if !cctx.IsSet("keys") {
 			return xerrors.Errorf("must provide --keys")
 		}
-		keys := cctx.StringSlice("keys")
+		keywords := cctx.StringSlice("keywords")
 
 		client := saoclient.NewSaoClient(gatewayApi)
 
@@ -313,18 +358,21 @@ var downloadCmd = &cli.Command{
 			version = ""
 		}
 
-		for _, key := range keys {
-			orderMeta := types.OrderMeta{
-				Owner:    owner,
-				GroupId:  groupId,
-				DataId:   key,
-				Alias:    key,
-				CommitId: commitId,
-				Version:  version,
-				IsUpdate: false,
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		for _, keyword := range keywords {
+			req := apitypes.LoadReq{
+				KeyWord:   keyword,
+				PublicKey: didManager.Id,
+				GroupId:   groupId,
+				CommitId:  commitId,
+				Version:   version,
 			}
 
-			resp, err := client.Load(ctx, orderMeta)
+			resp, err := client.Load(ctx, req)
 			if err != nil {
 				return err
 			}

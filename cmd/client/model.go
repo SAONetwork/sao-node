@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	apiclient "sao-storage-node/api/client"
+	apitypes "sao-storage-node/api/types"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node/chain"
@@ -61,6 +62,12 @@ var createCmd = &cli.Command{
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
+		&cli.IntFlag{
+			Name:     "delay",
+			Usage:    "how long to wait for the data ready",
+			Value:    24 * 60 * 60,
+			Required: false,
+		},
 		&cli.BoolFlag{
 			Name:     "clientPublish",
 			Value:    false,
@@ -73,6 +80,15 @@ var createCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "name",
+			Value:    "",
+			Required: false,
+		},
+		&cli.StringSliceFlag{
+			Name:     "tags",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "rule",
 			Value:    "",
 			Required: false,
 		},
@@ -118,6 +134,7 @@ var createCmd = &cli.Command{
 		// TODO: check valid range
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
+		delay := cctx.Int("delay")
 		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
@@ -138,31 +155,35 @@ var createCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
-		if err != nil {
-			return err
-		}
-
 		contentCid, err := utils.CalculateCid(content)
 		if err != nil {
 			return err
 		}
 
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		dataId := utils.GenerateDataId()
 		proposal := types.OrderProposal{
-			User:       owner,
-			Owner:      didManager.Id,
-			Provider:   gateway,
-			GroupId:    groupId,
-			Duration:   int32(duration),
-			Replica:    int32(replicas),
-			Timeout:    24 * 60 * 60,
-			Alias:      cctx.String("name"),
-			Tags:       []string{},
-			Cid:        contentCid,
-			Rule:       "",
+			DataId:   dataId,
+			Owner:    didManager.Id,
+			Provider: gateway,
+			GroupId:  groupId,
+			Duration: int32(duration),
+			Replica:  int32(replicas),
+			Timeout:  int32(delay),
+			Alias:    cctx.String("name"),
+			Tags:     cctx.StringSlice("tags"),
+			Cid:      contentCid,
+			CommitId: dataId,
+			Rule:     cctx.String("rule"),
+			// OrderId:    0,
 			IsUpdate:   false,
 			ExtendInfo: extendInfo,
 		}
+
 		proposalJsonBytes, err := proposal.Marshal()
 		if err != nil {
 			return err
@@ -176,8 +197,7 @@ var createCmd = &cli.Command{
 			ClientSignature: jws.Signatures[0],
 		}
 
-		orderMeta := types.OrderMeta{}
-
+		var orderId uint64 = 0
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
 			if err != nil {
@@ -189,27 +209,30 @@ var createCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			orderMeta.DataId = utils.GenerateDataId()
-			orderMeta.CommitId = orderMeta.DataId
 			metadata := fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				proposal.Alias,
-				orderMeta.DataId,
+				dataId,
 				proposal.ExtendInfo,
 				proposal.GroupId,
-				orderMeta.CommitId,
+				dataId,
+				// clientProposal
 			)
 
-			orderId, tx, err := chain.StoreOrder(ctx, owner, proposal.Owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			m, err := json.Marshal(clientProposal)
 			if err != nil {
 				return err
 			}
-			orderMeta.TxId = tx
-			orderMeta.OrderId = orderId
-			orderMeta.TxSent = true
+			log.Info("metadata1: ", string(m))
+			log.Info("metadata2: ", metadata)
+
+			orderId, _, err = chain.StoreOrder(ctx, owner, proposal.Owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			if err != nil {
+				return err
+			}
 		}
 
-		resp, err := client.Create(ctx, clientProposal, orderMeta, content)
+		resp, err := client.Create(ctx, clientProposal, orderId, content)
 		if err != nil {
 			return err
 		}
@@ -223,12 +246,12 @@ var loadCmd = &cli.Command{
 	Usage: "load data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "data model's owner",
-			Required: true,
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "key",
+			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
 			Required: true,
 		},
@@ -270,15 +293,10 @@ var loadCmd = &cli.Command{
 		}
 		defer closer()
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
+		if !cctx.IsSet("keyword") {
+			return xerrors.Errorf("must provide --keyword")
 		}
-		owner := cctx.String("owner")
-
-		if !cctx.IsSet("key") {
-			return xerrors.Errorf("must provide --key")
-		}
-		key := cctx.String("key")
+		keyword := cctx.String("keyword")
 
 		version := cctx.String("version")
 		commitId := cctx.String("commit-id")
@@ -293,17 +311,20 @@ var loadCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		orderMeta := types.OrderMeta{
-			Owner:    owner,
-			GroupId:  groupId,
-			DataId:   key,
-			Alias:    key,
-			CommitId: commitId,
-			Version:  version,
-			IsUpdate: false,
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
 		}
 
-		resp, err := client.Load(ctx, orderMeta)
+		req := apitypes.LoadReq{
+			KeyWord:   keyword,
+			PublicKey: didManager.Id,
+			GroupId:   groupId,
+			CommitId:  commitId,
+			Version:   version,
+		}
+
+		resp, err := client.Load(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -514,8 +535,13 @@ var updateCmd = &cli.Command{
 	Name: "update",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "owner",
-			Usage:    "data model owner",
+			Usage:    "file owner",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -534,6 +560,12 @@ var updateCmd = &cli.Command{
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
+		&cli.IntFlag{
+			Name:     "delay",
+			Usage:    "how long to wait for the file ready",
+			Value:    24 * 60 * 60,
+			Required: false,
+		},
 		&cli.BoolFlag{
 			Name:     "clientPublish",
 			Value:    false,
@@ -542,6 +574,15 @@ var updateCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "chainAddress",
 			Value:    "http://localhost:26657",
+			Required: false,
+		},
+		&cli.StringSliceFlag{
+			Name:     "tags",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "rule",
+			Value:    "",
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -578,6 +619,11 @@ var updateCmd = &cli.Command{
 		ctx := cctx.Context
 
 		// ---- check parameters ----
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
 		if !cctx.IsSet("data-id") && !cctx.IsSet("name") {
 			return xerrors.Errorf("please provide either --data-id or --name")
 		}
@@ -589,8 +635,6 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		owner := cctx.String("owner")
-
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
@@ -601,6 +645,7 @@ var updateCmd = &cli.Command{
 		// TODO: check valid range
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
+		delay := cctx.Int("delay")
 		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
@@ -627,15 +672,17 @@ var updateCmd = &cli.Command{
 			GroupId:    groupId,
 			Duration:   int32(duration),
 			Replica:    int32(replicas),
-			Timeout:    0,
+			Timeout:    int32(delay),
 			DataId:     cctx.String("data-id"),
 			Alias:      cctx.String("name"),
-			Tags:       []string{},
+			Tags:       cctx.StringSlice("tags"),
 			Cid:        newCid,
-			Rule:       "",
-			IsUpdate:   false,
+			CommitId:   utils.GenerateCommitId(),
+			Rule:       cctx.String("rule"),
+			IsUpdate:   true,
 			ExtendInfo: extendInfo,
 		}
+
 		proposalJsonBytes, err := proposal.Marshal()
 		if err != nil {
 			return err
@@ -649,8 +696,7 @@ var updateCmd = &cli.Command{
 			ClientSignature: jws.Signatures[0],
 		}
 
-		orderMeta := types.OrderMeta{}
-
+		var orderId uint64 = 0
 		if clientPublish {
 			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
 			if err != nil {
@@ -662,30 +708,31 @@ var updateCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			key := orderMeta.DataId
+			key := proposal.DataId
 			if key != "" {
-				key = orderMeta.Alias
+				key = proposal.Alias
 			}
 			meta, err := chain.QueryMeta(ctx, key, 0)
 			if err != nil {
 				return err
 			}
-			orderMeta.Alias = meta.Metadata.Alias
-			orderMeta.DataId = meta.Metadata.DataId
-			orderMeta.CommitId = utils.GenerateCommitId()
 
-			metadata := fmt.Sprintf(`{"dataId": "%s", "commit": "%s", "update": true}`, orderMeta.DataId, orderMeta.CommitId)
+			metadata := fmt.Sprintf(`{"dataId": "%s", "commit": "%s", "update": true}`, meta.Metadata.DataId, proposal.CommitId)
 
-			orderId, tx, err := chain.StoreOrder(ctx, owner, owner, gatewayAddress, orderMeta.Cid, int32(duration), int32(replicas), metadata)
+			m, err := json.Marshal(clientProposal)
 			if err != nil {
 				return err
 			}
-			orderMeta.TxId = tx
-			orderMeta.OrderId = orderId
-			orderMeta.TxSent = true
+			log.Info("metadata1: ", string(m))
+			log.Info("metadata2: ", metadata)
+
+			orderId, _, err = chain.StoreOrder(ctx, owner, owner, gatewayAddress, proposal.Cid, int32(duration), int32(replicas), metadata)
+			if err != nil {
+				return err
+			}
 		}
 
-		resp, err := client.Update(ctx, clientProposal, orderMeta, patch)
+		resp, err := client.Update(ctx, clientProposal, orderId, patch)
 		if err != nil {
 			return err
 		}
