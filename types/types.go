@@ -53,7 +53,6 @@ type OrderMeta struct {
 }
 
 type OrderProposal struct {
-	User       string
 	Owner      string
 	Provider   string
 	GroupId    string
@@ -62,6 +61,7 @@ type OrderProposal struct {
 	Timeout    int32
 	Alias      string
 	DataId     string
+	CommitId   string
 	Tags       []string
 	Cid        cid.Cid
 	Rule       string

@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -44,7 +45,7 @@ type FetchResult struct {
 
 type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error)
-	CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (*CommitResult, error)
+	CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
 }
@@ -197,7 +198,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	}, nil
 }
 
-func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (*CommitResult, error) {
+func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
@@ -208,75 +209,64 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		return nil, err
 	}
 
-	commitId := utils.GenerateCommitId()
-	if orderMeta.DataId == "" {
-		orderMeta.DataId = commitId
-	}
-	if orderMeta.CommitId == "" {
-		orderMeta.CommitId = commitId
-	}
-
-	if !orderMeta.TxSent {
+	if orderId == 0 {
 		var metadata string
 		if orderProposal.IsUpdate {
 			metadata = fmt.Sprintf(
 				`{"dataId": "%s", "commit": "%s", "update": true}`,
-				orderMeta.DataId,
-				orderMeta.CommitId,
+				orderProposal.DataId,
+				orderProposal.CommitId,
 			)
 		} else {
 			metadata = fmt.Sprintf(
 				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
 				orderProposal.Alias,
-				orderMeta.DataId,
+				orderProposal.DataId,
 				orderProposal.ExtendInfo,
 				orderProposal.GroupId,
-				orderMeta.CommitId,
+				orderProposal.CommitId,
 			)
 		}
+
+		m, err := json.Marshal(clientProposal)
+		if err != nil {
+			return nil, err
+		}
+		log.Info("metadata1: ", string(m))
+		log.Info("metadata2: ", metadata)
 
 		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, orderProposal.Owner, gs.nodeAddress, orderProposal.Cid, orderProposal.Duration, orderProposal.Replica, metadata)
 		if err != nil {
 			return nil, err
 		}
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
-		orderMeta.OrderId = orderId
-		orderMeta.TxId = txId
-		orderMeta.TxSent = true
 	} else {
-		txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderMeta.OrderId)
+		txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
 		if err != nil {
 			return nil, err
 		}
-		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderMeta.OrderId, txId)
-
-		orderMeta.TxId = txId
-		orderMeta.TxSent = true
+		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
 	}
 
 	doneChan := make(chan chain.OrderCompleteResult)
-	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderMeta.OrderId, doneChan)
+	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
 	if err != nil {
 		return nil, err
 	}
 
 	log.Debugf("SubscribeOrderComplete")
 
-	var delay = orderProposal.Timeout
-	if orderProposal.Timeout <= 0 {
-		delay = 24 * 60 * 60
-	}
 	timeout := false
 	select {
 	case <-doneChan:
-	case <-time.After(chain.Blocktime * time.Duration(delay)):
+	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
 		timeout = true
 	case <-ctx.Done():
 		timeout = true
 	}
 	close(doneChan)
 
-	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderMeta.OrderId)
+	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
 	if err != nil {
 		log.Error(err)
 	} else {
@@ -291,9 +281,9 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 
 	if timeout {
 		// TODO: timeout handling
-		return nil, errors.Errorf("process order %d timeout.", orderMeta.OrderId)
+		return nil, errors.Errorf("process order %d timeout.", orderId)
 	} else {
-		meta, err := gs.chainSvc.QueryMeta(ctx, orderMeta.DataId, 0)
+		meta, err := gs.chainSvc.QueryMeta(ctx, orderProposal.DataId, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -305,7 +295,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 			Commit:  meta.Metadata.Commit,
 			Commits: meta.Metadata.Commits,
 			Shards:  meta.Shards,
-			Cid:     orderMeta.Cid.String(),
+			Cid:     orderProposal.Cid.String(),
 		}, nil
 	}
 }
