@@ -3,7 +3,6 @@ package gateway
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -210,31 +209,6 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 	}
 
 	if orderId == 0 {
-		var metadata string
-		if orderProposal.IsUpdate {
-			metadata = fmt.Sprintf(
-				`{"dataId": "%s", "commit": "%s", "update": true}`,
-				orderProposal.DataId,
-				orderProposal.CommitId,
-			)
-		} else {
-			metadata = fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "extendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
-				orderProposal.Alias,
-				orderProposal.DataId,
-				orderProposal.ExtendInfo,
-				orderProposal.GroupId,
-				orderProposal.CommitId,
-			)
-		}
-
-		m, err := json.Marshal(clientProposal)
-		if err != nil {
-			return nil, err
-		}
-		log.Info("metadata1: ", string(m))
-		log.Info("metadata2: ", metadata)
-
 		var txId string
 		orderId, txId, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {

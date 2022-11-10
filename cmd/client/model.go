@@ -697,24 +697,6 @@ var updateCmd = &cli.Command{
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			key := proposal.DataId
-			if key != "" {
-				key = proposal.Alias
-			}
-			meta, err := chain.QueryMeta(ctx, key, 0)
-			if err != nil {
-				return err
-			}
-
-			metadata := fmt.Sprintf(`{"dataId": "%s", "commit": "%s", "update": true}`, meta.Metadata.DataId, proposal.CommitId)
-
-			m, err := json.Marshal(clientProposal)
-			if err != nil {
-				return err
-			}
-			log.Info("metadata1: ", string(m))
-			log.Info("metadata2: ", metadata)
-
 			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {
 				return err
