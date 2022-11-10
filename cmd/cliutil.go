@@ -29,8 +29,8 @@ var FlagVeryVerbose = &cli.BoolFlag{
 func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*saodid.DidManager, error) {
 	var secret []byte
 	var err error
-	if cctx.IsSet("key") {
-		seed := cctx.String("key")
+	if cctx.IsSet("secret") {
+		seed := cctx.String("secret")
 		secret, err = hex.DecodeString(seed)
 		if err != nil {
 			return nil, err

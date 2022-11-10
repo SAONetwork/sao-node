@@ -2,21 +2,24 @@ package node
 
 import (
 	"context"
-	saodid "github.com/SaoNetwork/sao-did"
-	saokey "github.com/SaoNetwork/sao-did/key"
-	saotypes "github.com/SaoNetwork/sao-did/types"
-	"github.com/dvsekhvalnov/jose2go/base64url"
-	did "github.com/ockam-network/did"
+	"encoding/json"
+	"io"
+	"os"
+	"path/filepath"
 	"sao-storage-node/api"
 	"sao-storage-node/node/chain"
 	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 
+	saodid "github.com/SaoNetwork/sao-did"
+	saokey "github.com/SaoNetwork/sao-did/key"
+	saotypes "github.com/SaoNetwork/sao-did/types"
+	"github.com/dvsekhvalnov/jose2go/base64url"
+	"github.com/mitchellh/go-homedir"
+	did "github.com/ockam-network/did"
+
 	"fmt"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p/core/host"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/model"
@@ -24,6 +27,10 @@ import (
 	"sao-storage-node/node/storage"
 	"sao-storage-node/types"
 	"strings"
+
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p/core/host"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
@@ -176,13 +183,16 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// http file server
-		log.Info("initialize http file server")
-		hfs, err := gateway.StartHttpFileServer(&cfg.Gateway)
-		if err != nil {
-			return nil, err
+		if cfg.SaoHttpFileServer.Enable {
+			log.Info("initialize http file server")
+
+			hfs, err := gateway.StartHttpFileServer(&cfg.SaoHttpFileServer)
+			if err != nil {
+				return nil, err
+			}
+			sn.hfs = hfs
+			sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 		}
-		sn.hfs = hfs
-		sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 
 		// api server
 		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
@@ -237,7 +247,7 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 	return "world", nil
 }
 
-func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
+func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
 	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner)
 	if err != nil {
@@ -259,7 +269,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderPropos
 	}
 
 	// model process
-	model, err := n.manager.Create(ctx, orderProposal, orderMeta, content)
+	model, err := n.manager.Create(ctx, orderProposal, orderId, content)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
@@ -271,50 +281,49 @@ func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderPropos
 	}, nil
 }
 
-func (n *Node) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
-	return apitypes.CreateResp{}, xerrors.New("debug")
+func (n *Node) CreateFile(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
-	//key := datastore.NewKey(types.FILE_INFO_PREFIX + orderMeta.Cid.String())
-	//if info, err := n.tds.Get(ctx, key); err == nil {
-	//	var fileInfo *types.ReceivedFileInfo
-	//	err := json.Unmarshal(info, &fileInfo)
-	//	if err != nil {
-	//		return apitypes.CreateResp{}, err
-	//	}
-	//
-	//	basePath, err := homedir.Expand(fileInfo.Path)
-	//	if err != nil {
-	//		return apitypes.CreateResp{}, err
-	//	}
-	//	log.Info("path: ", basePath)
-	//
-	//	var path = filepath.Join(basePath, orderMeta.Cid.String())
-	//	file, err := os.Open(path)
-	//	if err != nil {
-	//		return apitypes.CreateResp{}, err
-	//	}
-	//
-	//	content, err := io.ReadAll(file)
-	//	if err != nil {
-	//		return apitypes.CreateResp{}, err
-	//	}
-	//
-	//	model, err := n.manager.Create(ctx, orderMeta, content)
-	//	if err != nil {
-	//		return apitypes.CreateResp{}, err
-	//	}
-	//	return apitypes.CreateResp{
-	//		Alias:  model.Alias,
-	//		DataId: model.DataId,
-	//		Cid:    model.Cid,
-	//	}, nil
-	//} else {
-	//	return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", orderMeta.Cid.String())
-	//}
+	cidStr := orderProposal.Proposal.Cid.String()
+	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
+	if info, err := n.tds.Get(ctx, key); err == nil {
+		var fileInfo *types.ReceivedFileInfo
+		err := json.Unmarshal(info, &fileInfo)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		basePath, err := homedir.Expand(fileInfo.Path)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		var path = filepath.Join(basePath, cidStr)
+		file, err := os.Open(path)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		content, err := io.ReadAll(file)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		model, err := n.manager.Create(ctx, orderProposal, orderId, content)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+		return apitypes.CreateResp{
+			Alias:  model.Alias,
+			DataId: model.DataId,
+			Cid:    model.Cid,
+		}, nil
+	} else {
+		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", cidStr)
+	}
 }
 
-func (n *Node) Load(ctx context.Context, orderMeta types.OrderMeta) (apitypes.LoadResp, error) {
-	model, err := n.manager.Load(ctx, orderMeta)
+func (n *Node) Load(ctx context.Context, req apitypes.LoadReq) (apitypes.LoadResp, error) {
+	model, err := n.manager.Load(ctx, &req)
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
@@ -340,7 +349,7 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 	}, nil
 }
 
-func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
+func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
 	did, err := did.Parse(orderProposal.Proposal.Owner)
 	if err != nil {
@@ -366,7 +375,7 @@ func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderPropos
 		return apitypes.UpdateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
 	}
 
-	model, err := n.manager.Update(ctx, orderProposal, orderMeta, patch)
+	model, err := n.manager.Update(ctx, orderProposal, orderId, patch)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
@@ -402,10 +411,11 @@ func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error
 }
 
 func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error) {
-	token := n.hfs.GenerateToken(owner)
+	server, token := n.hfs.GenerateToken(owner)
 	if token != "" {
 		return apitypes.GenerateTokenResp{
-			Token: string(token),
+			Server: server,
+			Token:  token,
 		}, nil
 	} else {
 		return apitypes.GenerateTokenResp{}, xerrors.Errorf("failed to generate http file sever token")
@@ -413,9 +423,9 @@ func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.Genera
 }
 
 func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
-	if n.cfg.Gateway.HttpFileServerAddress != "" {
+	if n.cfg.SaoHttpFileServer.HttpFileServerAddress != "" {
 		return apitypes.GetUrlResp{
-			Url: "https://" + n.cfg.Gateway.HttpFileServerAddress + "/saonetwork/" + dataId,
+			Url: "https://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/saonetwork/" + dataId,
 		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get http url")
@@ -425,7 +435,7 @@ func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlRe
 func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
 	if n.cfg.SaoIpfs.Enable {
 		return apitypes.GetUrlResp{
-			Url: "ipfs://" + n.cfg.Gateway.HttpFileServerAddress + "/ipfs/" + cid,
+			Url: "ipfs://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/ipfs/" + cid,
 		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get ipfs url")

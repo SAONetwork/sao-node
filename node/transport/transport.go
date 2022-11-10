@@ -113,7 +113,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 		return
 	}
 
-	localCid, err := utils.CaculateCid(req.Content)
+	localCid, err := utils.CalculateCid(req.Content)
 	if err != nil {
 		log.Error(err.Error())
 		return
@@ -213,7 +213,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 				fileContent = append(fileContent, content...)
 			}
 
-			contentCid, err := utils.CaculateCid(fileContent)
+			contentCid, err := utils.CalculateCid(fileContent)
 			if err != nil {
 				log.Error(err.Error())
 				return

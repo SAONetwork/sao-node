@@ -60,6 +60,7 @@ type OrderProposal struct {
 	Timeout    int32
 	Alias      string
 	DataId     string
+	CommitId   string
 	Tags       []string
 	Cid        cid.Cid
 	Rule       string

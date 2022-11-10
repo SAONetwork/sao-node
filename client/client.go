@@ -3,13 +3,14 @@ package client
 import (
 	"context"
 	"encoding/hex"
-	"github.com/thanhpk/randstr"
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+
+	"github.com/thanhpk/randstr"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -98,16 +99,16 @@ func (sc SaoClient) Test(ctx context.Context) (string, error) {
 	return resp, nil
 }
 
-func (sc SaoClient) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.Create(ctx, orderProposal, orderMeta, content)
+func (sc SaoClient) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+	return sc.gatewayApi.Create(ctx, orderProposal, orderId, content)
 }
 
-func (sc SaoClient) CreateFile(ctx context.Context, orderMeta types.OrderMeta) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.CreateFile(ctx, orderMeta)
+func (sc SaoClient) CreateFile(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.CreateResp, error) {
+	return sc.gatewayApi.CreateFile(ctx, orderProposal, orderId)
 }
 
-func (sc SaoClient) Load(ctx context.Context, orderMeta types.OrderMeta) (apitypes.LoadResp, error) {
-	return sc.gatewayApi.Load(ctx, orderMeta)
+func (sc SaoClient) Load(ctx context.Context, req apitypes.LoadReq) (apitypes.LoadResp, error) {
+	return sc.gatewayApi.Load(ctx, req)
 }
 
 func (sc SaoClient) Delete(ctx context.Context, owner string, key string, group string) (apitypes.DeleteResp, error) {
@@ -118,8 +119,8 @@ func (sc SaoClient) ShowCommits(ctx context.Context, owner string, key string, g
 	return sc.gatewayApi.ShowCommits(ctx, owner, key, group)
 }
 
-func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, patch []byte) (apitypes.UpdateResp, error) {
-	return sc.gatewayApi.Update(ctx, orderProposal, orderMeta, patch)
+func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+	return sc.gatewayApi.Update(ctx, orderProposal, orderId, patch)
 }
 
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
