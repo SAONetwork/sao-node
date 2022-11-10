@@ -1,8 +1,9 @@
 package types
 
 import (
-	did "github.com/SaoNetwork/sao-did"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+
+	saodidtypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -53,7 +54,7 @@ type OrderMeta struct {
 
 type ClientOrderProposal struct {
 	Proposal        saotypes.Proposal
-	ClientSignature did.JwsSignature
+	ClientSignature saodidtypes.JwsSignature
 }
 
 const (

@@ -181,7 +181,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*types.Model, error) {
 	orderProposal := clientProposal.Proposal
 	if orderProposal.Alias == "" {
-		orderProposal.Alias = orderProposal.Cid.String()
+		orderProposal.Alias = orderProposal.Cid
 	}
 
 	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId)
@@ -254,7 +254,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
 			log.Debugf("load the model[%s]-%s from cache", meta.DataId, meta.Alias)
-			log.Debugf("model: ", string(orgModel.Content))
+			log.Debug("model: ", string(orgModel.Content))
 			isFetch = false
 		}
 	} else {
@@ -288,14 +288,14 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
-	log.Debugf("newContent: ", string(newContent))
-	log.Debugf("orgModel: ", string(orgModel.Content))
+	log.Debug("newContent: ", string(newContent))
+	log.Debug("orgModel: ", string(orgModel.Content))
 
 	newContentCid, err := utils.CalculateCid(newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
-	if newContentCid != clientProposal.Proposal.Cid {
+	if newContentCid.String() != clientProposal.Proposal.Cid {
 		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)
 	}
 
@@ -306,7 +306,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	}
 
 	// Commit
-	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, meta.OrderId, newContent)
+	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderId, newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}

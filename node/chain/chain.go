@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"sao-storage-node/types"
 	"strconv"
 	"time"
 
@@ -175,11 +176,10 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, provider string, cid cid.Cid, duration int32, replica int32, metadata string) (uint64, string, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal types.ClientOrderProposal) (uint64, string, error) {
 	//if signer != owner && signer != provider {
 	//	return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	//}
-
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
 		return 0, "", err
@@ -188,18 +188,18 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, owner string, 
 	// TODO: Cid
 	msg := &saotypes.MsgStore{
 		Creator:  signer,
-		Owner:    owner,
-		Cid:      cid.String(),
-		Provider: provider,
-		Duration: duration,
-		Replica:  replica,
-		Metadata: metadata,
+		Proposal: &clientProposal.Proposal,
+		JwsSignature: &saotypes.JwsSignature{
+			Protected: clientProposal.ClientSignature.Protected,
+			Signature: clientProposal.ClientSignature.Signature,
+		},
 	}
+
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
 		return 0, "", err
 	}
-	log.Debug("MsgStore result: ", txResp)
+	// log.Debug("MsgStore result: ", txResp)
 	if txResp.TxResponse.Code != 0 {
 		return 0, "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
