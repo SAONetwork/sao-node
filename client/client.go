@@ -111,12 +111,12 @@ func (sc SaoClient) Load(ctx context.Context, req apitypes.LoadReq) (apitypes.Lo
 	return sc.gatewayApi.Load(ctx, req)
 }
 
-func (sc SaoClient) Delete(ctx context.Context, owner string, key string, group string) (apitypes.DeleteResp, error) {
-	return sc.gatewayApi.Delete(ctx, owner, key, group)
+func (sc SaoClient) Delete(ctx context.Context, owner string, keyword string, group string) (apitypes.DeleteResp, error) {
+	return sc.gatewayApi.Delete(ctx, owner, keyword, group)
 }
 
-func (sc SaoClient) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {
-	return sc.gatewayApi.ShowCommits(ctx, owner, key, group)
+func (sc SaoClient) ShowCommits(ctx context.Context, owner string, keyword string, group string) (apitypes.ShowCommitsResp, error) {
+	return sc.gatewayApi.ShowCommits(ctx, owner, keyword, group)
 }
 
 func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {

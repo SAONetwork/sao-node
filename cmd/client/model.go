@@ -381,12 +381,12 @@ var deleteCmd = &cli.Command{
 	Usage: "delete data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "data model's owner",
-			Required: true,
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "key",
+			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
 			Required: true,
 		},
@@ -412,23 +412,23 @@ var deleteCmd = &cli.Command{
 		}
 		defer closer()
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
+		if !cctx.IsSet("keyword") {
+			return xerrors.Errorf("must provide --keyword")
 		}
-		owner := cctx.String("owner")
-
-		if !cctx.IsSet("key") {
-			return xerrors.Errorf("must provide --key")
-		}
-		key := cctx.String("key")
+		keyword := cctx.String("keyword")
 
 		client := saoclient.NewSaoClient(gatewayApi)
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
 		}
 
-		resp, err := client.Delete(ctx, owner, key, groupId)
+		resp, err := client.Delete(ctx, didManager.Id, keyword, groupId)
 		if err != nil {
 			return err
 		}
@@ -443,12 +443,12 @@ var commitsCmd = &cli.Command{
 	Usage: "list data model historical commits",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "data model's owner",
-			Required: true,
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "key",
+			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
 			Required: true,
 		},
@@ -474,23 +474,23 @@ var commitsCmd = &cli.Command{
 		}
 		defer closer()
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
+		if !cctx.IsSet("keyword") {
+			return xerrors.Errorf("must provide --keyword")
 		}
-		owner := cctx.String("owner")
-
-		if !cctx.IsSet("key") {
-			return xerrors.Errorf("must provide --key")
-		}
-		key := cctx.String("key")
+		keyword := cctx.String("keyword")
 
 		client := saoclient.NewSaoClient(gatewayApi)
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
 		}
 
-		resp, err := client.ShowCommits(ctx, owner, key, groupId)
+		resp, err := client.ShowCommits(ctx, didManager.Id, keyword, groupId)
 		if err != nil {
 			return err
 		}
