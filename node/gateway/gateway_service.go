@@ -235,7 +235,8 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		log.Info("metadata1: ", string(m))
 		log.Info("metadata2: ", metadata)
 
-		orderId, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, orderProposal.Owner, gs.nodeAddress, orderProposal.Cid, orderProposal.Duration, orderProposal.Replica, metadata)
+		var txId string
+		orderId, txId, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
 			return nil, err
 		}
@@ -254,7 +255,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		return nil, err
 	}
 
-	log.Debugf("SubscribeOrderComplete")
+	log.Debug("SubscribeOrderComplete")
 
 	timeout := false
 	select {
@@ -287,7 +288,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("order %d complete: dataId=%s", meta.Metadata.OrderId, &meta.Metadata.DataId)
+		log.Debugf("order %d complete: dataId=%s", meta.Metadata.OrderId, meta.Metadata.DataId)
 
 		return &CommitResult{
 			OrderId: meta.Metadata.OrderId,
@@ -295,7 +296,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 			Commit:  meta.Metadata.Commit,
 			Commits: meta.Metadata.Commits,
 			Shards:  meta.Shards,
-			Cid:     orderProposal.Cid.String(),
+			Cid:     orderProposal.Cid,
 		}, nil
 	}
 }

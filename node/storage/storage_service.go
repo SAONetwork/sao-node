@@ -99,6 +99,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		return err
 	}
 
+	log.Infof("Complete order")
 	txHash, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
 	if err != nil {
 		return err

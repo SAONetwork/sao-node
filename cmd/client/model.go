@@ -14,6 +14,7 @@ import (
 	"sao-storage-node/utils"
 	"strings"
 
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -165,18 +166,23 @@ var createCmd = &cli.Command{
 			return err
 		}
 
+		gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
 		dataId := utils.GenerateDataId()
-		proposal := types.OrderProposal{
+		proposal := saotypes.Proposal{
 			DataId:   dataId,
 			Owner:    didManager.Id,
-			Provider: gateway,
+			Provider: gatewayAddress,
 			GroupId:  groupId,
 			Duration: int32(duration),
 			Replica:  int32(replicas),
 			Timeout:  int32(delay),
 			Alias:    cctx.String("name"),
 			Tags:     cctx.StringSlice("tags"),
-			Cid:      contentCid,
+			Cid:      contentCid.String(),
 			CommitId: dataId,
 			Rule:     cctx.String("rule"),
 			// OrderId:    0,
@@ -197,36 +203,19 @@ var createCmd = &cli.Command{
 			ClientSignature: jws.Signatures[0],
 		}
 
+		log.Info("Protected: ", clientProposal.ClientSignature.Protected)
+
 		var orderId uint64 = 0
 		if clientPublish {
-			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
-			if err != nil {
-				return err
-			}
-
 			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
-				proposal.Alias,
-				dataId,
-				proposal.ExtendInfo,
-				proposal.GroupId,
-				dataId,
-				// clientProposal
-			)
+			j, _ := json.Marshal(clientProposal.Proposal)
+			log.Info("chain.StoreOrder ", string(j))
 
-			m, err := json.Marshal(clientProposal)
-			if err != nil {
-				return err
-			}
-			log.Info("metadata1: ", string(m))
-			log.Info("metadata2: ", metadata)
-
-			orderId, _, err = chain.StoreOrder(ctx, owner, proposal.Owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -666,9 +655,14 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		proposal := types.OrderProposal{
+		gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		proposal := saotypes.Proposal{
 			Owner:      didManager.Id,
-			Provider:   gateway,
+			Provider:   gatewayAddress,
 			GroupId:    groupId,
 			Duration:   int32(duration),
 			Replica:    int32(replicas),
@@ -676,7 +670,7 @@ var updateCmd = &cli.Command{
 			DataId:     cctx.String("data-id"),
 			Alias:      cctx.String("name"),
 			Tags:       cctx.StringSlice("tags"),
-			Cid:        newCid,
+			Cid:        newCid.String(),
 			CommitId:   utils.GenerateCommitId(),
 			Rule:       cctx.String("rule"),
 			IsUpdate:   true,
@@ -698,11 +692,6 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
-			if err != nil {
-				return err
-			}
-
 			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
@@ -726,7 +715,7 @@ var updateCmd = &cli.Command{
 			log.Info("metadata1: ", string(m))
 			log.Info("metadata2: ", metadata)
 
-			orderId, _, err = chain.StoreOrder(ctx, owner, owner, gatewayAddress, proposal.Cid, int32(duration), int32(replicas), metadata)
+			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {
 				return err
 			}

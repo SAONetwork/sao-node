@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
-	github.com/SaoNetwork/sao-did v0.0.0-20221108085632-4aaf3bdc00bb
+	github.com/SaoNetwork/sao-did v0.0.0-20221110080651-5f53fdc2c0fa
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/dgraph-io/badger/v2 v2.2007.4
@@ -176,7 +176,7 @@ require (
 	github.com/ipfs/go-ipfs-provider v0.7.1 // indirect
 	github.com/ipfs/go-ipfs-routing v0.2.1 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
-	github.com/ipfs/go-ipld-cbor v0.0.5 // indirect
+	github.com/ipfs/go-ipld-cbor v0.0.6 // indirect
 	github.com/ipfs/go-ipld-format v0.4.0 // indirect
 	github.com/ipfs/go-ipld-git v0.1.1 // indirect
 	github.com/ipfs/go-ipld-legacy v0.1.1 // indirect

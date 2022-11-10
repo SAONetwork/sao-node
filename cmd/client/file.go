@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,6 +13,7 @@ import (
 	"sao-storage-node/utils"
 	"strings"
 
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -162,18 +162,23 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
+		gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
 		dataId := utils.GenerateDataId()
-		proposal := types.OrderProposal{
+		proposal := saotypes.Proposal{
 			DataId:     dataId,
 			Owner:      didManager.Id,
-			Provider:   gateway,
+			Provider:   gatewayAddress,
 			GroupId:    groupId,
 			Duration:   int32(duration),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			Alias:      fileName,
 			Tags:       cctx.StringSlice("tags"),
-			Cid:        contentCid,
+			Cid:        contentCid.String(),
 			CommitId:   dataId,
 			Rule:       cctx.String("rule"),
 			IsUpdate:   false,
@@ -195,33 +200,12 @@ var createFileCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			gatewayAddress, err := gatewayApi.NodeAddress(ctx)
-			if err != nil {
-				return err
-			}
-
 			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
 
-			metadata := fmt.Sprintf(
-				`{"alias": "%s", "dataId": "%s", "ExtendInfo": "%s", "groupId": "%s", "commit": "%s", "update": false}`,
-				proposal.Alias,
-				dataId,
-				proposal.ExtendInfo,
-				proposal.GroupId,
-				dataId,
-			)
-
-			m, err := json.Marshal(clientProposal)
-			if err != nil {
-				return err
-			}
-			log.Info("metadata1: ", string(m))
-			log.Info("metadata2: ", metadata)
-
-			orderId, _, err = chain.StoreOrder(ctx, owner, owner, gatewayAddress, contentCid, int32(duration), int32(replicas), metadata)
+			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {
 				return err
 			}

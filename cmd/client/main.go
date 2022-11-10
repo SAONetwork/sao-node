@@ -22,10 +22,12 @@ const (
 
 func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("saoclient", "INFO")
+	_ = logging.SetLogLevel("chain", "INFO")
 	_ = logging.SetLogLevel("transport-client", "INFO")
 
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("saoclient", "DEBUG")
+		_ = logging.SetLogLevel("chain", "DEBUG")
 		_ = logging.SetLogLevel("transport-client", "DEBUG")
 	}
 
