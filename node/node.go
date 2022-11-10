@@ -4,6 +4,7 @@ import (
 	"context"
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
+	saotypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	did "github.com/ockam-network/did"
 	"sao-storage-node/api"
@@ -238,23 +239,18 @@ func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 
 func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
-	did, err := did.Parse(orderProposal.Proposal.Owner)
+	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
-	var resolver saodid.DidResolver
-	if did.Method == "key" {
-		resolver = saokey.NewKeyResolver()
-	}
-	didManager := saodid.NewDidManager(nil, resolver)
 	proposalBytes, err := orderProposal.Proposal.Marshal()
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
 
-	_, err = didManager.VerifyJWS(saodid.GeneralJWS{
+	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saodid.JwsSignature{
+		Signatures: []saotypes.JwsSignature{
 			orderProposal.ClientSignature,
 		},
 	})
@@ -350,7 +346,7 @@ func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderPropos
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
-	var resolver saodid.DidResolver
+	var resolver saotypes.DidResolver
 	if did.Method == "key" {
 		resolver = saokey.NewKeyResolver()
 	}
@@ -360,9 +356,9 @@ func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderPropos
 		return apitypes.UpdateResp{}, err
 	}
 
-	_, err = didManager.VerifyJWS(saodid.GeneralJWS{
+	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saodid.JwsSignature{
+		Signatures: []saotypes.JwsSignature{
 			orderProposal.ClientSignature,
 		},
 	})
