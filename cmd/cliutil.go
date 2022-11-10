@@ -2,8 +2,9 @@ package cliutil
 
 import (
 	"encoding/hex"
-	did "github.com/SaoNetwork/sao-did"
+	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
+	saodidtypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -25,7 +26,7 @@ var FlagVeryVerbose = &cli.BoolFlag{
 	Destination: &IsVeryVerbose,
 }
 
-func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*did.DidManager, error) {
+func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*saodid.DidManager, error) {
 	var secret []byte
 	var err error
 	if cctx.IsSet("key") {
@@ -49,7 +50,7 @@ func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*d
 		}
 	}
 
-	var provider did.DidProvider
+	var provider saodidtypes.DidProvider
 	if alg == SECP256K1 {
 		provider, err = saokey.NewSecp256k1Provider(secret)
 		if err != nil {
@@ -57,7 +58,7 @@ func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*d
 		}
 	}
 
-	didManager := did.NewDidManager(provider, saokey.NewKeyResolver())
+	didManager := saodid.NewDidManager(provider, saokey.NewKeyResolver())
 	_, err = didManager.Authenticate([]string{}, "")
 	if err != nil {
 		return nil, err

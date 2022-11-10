@@ -2,7 +2,7 @@ package types
 
 import (
 	"encoding/json"
-	did "github.com/SaoNetwork/sao-did"
+	saodidtypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -73,7 +73,7 @@ func (o OrderProposal) Marshal() ([]byte, error) {
 
 type ClientOrderProposal struct {
 	Proposal        OrderProposal
-	ClientSignature did.JwsSignature
+	ClientSignature saodidtypes.JwsSignature
 }
 
 const (
