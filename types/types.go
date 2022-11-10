@@ -1,9 +1,8 @@
 package types
 
 import (
-	"encoding/json"
-
 	did "github.com/SaoNetwork/sao-did"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"
 )
 
@@ -52,29 +51,8 @@ type OrderMeta struct {
 	Version   string
 }
 
-type OrderProposal struct {
-	Owner      string
-	Provider   string
-	GroupId    string
-	Duration   int32
-	Replica    int32
-	Timeout    int32
-	Alias      string
-	DataId     string
-	CommitId   string
-	Tags       []string
-	Cid        cid.Cid
-	Rule       string
-	IsUpdate   bool
-	ExtendInfo string
-}
-
-func (o OrderProposal) Marshal() ([]byte, error) {
-	return json.Marshal(o)
-}
-
 type ClientOrderProposal struct {
-	Proposal        OrderProposal
+	Proposal        saotypes.Proposal
 	ClientSignature did.JwsSignature
 }
 
