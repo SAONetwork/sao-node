@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/gateway"
@@ -66,29 +67,26 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*types.Model, error) {
-	key := orderMeta.DataId
-	if !utils.IsDataId(key) {
-		value, err := mm.CacheSvc.Get(orderMeta.Owner, orderMeta.Alias+orderMeta.GroupId)
+func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types.Model, error) {
+	if !utils.IsDataId(req.KeyWord) {
+		value, err := mm.CacheSvc.Get(req.PublicKey, req.KeyWord+req.GroupId)
 		if err != nil {
 			log.Warn(err.Error())
 		} else if value != nil {
 			dataId, ok := value.(string)
 			if ok && utils.IsDataId(dataId) {
-				key = dataId
+				req.KeyWord = dataId
 			}
 		}
 	}
 
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
-	orderMeta.Alias = meta.Alias
-	orderMeta.DataId = meta.DataId
 
-	if orderMeta.Version != "" {
-		index, err := strconv.Atoi(strings.ReplaceAll(orderMeta.Version, "v", ""))
+	if req.Version != "" {
+		index, err := strconv.Atoi(strings.ReplaceAll(req.Version, "v", ""))
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
@@ -103,16 +101,16 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 			if err != nil {
 				return nil, xerrors.Errorf(err.Error())
 			}
-			meta, err = mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, height)
+			meta, err = mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, height)
 			if err != nil {
 				return nil, xerrors.Errorf(err.Error())
 			}
 		}
 	}
 
-	if orderMeta.CommitId != "" {
+	if req.CommitId != "" {
 		for i, commit := range meta.Commits {
-			if strings.HasPrefix(commit, orderMeta.CommitId) {
+			if strings.HasPrefix(commit, req.CommitId) {
 				commitInfo := strings.Split(commit, "\032")
 				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 					return nil, xerrors.Errorf("invalid commit information: %s", commit)
@@ -121,21 +119,21 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
 				}
-				meta, err = mm.GatewaySvc.QueryMeta(ctx, orderMeta.Owner, key, orderMeta.GroupId, height)
+				meta, err = mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, height)
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
 				}
 
-				orderMeta.Version = fmt.Sprintf("v%d", i)
+				req.Version = fmt.Sprintf("v%d", i)
 				break
 			}
 		}
 	}
 
-	model := mm.loadModel(orderMeta.Owner, meta.DataId)
+	model := mm.loadModel(req.PublicKey, meta.DataId)
 	if model != nil {
 		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
-			model.Version = orderMeta.Version
+			model.Version = req.Version
 			return model, nil
 		}
 	}
@@ -172,44 +170,55 @@ func (mm *ModelManager) Load(ctx context.Context, orderMeta types.OrderMeta) (*t
 		}
 		model.Cid = result.Cid
 		model.Content = result.Content
-		model.Version = orderMeta.Version
+		model.Version = req.Version
 	}
 
-	mm.cacheModel(orderMeta.Owner, model)
+	mm.cacheModel(req.PublicKey, model)
 
 	return model, nil
 }
 
-func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, content []byte) (*types.Model, error) {
+func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*types.Model, error) {
 	orderProposal := clientProposal.Proposal
-	var alias string
 	if orderProposal.Alias == "" {
-		alias = orderProposal.Cid.String()
-		orderProposal.Alias = alias
-	} else {
-		alias = orderProposal.Alias
+		orderProposal.Alias = orderProposal.Cid.String()
 	}
 
-	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.Alias)
+	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId)
 	if oldModel != nil {
 		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	err := mm.validateModel(orderProposal.Owner, alias, content, orderProposal.Rule)
+	oldModel = mm.loadModel(orderProposal.Owner, orderProposal.Alias)
+	if oldModel != nil {
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+	}
+
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderProposal.Owner, orderProposal.DataId, orderProposal.GroupId, 0)
+	if err == nil && meta != nil {
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+	}
+
+	meta, err = mm.GatewaySvc.QueryMeta(ctx, orderProposal.Owner, orderProposal.Alias, orderProposal.GroupId, 0)
+	if err == nil && meta != nil {
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+	}
+
+	err = mm.validateModel(ctx, orderProposal.Owner, orderProposal.Alias, content, orderProposal.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	// Commit
-	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderMeta, content)
+	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderId, content)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &types.Model{
 		DataId:     result.DataId,
-		Alias:      alias,
+		Alias:      orderProposal.Alias,
 		GroupId:    orderProposal.GroupId,
 		OrderId:    result.OrderId,
 		Owner:      orderProposal.Owner,
@@ -227,20 +236,17 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 	return model, nil
 }
 
-func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientOrderProposal, orderMeta types.OrderMeta, patch []byte) (*types.Model, error) {
-	var key string
+func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, patch []byte) (*types.Model, error) {
+	var keyword string
 	if clientProposal.Proposal.DataId == "" {
-		key = clientProposal.Proposal.Alias
+		keyword = clientProposal.Proposal.Alias
 	} else {
-		key = orderMeta.DataId
+		keyword = clientProposal.Proposal.DataId
 	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, clientProposal.Proposal.Owner, key, clientProposal.Proposal.GroupId, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, clientProposal.Proposal.Owner, keyword, clientProposal.Proposal.GroupId, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
-
-	clientProposal.Proposal.DataId = meta.DataId
-	clientProposal.Proposal.Alias = meta.Alias
 
 	var isFetch = true
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
@@ -285,7 +291,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	log.Debugf("newContent: ", string(newContent))
 	log.Debugf("orgModel: ", string(orgModel.Content))
 
-	newContentCid, err := utils.CaculateCid(newContent)
+	newContentCid, err := utils.CalculateCid(newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -293,21 +299,20 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)
 	}
 
-	err = mm.validateModel(clientProposal.Proposal.Owner, clientProposal.Proposal.Alias, newContent, clientProposal.Proposal.Rule)
+	err = mm.validateModel(ctx, clientProposal.Proposal.Owner, clientProposal.Proposal.Alias, newContent, clientProposal.Proposal.Rule)
 	if err != nil {
 		log.Error(err.Error())
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	// Commit
-	clientProposal.Proposal.Timeout = 24 * 60 * 60
-	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderMeta, newContent)
+	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, meta.OrderId, newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
 	model := &types.Model{
-		DataId:     orderMeta.DataId,
+		DataId:     clientProposal.Proposal.DataId,
 		Alias:      clientProposal.Proposal.Alias,
 		GroupId:    clientProposal.Proposal.GroupId,
 		OrderId:    result.OrderId,
@@ -373,7 +378,7 @@ func (mm *ModelManager) ShowCommits(ctx context.Context, account string, key str
 	}, nil
 }
 
-func (mm *ModelManager) validateModel(account string, alias string, contentBytes []byte, rule string) error {
+func (mm *ModelManager) validateModel(ctx context.Context, account string, alias string, contentBytes []byte, rule string) error {
 	schemaStr := jsoniter.Get(contentBytes, PROPERTY_CONTEXT).ToString()
 	if schemaStr == "" {
 		return nil
@@ -401,6 +406,18 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 					model, err := mm.CacheSvc.Get(account, sch)
 					if err != nil {
 						return xerrors.Errorf(err.Error())
+					}
+
+					if model == nil {
+						req := &apitypes.LoadReq{
+							KeyWord:   sch,
+							PublicKey: account,
+						}
+
+						model, err = mm.Load(ctx, req)
+						if err != nil {
+							return xerrors.Errorf(err.Error())
+						}
 					}
 					m, ok := model.(*types.Model)
 					if ok {
@@ -431,6 +448,19 @@ func (mm *ModelManager) validateModel(account string, alias string, contentBytes
 			if err != nil {
 				return xerrors.Errorf(err.Error())
 			}
+
+			if model == nil {
+				req := &apitypes.LoadReq{
+					KeyWord:   dataId,
+					PublicKey: account,
+				}
+
+				model, err = mm.Load(ctx, req)
+				if err != nil {
+					return xerrors.Errorf(err.Error())
+				}
+			}
+
 			m, ok := model.(*types.Model)
 			if ok {
 				schema = string(m.Content)

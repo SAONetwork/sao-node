@@ -12,16 +12,17 @@ type Common struct {
 // gateway node config
 type Node struct {
 	Common
-	Cache     Cache
-	Transport Transport
-	Api       API
-	Module    Module
-	Gateway   Gateway
-	Storage   Storage
-	SaoIpfs   SaoIpfs
+	Cache             Cache
+	Transport         Transport
+	Api               API
+	Module            Module
+	SaoHttpFileServer SaoHttpFileServer
+	Storage           Storage
+	SaoIpfs           SaoIpfs
 }
 
-type Gateway struct {
+type SaoHttpFileServer struct {
+	Enable                  bool
 	HttpFileServerAddress   string
 	HttpFileServerPath      string
 	EnableHttpFileServerLog bool
@@ -32,6 +33,7 @@ type SaoIpfs struct {
 	Enable bool
 	Repo   string
 }
+
 type Storage struct {
 	Ipfs []Ipfs
 }
@@ -101,8 +103,9 @@ func DefaultSaoNode() *Node {
 			GatewayEnable: true,
 			StorageEnable: true,
 		},
-		Gateway: Gateway{
-			HttpFileServerAddress:   ":8886",
+		SaoHttpFileServer: SaoHttpFileServer{
+			Enable:                  true,
+			HttpFileServerAddress:   "localhost:8886",
 			HttpFileServerPath:      "~/.sao_http_file",
 			EnableHttpFileServerLog: false,
 			TokenPeriod:             24 * time.Hour,

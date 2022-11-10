@@ -3,7 +3,6 @@ package gateway
 import (
 	"context"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -17,7 +16,7 @@ import (
 var secret = []byte("SAO Network")
 
 type HttpFileServer struct {
-	Cfg    *config.Gateway
+	Cfg    *config.SaoHttpFileServer
 	Server *echo.Echo
 }
 
@@ -26,13 +25,15 @@ type jwtClaims struct {
 	jwt.StandardClaims
 }
 
-func StartHttpFileServer(cfg *config.Gateway) (*HttpFileServer, error) {
+func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error) {
 	e := echo.New()
 	e.HideBanner = true
+	e.HidePort = true
 
 	if cfg.EnableHttpFileServerLog {
 		// Middleware
 		e.Use(middleware.Logger())
+		e.Use(middleware.Recover())
 	}
 
 	// Unauthenticated entry
@@ -43,19 +44,14 @@ func StartHttpFileServer(cfg *config.Gateway) (*HttpFileServer, error) {
 		return nil, err
 	}
 
-	assetHandler := http.FileServer(http.FS(os.DirFS(path)))
-	e.GET("/saonetwork/*", echo.WrapHandler(http.StripPrefix("/saonetwork/", assetHandler)))
-
-	// Restricted entry
-	r := e.Group("/saonetwork")
+	handler := http.FileServer(http.Dir(path))
 
 	// Configure middleware with the custom claims type
 	config := middleware.JWTConfig{
 		Claims:     &jwtClaims{},
 		SigningKey: secret,
 	}
-	r.Use(middleware.JWTWithConfig(config))
-	r.GET("", restricted)
+	e.GET("/saonetwork/*", echo.WrapHandler(http.StripPrefix("/saonetwork/", handler)), middleware.JWTWithConfig(config))
 
 	go func() {
 		err := e.Start(cfg.HttpFileServerAddress)
@@ -74,7 +70,7 @@ func (hfs *HttpFileServer) Stop(ctx context.Context) error {
 	return hfs.Server.Shutdown(ctx)
 }
 
-func (hfs *HttpFileServer) GenerateToken(owner string) string {
+func (hfs *HttpFileServer) GenerateToken(owner string) (string, string) {
 	// Set custom claims
 	claims := &jwtClaims{
 		owner,
@@ -87,25 +83,19 @@ func (hfs *HttpFileServer) GenerateToken(owner string) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	if token == nil {
 		log.Error("failed to generate token")
-		return ""
+		return "", ""
 	}
 
 	// Generate encoded token and send it as response.
 	tokenStr, err := token.SignedString(secret)
 	if err != nil {
 		log.Error(err.Error())
-		return ""
+		return "", ""
 	}
 
-	return tokenStr
+	return hfs.Cfg.HttpFileServerAddress, tokenStr
 }
 
 func test(c echo.Context) error {
 	return c.String(http.StatusOK, "Accessible")
-}
-
-func restricted(c echo.Context) error {
-	user := c.Get("user").(*jwt.Token)
-	claims := user.Claims.(*jwtClaims)
-	return c.String(http.StatusOK, "got request from "+claims.Key)
 }

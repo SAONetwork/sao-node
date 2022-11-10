@@ -11,12 +11,13 @@ require (
 
 require (
 	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
-	github.com/SaoNetwork/sao-did v0.0.0-20221108111645-1f93941ee2ef
+	github.com/SaoNetwork/sao-did v0.0.0-20221110080651-5f53fdc2c0fa
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
 	github.com/dgraph-io/badger/v2 v2.2007.4
 	github.com/dvsekhvalnov/jose2go v1.5.0
 	github.com/evanphx/json-patch v4.9.0+incompatible
+	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/go-jsonrpc v0.1.8
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/golang-jwt/jwt v3.2.2+incompatible
@@ -353,4 +354,4 @@ replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 
-//replace github.com/SaoNetwork/sao-did v0.0.0-20221108111645-1f93941ee2ef => ../sao-did
+//replace github.com/SaoNetwork/sao-did => ../sao-did

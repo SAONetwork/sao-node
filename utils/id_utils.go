@@ -58,7 +58,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 	return b, nil
 }
 
-func CaculateCid(content []byte) (cid.Cid, error) {
+func CalculateCid(content []byte) (cid.Cid, error) {
 	pref := cid.Prefix{
 		Version:  1,
 		Codec:    uint64(multicodec.Raw),
