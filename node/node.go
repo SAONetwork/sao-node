@@ -102,6 +102,11 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 			if err != nil {
 				return nil, err
 			}
+			// } else if strings.Contains(address, "tcp") {
+			// _, err := transport.StartRpcServer(ctx, address, peerKey, tds, cfg)
+			// if err != nil {
+			// 	return nil, err
+			// }
 		} else {
 			return nil, fmt.Errorf("invalid transport server address %s", address)
 		}
@@ -287,7 +292,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderPropos
 
 func (n *Node) CreateFile(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
-	cidStr := orderProposal.Proposal.Cid.String()
+	cidStr := orderProposal.Proposal.Cid
 	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
 	if info, err := n.tds.Get(ctx, key); err == nil {
 		var fileInfo *types.ReceivedFileInfo
