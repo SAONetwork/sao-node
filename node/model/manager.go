@@ -106,6 +106,8 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 				return nil, xerrors.Errorf(err.Error())
 			}
 		}
+	} else {
+		req.Version = fmt.Sprintf("v%d", len(meta.Commits)-1)
 	}
 
 	if req.CommitId != "" {
@@ -134,6 +136,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 	if model != nil {
 		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
 			model.Version = req.Version
+
 			return model, nil
 		}
 	}
@@ -227,6 +230,7 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 		Shards:     result.Shards,
 		CommitId:   result.Commit,
 		Commits:    result.Commits,
+		Version:    "v0",
 		Content:    content,
 		ExtendInfo: orderProposal.ExtendInfo,
 	}
@@ -312,8 +316,8 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	}
 
 	model := &types.Model{
-		DataId:     clientProposal.Proposal.DataId,
-		Alias:      clientProposal.Proposal.Alias,
+		DataId:     meta.DataId,
+		Alias:      meta.Alias,
 		GroupId:    clientProposal.Proposal.GroupId,
 		OrderId:    result.OrderId,
 		Owner:      clientProposal.Proposal.Owner,
@@ -322,6 +326,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 		Shards:     result.Shards,
 		CommitId:   result.Commit,
 		Commits:    result.Commits,
+		Version:    fmt.Sprintf("v%d", len(result.Commits)-1),
 		Content:    newContent,
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}

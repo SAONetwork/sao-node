@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	apiclient "sao-storage-node/api/client"
 	apitypes "sao-storage-node/api/types"
+	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/node/chain"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
 	"strings"
@@ -335,7 +335,7 @@ var loadCmd = &cli.Command{
 		fmt.Print("  Cid       : ")
 		console.Println(resp.Cid)
 
-		if len(resp.Content) == 0 {
+		if len(resp.Content) == 0 || strings.Contains(resp.Alias, "file") {
 			fmt.Print("  SAO Link  : ")
 			console.Println("sao://" + resp.DataId)
 
@@ -353,7 +353,7 @@ var loadCmd = &cli.Command{
 			fmt.Print("  IPFS Link : ")
 			console.Println(ipfsUrl.Url)
 		} else {
-			fmt.Print("  Content\t  : ")
+			fmt.Print("  Content   : ")
 			console.Println(resp.Content)
 		}
 
@@ -575,12 +575,9 @@ var updateCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "data-id",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "name",
-			Required: false,
+			Name:     "keyword",
+			Usage:    "data model's alias, dataId or tag",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "cid",
@@ -613,9 +610,10 @@ var updateCmd = &cli.Command{
 		}
 		owner := cctx.String("owner")
 
-		if !cctx.IsSet("data-id") && !cctx.IsSet("name") {
-			return xerrors.Errorf("please provide either --data-id or --name")
+		if !cctx.IsSet("keyword") {
+			return xerrors.Errorf("must provide --keyword")
 		}
+		keyword := cctx.String("keyword")
 
 		patch := []byte(cctx.String("patch"))
 		contentCid := cctx.String("cid")
@@ -660,6 +658,25 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		var dataId string
+		if !utils.IsDataId(keyword) {
+			dataId, err = chain.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", didManager.Id, keyword, groupId))
+			if err != nil {
+				return err
+			}
+		} else {
+			dataId = keyword
+		}
+		res, err := chain.QueryMeta(ctx, dataId, 0)
+		if err != nil {
+			return err
+		}
+
 		proposal := saotypes.Proposal{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
@@ -667,8 +684,8 @@ var updateCmd = &cli.Command{
 			Duration:   int32(duration),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
-			DataId:     cctx.String("data-id"),
-			Alias:      cctx.String("name"),
+			DataId:     res.Metadata.DataId,
+			Alias:      res.Metadata.Alias,
 			Tags:       cctx.StringSlice("tags"),
 			Cid:        newCid.String(),
 			CommitId:   utils.GenerateCommitId(),
@@ -692,10 +709,6 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-			if err != nil {
-				return xerrors.Errorf("new cosmos chain: %w", err)
-			}
 
 			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
-	"sao-storage-node/node/chain"
+	"sao-storage-node/chain"
 	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
@@ -323,6 +323,7 @@ func (n *Node) CreateFile(ctx context.Context, orderProposal types.ClientOrderPr
 			Cid:    model.Cid,
 		}, nil
 	} else {
+		log.Error(err.Error())
 		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", cidStr)
 	}
 }

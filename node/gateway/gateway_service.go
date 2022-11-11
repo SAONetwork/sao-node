@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sao-storage-node/node/chain"
+	"sao-storage-node/chain"
 	"sao-storage-node/node/config"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
@@ -43,7 +43,7 @@ type FetchResult struct {
 }
 
 type GatewaySvcApi interface {
-	QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error)
+	QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error)
 	CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
@@ -73,14 +73,14 @@ func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.Chai
 	return cs
 }
 
-func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, key string, group string, height int64) (*types.Model, error) {
+func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error) {
 	var res *modeltypes.QueryGetMetadataResponse = nil
 	var err error
 	var dataId string
-	if utils.IsDataId(key) {
-		dataId = key
+	if utils.IsDataId(keyword) {
+		dataId = keyword
 	} else {
-		dataId, err = gs.chainSvc.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", account, key, group))
+		dataId, err = gs.chainSvc.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", account, keyword, group))
 		if err != nil {
 			return nil, err
 		}
@@ -163,7 +163,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
 	}
 
-	if len(content) > gs.cfg.Cache.ContentLimit {
+	if len(content) > gs.cfg.Cache.ContentLimit || strings.Contains(meta.Alias, "file") {
 		// large size content should go through P2P channel
 
 		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
@@ -188,7 +188,9 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 			}
 		}
 
-		content = make([]byte, 0)
+		if len(content) > gs.cfg.Cache.ContentLimit {
+			content = make([]byte, 0)
+		}
 	}
 
 	return &FetchResult{

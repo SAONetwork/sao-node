@@ -97,8 +97,20 @@ func StartTransportServer(ctx context.Context, address string, serverKey crypto.
 	return ts, nil
 }
 
+func closeStream(s network.Stream) {
+	if _, err := s.Write([]byte("")); err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	if err := s.Close(); err != nil {
+		log.Error(err.Error())
+		return
+	}
+}
+
 func (ts *TransportServer) HandleStream(s network.Stream) {
-	defer s.Close()
+	defer closeStream(s)
 
 	// Set a deadline on reading from the stream so it doesn’t hang
 	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
@@ -120,7 +132,13 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 	}
 
 	if len(req.Content) > 0 {
-		info, err := os.Stat(ts.StagingPath)
+		stagingPath, err := homedir.Expand(ts.StagingPath)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+
+		info, err := os.Stat(stagingPath)
 		if err != nil {
 			log.Error(err.Error())
 			return
@@ -171,7 +189,7 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 			return
 		}
 
-		log.Info("Received file chunk[%d], remote CID: %s, local CID: %s", req.ChunkId, req.ChunkCid, localCid)
+		log.Infof("Received file chunk[%d], remote CID: %s, local CID: %s", req.ChunkId, req.ChunkCid, localCid)
 		log.Infof("Staging file %s generated", filepath.Join(path, req.ChunkCid))
 	} else {
 		// Transport is done
@@ -235,12 +253,10 @@ func (ts *TransportServer) HandleStream(s network.Stream) {
 				log.Error(err.Error())
 				return
 			}
+		} else {
+			log.Error(err.Error())
+			return
 		}
-	}
-
-	if err := s.CloseWrite(); err != nil {
-		log.Error(err.Error())
-		return
 	}
 }
 
@@ -249,7 +265,7 @@ func (ts *TransportServer) handleChunkInfo(req *types.FileChunkReq, path string)
 	defer ts.DbLk.Unlock()
 
 	var fileInfo *types.ReceivedFileInfo
-	key := datastore.NewKey(fmt.Sprintf("fileIno_%s", req.Cid))
+	key := datastore.NewKey(types.FILE_INFO_PREFIX + req.Cid)
 
 	if req.ChunkId == 0 {
 		fileInfo = &types.ReceivedFileInfo{
