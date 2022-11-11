@@ -93,26 +93,6 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		log.Info("addr=", withP2p.String())
 	}
 
-	tds, err := repo.Datastore(ctx, "/transport")
-	if err != nil {
-		return nil, err
-	}
-	for _, address := range cfg.Transport.TransportListenAddress {
-		if strings.Contains(address, "tudp") {
-			_, err := transport.StartTransportServer(ctx, address, peerKey, tds, cfg)
-			if err != nil {
-				return nil, err
-			}
-		} else if strings.Contains(address, "udp") {
-			_, err := transport.StartRpcServer(ctx, address, peerKey, tds, cfg)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, fmt.Errorf("invalid transport server address %s", address)
-		}
-	}
-
 	// chain
 	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	if err != nil {
@@ -120,6 +100,10 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	var stopFuncs []StopFunc
+	tds, err := repo.Datastore(ctx, "/transport")
+	if err != nil {
+		return nil, err
+	}
 
 	sn := Node{
 		ctx:       ctx,
@@ -129,6 +113,22 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		stopFuncs: stopFuncs,
 		host:      &host,
 		tds:       tds,
+	}
+
+	for _, address := range cfg.Transport.TransportListenAddress {
+		if strings.Contains(address, "tudp") {
+			_, err := transport.StartTransportServer(ctx, address, peerKey, tds, cfg)
+			if err != nil {
+				return nil, err
+			}
+		} else if strings.Contains(address, "udp") {
+			_, err := transport.StartRpcServer(ctx, &sn, address, peerKey, tds, cfg)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("invalid transport server address %s", address)
+		}
 	}
 
 	var storageManager *store.StoreManager = nil
