@@ -98,16 +98,16 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 	for _, address := range cfg.Transport.TransportListenAddress {
-		if strings.Contains(address, "udp") {
+		if strings.Contains(address, "tudp") {
 			_, err := transport.StartTransportServer(ctx, address, peerKey, tds, cfg)
 			if err != nil {
 				return nil, err
 			}
-			// } else if strings.Contains(address, "tcp") {
-			// _, err := transport.StartRpcServer(ctx, address, peerKey, tds, cfg)
-			// if err != nil {
-			// 	return nil, err
-			// }
+		} else if strings.Contains(address, "udp") {
+			_, err := transport.StartRpcServer(ctx, address, peerKey, tds, cfg)
+			if err != nil {
+				return nil, err
+			}
 		} else {
 			return nil, fmt.Errorf("invalid transport server address %s", address)
 		}

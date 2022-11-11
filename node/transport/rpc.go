@@ -1,7 +1,9 @@
 package transport
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -12,16 +14,12 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p"
-	libp2pwebsocket "github.com/libp2p/go-libp2p/p2p/transport/websocket"
+	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
-	csms "github.com/libp2p/go-libp2p/p2p/net/conn-security-multistream"
-	tptu "github.com/libp2p/go-libp2p/p2p/net/upgrader"
-	noise "github.com/libp2p/go-libp2p/p2p/security/noise"
 )
 
 type RpcServer struct {
@@ -31,20 +29,9 @@ type RpcServer struct {
 }
 
 func StartRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*RpcServer, error) {
-	var secMuxer csms.SSMuxer
-	noiseTpt, err := noise.New(serverKey)
+	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
-		return nil, err
-	}
-	secMuxer.AddTransport(noise.ID, noiseTpt)
-
-	u, err := tptu.New(&secMuxer, yamux.DefaultTransport)
-	if err != nil {
-		return nil, err
-	}
-
-	tr, err := libp2pwebsocket.New(u, network.NullResourceManager)
-	if err != nil {
+		log.Error(err.Error())
 		return nil, err
 	}
 
@@ -54,7 +41,7 @@ func StartRpcServer(ctx context.Context, address string, serverKey crypto.PrivKe
 		return nil, err
 	}
 
-	err = h.Network().Listen(ma.StringCast(address + "/ws"))
+	err = h.Network().Listen(ma.StringCast(address + "/quic/webtransport"))
 	if err != nil {
 		log.Error(err.Error())
 		return nil, err
@@ -92,14 +79,39 @@ func StartRpcServer(ctx context.Context, address string, serverKey crypto.PrivKe
 func (rs *RpcServer) HandleStream(s network.Stream) {
 	defer s.Close()
 
-	log.Info("lao6.............")
-
 	// Set a deadline on reading from the stream so it doesn’t hang
 	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
+
+	var req types.RpcReq
+	buf := &bytes.Buffer{}
+	buf.ReadFrom(s)
+	err := json.Unmarshal(buf.Bytes(), &req)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	var res = types.RpcRes{
+		Data:  "lao6",
+		Error: "N/a",
+	}
+	bytes, err := json.Marshal(res)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	if _, err := s.Write(bytes); err != nil {
+		log.Error(err.Error())
+		return
+	}
 
 	if err := s.CloseWrite(); err != nil {
 		log.Error(err.Error())
 		return
 	}
+
+	log.Info("Got rpc request: ", req)
+	log.Info("Sent rpc response: ", res)
 }

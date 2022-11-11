@@ -22,3 +22,13 @@ type ReceivedFileInfo struct {
 	Path           string
 	ChunkCids      []string
 }
+
+type RpcReq struct {
+	Method string
+	Params []string
+}
+
+type RpcRes struct {
+	Data  string
+	Error string
+}
