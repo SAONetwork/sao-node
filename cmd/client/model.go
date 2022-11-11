@@ -335,7 +335,7 @@ var loadCmd = &cli.Command{
 		fmt.Print("  Cid       : ")
 		console.Println(resp.Cid)
 
-		if len(resp.Content) != 0 {
+		if len(resp.Content) == 0 {
 			fmt.Print("  SAO Link  : ")
 			console.Println("sao://" + resp.DataId)
 

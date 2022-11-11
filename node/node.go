@@ -430,7 +430,7 @@ func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.Genera
 func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
 	if n.cfg.SaoHttpFileServer.HttpFileServerAddress != "" {
 		return apitypes.GetUrlResp{
-			Url: "https://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/saonetwork/" + dataId,
+			Url: "http://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/saonetwork/" + dataId,
 		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get http url")
@@ -440,7 +440,7 @@ func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlRe
 func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
 	if n.cfg.SaoIpfs.Enable {
 		return apitypes.GetUrlResp{
-			Url: "ipfs://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/ipfs/" + cid,
+			Url: "ipfs+https://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/ipfs/" + cid,
 		}, nil
 	} else {
 		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get ipfs url")
