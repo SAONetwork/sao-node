@@ -7,7 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sao-storage-node/node/chain"
+	"sao-storage-node/chain"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 	"sao-storage-node/types"

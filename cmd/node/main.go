@@ -17,7 +17,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"os"
-	"sao-storage-node/node/chain"
+	"sao-storage-node/chain"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
