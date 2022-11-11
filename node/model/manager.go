@@ -199,12 +199,12 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderProposal.Owner, orderProposal.DataId, orderProposal.GroupId, 0)
 	if err == nil && meta != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
 	}
 
 	meta, err = mm.GatewaySvc.QueryMeta(ctx, orderProposal.Owner, orderProposal.Alias, orderProposal.GroupId, 0)
 	if err == nil && meta != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
 	}
 
 	err = mm.validateModel(ctx, orderProposal.Owner, orderProposal.Alias, content, orderProposal.Rule)
@@ -235,7 +235,7 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 		ExtendInfo: orderProposal.ExtendInfo,
 	}
 
-	mm.cacheModel(orderProposal.Owner, model)
+	// mm.cacheModel(orderProposal.Owner, model)
 
 	return model, nil
 }
@@ -331,7 +331,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}
 
-	mm.cacheModel(clientProposal.Proposal.Owner, model)
+	// mm.cacheModel(clientProposal.Proposal.Owner, model)
 
 	return model, nil
 }
