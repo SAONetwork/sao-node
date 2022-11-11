@@ -7,11 +7,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sao-storage-node/api"
 	"sao-storage-node/node/config"
 	"sao-storage-node/types"
 	"strings"
 	"sync"
 	"time"
+
+	apitypes "sao-storage-node/api/types"
 
 	"github.com/libp2p/go-libp2p"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
@@ -23,12 +26,13 @@ import (
 )
 
 type RpcServer struct {
-	Ctx  context.Context
-	DbLk sync.Mutex
-	Db   datastore.Batching
+	Ctx        context.Context
+	DbLk       sync.Mutex
+	Db         datastore.Batching
+	GatewayApi api.GatewayApi
 }
 
-func StartRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*RpcServer, error) {
+func StartRpcServer(ctx context.Context, ga api.GatewayApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*RpcServer, error) {
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
 		log.Error(err.Error())
@@ -59,8 +63,9 @@ func StartRpcServer(ctx context.Context, address string, serverKey crypto.PrivKe
 	}
 
 	rs := &RpcServer{
-		Ctx: ctx,
-		Db:  db,
+		Ctx:        ctx,
+		Db:         db,
+		GatewayApi: ga,
 	}
 
 	h.Network().SetStreamHandler(rs.HandleStream)
@@ -92,8 +97,32 @@ func (rs *RpcServer) HandleStream(s network.Stream) {
 		return
 	}
 
+	var result string
+	switch req.Method {
+	case "Sao.Load":
+		var loadReq apitypes.LoadReq
+		err := json.Unmarshal([]byte(req.Params[0]), &loadReq)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		loadRes, err := rs.GatewayApi.Load(rs.Ctx, loadReq)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		b, err := json.Marshal(loadRes)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+		result = string(b)
+	default:
+		result = "N/a"
+	}
+
 	var res = types.RpcRes{
-		Data:  "lao6",
+		Data:  result,
 		Error: "N/a",
 	}
 	bytes, err := json.Marshal(res)
