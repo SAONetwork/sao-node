@@ -88,9 +88,15 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	peerInfos := ""
 	for _, a := range host.Addrs() {
 		withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
-		log.Info("addr=", withP2p.String())
+		log.Debug("addr=", withP2p.String())
+		if len(peerInfos) > 0 {
+			peerInfos = peerInfos + ","
+		}
+		peerInfos = peerInfos + withP2p.String()
 	}
 
 	// chain
@@ -104,6 +110,9 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
+	tds.Put(ctx, key, []byte(peerInfos))
 
 	sn := Node{
 		ctx:       ctx,
@@ -124,6 +133,24 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		} else {
 			return nil, fmt.Errorf("invalid transport server address %s", address)
 		}
+	}
+
+	peerInfosBytes, err := tds.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	log.Info("Node Peer Information: ", string(peerInfosBytes))
+
+	for _, ma := range strings.Split(string(peerInfosBytes), ",") {
+		_, err := multiaddr.NewMultiaddr(ma)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	_, err = chainSvc.Reset(ctx, nodeAddr, string(peerInfosBytes))
+	if err != nil {
+		return nil, err
 	}
 
 	var storageManager *store.StoreManager = nil
