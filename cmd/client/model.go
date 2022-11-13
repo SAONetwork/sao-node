@@ -769,37 +769,12 @@ var patchGenCmd = &cli.Command{
 			return err
 		}
 
-		keySlice := make([]string, 0)
-		valueSliceNew := make([]interface{}, 0)
-		newModelMap, ok := newModel.(map[string]interface{})
-		if !ok {
-			return err
-		}
-
-		for key, value := range newModelMap {
-			keySlice = append(keySlice, key)
-			valueSliceNew = append(valueSliceNew, value)
-		}
-
-		valueSliceTarget := make([]interface{}, 0)
-		targetModelMap, ok := targetModel.(map[string]interface{})
-		if !ok {
-			return xerrors.Errorf("failed to generate the patch")
-		}
-		for _, key := range keySlice {
-			if data, ok := targetModelMap[key]; ok {
-				valueSliceTarget = append(valueSliceTarget, data)
-			} else {
-				return xerrors.Errorf("failed to generate the patch")
-			}
-		}
-
-		valueStrNew, err := json.Marshal(valueSliceNew)
+		valueStrNew, err := json.Marshal(newModel)
 		if err != nil {
 			return err
 		}
 
-		valueStrTarget, err := json.Marshal(valueSliceTarget)
+		valueStrTarget, err := json.Marshal(targetModel)
 		if err != nil {
 			return err
 		}
