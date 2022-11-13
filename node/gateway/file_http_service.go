@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -56,7 +57,11 @@ func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error)
 	go func() {
 		err := e.Start(cfg.HttpFileServerAddress)
 		if err != nil {
-			log.Error(err.Error())
+			if strings.Contains(err.Error(), "Server closed") {
+				log.Info("stopping file http service...")
+			} else {
+				log.Error(err.Error())
+			}
 		}
 	}()
 
