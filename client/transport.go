@@ -75,6 +75,10 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		return cid.Undef
 	}
 
+	rpcReq := types.RpcReq{
+		Method: "Sao.Upload",
+	}
+
 	var contentLength int = len(content)
 	var totalChunks = contentLength/types.CHUNK_SIZE + 1
 	chunkId := 0
@@ -111,7 +115,14 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 			Cid:         contentCid.String(),
 			Content:     chunk,
 		}
-		bytes, err := json.Marshal(req)
+		b, err := json.Marshal(req)
+		if err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+
+		rpcReq.Params = append(make([]string, 0), string(b))
+		bytes, err := json.Marshal(rpcReq)
 		if err != nil {
 			log.Error(err)
 			return cid.Undef
@@ -126,12 +137,20 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 			return cid.Undef
 		}
 
-		res, err := io.ReadAll(str)
+		buf, err := io.ReadAll(str)
 		if err != nil {
 			log.Error(err)
 			return cid.Undef
 		}
-		remoteCid := string(res)
+
+		var resp types.RpcResp
+		err = json.Unmarshal(buf, &resp)
+		if err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+
+		remoteCid := resp.Data
 
 		if remoteCid == chunkCid.String() {
 			chunkId++

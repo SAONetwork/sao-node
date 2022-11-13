@@ -116,13 +116,8 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	for _, address := range cfg.Transport.TransportListenAddress {
-		if strings.Contains(address, "tudp") {
-			_, err := transport.StartTransportServer(ctx, address, peerKey, tds, cfg)
-			if err != nil {
-				return nil, err
-			}
-		} else if strings.Contains(address, "udp") {
-			_, err := transport.StartRpcServer(ctx, &sn, address, peerKey, tds, cfg)
+		if strings.Contains(address, "udp") {
+			_, err := transport.StartLibp2pRpcServer(ctx, &sn, address, peerKey, tds, cfg)
 			if err != nil {
 				return nil, err
 			}
