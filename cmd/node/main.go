@@ -189,13 +189,10 @@ var updateCmd = &cli.Command{
 			Name:  "creator",
 			Usage: "node's account name",
 		},
-		&cli.StringFlag{
-			Name:  "multiaddr",
-			Usage: "multiaddr",
-		},
-		&cli.StringFlag{
-			Name:  "peerId",
-			Usage: "peer id",
+		&cli.StringSliceFlag{
+			Name:     "multiaddrs",
+			Usage:    "multiaddrs",
+			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
@@ -209,15 +206,21 @@ var updateCmd = &cli.Command{
 		creator := cctx.String("creator")
 		chainAddress := cctx.String("chainAddress")
 
-		ma, err := multiaddr.NewMultiaddr(cctx.String("multiaddr"))
-		if err != nil {
-			return xerrors.Errorf("invalid --multiaddr: %w", err)
+		peerInfo := ""
+		multiaddrs := cctx.StringSlice("multiaddrs")
+		if len(multiaddrs) < 1 {
+			return xerrors.Errorf("invalid --multiaddrs: cannot be empty")
 		}
 
-		peerId := cctx.String("peerId")
-		peer, err := peer.Decode(peerId)
-		if err != nil {
-			return err
+		for _, maddr := range multiaddrs {
+			ma, err := multiaddr.NewMultiaddr(maddr)
+			if err != nil {
+				return xerrors.Errorf("invalid --multiaddrs: %w", err)
+			}
+			if len(peerInfo) > 0 {
+				peerInfo = peerInfo + ","
+			}
+			peerInfo = peerInfo + ma.String()
 		}
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
@@ -225,7 +228,7 @@ var updateCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		tx, err := chain.Reset(ctx, creator, ma, peer)
+		tx, err := chain.Reset(ctx, creator, peerInfo)
 		if err != nil {
 			return err
 		}

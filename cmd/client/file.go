@@ -323,8 +323,8 @@ var downloadCmd = &cli.Command{
 		}
 		defer closer()
 
-		if !cctx.IsSet("keys") {
-			return xerrors.Errorf("must provide --keys")
+		if !cctx.IsSet("keywords") {
+			return xerrors.Errorf("must provide --keywords")
 		}
 		keywords := cctx.StringSlice("keywords")
 

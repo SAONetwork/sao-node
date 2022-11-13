@@ -131,7 +131,7 @@ func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) Reset(ctx context.Context, creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
+func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", err
@@ -139,7 +139,7 @@ func (c *ChainSvc) Reset(ctx context.Context, creator string, ma multiaddr.Multi
 
 	msg := &nodetypes.MsgReset{
 		Creator: creator,
-		Peer:    fmt.Sprintf("%v/p2p/%v", ma, peerId),
+		Peer:    peerInfo,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {

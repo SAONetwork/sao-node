@@ -11,10 +11,12 @@ import (
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
 	"sao-storage-node/types"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -124,49 +126,57 @@ func (ss *StoreSvc) getShardFromLocal(creator string, cid cid.Cid) ([]byte, erro
 }
 
 func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gateway string, orderId uint64, cid cid.Cid) ([]byte, error) {
-	conn, err := ss.chainSvc.GetNodePeer(ctx, gateway)
+	peerInfos, err := ss.chainSvc.GetNodePeer(ctx, gateway)
 	if err != nil {
 		return nil, err
 	}
 
-	a, err := ma.NewMultiaddr(conn)
-	if err != nil {
-		return nil, err
-	}
-	log.Info("conn: ", conn)
-	log.Info("a: ", conn)
-	pi, err := peer.AddrInfoFromP2pAddr(a)
-	if err != nil {
-		return nil, err
-	}
-	err = ss.host.Connect(ctx, *pi)
-	if err != nil {
-		return nil, err
-	}
-	stream, err := ss.host.NewStream(ctx, pi.ID, types.ShardStoreProtocol)
-	if err != nil {
-		return nil, err
-	}
-	defer stream.Close()
-	log.Infof("open stream(%s) to gateway %s", types.ShardStoreProtocol, conn)
+	for _, peerInfo := range strings.Split(peerInfos, ",") {
+		if strings.Contains(peerInfo, "udp") {
+			continue
+		}
 
-	// Set a deadline on reading from the stream so it doesn't hang
-	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
-	defer stream.SetReadDeadline(time.Time{}) // nolint
+		a, err := ma.NewMultiaddr(peerInfo)
+		if err != nil {
+			return nil, err
+		}
+		log.Info("conn: ", peerInfo)
+		log.Info("a: ", peerInfo)
+		pi, err := peer.AddrInfoFromP2pAddr(a)
+		if err != nil {
+			return nil, err
+		}
+		err = ss.host.Connect(ctx, *pi)
+		if err != nil {
+			return nil, err
+		}
+		stream, err := ss.host.NewStream(ctx, pi.ID, types.ShardStoreProtocol)
+		if err != nil {
+			return nil, err
+		}
+		defer stream.Close()
+		log.Infof("open stream(%s) to gateway %s", types.ShardStoreProtocol, peerInfo)
 
-	req := types.ShardReq{
-		Owner:   owner,
-		OrderId: orderId,
-		Cid:     cid,
+		// Set a deadline on reading from the stream so it doesn't hang
+		_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
+		defer stream.SetReadDeadline(time.Time{}) // nolint
+
+		req := types.ShardReq{
+			Owner:   owner,
+			OrderId: orderId,
+			Cid:     cid,
+		}
+		log.Debugf("send ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+		var resp types.ShardResp
+		if err = transport.DoRequest(ctx, stream, &req, &resp, "json"); err != nil {
+			// TODO: handle error
+			return nil, err
+		}
+		log.Debugf("receive ShardResp: content=%s", string(resp.Content))
+		return resp.Content, nil
 	}
-	log.Debugf("send ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
-	var resp types.ShardResp
-	if err = transport.DoRequest(ctx, stream, &req, &resp, "json"); err != nil {
-		// TODO: handle error
-		return nil, err
-	}
-	log.Debugf("receive ShardResp: content=%s", string(resp.Content))
-	return resp.Content, nil
+
+	return nil, xerrors.Errorf("no valid node peer found")
 }
 
 func (ss *StoreSvc) Stop(ctx context.Context) error {
