@@ -28,7 +28,7 @@ type RpcReq struct {
 	Params []string
 }
 
-type RpcRes struct {
+type RpcResp struct {
 	Data  string
 	Error string
 }
