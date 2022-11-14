@@ -124,7 +124,7 @@ var createFileCmd = &cli.Command{
 		if !cctx.IsSet("file-name") {
 			return xerrors.Errorf("must provide --file-name")
 		}
-		fileName := cctx.String("file-name")
+		fileName := types.Type_Prefix_File + cctx.String("file-name")
 
 		clientPublish := cctx.Bool("clientPublish")
 

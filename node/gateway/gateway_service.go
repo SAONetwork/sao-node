@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sao-storage-node/chain"
 	"sao-storage-node/node/config"
 	"sao-storage-node/store"
@@ -163,7 +164,12 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
 	}
 
-	if len(content) > gs.cfg.Cache.ContentLimit || strings.Contains(meta.Alias, "file") {
+	match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(meta.Alias))
+	if err != nil {
+		return nil, err
+	}
+
+	if len(content) > gs.cfg.Cache.ContentLimit || match {
 		// large size content should go through P2P channel
 
 		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
