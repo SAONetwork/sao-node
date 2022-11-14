@@ -17,3 +17,8 @@ type Model struct {
 	Content    []byte
 	ExtendInfo string
 }
+
+const Type_Prefix_File = "file_"
+const Type_Prefix_Model = "model_"
+const Type_Prefix_Rule = "rule_"
+const Type_Prefix_Schema = "schema_"

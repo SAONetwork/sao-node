@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	apiclient "sao-storage-node/api/client"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/chain"
@@ -335,7 +336,12 @@ var loadCmd = &cli.Command{
 		fmt.Print("  Cid       : ")
 		console.Println(resp.Cid)
 
-		if len(resp.Content) == 0 || strings.Contains(resp.Alias, "file") {
+		match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(resp.Alias))
+		if err != nil {
+			return err
+		}
+
+		if len(resp.Content) == 0 || match {
 			fmt.Print("  SAO Link  : ")
 			console.Println("sao://" + resp.DataId)
 
