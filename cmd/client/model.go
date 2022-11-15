@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	apiclient "sao-storage-node/api/client"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
@@ -140,18 +139,13 @@ var createCmd = &cli.Command{
 		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -167,7 +161,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+		gatewayAddress, err := client.NodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -277,11 +271,6 @@ var loadCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		if !cctx.IsSet("keyword") {
 			return xerrors.Errorf("must provide --keyword")
@@ -295,7 +284,7 @@ var loadCmd = &cli.Command{
 			version = ""
 		}
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -412,18 +401,13 @@ var deleteCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		if !cctx.IsSet("keyword") {
 			return xerrors.Errorf("must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
 		if err != nil {
 			return err
@@ -474,18 +458,13 @@ var commitsCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		if !cctx.IsSet("keyword") {
 			return xerrors.Errorf("must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
 		if err != nil {
 			return err
@@ -642,13 +621,7 @@ var updateCmd = &cli.Command{
 		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -659,7 +632,7 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+		gatewayAddress, err := client.NodeAddress(ctx)
 		if err != nil {
 			return err
 		}

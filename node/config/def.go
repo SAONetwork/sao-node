@@ -48,8 +48,9 @@ type Module struct {
 }
 
 type API struct {
-	ListenAddress string
-	Timeout       time.Duration
+	ListenAddress    string
+	Timeout          time.Duration
+	EnablePermission bool
 }
 
 type Chain struct {
@@ -84,8 +85,9 @@ func DefaultSaoNode() *Node {
 	return &Node{
 		Common: defCommon(),
 		Api: API{
-			ListenAddress: "/ip4/127.0.0.1/tcp/8888/http",
-			Timeout:       30 * time.Second,
+			ListenAddress:    "/ip4/127.0.0.1/tcp/8888/http",
+			Timeout:          30 * time.Second,
+			EnablePermission: false,
 		},
 		Cache: Cache{
 			EnableCache:   true,

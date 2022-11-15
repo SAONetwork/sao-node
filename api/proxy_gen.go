@@ -7,6 +7,7 @@ import (
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/types"
 
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"golang.org/x/xerrors"
 )
 
@@ -14,33 +15,59 @@ var ErrNotSupported = xerrors.New("method not supported")
 
 type GatewayApiStruct struct {
 	Internal struct {
-		Create func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64, p3 []byte) (apitypes.CreateResp, error) ``
+		AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error) `perm:"admin"`
 
-		CreateFile func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64) (apitypes.CreateResp, error) ``
+		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"none"`
 
-		Delete func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) ``
+		Create func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64, p3 []byte) (apitypes.CreateResp, error) `perm:"write"`
 
-		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) ``
+		CreateFile func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64) (apitypes.CreateResp, error) `perm:"write"`
 
-		GetHttpUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) ``
+		Delete func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) `perm:"write"`
 
-		GetIpfsUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) ``
+		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) `perm:"read"`
 
-		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) ``
+		GetHttpUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) `perm:"read"`
 
-		Load func(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) ``
+		GetIpfsUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) `perm:"read"`
 
-		NodeAddress func(p0 context.Context) (string, error) ``
+		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) `perm:"read"`
 
-		ShowCommits func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) ``
+		Load func(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) `perm:"read"`
 
-		Test func(p0 context.Context, p1 string) (string, error) ``
+		NodeAddress func(p0 context.Context) (string, error) `perm:"none"`
 
-		Update func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64, p3 []byte) (apitypes.UpdateResp, error) ``
+		ShowCommits func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) `perm:"read"`
+
+		Test func(p0 context.Context, p1 string) (string, error) `perm:"none"`
+
+		Update func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64, p3 []byte) (apitypes.UpdateResp, error) `perm:"write"`
 	}
 }
 
 type GatewayApiStub struct {
+}
+
+func (s *GatewayApiStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
+	if s.Internal.AuthNew == nil {
+		return *new([]byte), ErrNotSupported
+	}
+	return s.Internal.AuthNew(p0, p1)
+}
+
+func (s *GatewayApiStub) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
+	return *new([]byte), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
+	if s.Internal.AuthVerify == nil {
+		return *new([]auth.Permission), ErrNotSupported
+	}
+	return s.Internal.AuthVerify(p0, p1)
+}
+
+func (s *GatewayApiStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
+	return *new([]auth.Permission), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64, p3 []byte) (apitypes.CreateResp, error) {

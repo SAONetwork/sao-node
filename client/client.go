@@ -10,6 +10,8 @@ import (
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
 
+	apiclient "sao-storage-node/api/client"
+
 	"github.com/thanhpk/randstr"
 
 	"github.com/mitchellh/go-homedir"
@@ -19,6 +21,7 @@ type SaoClientConfig struct {
 	GroupId string
 	Seed    string
 	Alg     string
+	Token   string
 }
 
 type SaoClient struct {
@@ -26,7 +29,7 @@ type SaoClient struct {
 	gatewayApi api.GatewayApi
 }
 
-func NewSaoClient(api api.GatewayApi) *SaoClient {
+func NewSaoClient(ctx context.Context, gatewayAddr string) *SaoClient {
 	cliPath, err := homedir.Expand(SAO_CLI_PATH)
 	if err != nil {
 		log.Error(err.Error())
@@ -77,9 +80,27 @@ func NewSaoClient(api api.GatewayApi) *SaoClient {
 		return nil
 	}
 
-	return &SaoClient{
-		Cfg:        cfg,
-		gatewayApi: api,
+	if gatewayAddr != "" {
+		if len(cfg.Token) == 0 {
+			log.Error("invalid token")
+			return nil
+		}
+
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gatewayAddr, cfg.Token)
+		if err != nil {
+			log.Error(err.Error())
+			return nil
+		}
+		defer closer()
+
+		return &SaoClient{
+			Cfg:        cfg,
+			gatewayApi: gatewayApi,
+		}
+	} else {
+		return &SaoClient{
+			Cfg: cfg,
+		}
 	}
 }
 
@@ -88,6 +109,7 @@ func defaultSaoClientConfig() *SaoClientConfig {
 		GroupId: utils.GenerateGroupId(),
 		Alg:     "secp256k1",
 		Seed:    hex.EncodeToString(randstr.Bytes(32)),
+		Token:   "",
 	}
 }
 
@@ -137,4 +159,8 @@ func (sc SaoClient) GetHttpUrl(ctx context.Context, dataId string) (apitypes.Get
 
 func (sc SaoClient) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
 	return sc.gatewayApi.GetIpfsUrl(ctx, cid)
+}
+
+func (sc SaoClient) NodeAddress(ctx context.Context) (string, error) {
+	return sc.gatewayApi.NodeAddress(ctx)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
@@ -16,6 +17,8 @@ import (
 	saokey "github.com/SaoNetwork/sao-did/key"
 	saotypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/mitchellh/go-homedir"
 	did "github.com/ockam-network/did"
 
@@ -47,10 +50,15 @@ type Node struct {
 	address   string
 	stopFuncs []StopFunc
 	// used by store module
-	storeSvc *storage.StoreSvc
-	manager  *model.ModelManager
-	tds      datastore.Read
-	hfs      *gateway.HttpFileServer
+	storeSvc  *storage.StoreSvc
+	manager   *model.ModelManager
+	tds       datastore.Read
+	hfs       *gateway.HttpFileServer
+	rpcServer *http.Server
+}
+
+type JwtPayload struct {
+	Allow []auth.Permission
 }
 
 func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
@@ -80,6 +88,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	listenAddrsOption := libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0")
 	if len(cfg.Libp2p.ListenAddress) > 0 {
 		listenAddrsOption = libp2p.ListenAddrStrings(cfg.Libp2p.ListenAddress...)
@@ -222,11 +231,24 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		}
 
 		// api server
-		rpcStopper, err := newRpcServer(&sn, cfg.Api.ListenAddress)
+		rpcServer, err := newRpcServer(&sn, &cfg.Api)
 		if err != nil {
 			return nil, err
 		}
-		sn.stopFuncs = append(sn.stopFuncs, rpcStopper)
+		sn.rpcServer = rpcServer
+		sn.stopFuncs = append(sn.stopFuncs, rpcServer.Shutdown)
+
+		tokenRead, err := sn.AuthNew(ctx, api.AllPermissions[:2])
+		if err != nil {
+			return nil, err
+		}
+		log.Info("Read token: ", string(tokenRead))
+
+		tokenWrite, err := sn.AuthNew(ctx, api.AllPermissions[:3])
+		if err != nil {
+			return nil, err
+		}
+		log.Info("Write token: ", string(tokenWrite))
 
 		log.Info("gateway node initialized")
 	}
@@ -237,27 +259,24 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	return &sn, nil
 }
 
-func newRpcServer(ga api.GatewayApi, listenAddress string) (StopFunc, error) {
+func newRpcServer(ga api.GatewayApi, cfg *config.API) (*http.Server, error) {
 	log.Info("initialize rpc server")
 
-	handler, err := GatewayRpcHandler(ga)
+	handler, err := GatewayRpcHandler(ga, cfg.EnablePermission)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to instantiate rpc handler: %w", err)
 	}
 
-	strma := strings.TrimSpace(listenAddress)
+	strma := strings.TrimSpace(cfg.ListenAddress)
 	endpoint, err := multiaddr.NewMultiaddr(strma)
 	if err != nil {
 		return nil, fmt.Errorf("invalid endpoint: %s, %s", strma, err)
 	}
-	rpcStopper, err := ServeRPC(handler, endpoint)
+	rpcServer, err := ServeRPC(handler, endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to start json-rpc endpoint: %s", err)
 	}
-	return func(ctx context.Context) error {
-		log.Info("stop rpc server succeed.")
-		return rpcStopper(ctx)
-	}, nil
+	return rpcServer, nil
 }
 
 func (n *Node) Stop(ctx context.Context) error {
@@ -272,6 +291,34 @@ func (n *Node) Stop(ctx context.Context) error {
 
 func (n *Node) Test(ctx context.Context, msg string) (string, error) {
 	return "world", nil
+}
+
+func (n *Node) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
+	var payload JwtPayload
+	key, err := n.repo.GetKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(key), &payload); err != nil {
+		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+	}
+
+	log.Info("Permissions: ", payload)
+
+	return payload.Allow, nil
+}
+
+func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error) {
+	p := JwtPayload{
+		Allow: perms, // TODO: consider checking validity
+	}
+
+	key, err := n.repo.GetKeyBytes()
+	if err != nil {
+		return nil, err
+	}
+	return jwt.Sign(&p, jwt.NewHS256(key))
 }
 
 func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
