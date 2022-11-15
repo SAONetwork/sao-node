@@ -13,6 +13,7 @@ import (
 	"sao-storage-node/node/repo"
 
 	"github.com/common-nighthawk/go-figure"
+	"github.com/fatih/color"
 	"github.com/gbrlsnchs/jwt/v3"
 
 	"github.com/ipfs/go-datastore"
@@ -318,23 +319,28 @@ var authCmd = &cli.Command{
 			return err
 		}
 
+		console := color.New(color.FgMagenta, color.Bold)
+
 		rb, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
 		if err != nil {
 			return err
 		}
-		fmt.Println("Read permission token  : " + string(rb))
+		fmt.Print(" Read permission token   : ")
+		console.Println(string(rb))
 
 		wb, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:3]}, jwt.NewHS256(key))
 		if err != nil {
 			return err
 		}
-		fmt.Println("Write permission token : " + string(wb))
+		fmt.Print(" Write permission token  : ")
+		console.Println(string(wb))
 
 		ab, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:4]}, jwt.NewHS256(key))
 		if err != nil {
 			return err
 		}
-		fmt.Println("Admin permission token : " + string(ab))
+		fmt.Print(" Admin permission token  : ")
+		console.Println(string(ab))
 
 		return nil
 	},
