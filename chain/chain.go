@@ -9,6 +9,7 @@ import (
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
+	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
@@ -40,7 +41,7 @@ type OrderCompleteResult struct {
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
 	cosmos      cosmosclient.Client
-	orderClient saotypes.QueryClient
+	orderClient ordertypes.QueryClient
 	nodeClient  nodetypes.QueryClient
 	modelClient modeltypes.QueryClient
 	listener    *http.HTTP
@@ -56,7 +57,7 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 		return nil, err
 	}
 
-	orderClient := saotypes.NewQueryClient(cosmos.Context())
+	orderClient := ordertypes.NewQueryClient(cosmos.Context())
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	modelClient := modeltypes.NewQueryClient(cosmos.Context())
 
@@ -233,8 +234,8 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*saotypes.Order, error) {
-	queryResp, err := c.orderClient.Order(ctx, &saotypes.QueryGetOrderRequest{
+func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error) {
+	queryResp, err := c.orderClient.Order(ctx, &ordertypes.QueryGetOrderRequest{
 		Id: orderId,
 	})
 	if err != nil {
