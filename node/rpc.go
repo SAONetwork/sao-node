@@ -11,6 +11,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
+	"github.com/rs/cors"
 	"golang.org/x/xerrors"
 )
 
@@ -60,7 +61,7 @@ func GatewayRpcHandler(ga api.GatewayApi, enablePermission bool) (http.Handler, 
 		handler.Verify = authVerify
 	}
 
-	return handler, nil
+	return cors.AllowAll().Handler(handler), nil
 }
 
 func authVerify(ctx context.Context, token string) ([]auth.Permission, error) {

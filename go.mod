@@ -44,6 +44,7 @@ require (
 	github.com/ockam-network/did v0.1.3
 	github.com/pkg/errors v0.9.1
 	github.com/raviqqe/hamt v0.0.0-20220630081707-76400bd6195c
+	github.com/rs/cors v1.8.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.1
 	github.com/satori/go.uuid v1.2.0
 	github.com/stretchr/testify v1.8.0
@@ -277,7 +278,6 @@ require (
 	github.com/prometheus/procfs v0.8.0 // indirect
 	github.com/raulk/go-watchdog v1.3.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
-	github.com/rs/cors v1.8.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/sergi/go-diff v1.2.0 // indirect
