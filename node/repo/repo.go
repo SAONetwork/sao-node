@@ -105,6 +105,15 @@ func (r *Repo) GeneratePeerId() (crypto.PrivKey, error) {
 	return pk, nil
 }
 
+func (r *Repo) GetKeyBytes() ([]byte, error) {
+	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
+	key, err := os.ReadFile(libp2pPath)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
 func (r *Repo) PeerId() (crypto.PrivKey, error) {
 	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
 	key, err := os.ReadFile(libp2pPath)

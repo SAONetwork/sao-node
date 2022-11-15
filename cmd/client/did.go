@@ -3,14 +3,16 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	saoclient "sao-storage-node/client"
+	cliutil "sao-storage-node/cmd"
+
 	did "github.com/SaoNetwork/sao-did"
 	"github.com/tendermint/tendermint/libs/json"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	saoclient "sao-storage-node/client"
-	cliutil "sao-storage-node/cmd"
+
+	saokey "github.com/SaoNetwork/sao-did/key"
 )
-import saokey "github.com/SaoNetwork/sao-did/key"
 
 var didCmd = &cli.Command{
 	Name:  "did",
@@ -24,7 +26,7 @@ var didCmd = &cli.Command{
 var didCreateCmd = &cli.Command{
 	Name: "create",
 	Action: func(cctx *cli.Context) error {
-		saoclient := saoclient.NewSaoClient(nil)
+		saoclient := saoclient.NewSaoClient(cctx.Context, "")
 
 		alg := saoclient.Cfg.Alg
 		if alg == cliutil.SECP256K1 {
@@ -66,7 +68,7 @@ var didSignCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		client := saoclient.NewSaoClient(nil)
+		client := saoclient.NewSaoClient(cctx.Context, "")
 		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
 		if err != nil {
 			return err

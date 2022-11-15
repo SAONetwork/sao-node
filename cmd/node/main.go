@@ -6,12 +6,14 @@ package main
 
 import (
 	"fmt"
+	"sao-storage-node/api"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
 	"sao-storage-node/node/repo"
 
 	"github.com/common-nighthawk/go-figure"
+	"github.com/gbrlsnchs/jwt/v3"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
@@ -79,6 +81,7 @@ func main() {
 			updateCmd,
 			quitCmd,
 			runCmd,
+			authCmd,
 		},
 	}
 	app.Setup()
@@ -297,6 +300,42 @@ var runCmd = &cli.Command{
 			node.ShutdownHandler{Component: "storagenode", StopFunc: snode.Stop},
 		)
 		<-finishCh
+		return nil
+	},
+}
+
+var authCmd = &cli.Command{
+	Name:  "api-token-gen",
+	Usage: "Generate API tokens",
+	Action: func(cctx *cli.Context) error {
+		repo, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+
+		key, err := repo.GetKeyBytes()
+		if err != nil {
+			return err
+		}
+
+		rb, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+		if err != nil {
+			return err
+		}
+		fmt.Println("Read permission token  : " + string(rb))
+
+		wb, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:3]}, jwt.NewHS256(key))
+		if err != nil {
+			return err
+		}
+		fmt.Println("Write permission token : " + string(wb))
+
+		ab, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:4]}, jwt.NewHS256(key))
+		if err != nil {
+			return err
+		}
+		fmt.Println("Admin permission token : " + string(ab))
+
 		return nil
 	},
 }

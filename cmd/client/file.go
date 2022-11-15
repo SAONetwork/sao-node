@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	apiclient "sao-storage-node/api/client"
 	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
@@ -135,18 +134,13 @@ var createFileCmd = &cli.Command{
 		chainAddress := cctx.String("chainAddress")
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -162,7 +156,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := gatewayApi.NodeAddress(ctx)
+		gatewayAddress, err := client.NodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -317,18 +311,13 @@ var downloadCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
 		if !cctx.IsSet("keywords") {
 			return xerrors.Errorf("must provide --keywords")
 		}
 		keywords := cctx.StringSlice("keywords")
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 
 		groupId := cctx.String("platform")
 		if groupId == "" {
@@ -410,13 +399,7 @@ var peerInfoCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		resp, err := client.GetPeerInfo(ctx)
 		if err != nil {
 			return err
@@ -454,13 +437,7 @@ var tokenGenCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 
 		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
 		if err != nil {

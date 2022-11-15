@@ -1,7 +1,6 @@
 package main
 
 import (
-	apiclient "sao-storage-node/api/client"
 	saoclient "sao-storage-node/client"
 
 	"github.com/urfave/cli/v2"
@@ -20,13 +19,8 @@ var testCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
 
-		client := saoclient.NewSaoClient(gatewayApi)
+		client := saoclient.NewSaoClient(ctx, gateway)
 		resp, err := client.Test(ctx)
 		if err != nil {
 			return err

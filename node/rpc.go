@@ -1,6 +1,10 @@
 package node
 
 import (
+	"context"
+	"net/http"
+	"sao-storage-node/api"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gorilla/mux"
@@ -8,13 +12,11 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"golang.org/x/xerrors"
-	"net/http"
-	"sao-storage-node/api"
 )
 
 var rpclog = logging.Logger("rpc")
 
-func ServeRPC(h http.Handler, addr multiaddr.Multiaddr) (StopFunc, error) {
+func ServeRPC(h http.Handler, addr multiaddr.Multiaddr) (*http.Server, error) {
 	// Start listening to the addr; if invalid or occupied, we will fail early.
 	lst, err := manet.Listen(addr)
 	if err != nil {
@@ -33,19 +35,35 @@ func ServeRPC(h http.Handler, addr multiaddr.Multiaddr) (StopFunc, error) {
 		}
 	}()
 
-	return srv.Shutdown, err
+	return srv, err
 }
 
-func GatewayRpcHandler(ga api.GatewayApi) (http.Handler, error) {
+func GatewayRpcHandler(ga api.GatewayApi, enablePermission bool) (http.Handler, error) {
 	m := mux.NewRouter()
+
+	if enablePermission {
+		ga = api.PermissionedSaoNodeAPI(ga)
+	}
 
 	rpcServer := jsonrpc.NewServer()
 	rpcServer.Register("Sao", ga)
 
 	m.Handle("/rpc/v0", rpcServer)
 
-	ah := &auth.Handler{
+	var handler = &auth.Handler{
 		Next: m.ServeHTTP,
 	}
-	return ah, nil
+
+	if enablePermission {
+		handler.Verify = ga.AuthVerify
+	} else {
+		handler.Verify = authVerify
+	}
+
+	return handler, nil
+}
+
+func authVerify(ctx context.Context, token string) ([]auth.Permission, error) {
+
+	return api.AllPermissions, nil
 }
