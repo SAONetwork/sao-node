@@ -49,6 +49,7 @@ type ChainSvc struct {
 
 func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
 	log.Infof("initialize chain client")
+
 	cosmos, err := cosmosclient.New(ctx,
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(chainAddress),

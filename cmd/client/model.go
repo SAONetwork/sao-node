@@ -76,7 +76,7 @@ var createCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
-			Value:    "http://localhost:26657",
+			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -106,7 +106,6 @@ var createCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -136,8 +135,6 @@ var createCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		chainAddress := cctx.String("chainAddress")
-
 		gateway := cctx.String("gateway")
 
 		extendInfo := cctx.String("extend-info")
@@ -146,6 +143,15 @@ var createCmd = &cli.Command{
 		}
 
 		client := saoclient.NewSaoClient(ctx, gateway)
+		if client == nil {
+			return xerrors.Errorf("failed to create client")
+		}
+
+		chainAddress := cctx.String("chainAddress")
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -198,7 +204,8 @@ var createCmd = &cli.Command{
 			ClientSignature: jws.Signatures[0],
 		}
 
-		log.Info("Protected: ", clientProposal.ClientSignature.Protected)
+		b, _ := json.Marshal(clientProposal)
+		log.Debug("clientProposal: ", string(b))
 
 		var orderId uint64 = 0
 		if clientPublish {
@@ -256,7 +263,6 @@ var loadCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -392,7 +398,6 @@ var deleteCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -449,7 +454,6 @@ var commitsCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -547,7 +551,7 @@ var updateCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
-			Value:    "http://localhost:26657",
+			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.StringSliceFlag{
@@ -576,7 +580,6 @@ var updateCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -618,10 +621,14 @@ var updateCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		chainAddress := cctx.String("chainAddress")
-
 		gateway := cctx.String("gateway")
 		client := saoclient.NewSaoClient(ctx, gateway)
+
+		chainAddress := cctx.String("chainAddress")
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId

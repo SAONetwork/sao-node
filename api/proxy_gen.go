@@ -35,7 +35,9 @@ type GatewayApiStruct struct {
 
 		Load func(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) `perm:"read"`
 
-		NodeAddress func(p0 context.Context) (string, error) `perm:"none"`
+		NetPeers func(p0 context.Context) ([]types.PeerInfo, error) `perm:"read"`
+
+		NodeAddress func(p0 context.Context) (string, error) `perm:"read"`
 
 		ShowCommits func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) `perm:"read"`
 
@@ -156,6 +158,17 @@ func (s *GatewayApiStruct) Load(p0 context.Context, p1 apitypes.LoadReq) (apityp
 
 func (s *GatewayApiStub) Load(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) {
 	return *new(apitypes.LoadResp), ErrNotSupported
+}
+
+func (s *GatewayApiStruct) NetPeers(p0 context.Context) ([]types.PeerInfo, error) {
+	if s.Internal.NetPeers == nil {
+		return *new([]types.PeerInfo), ErrNotSupported
+	}
+	return s.Internal.NetPeers(p0)
+}
+
+func (s *GatewayApiStub) NetPeers(p0 context.Context) ([]types.PeerInfo, error) {
+	return *new([]types.PeerInfo), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) NodeAddress(p0 context.Context) (string, error) {

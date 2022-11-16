@@ -12,6 +12,7 @@ import (
 	"sao-storage-node/node/gateway"
 	"sao-storage-node/node/transport"
 	"sao-storage-node/store"
+	"sort"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -45,7 +46,7 @@ var log = logging.Logger("node")
 type Node struct {
 	ctx       context.Context
 	cfg       *config.Node
-	host      *host.Host
+	host      host.Host
 	repo      *repo.Repo
 	address   string
 	stopFuncs []StopFunc
@@ -129,7 +130,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		repo:      repo,
 		address:   nodeAddr,
 		stopFuncs: stopFuncs,
-		host:      &host,
+		host:      host,
 		tds:       tds,
 	}
 
@@ -519,4 +520,44 @@ func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp,
 
 func (n *Node) NodeAddress(ctx context.Context) (string, error) {
 	return n.address, nil
+}
+
+func (n *Node) NetPeers(context.Context) ([]types.PeerInfo, error) {
+	host := n.host
+	conns := host.Network().Conns()
+	out := make([]types.PeerInfo, len(conns))
+
+	for i, conn := range conns {
+		peer := conn.RemotePeer()
+		info := types.PeerInfo{ID: peer}
+
+		agent, err := host.Peerstore().Get(peer, "AgentVersion")
+		if err == nil {
+			info.Agent = agent.(string)
+		}
+
+		for _, a := range host.Peerstore().Addrs(peer) {
+			info.Addrs = append(info.Addrs, a.String())
+		}
+		sort.Strings(info.Addrs)
+
+		protocols, err := host.Peerstore().GetProtocols(peer)
+		if err == nil {
+			sort.Strings(protocols)
+			info.Protocols = protocols
+		}
+
+		if cm := host.ConnManager().GetTagInfo(peer); cm != nil {
+			info.ConnMgrMeta = &types.ConnMgrInfo{
+				FirstSeen: cm.FirstSeen,
+				Value:     cm.Value,
+				Tags:      cm.Tags,
+				Conns:     cm.Conns,
+			}
+		}
+
+		out[i] = info
+	}
+
+	return out, nil
 }

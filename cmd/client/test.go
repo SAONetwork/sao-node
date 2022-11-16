@@ -11,7 +11,6 @@ var testCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},

@@ -26,7 +26,7 @@ var didCmd = &cli.Command{
 var didCreateCmd = &cli.Command{
 	Name: "create",
 	Action: func(cctx *cli.Context) error {
-		saoclient := saoclient.NewSaoClient(cctx.Context, "")
+		saoclient := saoclient.NewSaoClient(cctx.Context, "none")
 
 		alg := saoclient.Cfg.Alg
 		if alg == cliutil.SECP256K1 {
@@ -68,7 +68,7 @@ var didSignCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		client := saoclient.NewSaoClient(cctx.Context, "")
+		client := saoclient.NewSaoClient(cctx.Context, "none")
 		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
 		if err != nil {
 			return err
