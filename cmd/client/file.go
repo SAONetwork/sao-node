@@ -72,7 +72,7 @@ var createFileCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
-			Value:    "http://localhost:26657",
+			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.StringSliceFlag{
@@ -97,7 +97,6 @@ var createFileCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -131,8 +130,6 @@ var createFileCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		chainAddress := cctx.String("chainAddress")
-
 		gateway := cctx.String("gateway")
 
 		extendInfo := cctx.String("extend-info")
@@ -141,6 +138,12 @@ var createFileCmd = &cli.Command{
 		}
 
 		client := saoclient.NewSaoClient(ctx, gateway)
+
+		chainAddress := cctx.String("chainAddress")
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -302,7 +305,6 @@ var downloadCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -390,7 +392,6 @@ var peerInfoCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
@@ -428,7 +429,6 @@ var tokenGenCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
 			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},

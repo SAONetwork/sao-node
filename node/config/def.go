@@ -96,7 +96,7 @@ func DefaultSaoNode() *Node {
 		},
 		Transport: Transport{
 			TransportListenAddress: []string{
-				"/ip4/0.0.0.0/udp/26660",
+				"/ip4/0.0.0.0/udp/26662",
 			},
 			StagingPath:      "~/.sao_staging",
 			StagingSapceSize: 32 * 1024 * 1024 * 1024,
@@ -131,7 +131,7 @@ func defCommon() Common {
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{
-				"/ip4/0.0.0.0/tcp/26659",
+				"/ip4/0.0.0.0/tcp/26660",
 			},
 		},
 	}

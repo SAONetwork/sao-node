@@ -5,15 +5,19 @@ package main
 // later cmd(join, quit) should call node process api to get node address if accountAddress not provided.
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"sao-storage-node/api"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/node"
+	"sao-storage-node/node/config"
 	"sao-storage-node/node/repo"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
+	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/gbrlsnchs/jwt/v3"
 
 	"github.com/ipfs/go-datastore"
@@ -21,6 +25,8 @@ import (
 
 	"os"
 	"sao-storage-node/chain"
+
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -80,6 +86,7 @@ func main() {
 		Commands: []*cli.Command{
 			initCmd,
 			updateCmd,
+			peersCmd,
 			quitCmd,
 			runCmd,
 			authCmd,
@@ -103,11 +110,11 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "multiaddr",
 			Usage: "nodes' multiaddr",
-			Value: "/ip4/127.0.0.1/tcp/4001/",
+			Value: "/ip4/127.0.0.1/tcp/26660/",
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
-			Value:    "http://localhost:26657",
+			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 	},
@@ -122,11 +129,24 @@ var initCmd = &cli.Command{
 			return xerrors.Errorf("invalid --multiaddr: %w", err)
 		}
 
-		chainAddress := cctx.String("chainAddress")
-
 		r, err := initRepo(repoPath)
 		if err != nil {
 			return xerrors.Errorf("init repo: %w", err)
+		}
+
+		chainAddress := cctx.String("chainAddress")
+		if chainAddress == "" {
+			c, err := r.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			chainAddress = cfg.Chain.Remote
 		}
 
 		// init metadata datastore
@@ -200,7 +220,7 @@ var updateCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
-			Value:    "http://localhost:26657",
+			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 	},
@@ -208,7 +228,6 @@ var updateCmd = &cli.Command{
 		ctx := cctx.Context
 		// TODO: validate input
 		creator := cctx.String("creator")
-		chainAddress := cctx.String("chainAddress")
 
 		peerInfo := ""
 		multiaddrs := cctx.StringSlice("multiaddrs")
@@ -225,6 +244,26 @@ var updateCmd = &cli.Command{
 				peerInfo = peerInfo + ","
 			}
 			peerInfo = peerInfo + ma.String()
+		}
+
+		r, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+
+		chainAddress := cctx.String("chainAddress")
+		if chainAddress == "" {
+			c, err := r.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			chainAddress = cfg.Chain.Remote
 		}
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
@@ -252,7 +291,7 @@ var quitCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "chainAddress",
-			Value:    "http://localhost:26657",
+			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 	},
@@ -260,7 +299,26 @@ var quitCmd = &cli.Command{
 		ctx := cctx.Context
 		// TODO: validate input
 		creator := cctx.String("creator")
+
+		r, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+
 		chainAddress := cctx.String("chainAddress")
+		if chainAddress == "" {
+			c, err := r.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			chainAddress = cfg.Chain.Remote
+		}
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
@@ -270,6 +328,94 @@ var quitCmd = &cli.Command{
 			return err
 		} else {
 			fmt.Println(tx)
+		}
+
+		return nil
+	},
+}
+
+var peersCmd = &cli.Command{
+	Name:  "peers",
+	Usage: "show p2p peer list",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		repo, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+
+		var apiClient api.GatewayApiStruct
+
+		c, err := repo.Config()
+		if err != nil {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		key, err := repo.GetKeyBytes()
+		if err != nil {
+			return err
+		}
+
+		token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+		if err != nil {
+			return err
+		}
+
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+string(token))
+
+		ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+		if err != nil {
+			return err
+		}
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return err
+		}
+
+		apiAddress := "http://" + addr + "/rpc/v0"
+		closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		peers, err := apiClient.NetPeers(ctx)
+		if err != nil {
+			return err
+		}
+
+		seen := make(map[peer.ID]struct{})
+
+		console := color.New(color.FgMagenta, color.Bold)
+
+		if len(peers) == 0 {
+			console.Println(" no peer connected...")
+		}
+
+		for _, peer := range peers {
+			_, dup := seen[peer.ID]
+			if dup {
+				continue
+			}
+			seen[peer.ID] = struct{}{}
+
+			if err != nil {
+				console.Printf(" error getting peer info: %s\r\n", err)
+			} else {
+				bytes, err := json.Marshal(&peer)
+				if err != nil {
+					console.Printf(" error marshalling peer info: %s\r\n", err)
+				} else {
+					console.Println(string(bytes))
+				}
+			}
 		}
 
 		return nil

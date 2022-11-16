@@ -22,5 +22,6 @@ type GatewayApi interface {
 	GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error)                                              //perm:read
 	GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error)                                                       //perm:read
 	GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error)                                                          //perm:read
-	NodeAddress(ctx context.Context) (string, error)                                                                                  //perm:none
+	NodeAddress(ctx context.Context) (string, error)                                                                                  //perm:read
+	NetPeers(context.Context) ([]types.PeerInfo, error)                                                                               //perm:read
 }

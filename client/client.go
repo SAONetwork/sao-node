@@ -18,10 +18,12 @@ import (
 )
 
 type SaoClientConfig struct {
-	GroupId string
-	Seed    string
-	Alg     string
-	Token   string
+	GroupId      string
+	Seed         string
+	Alg          string
+	ChainAddress string
+	Gateway      string
+	Token        string
 }
 
 type SaoClient struct {
@@ -80,36 +82,45 @@ func NewSaoClient(ctx context.Context, gatewayAddr string) *SaoClient {
 		return nil
 	}
 
-	if gatewayAddr != "" {
-		if len(cfg.Token) == 0 {
-			log.Error("invalid token")
-			return nil
-		}
-
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gatewayAddr, cfg.Token)
-		if err != nil {
-			log.Error(err.Error())
-			return nil
-		}
-		defer closer()
-
-		return &SaoClient{
-			Cfg:        cfg,
-			gatewayApi: gatewayApi,
-		}
-	} else {
+	if gatewayAddr == "none" {
 		return &SaoClient{
 			Cfg: cfg,
 		}
+	} else if gatewayAddr == "" {
+		gatewayAddr = cfg.Gateway
+	}
+
+	if gatewayAddr == "" {
+		log.Error("invalid gateway")
+		return nil
+	}
+
+	if len(cfg.Token) == 0 {
+		log.Error("invalid token")
+		return nil
+	}
+
+	gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gatewayAddr, cfg.Token)
+	if err != nil {
+		log.Error(err.Error())
+		return nil
+	}
+	defer closer()
+
+	return &SaoClient{
+		Cfg:        cfg,
+		gatewayApi: gatewayApi,
 	}
 }
 
 func defaultSaoClientConfig() *SaoClientConfig {
 	return &SaoClientConfig{
-		GroupId: utils.GenerateGroupId(),
-		Alg:     "secp256k1",
-		Seed:    hex.EncodeToString(randstr.Bytes(32)),
-		Token:   "",
+		GroupId:      utils.GenerateGroupId(),
+		Alg:          "secp256k1",
+		Seed:         hex.EncodeToString(randstr.Bytes(32)),
+		ChainAddress: "http://localhost:26657",
+		Gateway:      "http://127.0.0.1:8888/rpc/v0",
+		Token:        "",
 	}
 }
 
