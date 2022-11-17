@@ -52,6 +52,7 @@ require (
 	github.com/tendermint/tendermint v0.34.22
 	github.com/thanhpk/randstr v1.0.4
 	github.com/urfave/cli/v2 v2.23.2
+	golang.org/x/term v0.2.0
 )
 
 require (
@@ -337,7 +338,6 @@ require (
 	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.1.13-0.20220803210227-8b9a1fbdf5c3 // indirect

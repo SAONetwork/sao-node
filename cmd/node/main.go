@@ -11,6 +11,7 @@ import (
 	"sao-storage-node/api"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
+	"sao-storage-node/cmd/account"
 	"sao-storage-node/node"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/repo"
@@ -84,6 +85,7 @@ func main() {
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
+			account.AccountCmd,
 			initCmd,
 			updateCmd,
 			peersCmd,
