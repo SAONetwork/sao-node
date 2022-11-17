@@ -65,7 +65,7 @@ func (r *Repo) Exists() (bool, error) {
 	return !notexist, err
 }
 
-func (r *Repo) Init() error {
+func (r *Repo) Init(chainAddress string) error {
 	exist, err := r.Exists()
 	if err != nil {
 		return err
@@ -80,7 +80,7 @@ func (r *Repo) Init() error {
 		return err
 	}
 
-	if err := r.initConfig(); err != nil {
+	if err := r.initConfig(chainAddress); err != nil {
 		return xerrors.Errorf("init config: %w", err)
 	}
 	return r.initKeystore()
@@ -133,7 +133,7 @@ func (r *Repo) setPeerId(data []byte) error {
 }
 
 func (r *Repo) Config() (interface{}, error) {
-	return utils.FromFile(r.configPath, r.defaultConfig())
+	return utils.FromFile(r.configPath, r.defaultConfig(""))
 }
 
 func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, error) {
@@ -151,7 +151,7 @@ func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, er
 	return nil, xerrors.Errorf("no such datastore: %s", ns)
 }
 
-func (r *Repo) initConfig() error {
+func (r *Repo) initConfig(chainAddress string) error {
 	_, err := os.Stat(r.configPath)
 	if err == nil {
 		// exists
@@ -165,7 +165,7 @@ func (r *Repo) initConfig() error {
 		return err
 	}
 
-	comm, err := utils.NodeBytes(r.defaultConfig())
+	comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
 	if err != nil {
 		return xerrors.Errorf("load default: %w", err)
 	}
@@ -180,8 +180,10 @@ func (r *Repo) initConfig() error {
 	return nil
 }
 
-func (r *Repo) defaultConfig() interface{} {
-	return config.DefaultSaoNode()
+func (r *Repo) defaultConfig(chainAddress string) interface{} {
+	repo := config.DefaultSaoNode()
+	repo.Chain.Remote = chainAddress
+	return repo
 }
 
 func (r *Repo) initKeystore() error {

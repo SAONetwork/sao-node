@@ -113,15 +113,19 @@ var initCmd = &cli.Command{
 			Value: "/ip4/127.0.0.1/tcp/26660/",
 		},
 		&cli.StringFlag{
-			Name:     "chainAddress",
+			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
-			Required: false,
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		log.Info("Checking if repo exists")
 		ctx := cctx.Context
-		// TODO: validate input
+
+		if !cctx.IsSet("chain-address") {
+			return xerrors.Errorf("must provide --chain-address")
+		}
+		chainAddress := cctx.String("chain-address")
+
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
 		ma, err := multiaddr.NewMultiaddr(cctx.String("multiaddr"))
@@ -129,24 +133,9 @@ var initCmd = &cli.Command{
 			return xerrors.Errorf("invalid --multiaddr: %w", err)
 		}
 
-		r, err := initRepo(repoPath)
+		r, err := initRepo(repoPath, chainAddress)
 		if err != nil {
 			return xerrors.Errorf("init repo: %w", err)
-		}
-
-		chainAddress := cctx.String("chainAddress")
-		if chainAddress == "" {
-			c, err := r.Config()
-			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			chainAddress = cfg.Chain.Remote
 		}
 
 		// init metadata datastore
@@ -183,7 +172,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-func initRepo(repoPath string) (*repo.Repo, error) {
+func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 	// init base dir
 	r, err := repo.NewRepo(repoPath)
 	if err != nil {
@@ -199,7 +188,7 @@ func initRepo(repoPath string) (*repo.Repo, error) {
 	}
 
 	log.Info("Initializing repo")
-	if err = r.Init(); err != nil {
+	if err = r.Init(chainAddress); err != nil {
 		return nil, err
 	}
 	return r, nil
@@ -219,7 +208,7 @@ var updateCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
-			Name:     "chainAddress",
+			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
@@ -251,7 +240,7 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		chainAddress := cctx.String("chainAddress")
+		chainAddress := cctx.String("chain-address")
 		if chainAddress == "" {
 			c, err := r.Config()
 			if err != nil {
@@ -290,7 +279,7 @@ var quitCmd = &cli.Command{
 			Usage: "node's account name",
 		},
 		&cli.StringFlag{
-			Name:     "chainAddress",
+			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
@@ -305,7 +294,7 @@ var quitCmd = &cli.Command{
 			return err
 		}
 
-		chainAddress := cctx.String("chainAddress")
+		chainAddress := cctx.String("chain-address")
 		if chainAddress == "" {
 			c, err := r.Config()
 			if err != nil {
