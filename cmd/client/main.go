@@ -8,6 +8,7 @@ import (
 	"os"
 	"sao-storage-node/build"
 	cliutil "sao-storage-node/cmd"
+	"sao-storage-node/cmd/account"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
@@ -45,7 +46,7 @@ func main() {
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
-			testCmd,
+			account.AccountCmd,
 			modelCmd,
 			fileCmd,
 			didCmd,
