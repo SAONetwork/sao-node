@@ -115,15 +115,13 @@ var initCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
-			Required: true,
+			Value:    "http://localhost:26657",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		if !cctx.IsSet("chain-address") {
-			return xerrors.Errorf("must provide --chain-address")
-		}
 		chainAddress := cctx.String("chain-address")
 
 		repoPath := cctx.String(FlagStorageRepo)

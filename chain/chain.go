@@ -94,7 +94,7 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 func (c *ChainSvc) Login(ctx context.Context, creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w", err)
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &nodetypes.MsgLogin{
@@ -116,7 +116,7 @@ func (c *ChainSvc) Login(ctx context.Context, creator string, ma multiaddr.Multi
 func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", err
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &nodetypes.MsgLogout{
@@ -136,7 +136,7 @@ func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", err
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &nodetypes.MsgReset{
@@ -156,7 +156,7 @@ func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string) (
 func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (string, error) {
 	signerAcc, err := c.cosmos.Account(provider)
 	if err != nil {
-		return "", err
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &saotypes.MsgReady{
@@ -184,7 +184,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	//}
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
-		return 0, "", err
+		return 0, "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	// TODO: Cid
@@ -216,7 +216,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", err
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &saotypes.MsgComplete{
