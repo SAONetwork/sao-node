@@ -6,7 +6,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var testCmd = &cli.Command{
+var TestCmd = &cli.Command{
 	Name: "test",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
