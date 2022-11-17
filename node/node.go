@@ -90,10 +90,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
-	listenAddrsOption := libp2p.ListenAddrStrings("/ip4/0.0.0.0/tcp/0")
-	if len(cfg.Libp2p.ListenAddress) > 0 {
-		listenAddrsOption = libp2p.ListenAddrStrings(cfg.Libp2p.ListenAddress...)
-	}
+	listenAddrsOption := libp2p.ListenAddrStrings(cfg.Libp2p.ListenAddress...)
 	host, err := libp2p.New(listenAddrsOption, libp2p.Identity(peerKey))
 	if err != nil {
 		return nil, err

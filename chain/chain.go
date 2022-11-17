@@ -91,6 +91,39 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 	return nil
 }
 
+func (c *ChainSvc) Create(ctx context.Context, name string) error {
+	account, mnemonic, err := c.cosmos.AccountRegistry.Create(name)
+	if err != nil {
+		return err
+	}
+
+	address, err := account.Address("cosmos")
+	if err != nil {
+		return err
+	}
+	fmt.Println("Account: ", account.Name)
+	fmt.Println("Address: ", address)
+	fmt.Println("Mnemonic: ", mnemonic)
+
+	return nil
+}
+
+func (c *ChainSvc) Import(ctx context.Context, name, secret, passphrase string) error {
+	account, err := c.cosmos.AccountRegistry.Import(name, secret, passphrase)
+	if err != nil {
+		return err
+	}
+
+	address, err := account.Address("cosmos")
+	if err != nil {
+		return err
+	}
+	fmt.Println("Account: ", account.Name)
+	fmt.Println("Address: ", address)
+
+	return nil
+}
+
 func (c *ChainSvc) Login(ctx context.Context, creator string, ma multiaddr.Multiaddr, peerId peer.ID) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
