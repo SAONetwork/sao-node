@@ -71,7 +71,7 @@ var createFileCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "chainAddress",
+			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
@@ -139,7 +139,7 @@ var createFileCmd = &cli.Command{
 
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		chainAddress := cctx.String("chainAddress")
+		chainAddress := cctx.String("chain-address")
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}

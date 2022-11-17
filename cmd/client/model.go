@@ -75,7 +75,7 @@ var createCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "chainAddress",
+			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
@@ -147,7 +147,7 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("failed to create client")
 		}
 
-		chainAddress := cctx.String("chainAddress")
+		chainAddress := cctx.String("chain-address")
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
@@ -550,7 +550,7 @@ var updateCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "chainAddress",
+			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
@@ -624,7 +624,7 @@ var updateCmd = &cli.Command{
 		gateway := cctx.String("gateway")
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		chainAddress := cctx.String("chainAddress")
+		chainAddress := cctx.String("chain-address")
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
