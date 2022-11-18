@@ -57,7 +57,7 @@ var createCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			name = string(indata)
+			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
 		err := chain.Create(ctx, cliutil.GetChainId(cctx), name)
@@ -125,7 +125,7 @@ var importCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			name = string(indata)
+			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
 		fmt.Println("Enter secret:")
