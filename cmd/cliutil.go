@@ -2,6 +2,7 @@ package cliutil
 
 import (
 	"encoding/hex"
+
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
@@ -12,6 +13,18 @@ import (
 const (
 	SECP256K1 = "secp256k1"
 )
+
+const (
+	devNetChainId  = "sao"
+	testNetChainId = "sao-testnet-fcf77b"
+	mainNetChainId = "sao"
+)
+
+var NetType = &cli.StringFlag{
+	Name:  "net",
+	Usage: "sao network type: [devnet/testnet/mainnet]",
+	Value: "testnet",
+}
 
 // IsVeryVerbose is a global var signalling if the CLI is running in very
 // verbose mode or not (default: false).
@@ -64,4 +77,16 @@ func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*s
 		return nil, err
 	}
 	return &didManager, nil
+}
+
+func GetChainId(cctx *cli.Context) string {
+	switch cctx.String("net") {
+	case "devnet":
+		return devNetChainId
+	case "testnet":
+		return testNetChainId
+	case "mainnet":
+		return mainNetChainId
+	}
+	return devNetChainId
 }

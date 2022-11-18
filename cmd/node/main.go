@@ -49,7 +49,7 @@ var FlagRepo = &cli.StringFlag{
 	Value:   FlagStorageDefaultRepo,
 }
 
-func before(cctx *cli.Context) error {
+func before(_ *cli.Context) error {
 	_ = logging.SetLogLevel("cache", "INFO")
 	_ = logging.SetLogLevel("model", "INFO")
 	_ = logging.SetLogLevel("node", "INFO")
@@ -82,6 +82,7 @@ func main() {
 		Before:               before,
 		Flags: []cli.Flag{
 			FlagRepo,
+			cliutil.NetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
