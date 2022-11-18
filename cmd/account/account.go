@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"os"
 	"sao-storage-node/chain"
+	cliutil "sao-storage-node/cmd"
 	"strings"
 	"syscall"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 )
-
-const ChainId = "sao"
 
 var AccountCmd = &cli.Command{
 	Name:  "account",
@@ -30,7 +29,7 @@ var listCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		err := chain.List(ctx, ChainId)
+		err := chain.List(ctx, cliutil.GetChainId(cctx))
 		if err != nil {
 			return err
 		}
@@ -61,7 +60,7 @@ var createCmd = &cli.Command{
 			name = string(indata)
 		}
 
-		err := chain.Create(ctx, ChainId, name)
+		err := chain.Create(ctx, cliutil.GetChainId(cctx), name)
 		if err != nil {
 			return err
 		}
@@ -98,7 +97,7 @@ var exportCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Export(ctx, ChainId, name, string(passphrase))
+		err = chain.Export(ctx, cliutil.GetChainId(cctx), name, string(passphrase))
 		if err != nil {
 			return err
 		}
@@ -152,7 +151,7 @@ var importCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Import(ctx, ChainId, name, secret, string(passphrase))
+		err = chain.Import(ctx, cliutil.GetChainId(cctx), name, secret, string(passphrase))
 		if err != nil {
 			return err
 		}
