@@ -3,6 +3,11 @@ package store
 import (
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"sync"
+
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/kubo/config"
 	"github.com/ipfs/kubo/core"
@@ -11,10 +16,6 @@ import (
 	"github.com/ipfs/kubo/plugin/loader"
 	"github.com/ipfs/kubo/repo/fsrepo"
 	"github.com/mitchellh/go-homedir"
-	"io"
-	"os"
-	"path/filepath"
-	"sync"
 )
 
 type IpfsDaemon struct {
@@ -65,7 +66,7 @@ func prepareRepo(repoPath string) error {
 		return err
 	}
 
-	stat, err := os.Stat(repoPath)
+	_, err = os.Stat(filepath.Join(repoPath, "config"))
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(repoPath, 0700)
 		if err != nil {
@@ -79,9 +80,8 @@ func prepareRepo(repoPath string) error {
 		if err != nil {
 			return fmt.Errorf("failed to init ipfs repo: %s", err)
 		}
-	} else if !stat.IsDir() {
-		return fmt.Errorf("repo %s already exists but not a dir", repoPath)
 	}
+
 	return nil
 }
 

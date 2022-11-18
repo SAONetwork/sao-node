@@ -186,7 +186,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			sn.stopFuncs = append(sn.stopFuncs, func(ctx context.Context) error {
+			sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
 				log.Info("close ipfs daemon.")
 				return node.Close()
 			})

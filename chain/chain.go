@@ -132,6 +132,7 @@ func List(ctx context.Context, chainId string) error {
 }
 
 func Create(ctx context.Context, chainId string, name string) error {
+	fmt.Println("ChainId: ", chainId)
 	accountRegistry, err := newAccountRegistry(ctx, chainId)
 	if err != nil {
 		return err
@@ -296,7 +297,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	//}
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
-		return 0, "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return 0, "", xerrors.Errorf("%w, check the keyring please", err)
 	}
 
 	// TODO: Cid

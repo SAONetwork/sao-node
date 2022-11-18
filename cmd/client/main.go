@@ -43,6 +43,7 @@ func main() {
 		Version:              build.UserVersion(),
 		Before:               before,
 		Flags: []cli.Flag{
+			cliutil.NetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
