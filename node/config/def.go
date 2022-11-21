@@ -35,7 +35,8 @@ type SaoIpfs struct {
 }
 
 type Storage struct {
-	Ipfs []Ipfs
+	AcceptOrder bool
+	Ipfs        []Ipfs
 }
 
 type Ipfs struct {
@@ -113,7 +114,8 @@ func DefaultSaoNode() *Node {
 			TokenPeriod:             24 * time.Hour,
 		},
 		Storage: Storage{
-			Ipfs: []Ipfs{},
+			AcceptOrder: true,
+			Ipfs:        []Ipfs{},
 		},
 		SaoIpfs: SaoIpfs{
 			Enable: true,

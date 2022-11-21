@@ -43,6 +43,12 @@ import (
 
 var log = logging.Logger("node")
 
+const NODE_STATUS_NA uint32 = 0
+const NODE_STATUS_ONLINE uint32 = 1
+const NODE_STATUS_SERVE_GATEWAY uint32 = 1 << 1
+const NODE_STATUS_SERVE_STORAGE uint32 = 1 << 2
+const NODE_STATUS_ACCEPT_ORDER uint32 = 1 << 3
+
 type Node struct {
 	ctx       context.Context
 	cfg       *config.Node
@@ -155,13 +161,13 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		}
 	}
 
-	_, err = chainSvc.Reset(ctx, nodeAddr, string(peerInfosBytes))
-	if err != nil {
-		return nil, err
-	}
-
+	var status = NODE_STATUS_ONLINE
 	var storageManager *store.StoreManager = nil
 	if cfg.Module.StorageEnable {
+		status = status | NODE_STATUS_SERVE_STORAGE
+		if cfg.Storage.AcceptOrder {
+			status = status | NODE_STATUS_ACCEPT_ORDER
+		}
 		var backends []store.StoreBackend
 		if len(cfg.Storage.Ipfs) > 0 {
 			for _, f := range cfg.Storage.Ipfs {
@@ -212,6 +218,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	if cfg.Module.GatewayEnable {
+		status = status | NODE_STATUS_SERVE_GATEWAY
 		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
@@ -253,6 +260,13 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
+
+	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status)
+	if err != nil {
+		return nil, err
+	}
+
+	chainSvc.StartStatusReporter(ctx, sn.address)
 
 	return &sn, nil
 }
