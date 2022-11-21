@@ -30,7 +30,7 @@
 	$ saod tx bank send alice cosmos124uad7f4dvpnfre44yv8dh2ztrvkmcd4xgymrz 100000000stake
 
 ## Init & start storage node
-	$ ./saonode --creator cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4
+	$ ./saonode init --creator cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4
 	...
 	563D7EB1856FC26B3720313DAE413F184C3C96FD0DA5869ED6B69BD924830FE6
 	$ ./saonode --vv run
