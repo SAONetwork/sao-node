@@ -178,7 +178,7 @@ var createFileCmd = &cli.Command{
 			Cid:        contentCid.String(),
 			CommitId:   dataId,
 			Rule:       cctx.String("rule"),
-			IsUpdate:   false,
+			Operation:  0,
 			ExtendInfo: extendInfo,
 		}
 

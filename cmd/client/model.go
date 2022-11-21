@@ -187,7 +187,7 @@ var createCmd = &cli.Command{
 			CommitId: dataId,
 			Rule:     cctx.String("rule"),
 			// OrderId:    0,
-			IsUpdate:   false,
+			Operation:  0,
 			ExtendInfo: extendInfo,
 		}
 
@@ -676,7 +676,7 @@ var updateCmd = &cli.Command{
 			Cid:        newCid.String(),
 			CommitId:   utils.GenerateCommitId(),
 			Rule:       cctx.String("rule"),
-			IsUpdate:   true,
+			Operation:  0,
 			ExtendInfo: extendInfo,
 		}
 
