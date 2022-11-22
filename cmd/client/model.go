@@ -505,7 +505,7 @@ var renewCmd = &cli.Command{
 			}
 		}
 
-		resp, err := client.Create(ctx, clientProposal, orderId, []byte("{}"))
+		resp, err := client.Update(ctx, clientProposal, orderId, []byte(""))
 		if err != nil {
 			return err
 		}
