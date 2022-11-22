@@ -92,7 +92,7 @@ func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, e
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string) {
 	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
+		ticker := time.NewTicker(9999 * time.Minute)
 		defer ticker.Stop()
 
 		for {

@@ -461,17 +461,23 @@ var renewCmd = &cli.Command{
 			return err
 		}
 
-		var dataId string
-		if !utils.IsDataId(keyword) {
-			dataId, err = chain.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", didManager.Id, keyword, groupId))
-			if err != nil {
-				return err
-			}
-		} else {
-			dataId = keyword
+		req := apitypes.LoadReq{
+			KeyWord:   keyword,
+			PublicKey: didManager.Id,
+			GroupId:   groupId,
 		}
 
-		res, err := chain.QueryMeta(ctx, dataId, 0)
+		model, err := client.Load(ctx, req)
+		if err != nil {
+			return err
+		}
+
+		content, err := utils.ApplyPatch([]byte(model.Content), []byte("[]"))
+		if err != nil {
+			return err
+		}
+
+		targetCid, err := utils.CalculateCid(content)
 		if err != nil {
 			return err
 		}
@@ -480,7 +486,8 @@ var renewCmd = &cli.Command{
 			Owner:     didManager.Id,
 			Duration:  int32(duration),
 			Timeout:   int32(delay),
-			DataId:    res.Metadata.DataId,
+			DataId:    model.DataId,
+			Cid:       targetCid.String(),
 			Operation: 2,
 		}
 
