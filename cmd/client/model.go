@@ -32,6 +32,7 @@ var modelCmd = &cli.Command{
 		loadCmd,
 		deleteCmd,
 		commitsCmd,
+		renewCmd,
 	},
 }
 
@@ -377,6 +378,143 @@ var loadCmd = &cli.Command{
 	},
 }
 
+var renewCmd = &cli.Command{
+	Name:  "renew",
+	Usage: "renew data",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "secret",
+			Usage:    "client secret",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "file owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "keyword",
+			Usage:    "data model's alias, dataId or tag",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "platform",
+			Usage:    "platform to manage the data model",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "gateway",
+			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Required: false,
+		},
+		&cli.IntFlag{
+			Name:     "duration",
+			Usage:    "how long do you want to store the data.",
+			Value:    DEFAULT_DURATION,
+			Required: false,
+		},
+		&cli.IntFlag{
+			Name:     "delay",
+			Usage:    "how long to wait for the file ready",
+			Value:    24 * 60 * 60,
+			Required: false,
+		},
+		&cli.BoolFlag{
+			Name:     "clientPublish",
+			Value:    false,
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+
+		if !cctx.IsSet("keyword") {
+			return xerrors.Errorf("must provide --keyword")
+		}
+		keyword := cctx.String("keyword")
+		duration := cctx.Int("duration")
+		delay := cctx.Int("delay")
+		clientPublish := cctx.Bool("clientPublish")
+		owner := cctx.String("owner")
+
+		client := saoclient.NewSaoClient(ctx, gateway)
+
+		chainAddress := cctx.String("chain-address")
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		groupId := cctx.String("platform")
+		if groupId == "" {
+			groupId = client.Cfg.GroupId
+		}
+
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		var dataId string
+		if !utils.IsDataId(keyword) {
+			dataId, err = chain.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", didManager.Id, keyword, groupId))
+			if err != nil {
+				return err
+			}
+		} else {
+			dataId = keyword
+		}
+
+		res, err := chain.QueryMeta(ctx, dataId, 0)
+		if err != nil {
+			return err
+		}
+
+		proposal := saotypes.Proposal{
+			Owner:     didManager.Id,
+			Duration:  int32(duration),
+			Timeout:   int32(delay),
+			DataId:    res.Metadata.DataId,
+			Operation: 2,
+		}
+
+		proposalJsonBytes, err := proposal.Marshal()
+		if err != nil {
+			return err
+		}
+		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		if err != nil {
+			return err
+		}
+		clientProposal := types.ClientOrderProposal{
+			Proposal:        proposal,
+			ClientSignature: jws.Signatures[0],
+		}
+
+		var orderId uint64 = 0
+		if clientPublish {
+			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
+			if err != nil {
+				return err
+			}
+		}
+
+		resp, err := client.Create(ctx, clientProposal, orderId, []byte("{}"))
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("alias: %s, data id: %s.\r\n", resp.Alias, resp.DataId)
+		return nil
+	},
+}
+
 var deleteCmd = &cli.Command{
 	Name:  "delete",
 	Usage: "delete data model",
@@ -549,6 +687,12 @@ var updateCmd = &cli.Command{
 			Value:    false,
 			Required: false,
 		},
+		&cli.BoolFlag{
+			Name:     "force",
+			Usage:    "overwrite the latest commit",
+			Value:    false,
+			Required: false,
+		},
 		&cli.StringFlag{
 			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
@@ -663,6 +807,14 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
+		force := cctx.Bool("force")
+
+		operation := uint32(0)
+
+		if force {
+			operation = 1
+		}
+
 		proposal := saotypes.Proposal{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
@@ -676,7 +828,7 @@ var updateCmd = &cli.Command{
 			Cid:        newCid.String(),
 			CommitId:   utils.GenerateCommitId(),
 			Rule:       cctx.String("rule"),
-			Operation:  0,
+			Operation:  operation,
 			ExtendInfo: extendInfo,
 		}
 
