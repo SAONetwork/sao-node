@@ -88,7 +88,8 @@ func main() {
 		Commands: []*cli.Command{
 			account.AccountCmd,
 			initCmd,
-			updateCmd,
+			joinCmd,
+			resetCmd,
 			peersCmd,
 			quitCmd,
 			runCmd,
@@ -129,10 +130,6 @@ var initCmd = &cli.Command{
 
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
-		ma, err := multiaddr.NewMultiaddr(cctx.String("multiaddr"))
-		if err != nil {
-			return xerrors.Errorf("invalid --multiaddr: %w", err)
-		}
 
 		r, err := initRepo(repoPath, chainAddress)
 		if err != nil {
@@ -149,20 +146,13 @@ var initCmd = &cli.Command{
 		}
 
 		log.Info("initialize libp2p identity")
-		p2pSk, err := r.GeneratePeerId()
-		if err != nil {
-			return xerrors.Errorf("make host key: %w", err)
-		}
-		peerid, err := peer.IDFromPrivateKey(p2pSk)
-		if err != nil {
-			return xerrors.Errorf("peer ID from private key: %w", err)
-		}
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
-		if tx, err := chain.Login(ctx, creator, ma, peerid); err != nil {
+
+		if tx, err := chain.Login(ctx, creator); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
@@ -195,7 +185,42 @@ func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 	return r, nil
 }
 
-var updateCmd = &cli.Command{
+var joinCmd = &cli.Command{
+	Name: "join",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "creator",
+			Usage: "node's account name",
+		},
+		&cli.StringFlag{
+			Name:     "chain-address",
+			EnvVars:  []string{"SAO_CHAIN_API"},
+			Value:    "http://localhost:26657",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		chainAddress := cctx.String("chain-address")
+		creator := cctx.String("creator")
+
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		if tx, err := chain.Login(ctx, creator); err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
+		}
+
+		return nil
+	},
+}
+
+var resetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "update peer information.",
 	Flags: []cli.Flag{
@@ -206,11 +231,16 @@ var updateCmd = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:     "multiaddrs",
 			Usage:    "multiaddrs",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "chain-address",
 			EnvVars:  []string{"SAO_CHAIN_API"},
+			Required: false,
+		},
+		&cli.BoolFlag{
+			Name:     "accept-order",
+			Value:    true,
 			Required: false,
 		},
 	},
@@ -219,21 +249,23 @@ var updateCmd = &cli.Command{
 		// TODO: validate input
 		creator := cctx.String("creator")
 
-		peerInfo := ""
-		multiaddrs := cctx.StringSlice("multiaddrs")
-		if len(multiaddrs) < 1 {
-			return xerrors.Errorf("invalid --multiaddrs: cannot be empty")
-		}
+		var peerInfo = ""
+		if cctx.IsSet("multiaddrs") {
+			multiaddrs := cctx.StringSlice("multiaddrs")
+			if len(multiaddrs) < 1 {
+				return xerrors.Errorf("invalid --multiaddrs: cannot be empty")
+			}
 
-		for _, maddr := range multiaddrs {
-			ma, err := multiaddr.NewMultiaddr(maddr)
-			if err != nil {
-				return xerrors.Errorf("invalid --multiaddrs: %w", err)
+			for _, maddr := range multiaddrs {
+				ma, err := multiaddr.NewMultiaddr(maddr)
+				if err != nil {
+					return xerrors.Errorf("invalid --multiaddrs: %w", err)
+				}
+				if len(peerInfo) > 0 {
+					peerInfo = peerInfo + ","
+				}
+				peerInfo = peerInfo + ma.String()
 			}
-			if len(peerInfo) > 0 {
-				peerInfo = peerInfo + ","
-			}
-			peerInfo = peerInfo + ma.String()
 		}
 
 		r, err := prepareRepo(cctx)
@@ -241,18 +273,18 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
+		c, err := r.Config()
+		if err != nil {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
 		chainAddress := cctx.String("chain-address")
 		if chainAddress == "" {
-			c, err := r.Config()
-			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
 			chainAddress = cfg.Chain.Remote
 		}
 
@@ -261,7 +293,20 @@ var updateCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		tx, err := chain.Reset(ctx, creator, peerInfo)
+		var status = node.NODE_STATUS_ONLINE
+		if cfg.Module.GatewayEnable {
+			status = status | node.NODE_STATUS_SERVE_GATEWAY
+		}
+		if cfg.Module.StorageEnable {
+			status = status | node.NODE_STATUS_SERVE_STORAGE
+			if cctx.Bool("accept-order") {
+				status = status | node.NODE_STATUS_ACCEPT_ORDER
+			} else if cfg.Storage.AcceptOrder {
+				status = status | node.NODE_STATUS_ACCEPT_ORDER
+			}
+		}
+
+		tx, err := chain.Reset(ctx, creator, peerInfo, status)
 		if err != nil {
 			return err
 		}
