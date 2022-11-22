@@ -897,6 +897,8 @@ var patchGenCmd = &cli.Command{
 			return err
 		}
 
+		log.Error("Pathc: ", patch)
+
 		content, err := utils.ApplyPatch([]byte(origin), []byte(patch))
 		if err != nil {
 			return err
