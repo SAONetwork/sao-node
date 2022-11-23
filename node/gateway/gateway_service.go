@@ -47,6 +47,7 @@ type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error)
 	CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
+	RenewModels(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64) (map[string]string, error)
 	Stop(ctx context.Context) error
 }
 
@@ -224,6 +225,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 		}
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
 	} else {
+		log.Debugf("Sending OrderReady... orderId=%d", orderId)
 		txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
 		if err != nil {
 			return nil, err
@@ -280,6 +282,51 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 			Shards:  meta.Shards,
 			Cid:     orderProposal.Cid,
 		}, nil
+	}
+}
+
+func (gs *GatewaySvc) RenewModels(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64) (map[string]string, error) {
+	txId, err := gs.chainSvc.RenewOrder(ctx, gs.nodeAddress, clientProposal)
+	if err != nil {
+		return nil, err
+	}
+	log.Infof("RenewOrder tx succeed. orderId=%d tx=%s", orderId, txId)
+
+	doneChan := make(chan chain.OrderCompleteResult)
+	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Debug("SubscribeRenewOrderComplete")
+
+	timeout := false
+	select {
+	case <-doneChan:
+	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
+		timeout = true
+	case <-ctx.Done():
+		timeout = true
+	}
+	close(doneChan)
+
+	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
+	if err != nil {
+		log.Error(err)
+	} else {
+		log.Debugf("UnsubscribeRenewOrderComplete")
+	}
+
+	if timeout {
+		return nil, errors.Errorf("process order %d timeout.", orderId)
+	} else {
+		order, err := gs.chainSvc.GetOrder(ctx, orderId)
+		if err != nil {
+			return nil, err
+		}
+		log.Debugf("order %d complete: dataId=%s", order.Id, order.Metadata.DataId)
+
+		return make(map[string]string), nil
 	}
 }
 

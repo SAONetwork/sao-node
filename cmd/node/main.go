@@ -82,6 +82,7 @@ func main() {
 		Before:               before,
 		Flags: []cli.Flag{
 			FlagRepo,
+			cliutil.ChainAddress,
 			cliutil.NetType,
 			cliutil.FlagVeryVerbose,
 		},
@@ -115,12 +116,6 @@ var initCmd = &cli.Command{
 			Name:  "multiaddr",
 			Usage: "nodes' multiaddr",
 			Value: "/ip4/127.0.0.1/tcp/26660/",
-		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
-			Value:    "http://localhost:26657",
-			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -192,12 +187,6 @@ var joinCmd = &cli.Command{
 			Name:  "creator",
 			Usage: "node's account name",
 		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
-			Value:    "http://localhost:26657",
-			Required: false,
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -231,11 +220,6 @@ var resetCmd = &cli.Command{
 		&cli.StringSliceFlag{
 			Name:     "multiaddrs",
 			Usage:    "multiaddrs",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -323,11 +307,6 @@ var quitCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "creator",
 			Usage: "node's account name",
-		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
-			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {

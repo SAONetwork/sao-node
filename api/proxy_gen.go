@@ -39,6 +39,8 @@ type GatewayApiStruct struct {
 
 		NodeAddress func(p0 context.Context) (string, error) `perm:"read"`
 
+		Renew func(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64) (apitypes.RenewResp, error) `perm:"write"`
+
 		ShowCommits func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) `perm:"read"`
 
 		Test func(p0 context.Context, p1 string) (string, error) `perm:"none"`
@@ -180,6 +182,17 @@ func (s *GatewayApiStruct) NodeAddress(p0 context.Context) (string, error) {
 
 func (s *GatewayApiStub) NodeAddress(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
+}
+
+func (s *GatewayApiStruct) Renew(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64) (apitypes.RenewResp, error) {
+	if s.Internal.Renew == nil {
+		return *new(apitypes.RenewResp), ErrNotSupported
+	}
+	return s.Internal.Renew(p0, p1, p2)
+}
+
+func (s *GatewayApiStub) Renew(p0 context.Context, p1 types.ClientOrderProposal, p2 uint64) (apitypes.RenewResp, error) {
+	return *new(apitypes.RenewResp), ErrNotSupported
 }
 
 func (s *GatewayApiStruct) ShowCommits(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) {

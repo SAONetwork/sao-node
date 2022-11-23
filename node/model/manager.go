@@ -336,6 +336,16 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	return model, nil
 }
 
+func (mm *ModelManager) Renew(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64) (map[string]string, error) {
+	// Commit
+	result, err := mm.GatewaySvc.RenewModels(ctx, clientProposal, orderId)
+	if err != nil {
+		return nil, xerrors.Errorf(err.Error())
+	}
+
+	return result, nil
+}
+
 func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group, 0)
 	if err != nil {

@@ -40,19 +40,9 @@ var createCmd = &cli.Command{
 	Name: "create",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "owner",
 			Usage:    "data model owner",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "content",
@@ -71,13 +61,8 @@ var createCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.BoolFlag{
-			Name:     "clientPublish",
+			Name:     "client-publish",
 			Value:    false,
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -106,11 +91,6 @@ var createCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "extend-info",
 			Usage:    "extend information for the model",
 			Value:    "",
@@ -130,7 +110,7 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("must provide --owner")
 		}
 		owner := cctx.String("owner")
-		clientPublish := cctx.Bool("clientPublish")
+		clientPublish := cctx.Bool("client-publish")
 
 		// TODO: check valid range
 		duration := cctx.Int("duration")
@@ -238,19 +218,9 @@ var loadCmd = &cli.Command{
 	Usage: "load data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "version",
@@ -260,11 +230,6 @@ var loadCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "commit-id",
 			Usage:    "data model's commitId",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -383,29 +348,14 @@ var renewCmd = &cli.Command{
 	Usage: "renew data",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "owner",
 			Usage:    "file owner",
 			Required: true,
 		},
-		&cli.StringFlag{
-			Name:     "keyword",
-			Usage:    "data model's alias, dataId or tag",
+		&cli.StringSliceFlag{
+			Name:     "data-ids",
+			Usage:    "data model's dataId list",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
 		},
 		&cli.IntFlag{
 			Name:     "duration",
@@ -420,7 +370,7 @@ var renewCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.BoolFlag{
-			Name:     "clientPublish",
+			Name:     "client-publish",
 			Value:    false,
 			Required: false,
 		},
@@ -430,13 +380,12 @@ var renewCmd = &cli.Command{
 
 		gateway := cctx.String("gateway")
 
-		if !cctx.IsSet("keyword") {
-			return xerrors.Errorf("must provide --keyword")
+		if !cctx.IsSet("data-ids") {
+			return xerrors.Errorf("must provide --data-ids")
 		}
-		keyword := cctx.String("keyword")
+		// dataIds := cctx.StringSlice("data-ids")
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
-		clientPublish := cctx.Bool("clientPublish")
 		owner := cctx.String("owner")
 
 		client := saoclient.NewSaoClient(ctx, gateway)
@@ -451,44 +400,15 @@ var renewCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		groupId := cctx.String("platform")
-		if groupId == "" {
-			groupId = client.Cfg.GroupId
-		}
-
 		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
 		if err != nil {
 			return err
 		}
 
-		req := apitypes.LoadReq{
-			KeyWord:   keyword,
-			PublicKey: didManager.Id,
-			GroupId:   groupId,
-		}
-
-		model, err := client.Load(ctx, req)
-		if err != nil {
-			return err
-		}
-
-		content, err := utils.ApplyPatch([]byte(model.Content), []byte("[]"))
-		if err != nil {
-			return err
-		}
-
-		targetCid, err := utils.CalculateCid(content)
-		if err != nil {
-			return err
-		}
-
 		proposal := saotypes.Proposal{
-			Owner:     didManager.Id,
-			Duration:  int32(duration),
-			Timeout:   int32(delay),
-			DataId:    model.DataId,
-			Cid:       targetCid.String(),
-			Operation: 2,
+			Owner:    didManager.Id,
+			Duration: int32(duration),
+			Timeout:  int32(delay),
 		}
 
 		proposalJsonBytes, err := proposal.Marshal()
@@ -504,20 +424,17 @@ var renewCmd = &cli.Command{
 			ClientSignature: jws.Signatures[0],
 		}
 
-		var orderId uint64 = 0
-		if clientPublish {
-			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
-			if err != nil {
-				return err
-			}
-		}
-
-		resp, err := client.Update(ctx, clientProposal, orderId, []byte(""))
+		orderId, _, err := chain.StoreOrder(ctx, owner, clientProposal)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("alias: %s, data id: %s.\r\n", resp.Alias, resp.DataId)
+		resp, err := client.Renew(ctx, clientProposal, orderId)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("resp: %s.\r\n", resp.Result)
 		return nil
 	},
 }
@@ -527,24 +444,9 @@ var deleteCmd = &cli.Command{
 	Usage: "delete data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -583,24 +485,9 @@ var commitsCmd = &cli.Command{
 	Usage: "list data model historical commits",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -658,19 +545,9 @@ var updateCmd = &cli.Command{
 	Name: "update",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "owner",
 			Usage:    "file owner",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "patch",
@@ -690,7 +567,7 @@ var updateCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.BoolFlag{
-			Name:     "clientPublish",
+			Name:     "client-publish",
 			Value:    false,
 			Required: false,
 		},
@@ -698,11 +575,6 @@ var updateCmd = &cli.Command{
 			Name:     "force",
 			Usage:    "overwrite the latest commit",
 			Value:    false,
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.StringSliceFlag{
@@ -727,11 +599,6 @@ var updateCmd = &cli.Command{
 			Name:     "replica",
 			Usage:    "how many copies to store.",
 			Value:    DEFAULT_REPLICA,
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -766,7 +633,7 @@ var updateCmd = &cli.Command{
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		clientPublish := cctx.Bool("clientPublish")
+		clientPublish := cctx.Bool("client-publish")
 
 		// TODO: check valid range
 		duration := cctx.Int("duration")

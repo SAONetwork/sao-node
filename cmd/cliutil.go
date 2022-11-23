@@ -20,6 +20,13 @@ const (
 	mainNetChainId = "sao"
 )
 
+var ChainAddress = &cli.StringFlag{
+	Name:     "chain-address",
+	EnvVars:  []string{"SAO_CHAIN_API"},
+	Value:    "http://localhost:26657",
+	Required: false,
+}
+
 var NetType = &cli.StringFlag{
 	Name:  "net",
 	Usage: "sao network type: [devnet/testnet/mainnet]",

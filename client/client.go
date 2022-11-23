@@ -156,6 +156,10 @@ func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderP
 	return sc.gatewayApi.Update(ctx, orderProposal, orderId, patch)
 }
 
+func (sc SaoClient) Renew(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.RenewResp, error) {
+	return sc.gatewayApi.Renew(ctx, orderProposal, orderId)
+}
+
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
 	return sc.gatewayApi.GetPeerInfo(ctx)
 }
