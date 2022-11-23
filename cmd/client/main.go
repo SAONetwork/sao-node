@@ -21,6 +21,24 @@ const (
 	DEFAULT_REPLICA  = 1
 )
 
+var gateway = &cli.StringFlag{
+	Name:     "gateway",
+	EnvVars:  []string{"SAO_GATEWAY_API"},
+	Required: false,
+}
+
+var platform = &cli.StringFlag{
+	Name:     "platform",
+	Usage:    "platform to manage the data model",
+	Required: false,
+}
+
+var secret = &cli.StringFlag{
+	Name:     "secret",
+	Usage:    "client secret",
+	Required: false,
+}
+
 func before(cctx *cli.Context) error {
 	_ = logging.SetLogLevel("saoclient", "INFO")
 	_ = logging.SetLogLevel("chain", "INFO")
@@ -43,6 +61,10 @@ func main() {
 		Version:              build.UserVersion(),
 		Before:               before,
 		Flags: []cli.Flag{
+			cliutil.ChainAddress,
+			gateway,
+			platform,
+			secret,
 			cliutil.NetType,
 			cliutil.FlagVeryVerbose,
 		},

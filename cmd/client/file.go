@@ -35,19 +35,9 @@ var createFileCmd = &cli.Command{
 	Name: "create-file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
 			Name:     "owner",
 			Usage:    "file owner",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the file",
-			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "file-name",
@@ -66,13 +56,8 @@ var createFileCmd = &cli.Command{
 			Required: false,
 		},
 		&cli.BoolFlag{
-			Name:     "clientPublish",
+			Name:     "client-publish",
 			Value:    false,
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "chain-address",
-			EnvVars:  []string{"SAO_CHAIN_API"},
 			Required: false,
 		},
 		&cli.StringSliceFlag{
@@ -93,11 +78,6 @@ var createFileCmd = &cli.Command{
 			Name:     "replica",
 			Usage:    "how many copies to store.",
 			Value:    DEFAULT_REPLICA,
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -124,7 +104,7 @@ var createFileCmd = &cli.Command{
 		}
 		fileName := types.Type_Prefix_File + cctx.String("file-name")
 
-		clientPublish := cctx.Bool("clientPublish")
+		clientPublish := cctx.Bool("client-publish")
 
 		// TODO: check valid range
 		duration := cctx.Int("duration")
@@ -278,20 +258,10 @@ var downloadCmd = &cli.Command{
 	Name:  "download",
 	Usage: "download file(s) from storage network",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
 		&cli.StringSliceFlag{
 			Name:     "keywords",
 			Usage:    "storage network dataId(s) of the file(s)",
 			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "platform",
-			Usage:    "platform to manage the data model",
-			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "version",
@@ -301,11 +271,6 @@ var downloadCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "commit-id",
 			Usage:    "file commitId",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
 			Required: false,
 		},
 	},
@@ -389,13 +354,6 @@ var downloadCmd = &cli.Command{
 var peerInfoCmd = &cli.Command{
 	Name:  "peer-info",
 	Usage: "get peer info of the gateway",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
@@ -421,18 +379,6 @@ var peerInfoCmd = &cli.Command{
 var tokenGenCmd = &cli.Command{
 	Name:  "token-gen",
 	Usage: "generate token to access http file server",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "secret",
-			Usage:    "client secret",
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 

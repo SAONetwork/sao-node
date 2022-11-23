@@ -474,6 +474,36 @@ func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderPropos
 	}, nil
 }
 
+func (n *Node) Renew(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.RenewResp, error) {
+	// verify signature
+	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner)
+	if err != nil {
+		return apitypes.RenewResp{}, err
+	}
+	proposalBytes, err := orderProposal.Proposal.Marshal()
+	if err != nil {
+		return apitypes.RenewResp{}, err
+	}
+
+	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
+		Payload: base64url.Encode(proposalBytes),
+		Signatures: []saotypes.JwsSignature{
+			orderProposal.ClientSignature,
+		},
+	})
+	if err != nil {
+		return apitypes.RenewResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
+	}
+
+	result, err := n.manager.Renew(ctx, orderProposal, orderId)
+	if err != nil {
+		return apitypes.RenewResp{}, err
+	}
+	return apitypes.RenewResp{
+		Result: result,
+	}, nil
+}
+
 func (n *Node) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {
 	model, err := n.manager.ShowCommits(ctx, owner, key, group)
 	if err != nil {

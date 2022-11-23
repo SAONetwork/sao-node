@@ -24,6 +24,10 @@ type UpdateResp struct {
 	Cid      string
 }
 
+type RenewResp struct {
+	Result map[string]string
+}
+
 type LoadResp struct {
 	DataId   string
 	Alias    string

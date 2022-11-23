@@ -111,6 +111,25 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 	return txResp.TxResponse.TxHash, nil
 }
 
+func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, clientProposal types.ClientOrderProposal) (string, error) {
+	signerAcc, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+	}
+
+	msg := &saotypes.MsgRenew{
+		Creator: creator,
+	}
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
+	if err != nil {
+		return "", err
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", xerrors.Errorf("MsgComplete tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	return txResp.TxResponse.TxHash, nil
+}
+
 func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error) {
 	queryResp, err := c.orderClient.Order(ctx, &ordertypes.QueryGetOrderRequest{
 		Id: orderId,

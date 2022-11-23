@@ -10,8 +10,7 @@ var TestCmd = &cli.Command{
 	Name: "test",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "gateway",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
+			Name:     "abc",
 			Required: false,
 		},
 	},
