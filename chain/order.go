@@ -66,8 +66,8 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	// TODO: Cid
 	msg := &saotypes.MsgStore{
 		Creator:  signer,
-		Proposal: &clientProposal.Proposal,
-		JwsSignature: &saotypes.JwsSignature{
+		Proposal: clientProposal.Proposal,
+		JwsSignature: saotypes.JwsSignature{
 			Protected: clientProposal.ClientSignature.Protected,
 			Signature: clientProposal.ClientSignature.Signature,
 		},
