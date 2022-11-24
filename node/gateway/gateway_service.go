@@ -45,9 +45,9 @@ type FetchResult struct {
 
 type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error)
-	CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*CommitResult, error)
+	CommitModel(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
-	RenewModels(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64) (map[string]string, error)
+	RenewModels(ctx context.Context, delay int32, renewModels map[string]uint64) error
 	Stop(ctx context.Context) error
 }
 
@@ -206,7 +206,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 	}, nil
 }
 
-func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*CommitResult, error) {
+func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.
@@ -285,25 +285,29 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Clie
 	}
 }
 
-func (gs *GatewaySvc) RenewModels(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64) (map[string]string, error) {
-	txId, err := gs.chainSvc.RenewOrder(ctx, gs.nodeAddress, clientProposal)
-	if err != nil {
-		return nil, err
-	}
-	log.Infof("RenewOrder tx succeed. orderId=%d tx=%s", orderId, txId)
-
+func (gs *GatewaySvc) renewModel(ctx context.Context, delay int32, dataId string, orderId uint64) string {
 	doneChan := make(chan chain.OrderCompleteResult)
+
+	log.Debugf("Sending OrderReady(renew)... orderId=%d,dataId=%s", orderId, dataId)
+	txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
+	if err != nil {
+		return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
+	}
+	log.Infof("OrderReady(renew) tx succeed. orderId=%d tx=%s dataId=%s", orderId, txId, dataId)
+
 	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
 	if err != nil {
-		return nil, err
+		return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
 	}
 
 	log.Debug("SubscribeRenewOrderComplete")
 
 	timeout := false
+	result := ""
 	select {
-	case <-doneChan:
-	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
+	case r := <-doneChan:
+		result = r.Result
+	case <-time.After(chain.Blocktime * time.Duration(delay)):
 		timeout = true
 	case <-ctx.Done():
 		timeout = true
@@ -312,21 +316,42 @@ func (gs *GatewaySvc) RenewModels(ctx context.Context, clientProposal types.Clie
 
 	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
 	if err != nil {
-		log.Error(err)
+		return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
 	} else {
 		log.Debugf("UnsubscribeRenewOrderComplete")
 	}
 
 	if timeout {
-		return nil, errors.Errorf("process order %d timeout.", orderId)
+		return fmt.Sprintf("failed to renew model[%s]: process order %d timeout.\n", dataId, orderId)
 	} else {
 		order, err := gs.chainSvc.GetOrder(ctx, orderId)
 		if err != nil {
-			return nil, err
+			return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
 		}
 		log.Debugf("order %d complete: dataId=%s", order.Id, order.Metadata.DataId)
+	}
 
-		return make(map[string]string), nil
+	return result
+}
+
+func (gs *GatewaySvc) RenewModels(ctx context.Context, delay int32, renewModels map[string]uint64) error {
+	errors := ""
+	for dataId, orderId := range renewModels {
+		result := gs.renewModel(ctx, delay, dataId, orderId)
+		if result != "" {
+			if errors == "" {
+				errors = errors + "\n" + result
+			} else {
+				errors = errors + result
+			}
+			continue
+		}
+	}
+
+	if errors == "" {
+		return nil
+	} else {
+		return xerrors.Errorf("%s", errors)
 	}
 }
 

@@ -336,7 +336,7 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 		return "", xerrors.Errorf("invalid params length")
 	}
 
-	var orderProposal types.ClientOrderProposal
+	var orderProposal types.OrderStoreProposal
 	err := json.Unmarshal([]byte(params[0]), &orderProposal)
 	if err != nil {
 		log.Error(err.Error())
@@ -390,7 +390,7 @@ func (rs *Libp2pRpcServer) update(params []string) (string, error) {
 		return "", xerrors.Errorf("invalid params length")
 	}
 
-	var orderProposal types.ClientOrderProposal
+	var orderProposal types.OrderStoreProposal
 	err := json.Unmarshal([]byte(params[0]), &orderProposal)
 	if err != nil {
 		log.Error(err.Error())

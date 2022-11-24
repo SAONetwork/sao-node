@@ -19,6 +19,7 @@ type StoreBackend interface {
 	Store(ctx context.Context, reader io.Reader) (any, error)
 	Remove(ctx context.Context, cid cid.Cid) error
 	Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error)
+	IsExist(ctx context.Context, cid cid.Cid) (bool, error)
 }
 
 type StoreManager struct {
@@ -91,10 +92,28 @@ func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, er
 	for _, back := range ss.backends {
 		reader, err := back.Get(ctx, cid)
 		if err != nil {
-			log.Errorf("%s remove cid=%v error: %v", back.Id(), cid, err)
+			log.Errorf("%s get cid=%v error: %v", back.Id(), cid, err)
 			continue
 		}
 		return reader, err
 	}
 	return nil, xerrors.Errorf("failed to get cid %v", cid)
+}
+
+func (ss *StoreManager) IsExist(ctx context.Context, cid cid.Cid) bool {
+	for _, back := range ss.backends {
+		isExist, err := back.IsExist(ctx, cid)
+		if err != nil {
+			log.Errorf("%s get cid=%v error: %v", back.Id(), cid, err)
+			continue
+		}
+
+		if !isExist {
+			log.Errorf("%s get cid=%v error: not found", back.Id(), cid)
+			continue
+		}
+		return true
+	}
+
+	return false
 }

@@ -12,6 +12,7 @@ import (
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
+	"strconv"
 	"strings"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
@@ -180,13 +181,10 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		clientProposal := types.ClientOrderProposal{
-			Proposal:        proposal,
-			ClientSignature: jws.Signatures[0],
+		clientProposal := types.OrderStoreProposal{
+			Proposal:     proposal,
+			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
-
-		b, _ := json.Marshal(clientProposal)
-		log.Debug("clientProposal: ", string(b))
 
 		var orderId uint64 = 0
 		if clientPublish {
@@ -194,9 +192,6 @@ var createCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("new cosmos chain: %w", err)
 			}
-
-			j, _ := json.Marshal(clientProposal.Proposal)
-			log.Info("chain.StoreOrder ", string(j))
 
 			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {
@@ -383,7 +378,7 @@ var renewCmd = &cli.Command{
 		if !cctx.IsSet("data-ids") {
 			return xerrors.Errorf("must provide --data-ids")
 		}
-		// dataIds := cctx.StringSlice("data-ids")
+		dataIds := cctx.StringSlice("data-ids")
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
 		owner := cctx.String("owner")
@@ -405,10 +400,11 @@ var renewCmd = &cli.Command{
 			return err
 		}
 
-		proposal := saotypes.Proposal{
+		proposal := saotypes.RenewProposal{
 			Owner:    didManager.Id,
 			Duration: int32(duration),
 			Timeout:  int32(delay),
+			Data:     dataIds,
 		}
 
 		proposalJsonBytes, err := proposal.Marshal()
@@ -419,22 +415,46 @@ var renewCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		clientProposal := types.ClientOrderProposal{
-			Proposal:        proposal,
-			ClientSignature: jws.Signatures[0],
+		clientProposal := types.OrderRenewProposal{
+			Proposal:     proposal,
+			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		orderId, _, err := chain.StoreOrder(ctx, owner, clientProposal)
+		_, results, err := chain.RenewOrder(ctx, owner, clientProposal)
 		if err != nil {
 			return err
 		}
 
-		resp, err := client.Renew(ctx, clientProposal, orderId)
+		var renewModels = make(map[string]uint64, len(results))
+		var renewedOrders = make(map[string]string, 0)
+		var failedOrders = make(map[string]string, 0)
+		for dataId, result := range results {
+			if strings.Contains(result, "New order=") {
+				orderId, err := strconv.ParseUint(strings.Split(result, "=")[1], 10, 64)
+				if err != nil {
+					failedOrders[dataId] = result + ", " + err.Error()
+				} else {
+					renewModels[dataId] = orderId
+				}
+			} else {
+				renewedOrders[dataId] = result
+			}
+		}
+
+		err = client.Renew(ctx, proposal.Timeout, renewModels)
+
+		for dataId, info := range renewedOrders {
+			fmt.Printf("successfully renewed model[%s]: %s.\n", dataId, info)
+		}
+
+		for dataId, err := range failedOrders {
+			fmt.Printf("failed to renew model[%s]: %s.\n", dataId, err)
+		}
+
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("resp: %s.\r\n", resp.Result)
 		return nil
 	},
 }
@@ -714,9 +734,9 @@ var updateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		clientProposal := types.ClientOrderProposal{
-			Proposal:        proposal,
-			ClientSignature: jws.Signatures[0],
+		clientProposal := types.OrderStoreProposal{
+			Proposal:     proposal,
+			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
 		var orderId uint64 = 0
@@ -763,8 +783,6 @@ var patchGenCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
-		log.Error("Pathc: ", patch)
 
 		content, err := utils.ApplyPatch([]byte(origin), []byte(patch))
 		if err != nil {

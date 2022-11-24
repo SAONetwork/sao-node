@@ -132,11 +132,11 @@ func (sc SaoClient) Test(ctx context.Context) (string, error) {
 	return resp, nil
 }
 
-func (sc SaoClient) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+func (sc SaoClient) Create(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	return sc.gatewayApi.Create(ctx, orderProposal, orderId, content)
 }
 
-func (sc SaoClient) CreateFile(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.CreateResp, error) {
+func (sc SaoClient) CreateFile(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
 	return sc.gatewayApi.CreateFile(ctx, orderProposal, orderId)
 }
 
@@ -152,12 +152,12 @@ func (sc SaoClient) ShowCommits(ctx context.Context, owner string, keyword strin
 	return sc.gatewayApi.ShowCommits(ctx, owner, keyword, group)
 }
 
-func (sc SaoClient) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+func (sc SaoClient) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	return sc.gatewayApi.Update(ctx, orderProposal, orderId, patch)
 }
 
-func (sc SaoClient) Renew(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.RenewResp, error) {
-	return sc.gatewayApi.Renew(ctx, orderProposal, orderId)
+func (sc SaoClient) Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error {
+	return sc.gatewayApi.Renew(ctx, timeout, renewModels)
 }
 
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {

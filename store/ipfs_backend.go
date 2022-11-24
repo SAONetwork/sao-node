@@ -3,6 +3,9 @@ package store
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
@@ -10,8 +13,6 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	"golang.org/x/xerrors"
-	"io"
-	"strings"
 )
 
 type IpfsBackend struct {
@@ -75,6 +76,15 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 	//hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
 	log.Debugf("%s store hash: %v", b.Id(), r.String())
 	return r.String(), err
+}
+
+func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
+	path := icorepath.New(cid.String())
+	r, err := b.api.Unixfs().Get(ctx, path)
+	if err != nil {
+		return false, err
+	}
+	return r != nil, nil
 }
 
 func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error) {

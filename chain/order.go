@@ -19,14 +19,16 @@ const (
 )
 
 type ShardTask struct {
-	Owner   string
-	OrderId uint64
-	Gateway string
-	Cid     cid.Cid
+	Owner          string
+	OrderId        uint64
+	Gateway        string
+	Cid            cid.Cid
+	OrderOperation string
+	ShardOperation string
 }
 
 type OrderCompleteResult struct {
-	DataId string
+	Result string
 }
 
 func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (string, error) {
@@ -46,15 +48,11 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	if txResp.TxResponse.Code != 0 {
 		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
-	dataResp := &saotypes.MsgReadyResponse{}
-	err = txResp.Decode(dataResp)
-	if err != nil {
-		return "", err
-	}
+
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal types.ClientOrderProposal) (uint64, string, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal types.OrderStoreProposal) (uint64, string, error) {
 	//if signer != owner && signer != provider {
 	//	return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	//}
@@ -68,8 +66,8 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 		Creator:  signer,
 		Proposal: clientProposal.Proposal,
 		JwsSignature: saotypes.JwsSignature{
-			Protected: clientProposal.ClientSignature.Protected,
-			Signature: clientProposal.ClientSignature.Signature,
+			Protected: clientProposal.JwsSignature.Protected,
+			Signature: clientProposal.JwsSignature.Signature,
 		},
 	}
 
@@ -81,12 +79,12 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	if txResp.TxResponse.Code != 0 {
 		return 0, "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
-	dataResp := &saotypes.MsgStoreResponse{}
-	err = txResp.Decode(dataResp)
+	var storeResp saotypes.MsgStoreResponse
+	err = txResp.Decode(&storeResp)
 	if err != nil {
 		return 0, "", err
 	}
-	return dataResp.OrderId, txResp.TxResponse.TxHash, nil
+	return storeResp.OrderId, txResp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error) {
@@ -111,23 +109,30 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, clientProposal types.ClientOrderProposal) (string, error) {
+func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", nil, xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &saotypes.MsgRenew{
-		Creator: creator,
+		Creator:      creator,
+		Proposal:     orderRenewProposal.Proposal,
+		JwsSignature: orderRenewProposal.JwsSignature,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgComplete tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", nil, xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	var renewResp saotypes.MsgRenewResponse
+	err = txResp.Decode(&renewResp)
+	if err != nil {
+		return "", nil, err
+	}
+	return txResp.TxResponse.TxHash, renewResp.Result, nil
 }
 
 func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error) {
@@ -186,6 +191,7 @@ func (cs *ChainSvc) SubscribeShardTask(ctx context.Context, nodeAddr string, sha
 			}
 			gateway := c.Events["new-shard.peer"][i]
 			shardCid := c.Events["new-shard.cid"][i]
+			operation := c.Events["new-shard.operation"][i]
 			cid, err := cid.Decode(shardCid)
 			if err != nil {
 				log.Error(err)
@@ -199,10 +205,12 @@ func (cs *ChainSvc) SubscribeShardTask(ctx context.Context, nodeAddr string, sha
 			}
 
 			shardTaskChan <- &ShardTask{
-				Owner:   order.Owner,
-				OrderId: orderId,
-				Gateway: gateway,
-				Cid:     cid,
+				Owner:          order.Owner,
+				OrderId:        orderId,
+				Gateway:        gateway,
+				Cid:            cid,
+				OrderOperation: fmt.Sprintf("%d", order.Operation),
+				ShardOperation: operation,
 			}
 		}
 	}()
