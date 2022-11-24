@@ -170,9 +170,9 @@ var createFileCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		clientProposal := types.ClientOrderProposal{
-			Proposal:        proposal,
-			ClientSignature: jws.Signatures[0],
+		clientProposal := types.OrderStoreProposal{
+			Proposal:     proposal,
+			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
 		var orderId uint64 = 0

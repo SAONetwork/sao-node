@@ -333,7 +333,7 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 	return jwt.Sign(&p, jwt.NewHS256(key))
 }
 
-func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
 	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner)
 	if err != nil {
@@ -347,7 +347,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderPropos
 	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
 		Signatures: []saotypes.JwsSignature{
-			orderProposal.ClientSignature,
+			saotypes.JwsSignature(orderProposal.JwsSignature),
 		},
 	})
 	if err != nil {
@@ -367,7 +367,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.ClientOrderPropos
 	}, nil
 }
 
-func (n *Node) CreateFile(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.CreateResp, error) {
+func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
 	cidStr := orderProposal.Proposal.Cid
 	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
@@ -436,7 +436,7 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 	}, nil
 }
 
-func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
 	did, err := did.Parse(orderProposal.Proposal.Owner)
 	if err != nil {
@@ -455,7 +455,7 @@ func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderPropos
 	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
 		Signatures: []saotypes.JwsSignature{
-			orderProposal.ClientSignature,
+			saotypes.JwsSignature(orderProposal.JwsSignature),
 		},
 	})
 	if err != nil {
@@ -474,34 +474,8 @@ func (n *Node) Update(ctx context.Context, orderProposal types.ClientOrderPropos
 	}, nil
 }
 
-func (n *Node) Renew(ctx context.Context, orderProposal types.ClientOrderProposal, orderId uint64) (apitypes.RenewResp, error) {
-	// verify signature
-	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner)
-	if err != nil {
-		return apitypes.RenewResp{}, err
-	}
-	proposalBytes, err := orderProposal.Proposal.Marshal()
-	if err != nil {
-		return apitypes.RenewResp{}, err
-	}
-
-	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
-		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saotypes.JwsSignature{
-			orderProposal.ClientSignature,
-		},
-	})
-	if err != nil {
-		return apitypes.RenewResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
-	}
-
-	result, err := n.manager.Renew(ctx, orderProposal, orderId)
-	if err != nil {
-		return apitypes.RenewResp{}, err
-	}
-	return apitypes.RenewResp{
-		Result: result,
-	}, nil
+func (n *Node) Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error {
+	return n.manager.Renew(ctx, timeout, renewModels)
 }
 
 func (n *Node) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {

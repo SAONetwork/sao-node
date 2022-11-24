@@ -77,31 +77,41 @@ func (ss *StoreSvc) Start(ctx context.Context) error {
 
 func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	log.Debugf("processing task: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
+	log.Debugf("processing task: order operation=%s shard operation=%s", task.OrderOperation, task.ShardOperation)
 
 	var shard []byte
 	var err error
 
-	// check if gateway is node itself
-	if task.Gateway == ss.nodeAddress {
-		shard, err = ss.getShardFromLocal(task.Owner, task.Cid)
+	// check if it's a renew order(Operation is 2)
+	if task.OrderOperation != "2" || task.ShardOperation != "2" {
+		// check if gateway is node itself
+		if task.Gateway == ss.nodeAddress {
+			shard, err = ss.getShardFromLocal(task.Owner, task.Cid)
+			if err != nil {
+				log.Warn("skip the known error: ", err.Error())
+				return err
+			}
+		} else {
+			shard, err = ss.getShardFromGateway(ctx, task.Owner, task.Gateway, task.OrderId, task.Cid)
+			if err != nil {
+				return err
+			}
+		}
+
+		// store to backends
+		_, err = ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
 		if err != nil {
-			log.Warn("skip the known error: ", err.Error())
 			return err
 		}
 	} else {
-		shard, err = ss.getShardFromGateway(ctx, task.Owner, task.Gateway, task.OrderId, task.Cid)
-		if err != nil {
-			return err
+		// make sure the data is still there
+		isExist := ss.storeManager.IsExist(ctx, task.Cid)
+		if !isExist {
+			return xerrors.Errorf("shard with cid %s not found", task.Cid)
 		}
 	}
 
-	// store to backends
-	_, err = ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
-	if err != nil {
-		return err
-	}
-
-	log.Infof("Complete order")
+	log.Info("Complete order")
 	txHash, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
 	if err != nil {
 		return err

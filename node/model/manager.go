@@ -181,7 +181,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 	return model, nil
 }
 
-func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, content []byte) (*types.Model, error) {
+func (mm *ModelManager) Create(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*types.Model, error) {
 	orderProposal := clientProposal.Proposal
 	if orderProposal.Alias == "" {
 		orderProposal.Alias = orderProposal.Cid
@@ -240,7 +240,7 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.ClientO
 	return model, nil
 }
 
-func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64, patch []byte) (*types.Model, error) {
+func (mm *ModelManager) Update(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
 	var keyword string
 	if clientProposal.Proposal.DataId == "" {
 		keyword = clientProposal.Proposal.Alias
@@ -336,14 +336,8 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.ClientO
 	return model, nil
 }
 
-func (mm *ModelManager) Renew(ctx context.Context, clientProposal types.ClientOrderProposal, orderId uint64) (map[string]string, error) {
-	// Commit
-	result, err := mm.GatewaySvc.RenewModels(ctx, clientProposal, orderId)
-	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
-	}
-
-	return result, nil
+func (mm *ModelManager) Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error {
+	return mm.GatewaySvc.RenewModels(ctx, timeout, renewModels)
 }
 
 func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
