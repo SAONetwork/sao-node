@@ -474,10 +474,6 @@ func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposa
 	}, nil
 }
 
-func (n *Node) Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error {
-	return n.manager.Renew(ctx, timeout, renewModels)
-}
-
 func (n *Node) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {
 	model, err := n.manager.ShowCommits(ctx, owner, key, group)
 	if err != nil {

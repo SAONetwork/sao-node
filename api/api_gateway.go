@@ -18,7 +18,6 @@ type GatewayApi interface {
 	Delete(ctx context.Context, onwer string, keyword string, group string) (apitypes.DeleteResp, error)                             //perm:write
 	ShowCommits(ctx context.Context, onwer string, keyword string, group string) (apitypes.ShowCommitsResp, error)                   //perm:read
 	Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error)   //perm:write
-	Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error                                                   //perm:write
 	GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error)                                                               //perm:read
 	GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error)                                             //perm:read
 	GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error)                                                      //perm:read
