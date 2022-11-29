@@ -15,13 +15,11 @@ import (
 	"sort"
 
 	saodid "github.com/SaoNetwork/sao-did"
-	saokey "github.com/SaoNetwork/sao-did/key"
 	saotypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/mitchellh/go-homedir"
-	did "github.com/ockam-network/did"
 
 	"fmt"
 	apitypes "sao-storage-node/api/types"
@@ -394,6 +392,26 @@ func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStorePro
 			return apitypes.CreateResp{}, err
 		}
 
+		// verify signature
+		didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, "cosmos", n.cfg.Chain.Remote)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+		proposalBytes, err := orderProposal.Proposal.Marshal()
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
+			Payload: base64url.Encode(proposalBytes),
+			Signatures: []saotypes.JwsSignature{
+				saotypes.JwsSignature(orderProposal.JwsSignature),
+			},
+		})
+		if err != nil {
+			return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
+		}
+
 		model, err := n.manager.Create(ctx, orderProposal, orderId, content)
 		if err != nil {
 			return apitypes.CreateResp{}, err
@@ -438,15 +456,7 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 
 func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
-	did, err := did.Parse(orderProposal.Proposal.Owner)
-	if err != nil {
-		return apitypes.UpdateResp{}, err
-	}
-	var resolver saotypes.DidResolver
-	if did.Method == "key" {
-		resolver = saokey.NewKeyResolver()
-	}
-	didManager := saodid.NewDidManager(nil, resolver)
+	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, "cosmos", n.cfg.Chain.Remote)
 	proposalBytes, err := orderProposal.Proposal.Marshal()
 	if err != nil {
 		return apitypes.UpdateResp{}, err
