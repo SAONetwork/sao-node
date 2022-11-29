@@ -336,10 +336,6 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.OrderSt
 	return model, nil
 }
 
-func (mm *ModelManager) Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error {
-	return mm.GatewaySvc.RenewModels(ctx, timeout, renewModels)
-}
-
 func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group, 0)
 	if err != nil {
