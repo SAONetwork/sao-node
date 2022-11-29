@@ -335,7 +335,7 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 
 func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
-	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner)
+	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, "cosmos", n.cfg.Chain.Remote)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
