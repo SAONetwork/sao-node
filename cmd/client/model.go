@@ -14,6 +14,7 @@ import (
 	"sao-storage-node/utils"
 	"strconv"
 	"strings"
+	"time"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/fatih/color"
@@ -34,6 +35,7 @@ var modelCmd = &cli.Command{
 		deleteCmd,
 		commitsCmd,
 		renewCmd,
+		statusCmd,
 	},
 }
 
@@ -441,8 +443,6 @@ var renewCmd = &cli.Command{
 			}
 		}
 
-		err = client.Renew(ctx, proposal.Timeout, renewModels)
-
 		for dataId, info := range renewedOrders {
 			fmt.Printf("successfully renewed model[%s]: %s.\n", dataId, info)
 		}
@@ -451,9 +451,76 @@ var renewCmd = &cli.Command{
 			fmt.Printf("failed to renew model[%s]: %s.\n", dataId, err)
 		}
 
-		if err != nil {
-			return err
+		return nil
+	},
+}
+
+var statusCmd = &cli.Command{
+	Name:  "status",
+	Usage: "check models' status",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:     "data-ids",
+			Usage:    "data model's dataId list",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		gateway := cctx.String("gateway")
+
+		if !cctx.IsSet("data-ids") {
+			return xerrors.Errorf("must provide --data-ids")
 		}
+		dataIds := cctx.StringSlice("data-ids")
+
+		client := saoclient.NewSaoClient(ctx, gateway)
+
+		chainAddress := cctx.String("chain-address")
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		states := ""
+		for _, dataId := range dataIds {
+			res, err := chain.QueryMeta(ctx, dataId, 0)
+			if err != nil {
+				if len(states) > 0 {
+					states = fmt.Sprintf("%s\n[%s]: %s", states, dataId, err.Error())
+				} else {
+					states = fmt.Sprintf("[%s]: %s", dataId, err.Error())
+				}
+			} else {
+				duration := res.Metadata.Duration
+				used := uint64(time.Now().Second()) - res.Metadata.CreatedAt
+				if len(states) > 0 {
+					states = states + "\n"
+				}
+				consoleOK := color.New(color.FgGreen, color.Bold)
+				consoleWarn := color.New(color.FgHiRed, color.Bold)
+
+				var leftDays uint64
+				if duration >= used {
+					leftDays = duration - used
+
+				} else {
+					leftDays = used - duration
+				}
+				if leftDays > 5 {
+					states = fmt.Sprintf("%s[%s]: expired in %s days", states, dataId, consoleOK.Sprintf("%d", leftDays/(60*60*24*365)))
+				} else {
+					states = fmt.Sprintf("%s[%s]: expired %s days ago", states, dataId, consoleWarn.Sprintf("%d", leftDays/(60*60*24*365)))
+				}
+			}
+		}
+
+		fmt.Println(states)
 
 		return nil
 	},

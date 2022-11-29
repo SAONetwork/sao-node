@@ -47,7 +47,6 @@ type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error)
 	CommitModel(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
-	RenewModels(ctx context.Context, delay int32, renewModels map[string]uint64) error
 	Stop(ctx context.Context) error
 }
 
@@ -282,76 +281,6 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Orde
 			Shards:  meta.Shards,
 			Cid:     orderProposal.Cid,
 		}, nil
-	}
-}
-
-func (gs *GatewaySvc) renewModel(ctx context.Context, delay int32, dataId string, orderId uint64) string {
-	doneChan := make(chan chain.OrderCompleteResult)
-
-	log.Debugf("Sending OrderReady(renew)... orderId=%d,dataId=%s", orderId, dataId)
-	txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
-	if err != nil {
-		return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
-	}
-	log.Infof("OrderReady(renew) tx succeed. orderId=%d tx=%s dataId=%s", orderId, txId, dataId)
-
-	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
-	if err != nil {
-		return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
-	}
-
-	log.Debug("SubscribeRenewOrderComplete")
-
-	timeout := false
-	result := ""
-	select {
-	case r := <-doneChan:
-		result = r.Result
-	case <-time.After(chain.Blocktime * time.Duration(delay)):
-		timeout = true
-	case <-ctx.Done():
-		timeout = true
-	}
-	close(doneChan)
-
-	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
-	if err != nil {
-		return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
-	} else {
-		log.Debugf("UnsubscribeRenewOrderComplete")
-	}
-
-	if timeout {
-		return fmt.Sprintf("failed to renew model[%s]: process order %d timeout.\n", dataId, orderId)
-	} else {
-		order, err := gs.chainSvc.GetOrder(ctx, orderId)
-		if err != nil {
-			return fmt.Sprintf("failed to renew model[%s]: %s.\n", dataId, err.Error())
-		}
-		log.Debugf("order %d complete: dataId=%s", order.Id, order.Metadata.DataId)
-	}
-
-	return result
-}
-
-func (gs *GatewaySvc) RenewModels(ctx context.Context, delay int32, renewModels map[string]uint64) error {
-	errors := ""
-	for dataId, orderId := range renewModels {
-		result := gs.renewModel(ctx, delay, dataId, orderId)
-		if result != "" {
-			if errors == "" {
-				errors = errors + "\n" + result
-			} else {
-				errors = errors + result
-			}
-			continue
-		}
-	}
-
-	if errors == "" {
-		return nil
-	} else {
-		return xerrors.Errorf("%s", errors)
 	}
 }
 

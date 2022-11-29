@@ -120,7 +120,7 @@ func defaultSaoClientConfig() *SaoClientConfig {
 		Seed:         hex.EncodeToString(randstr.Bytes(32)),
 		ChainAddress: "http://localhost:26657",
 		Gateway:      "http://127.0.0.1:8888/rpc/v0",
-		Token:        "",
+		Token:        "DEFAULT_TOKEN",
 	}
 }
 
@@ -154,10 +154,6 @@ func (sc SaoClient) ShowCommits(ctx context.Context, owner string, keyword strin
 
 func (sc SaoClient) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	return sc.gatewayApi.Update(ctx, orderProposal, orderId, patch)
-}
-
-func (sc SaoClient) Renew(ctx context.Context, timeout int32, renewModels map[string]uint64) error {
-	return sc.gatewayApi.Renew(ctx, timeout, renewModels)
 }
 
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
