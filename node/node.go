@@ -337,10 +337,22 @@ func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposa
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
-	proposalBytes, err := orderProposal.Proposal.Marshal()
+	log.Info("Create 1m orderProposal:", orderProposal)
+
+	proposalBytes, err := json.Marshal(orderProposal.Proposal)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
+	log.Info("orderProposal.JwsSignature: ", orderProposal.JwsSignature)
+
+	b, e := base64url.Decode(orderProposal.JwsSignature.Protected)
+	if e != nil {
+		log.Info(e.Error())
+	}
+	log.Info("Create 2, Protected: ", orderProposal.JwsSignature.Protected)
+
+	log.Info("Create 2, payload: ", string(b))
+	log.Info("Create 2, payload length: ", len(b))
 
 	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
@@ -348,15 +360,18 @@ func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposa
 			saotypes.JwsSignature(orderProposal.JwsSignature),
 		},
 	})
+	log.Info("Create 3")
 	if err != nil {
 		return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
 	}
+	log.Info("Create 4")
 
 	// model process
 	model, err := n.manager.Create(ctx, orderProposal, orderId, content)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
+	log.Info("Create 5")
 
 	return apitypes.CreateResp{
 		Alias:  model.Alias,
