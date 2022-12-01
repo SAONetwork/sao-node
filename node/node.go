@@ -356,6 +356,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposa
 
 	log.Info("proposalBytes: ", string(proposalBytes))
 	log.Info("Protected: ", string(orderProposal.JwsSignature.Protected))
+	log.Info("Signature: ", string(orderProposal.JwsSignature.Signature))
 
 	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: string(proposalBytes),
