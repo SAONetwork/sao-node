@@ -16,6 +16,7 @@ import (
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saotypes "github.com/SaoNetwork/sao-did/types"
+	didtypes "github.com/SaoNetwork/sao/x/did/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
@@ -56,6 +57,7 @@ type Node struct {
 	stopFuncs []StopFunc
 	// used by store module
 	storeSvc  *storage.StoreSvc
+	chainSvc  *chain.ChainSvc
 	manager   *model.ModelManager
 	tds       datastore.Read
 	hfs       *gateway.HttpFileServer
@@ -133,6 +135,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		stopFuncs: stopFuncs,
 		host:      host,
 		tds:       tds,
+		chainSvc:  chainSvc,
 	}
 
 	for _, address := range cfg.Transport.TransportListenAddress {
@@ -331,9 +334,15 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 	return jwt.Sign(&p, jwt.NewHS256(key))
 }
 
+func GetSidDocFunc(ctx context.Context, chainSvc *chain.ChainSvc) func(versionId string) (*didtypes.SidDocument, error) {
+	return func(versionId string) (*didtypes.SidDocument, error) {
+		return chainSvc.GetSidDocument(ctx, versionId)
+	}
+}
+
 func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
-	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, "cosmos", n.cfg.Chain.Remote)
+	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, GetSidDocFunc(ctx, n.chainSvc))
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
@@ -409,7 +418,7 @@ func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStorePro
 		}
 
 		// verify signature
-		didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, "cosmos", n.cfg.Chain.Remote)
+		didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, GetSidDocFunc(ctx, n.chainSvc))
 		if err != nil {
 			return apitypes.CreateResp{}, err
 		}
@@ -484,7 +493,7 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 
 func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
-	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, "cosmos", n.cfg.Chain.Remote)
+	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, GetSidDocFunc(ctx, n.chainSvc))
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
