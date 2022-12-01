@@ -83,7 +83,17 @@ func (r *Repo) Init(chainAddress string) error {
 	if err := r.initConfig(chainAddress); err != nil {
 		return xerrors.Errorf("init config: %w", err)
 	}
-	return r.initKeystore()
+	err = r.initKeystore()
+	if err != nil {
+		return err
+	}
+
+	_, err = r.GeneratePeerId()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (r *Repo) GeneratePeerId() (crypto.PrivKey, error) {
