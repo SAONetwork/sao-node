@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 
+	didtypes "github.com/SaoNetwork/sao/x/did/types"
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
@@ -19,6 +20,7 @@ type ChainSvc struct {
 	orderClient ordertypes.QueryClient
 	nodeClient  nodetypes.QueryClient
 	modelClient modeltypes.QueryClient
+	didClient   didtypes.QueryClient
 	listener    *http.HTTP
 }
 
@@ -36,6 +38,7 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 	orderClient := ordertypes.NewQueryClient(cosmos.Context())
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	modelClient := modeltypes.NewQueryClient(cosmos.Context())
+	didClient := didtypes.NewQueryClient(cosmos.Context())
 
 	log.Info("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
@@ -51,6 +54,7 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 		orderClient: orderClient,
 		nodeClient:  nodeClient,
 		modelClient: modelClient,
+		didClient:   didClient,
 		listener:    http,
 	}, nil
 }
