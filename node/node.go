@@ -368,7 +368,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposa
 	log.Info("Signature: ", string(orderProposal.JwsSignature.Signature))
 
 	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
-		Payload: string(proposalBytes),
+		Payload: base64url.Encode(proposalBytes),
 		Signatures: []saotypes.JwsSignature{
 			saotypes.JwsSignature(orderProposal.JwsSignature),
 		},
@@ -440,7 +440,7 @@ func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStorePro
 		}
 
 		_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
-			Payload: string(proposalBytes),
+			Payload: base64url.Encode(proposalBytes),
 			Signatures: []saotypes.JwsSignature{
 				saotypes.JwsSignature(orderProposal.JwsSignature),
 			},
