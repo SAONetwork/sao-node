@@ -171,21 +171,36 @@ var createCmd = &cli.Command{
 			CommitId: dataId,
 			Rule:     cctx.String("rule"),
 			// OrderId:    0,
-			Operation:  0,
+			Operation:  1,
 			ExtendInfo: extendInfo,
 		}
 
-		proposalJsonBytes, err := proposal.Marshal()
+		proposalJsonBytesOrg, err := json.Marshal(proposal)
 		if err != nil {
 			return err
 		}
+
+		var obj interface{}
+		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
+		if err != nil {
+			return err
+		}
+
+		proposalJsonBytes, err := json.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
 		jws, err := didManager.CreateJWS(proposalJsonBytes)
 		if err != nil {
 			return err
 		}
 		clientProposal := types.OrderStoreProposal{
-			Proposal:     proposal,
-			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
+			Proposal: proposal,
+			JwsSignature: saotypes.JwsSignature{
+				Protected: jws.Signatures[0].Protected,
+				Signature: jws.Signatures[0].Signature,
+			},
 		}
 
 		var orderId uint64 = 0
