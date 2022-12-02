@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+
 	"github.com/SaoNetwork/sao/x/did/types"
 )
 
@@ -10,8 +11,7 @@ func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*types
 	if err != nil {
 		return nil, err
 	}
-	emptyDoc := types.SidDocument{}
-	if resp.SidDocument == emptyDoc {
+	if resp.SidDocument.VersionId == "" {
 		return nil, nil
 	}
 	return &resp.SidDocument, nil

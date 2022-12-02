@@ -514,6 +514,10 @@ func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposa
 		return apitypes.UpdateResp{}, err
 	}
 
+	log.Info("proposalBytes", string(proposalBytes))
+	log.Info("Protected", orderProposal.JwsSignature.Protected)
+	log.Info("Signature", orderProposal.JwsSignature.Signature)
+
 	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
 		Signatures: []saotypes.JwsSignature{
