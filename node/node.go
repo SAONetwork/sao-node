@@ -374,7 +374,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposa
 		},
 	})
 	if err != nil {
-		// return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
+		return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
 	}
 
 	// model process
