@@ -80,6 +80,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 		}
 	}
 
+	log.Info("KeyWord:", req.KeyWord)
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
@@ -288,12 +289,13 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.OrderSt
 		orgModel.Content = result.Content
 	}
 
+	log.Debug("orgModel: ", string(orgModel.Content))
+	log.Debug("patch: ", string(patch))
 	newContent, err := utils.ApplyPatch(orgModel.Content, []byte(patch))
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 	log.Debug("newContent: ", string(newContent))
-	log.Debug("orgModel: ", string(orgModel.Content))
 
 	newContentCid, err := utils.CalculateCid(newContent)
 	if err != nil {
