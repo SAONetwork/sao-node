@@ -29,7 +29,7 @@ var listCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		err := chain.List(ctx, cliutil.GetChainId(cctx))
+		err := chain.List(ctx, cliutil.GetChainId())
 		if err != nil {
 			return err
 		}
@@ -60,7 +60,7 @@ var createCmd = &cli.Command{
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
-		err := chain.Create(ctx, cliutil.GetChainId(cctx), name)
+		err := chain.Create(ctx, cliutil.GetChainId(), name)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ var exportCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Export(ctx, cliutil.GetChainId(cctx), name, string(passphrase))
+		err = chain.Export(ctx, cliutil.GetChainId(), name, string(passphrase))
 		if err != nil {
 			return err
 		}
@@ -151,7 +151,7 @@ var importCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Import(ctx, cliutil.GetChainId(cctx), name, secret, string(passphrase))
+		err = chain.Import(ctx, cliutil.GetChainId(), name, secret, string(passphrase))
 		if err != nil {
 			return err
 		}

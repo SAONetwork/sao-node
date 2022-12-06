@@ -119,7 +119,7 @@ var createFileCmd = &cli.Command{
 
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}

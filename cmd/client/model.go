@@ -131,7 +131,7 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("failed to create client")
 		}
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
@@ -402,7 +402,7 @@ var renewCmd = &cli.Command{
 
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
@@ -492,7 +492,7 @@ var statusCmd = &cli.Command{
 
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
@@ -744,7 +744,7 @@ var updateCmd = &cli.Command{
 		gateway := cctx.String("gateway")
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
