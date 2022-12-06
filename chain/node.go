@@ -90,20 +90,15 @@ func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, e
 	return resp.Node.Status, nil
 }
 
-func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string) {
+func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
 	go func() {
-		ticker := time.NewTicker(9999 * time.Minute)
+		ticker := time.NewTicker(15 * time.Minute)
 		defer ticker.Stop()
 
 		for {
 			select {
 			case <-ticker.C:
-				status, err := c.GetNodeStatus(ctx, creator)
-				if err != nil {
-					log.Error(err.Error())
-				}
-
-				_, err = c.Reset(ctx, creator, "", status)
+				_, err := c.Reset(ctx, creator, "", status)
 				if err != nil {
 					log.Error(err.Error())
 				}

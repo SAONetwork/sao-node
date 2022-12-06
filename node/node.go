@@ -267,7 +267,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		return nil, err
 	}
 
-	chainSvc.StartStatusReporter(ctx, sn.address)
+	chainSvc.StartStatusReporter(ctx, sn.address, status)
 
 	return &sn, nil
 }
