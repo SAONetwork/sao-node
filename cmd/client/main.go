@@ -61,11 +61,11 @@ func main() {
 		Version:              build.UserVersion(),
 		Before:               before,
 		Flags: []cli.Flag{
-			cliutil.ChainAddress,
+			cliutil.FlagChainAddress,
 			gateway,
 			platform,
 			secret,
-			cliutil.NetType,
+			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{

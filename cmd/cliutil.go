@@ -20,17 +20,20 @@ const (
 	mainNetChainId = "sao"
 )
 
-var ChainAddress = &cli.StringFlag{
-	Name:     "chain-address",
-	EnvVars:  []string{"SAO_CHAIN_API"},
-	Value:    "http://localhost:26657",
-	Required: false,
+var ChainAddress string
+var FlagChainAddress = &cli.StringFlag{
+	Name:        "chain-address",
+	EnvVars:     []string{"SAO_CHAIN_API"},
+	Value:       "http://localhost:26657",
+	Destination: &ChainAddress,
 }
 
-var NetType = &cli.StringFlag{
-	Name:  "net",
-	Usage: "sao network type: [devnet/testnet/mainnet]",
-	Value: "testnet",
+var NetType string
+var FlagNetType = &cli.StringFlag{
+	Name:        "net",
+	Usage:       "sao network type: [devnet/testnet/mainnet]",
+	Value:       "testnet",
+	Destination: &NetType,
 }
 
 // IsVeryVerbose is a global var signalling if the CLI is running in very
@@ -86,8 +89,8 @@ func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*s
 	return &didManager, nil
 }
 
-func GetChainId(cctx *cli.Context) string {
-	switch cctx.String("net") {
+func GetChainId() string {
+	switch NetType {
 	case "devnet":
 		return devNetChainId
 	case "testnet":

@@ -76,14 +76,14 @@ func before(_ *cli.Context) error {
 
 func main() {
 	app := &cli.App{
-		Name:                 "snode",
+		Name:                 "saonode",
 		EnableBashCompletion: true,
 		Version:              build.UserVersion(),
 		Before:               before,
 		Flags: []cli.Flag{
 			FlagRepo,
-			cliutil.ChainAddress,
-			cliutil.NetType,
+			cliutil.FlagChainAddress,
+			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
@@ -121,7 +121,7 @@ var initCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
@@ -191,7 +191,7 @@ var joinCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		creator := cctx.String("creator")
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
@@ -267,7 +267,7 @@ var resetCmd = &cli.Command{
 			return xerrors.Errorf("invalid config for repo, got: %T", c)
 		}
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = cfg.Chain.Remote
 		}
@@ -319,7 +319,7 @@ var quitCmd = &cli.Command{
 			return err
 		}
 
-		chainAddress := cctx.String("chain-address")
+		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			c, err := r.Config()
 			if err != nil {
