@@ -18,6 +18,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
+	"github.com/multiformats/go-multiaddr"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	"golang.org/x/xerrors"
@@ -143,9 +144,23 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 			}
 		} else {
 			// remote shard
-			shardContent, err = gs.shardStreamHandler.Fetch(shard.Peer, shardCid)
-			if err != nil {
-				return nil, err
+			for _, peerInfo := range strings.Split(shard.Peer, ",") {
+
+				_, err := multiaddr.NewMultiaddr(peerInfo)
+
+				if err != nil {
+					return nil, err
+				}
+
+				if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
+					continue
+				}
+
+				shardContent, err = gs.shardStreamHandler.Fetch(peerInfo, shardCid)
+				if err != nil {
+					return nil, err
+				}
+				break
 			}
 		}
 		contentList[shard.ShardId] = shardContent
