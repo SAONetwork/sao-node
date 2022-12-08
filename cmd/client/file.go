@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
 	"strings"
+	"time"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/fatih/color"
@@ -150,7 +150,7 @@ var createFileCmd = &cli.Command{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   int32(duration),
+			Duration:   int32(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			Alias:      fileName,
@@ -175,20 +175,30 @@ var createFileCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
 		var orderId uint64 = 0
 		if clientPublish {
-			chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-			if err != nil {
-				return xerrors.Errorf("new cosmos chain: %w", err)
-			}
-
 			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
 			if err != nil {
 				return err
 			}
 		}
 
-		resp, err := client.CreateFile(ctx, clientProposal, orderId)
+		queryProposal := saotypes.QueryProposal{
+			Owner:   didManager.Id,
+			Keyword: dataId,
+		}
+
+		request, err := buildQueryRequest(ctx, didManager, queryProposal, chain, gatewayAddress)
+		if err != nil {
+			return err
+		}
+
+		resp, err := client.CreateFile(ctx, request, clientProposal, orderId)
 		if err != nil {
 			return err
 		}
@@ -303,16 +313,40 @@ var downloadCmd = &cli.Command{
 			return err
 		}
 
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		gatewayAddress, err := client.NodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
 		for _, keyword := range keywords {
-			req := apitypes.LoadReq{
-				KeyWord:   keyword,
-				PublicKey: didManager.Id,
-				GroupId:   groupId,
-				CommitId:  commitId,
-				Version:   version,
+			proposal := saotypes.QueryProposal{
+				Owner:    didManager.Id,
+				Keyword:  keyword,
+				GroupId:  groupId,
+				CommitId: commitId,
+				Version:  version,
 			}
 
-			resp, err := client.Load(ctx, req)
+			if !utils.IsDataId(keyword) {
+				proposal.Type_ = 2
+			}
+
+			request, err := buildQueryRequest(ctx, didManager, proposal, chain, gatewayAddress)
+			if err != nil {
+				return err
+			}
+
+			resp, err := client.Load(ctx, request)
 			if err != nil {
 				return err
 			}

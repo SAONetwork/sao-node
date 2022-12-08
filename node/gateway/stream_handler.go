@@ -80,7 +80,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	}
 }
 
-func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) ([]byte, error) {
+func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, shardCid cid.Cid) ([]byte, error) {
 	a, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
 		return nil, err
@@ -104,13 +104,14 @@ func (ssh *ShardStreamHandler) Fetch(addr string, shardCid cid.Cid) ([]byte, err
 	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
 	defer stream.SetReadDeadline(time.Time{}) // nolint
 
-	req := types.ShardReq{
-		Cid: shardCid,
+	request := types.ShardReq{
+		Cid:      shardCid,
+		Proposal: req,
 	}
-	log.Infof("send ShardReq with cid:%v, to the storage node %s", req.Cid, addr)
+	log.Infof("send ShardReq with cid:%v, to the storage node %s", request.Cid, addr)
 
 	var resp types.ShardResp
-	if err = transport.DoRequest(ssh.ctx, stream, &req, &resp, "json"); err != nil {
+	if err = transport.DoRequest(ssh.ctx, stream, &request, &resp, "json"); err != nil {
 		return nil, err
 	}
 

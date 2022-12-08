@@ -2,32 +2,33 @@ package chain
 
 import (
 	"context"
+	"sao-storage-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"golang.org/x/xerrors"
 )
 
-func (c *ChainSvc) QueryMeta(ctx context.Context, dataId string, height int64) (*modeltypes.QueryGetMetadataResponse, error) {
+func (c *ChainSvc) Que3ryMeta(ctx context.Context, dataId string, height int64) (*modeltypes.QueryGetMetadataResponse, error) {
+	return nil, xerrors.Errorf("Invalid query...")
+}
+
+func (c *ChainSvc) QueryDataId(ctx context.Context, key string) (string, error) {
+	return "", xerrors.Errorf("Invalid query...")
+}
+
+func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error) {
 	clientctx := c.cosmos.Context()
 	if height > 0 {
 		clientctx = clientctx.WithHeight(height)
 	}
-	modelClient := modeltypes.NewQueryClient(clientctx)
-	queryResp, err := modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
-		DataId: dataId,
+	saoClient := saotypes.NewQueryClient(clientctx)
+	resp, err := saoClient.Metadata(ctx, &saotypes.QueryMetadataRequest{
+		Proposal:     req.Proposal,
+		JwsSignature: req.JwsSignature,
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("QueryMeta failed, " + err.Error())
+		return nil, xerrors.Errorf("QueryMetadata failed, " + err.Error())
 	}
-	return queryResp, nil
-}
-
-func (c *ChainSvc) QueryDataId(ctx context.Context, key string) (string, error) {
-	queryResp, err := c.modelClient.Model(ctx, &modeltypes.QueryGetModelRequest{
-		Key: key,
-	})
-	if err != nil {
-		return "", xerrors.Errorf("QueryDataId failed, " + err.Error())
-	}
-	return queryResp.Model.Data, nil
+	return resp, nil
 }

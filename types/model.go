@@ -1,6 +1,6 @@
 package types
 
-import "github.com/SaoNetwork/sao/x/model/types"
+import "github.com/SaoNetwork/sao/x/sao/types"
 
 type Model struct {
 	DataId     string

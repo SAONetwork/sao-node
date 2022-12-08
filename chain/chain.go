@@ -4,7 +4,6 @@ import (
 	"context"
 
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
-	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
@@ -19,7 +18,6 @@ type ChainSvc struct {
 	cosmos      cosmosclient.Client
 	orderClient ordertypes.QueryClient
 	nodeClient  nodetypes.QueryClient
-	modelClient modeltypes.QueryClient
 	didClient   didtypes.QueryClient
 	listener    *http.HTTP
 }
@@ -37,7 +35,6 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 
 	orderClient := ordertypes.NewQueryClient(cosmos.Context())
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
-	modelClient := modeltypes.NewQueryClient(cosmos.Context())
 	didClient := didtypes.NewQueryClient(cosmos.Context())
 
 	log.Info("initialize chain listener")
@@ -53,7 +50,6 @@ func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string,
 		cosmos:      cosmos,
 		orderClient: orderClient,
 		nodeClient:  nodeClient,
-		modelClient: modelClient,
 		didClient:   didClient,
 		listener:    http,
 	}, nil
@@ -68,4 +64,8 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (c *ChainSvc) GetLastHeight(ctx context.Context) (int64, error) {
+	return c.cosmos.LatestBlockHeight(ctx)
 }

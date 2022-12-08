@@ -51,6 +51,11 @@ type OrderMeta struct {
 	Version   string
 }
 
+type MetadataProposal struct {
+	Proposal     saotypes.QueryProposal
+	JwsSignature saotypes.JwsSignature
+}
+
 type OrderStoreProposal struct {
 	Proposal     saotypes.Proposal
 	JwsSignature saotypes.JwsSignature

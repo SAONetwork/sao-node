@@ -19,11 +19,11 @@ type GatewayApiStruct struct {
 
 		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"none"`
 
-		Create func(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64, p3 []byte) (apitypes.CreateResp, error) `perm:"write"`
+		Create func(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) `perm:"write"`
 
-		CreateFile func(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64) (apitypes.CreateResp, error) `perm:"write"`
+		CreateFile func(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) `perm:"write"`
 
-		Delete func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) `perm:"write"`
+		Delete func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) `perm:"write"`
 
 		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) `perm:"read"`
 
@@ -33,17 +33,17 @@ type GatewayApiStruct struct {
 
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) `perm:"read"`
 
-		Load func(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) `perm:"read"`
+		Load func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) `perm:"read"`
 
 		NetPeers func(p0 context.Context) ([]types.PeerInfo, error) `perm:"read"`
 
 		NodeAddress func(p0 context.Context) (string, error) `perm:"read"`
 
-		ShowCommits func(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) `perm:"read"`
+		ShowCommits func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.ShowCommitsResp, error) `perm:"read"`
 
 		Test func(p0 context.Context, p1 string) (string, error) `perm:"none"`
 
-		Update func(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64, p3 []byte) (apitypes.UpdateResp, error) `perm:"write"`
+		Update func(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) `perm:"write"`
 	}
 }
 
@@ -72,36 +72,36 @@ func (s *GatewayApiStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permi
 	return *new([]auth.Permission), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Create(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64, p3 []byte) (apitypes.CreateResp, error) {
+func (s *GatewayApiStruct) Create(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {
 	if s.Internal.Create == nil {
 		return *new(apitypes.CreateResp), ErrNotSupported
 	}
-	return s.Internal.Create(p0, p1, p2, p3)
+	return s.Internal.Create(p0, p1, p2, p3, p4)
 }
 
-func (s *GatewayApiStub) Create(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64, p3 []byte) (apitypes.CreateResp, error) {
+func (s *GatewayApiStub) Create(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) CreateFile(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64) (apitypes.CreateResp, error) {
+func (s *GatewayApiStruct) CreateFile(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) {
 	if s.Internal.CreateFile == nil {
 		return *new(apitypes.CreateResp), ErrNotSupported
 	}
-	return s.Internal.CreateFile(p0, p1, p2)
+	return s.Internal.CreateFile(p0, p1, p2, p3)
 }
 
-func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64) (apitypes.CreateResp, error) {
+func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Delete(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) {
+func (s *GatewayApiStruct) Delete(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) {
 	if s.Internal.Delete == nil {
 		return *new(apitypes.DeleteResp), ErrNotSupported
 	}
-	return s.Internal.Delete(p0, p1, p2, p3)
+	return s.Internal.Delete(p0, p1)
 }
 
-func (s *GatewayApiStub) Delete(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.DeleteResp, error) {
+func (s *GatewayApiStub) Delete(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) {
 	return *new(apitypes.DeleteResp), ErrNotSupported
 }
 
@@ -149,14 +149,14 @@ func (s *GatewayApiStub) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoRe
 	return *new(apitypes.GetPeerInfoResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Load(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) {
+func (s *GatewayApiStruct) Load(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) {
 	if s.Internal.Load == nil {
 		return *new(apitypes.LoadResp), ErrNotSupported
 	}
 	return s.Internal.Load(p0, p1)
 }
 
-func (s *GatewayApiStub) Load(p0 context.Context, p1 apitypes.LoadReq) (apitypes.LoadResp, error) {
+func (s *GatewayApiStub) Load(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) {
 	return *new(apitypes.LoadResp), ErrNotSupported
 }
 
@@ -182,14 +182,14 @@ func (s *GatewayApiStub) NodeAddress(p0 context.Context) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (s *GatewayApiStruct) ShowCommits(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) {
+func (s *GatewayApiStruct) ShowCommits(p0 context.Context, p1 *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
 	if s.Internal.ShowCommits == nil {
 		return *new(apitypes.ShowCommitsResp), ErrNotSupported
 	}
-	return s.Internal.ShowCommits(p0, p1, p2, p3)
+	return s.Internal.ShowCommits(p0, p1)
 }
 
-func (s *GatewayApiStub) ShowCommits(p0 context.Context, p1 string, p2 string, p3 string) (apitypes.ShowCommitsResp, error) {
+func (s *GatewayApiStub) ShowCommits(p0 context.Context, p1 *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
 	return *new(apitypes.ShowCommitsResp), ErrNotSupported
 }
 
@@ -204,14 +204,14 @@ func (s *GatewayApiStub) Test(p0 context.Context, p1 string) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Update(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64, p3 []byte) (apitypes.UpdateResp, error) {
+func (s *GatewayApiStruct) Update(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
 	if s.Internal.Update == nil {
 		return *new(apitypes.UpdateResp), ErrNotSupported
 	}
-	return s.Internal.Update(p0, p1, p2, p3)
+	return s.Internal.Update(p0, p1, p2, p3, p4)
 }
 
-func (s *GatewayApiStub) Update(p0 context.Context, p1 types.OrderStoreProposal, p2 uint64, p3 []byte) (apitypes.UpdateResp, error) {
+func (s *GatewayApiStub) Update(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
 	return *new(apitypes.UpdateResp), ErrNotSupported
 }
 

@@ -3,7 +3,6 @@ package gateway
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,7 +19,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
 
-	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -36,7 +35,7 @@ type CommitResult struct {
 	Commit  string
 	Commits []string
 	Cid     string
-	Shards  map[string]*modeltypes.ShardMeta
+	Shards  map[string]*saotypes.ShardMeta
 }
 
 type FetchResult struct {
@@ -45,9 +44,9 @@ type FetchResult struct {
 }
 
 type GatewaySvcApi interface {
-	QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error)
+	QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error)
 	CommitModel(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
-	FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error)
+	FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
 }
 
@@ -75,19 +74,8 @@ func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.Chai
 	return cs
 }
 
-func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, keyword string, group string, height int64) (*types.Model, error) {
-	var res *modeltypes.QueryGetMetadataResponse = nil
-	var err error
-	var dataId string
-	if utils.IsDataId(keyword) {
-		dataId = keyword
-	} else {
-		dataId, err = gs.chainSvc.QueryDataId(ctx, fmt.Sprintf("%s-%s-%s", account, keyword, group))
-		if err != nil {
-			return nil, err
-		}
-	}
-	res, err = gs.chainSvc.QueryMeta(ctx, dataId, height)
+func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error) {
+	res, err := gs.chainSvc.QueryMetadata(ctx, req, height)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +104,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, account string, keyword str
 	}, nil
 }
 
-func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*FetchResult, error) {
+func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error) {
 	contentList := make([][]byte, len(meta.Shards))
 	for key, shard := range meta.Shards {
 		if contentList[shard.ShardId] != nil {
@@ -156,7 +144,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, meta *types.Model) (*Fet
 					continue
 				}
 
-				shardContent, err = gs.shardStreamHandler.Fetch(peerInfo, shardCid)
+				shardContent, err = gs.shardStreamHandler.Fetch(req, peerInfo, shardCid)
 				if err != nil {
 					return nil, err
 				}
@@ -282,18 +270,29 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.Orde
 		// TODO: timeout handling
 		return nil, errors.Errorf("process order %d timeout.", orderId)
 	} else {
-		meta, err := gs.chainSvc.QueryMeta(ctx, orderProposal.DataId, 0)
+		order, err := gs.chainSvc.GetOrder(ctx, orderId)
 		if err != nil {
 			return nil, err
 		}
-		log.Debugf("order %d complete: dataId=%s", meta.Metadata.OrderId, meta.Metadata.DataId)
+		log.Debugf("order %d complete: dataId=%s", orderId, order.Metadata.DataId)
+
+		shards := make(map[string]*saotypes.ShardMeta, 0)
+		for peer, shard := range order.Shards {
+			meta := saotypes.ShardMeta{
+				ShardId:  shard.Id,
+				Peer:     peer,
+				Cid:      shard.Cid,
+				Provider: order.Provider,
+			}
+			shards[peer] = &meta
+		}
 
 		return &CommitResult{
-			OrderId: meta.Metadata.OrderId,
-			DataId:  meta.Metadata.DataId,
-			Commit:  meta.Metadata.Commit,
-			Commits: meta.Metadata.Commits,
-			Shards:  meta.Shards,
+			OrderId: order.Metadata.OrderId,
+			DataId:  order.Metadata.DataId,
+			Commit:  order.Metadata.Commit,
+			Commits: order.Metadata.Commits,
+			Shards:  shards,
 			Cid:     orderProposal.Cid,
 		}, nil
 	}
