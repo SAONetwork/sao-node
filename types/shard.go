@@ -20,9 +20,10 @@ type ShardStaging struct {
 
 // TODO: store node should sign the request.
 type ShardReq struct {
-	Owner   string
-	OrderId uint64
-	Cid     cid.Cid
+	Owner    string
+	OrderId  uint64
+	Cid      cid.Cid
+	Proposal *MetadataProposal
 }
 
 type ShardResp struct {

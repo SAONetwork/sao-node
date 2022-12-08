@@ -15,8 +15,9 @@ import (
 	"sort"
 
 	saodid "github.com/SaoNetwork/sao-did"
-	saotypes "github.com/SaoNetwork/sao-did/types"
+	saodidtypes "github.com/SaoNetwork/sao-did/types"
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
@@ -334,51 +335,20 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 	return jwt.Sign(&p, jwt.NewHS256(key))
 }
 
-func GetSidDocFunc(ctx context.Context, chainSvc *chain.ChainSvc) func(versionId string) (*didtypes.SidDocument, error) {
-	return func(versionId string) (*didtypes.SidDocument, error) {
-		return chainSvc.GetSidDocument(ctx, versionId)
-	}
-}
-
-func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
-	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, GetSidDocFunc(ctx, n.chainSvc))
+	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
 
-	proposalBytesOrg, err := json.Marshal(orderProposal.Proposal)
+	err = n.validSignature(ctx, orderProposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
 	if err != nil {
 		return apitypes.CreateResp{}, err
-	}
-
-	var obj interface{}
-	err = json.Unmarshal(proposalBytesOrg, &obj)
-	if err != nil {
-		return apitypes.CreateResp{}, err
-	}
-
-	proposalBytes, err := json.Marshal(obj)
-	if err != nil {
-		return apitypes.CreateResp{}, err
-	}
-
-	log.Info("proposalBytes: ", string(proposalBytes))
-	log.Info("Protected: ", string(orderProposal.JwsSignature.Protected))
-	log.Info("Signature: ", string(orderProposal.JwsSignature.Signature))
-
-	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
-		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saotypes.JwsSignature{
-			saotypes.JwsSignature(orderProposal.JwsSignature),
-		},
-	})
-	if err != nil {
-		return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
 	}
 
 	// model process
-	model, err := n.manager.Create(ctx, orderProposal, orderId, content)
+	model, err := n.manager.Create(ctx, req, orderProposal, orderId, content)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
@@ -390,7 +360,7 @@ func (n *Node) Create(ctx context.Context, orderProposal types.OrderStoreProposa
 	}, nil
 }
 
-func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
+func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
 	cidStr := orderProposal.Proposal.Cid
 	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
@@ -418,38 +388,17 @@ func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStorePro
 		}
 
 		// verify signature
-		didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, GetSidDocFunc(ctx, n.chainSvc))
+		err = n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
 		if err != nil {
 			return apitypes.CreateResp{}, err
 		}
 
-		proposalBytesOrg, err := json.Marshal(orderProposal.Proposal)
+		err = n.validSignature(ctx, orderProposal.Proposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
 		if err != nil {
 			return apitypes.CreateResp{}, err
 		}
 
-		var obj interface{}
-		err = json.Unmarshal(proposalBytesOrg, &obj)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-
-		proposalBytes, err := json.Marshal(obj)
-		if err != nil {
-			return apitypes.CreateResp{}, err
-		}
-
-		_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
-			Payload: base64url.Encode(proposalBytes),
-			Signatures: []saotypes.JwsSignature{
-				saotypes.JwsSignature(orderProposal.JwsSignature),
-			},
-		})
-		if err != nil {
-			return apitypes.CreateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
-		}
-
-		model, err := n.manager.Create(ctx, orderProposal, orderId, content)
+		model, err := n.manager.Create(ctx, req, orderProposal, orderId, content)
 		if err != nil {
 			return apitypes.CreateResp{}, err
 		}
@@ -464,8 +413,13 @@ func (n *Node) CreateFile(ctx context.Context, orderProposal types.OrderStorePro
 	}
 }
 
-func (n *Node) Load(ctx context.Context, req apitypes.LoadReq) (apitypes.LoadResp, error) {
-	model, err := n.manager.Load(ctx, &req)
+func (n *Node) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
+	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	if err != nil {
+		return apitypes.LoadResp{}, err
+	}
+
+	model, err := n.manager.Load(ctx, req)
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
@@ -480,8 +434,13 @@ func (n *Node) Load(ctx context.Context, req apitypes.LoadReq) (apitypes.LoadRes
 	}, nil
 }
 
-func (n *Node) Delete(ctx context.Context, owner string, key string, group string) (apitypes.DeleteResp, error) {
-	model, err := n.manager.Delete(ctx, owner, key, group)
+func (n *Node) Delete(ctx context.Context, req *types.MetadataProposal) (apitypes.DeleteResp, error) {
+	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	if err != nil {
+		return apitypes.DeleteResp{}, err
+	}
+
+	model, err := n.manager.Delete(ctx, req)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
@@ -491,44 +450,19 @@ func (n *Node) Delete(ctx context.Context, owner string, key string, group strin
 	}, nil
 }
 
-func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
-	didManager, err := saodid.NewDidManagerWithDid(orderProposal.Proposal.Owner, GetSidDocFunc(ctx, n.chainSvc))
+	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
 
-	proposalBytesOrg, err := json.Marshal(orderProposal.Proposal)
+	err = n.validSignature(ctx, orderProposal.Proposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
 
-	var obj interface{}
-	err = json.Unmarshal(proposalBytesOrg, &obj)
-	if err != nil {
-		return apitypes.UpdateResp{}, err
-	}
-
-	proposalBytes, err := json.Marshal(obj)
-	if err != nil {
-		return apitypes.UpdateResp{}, err
-	}
-
-	log.Info("proposalBytes", string(proposalBytes))
-	log.Info("Protected", orderProposal.JwsSignature.Protected)
-	log.Info("Signature", orderProposal.JwsSignature.Signature)
-
-	_, err = didManager.VerifyJWS(saotypes.GeneralJWS{
-		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saotypes.JwsSignature{
-			saotypes.JwsSignature(orderProposal.JwsSignature),
-		},
-	})
-	if err != nil {
-		return apitypes.UpdateResp{}, xerrors.Errorf("verify client order proposal signature failed: %v", err)
-	}
-
-	model, err := n.manager.Update(ctx, orderProposal, orderId, patch)
+	model, err := n.manager.Update(ctx, req, orderProposal, orderId, patch)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
@@ -540,8 +474,13 @@ func (n *Node) Update(ctx context.Context, orderProposal types.OrderStoreProposa
 	}, nil
 }
 
-func (n *Node) ShowCommits(ctx context.Context, owner string, key string, group string) (apitypes.ShowCommitsResp, error) {
-	model, err := n.manager.ShowCommits(ctx, owner, key, group)
+func (n *Node) ShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
+	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	if err != nil {
+		return apitypes.ShowCommitsResp{}, err
+	}
+
+	model, err := n.manager.ShowCommits(ctx, req)
 	if err != nil {
 		return apitypes.ShowCommitsResp{}, err
 	}
@@ -637,4 +576,45 @@ func (n *Node) NetPeers(context.Context) ([]types.PeerInfo, error) {
 	}
 
 	return out, nil
+}
+
+func (n *Node) getSidDocFunc() func(versionId string) (*didtypes.SidDocument, error) {
+	return func(versionId string) (*didtypes.SidDocument, error) {
+		return n.chainSvc.GetSidDocument(n.ctx, versionId)
+	}
+}
+
+func (n *Node) validSignature(ctx context.Context, proposal interface{}, owner string, signature saotypes.JwsSignature) error {
+	didManager, err := saodid.NewDidManagerWithDid(owner, n.getSidDocFunc())
+	if err != nil {
+		return err
+	}
+
+	proposalBytesOrg, err := json.Marshal(proposal)
+	if err != nil {
+		return err
+	}
+
+	var obj interface{}
+	err = json.Unmarshal(proposalBytesOrg, &obj)
+	if err != nil {
+		return err
+	}
+
+	proposalBytes, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+
+	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
+		Payload: base64url.Encode(proposalBytes),
+		Signatures: []saodidtypes.JwsSignature{
+			saodidtypes.JwsSignature(signature),
+		},
+	})
+	if err != nil {
+		return xerrors.Errorf("verify client order proposal signature failed: %v", err)
+	}
+
+	return nil
 }

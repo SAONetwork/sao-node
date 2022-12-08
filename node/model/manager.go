@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-	apitypes "sao-storage-node/api/types"
 	"sao-storage-node/node/cache"
 	"sao-storage-node/node/config"
 	"sao-storage-node/node/gateway"
@@ -14,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
@@ -67,27 +68,15 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types.Model, error) {
-	if !utils.IsDataId(req.KeyWord) {
-		value, err := mm.CacheSvc.Get(req.PublicKey, req.KeyWord+req.GroupId)
-		if err != nil {
-			log.Warn(err.Error())
-		} else if value != nil {
-			dataId, ok := value.(string)
-			if ok && utils.IsDataId(dataId) {
-				req.KeyWord = dataId
-			}
-		}
-	}
-
-	log.Info("KeyWord:", req.KeyWord)
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, 0)
+func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
+	log.Info("KeyWord:", req.Proposal.Keyword)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	if req.Version != "" {
-		index, err := strconv.Atoi(strings.ReplaceAll(req.Version, "v", ""))
+	if req.Proposal.Version != "" {
+		index, err := strconv.Atoi(strings.ReplaceAll(req.Proposal.Version, "v", ""))
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
@@ -102,18 +91,18 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 			if err != nil {
 				return nil, xerrors.Errorf(err.Error())
 			}
-			meta, err = mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, height)
+			meta, err = mm.GatewaySvc.QueryMeta(ctx, req, height)
 			if err != nil {
 				return nil, xerrors.Errorf(err.Error())
 			}
 		}
 	} else {
-		req.Version = fmt.Sprintf("v%d", len(meta.Commits)-1)
+		req.Proposal.Version = fmt.Sprintf("v%d", len(meta.Commits)-1)
 	}
 
-	if req.CommitId != "" {
+	if req.Proposal.CommitId != "" {
 		for i, commit := range meta.Commits {
-			if strings.HasPrefix(commit, req.CommitId) {
+			if strings.HasPrefix(commit, req.Proposal.CommitId) {
 				commitInfo := strings.Split(commit, "\032")
 				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
 					return nil, xerrors.Errorf("invalid commit information: %s", commit)
@@ -122,21 +111,21 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
 				}
-				meta, err = mm.GatewaySvc.QueryMeta(ctx, req.PublicKey, req.KeyWord, req.GroupId, height)
+				meta, err = mm.GatewaySvc.QueryMeta(ctx, req, height)
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
 				}
 
-				req.Version = fmt.Sprintf("v%d", i)
+				req.Proposal.Version = fmt.Sprintf("v%d", i)
 				break
 			}
 		}
 	}
 
-	model := mm.loadModel(req.PublicKey, meta.DataId)
+	model := mm.loadModel(req.Proposal.Owner, meta.DataId)
 	if model != nil {
 		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
-			model.Version = req.Version
+			model.Version = req.Proposal.Version
 
 			return model, nil
 		}
@@ -168,21 +157,21 @@ func (mm *ModelManager) Load(ctx context.Context, req *apitypes.LoadReq) (*types
 	if len(meta.Shards) > 1 {
 		log.Warnf("large size content should go through P2P channel")
 	} else {
-		result, err := mm.GatewaySvc.FetchContent(ctx, meta)
+		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
 		model.Cid = result.Cid
 		model.Content = result.Content
-		model.Version = req.Version
+		model.Version = req.Proposal.Version
 	}
 
-	mm.cacheModel(req.PublicKey, model)
+	mm.cacheModel(req.Proposal.Owner, model)
 
 	return model, nil
 }
 
-func (mm *ModelManager) Create(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*types.Model, error) {
+func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*types.Model, error) {
 	orderProposal := clientProposal.Proposal
 	if orderProposal.Alias == "" {
 		orderProposal.Alias = orderProposal.Cid
@@ -198,12 +187,7 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.OrderSt
 		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, orderProposal.Owner, orderProposal.DataId, orderProposal.GroupId, 0)
-	if err == nil && meta != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
-	}
-
-	meta, err = mm.GatewaySvc.QueryMeta(ctx, orderProposal.Owner, orderProposal.Alias, orderProposal.GroupId, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err == nil && meta != nil {
 		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
 	}
@@ -241,14 +225,8 @@ func (mm *ModelManager) Create(ctx context.Context, clientProposal types.OrderSt
 	return model, nil
 }
 
-func (mm *ModelManager) Update(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
-	var keyword string
-	if clientProposal.Proposal.DataId == "" {
-		keyword = clientProposal.Proposal.Alias
-	} else {
-		keyword = clientProposal.Proposal.DataId
-	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, clientProposal.Proposal.Owner, keyword, clientProposal.Proposal.GroupId, 0)
+func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal, clientProposal types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -280,7 +258,7 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.OrderSt
 	}
 
 	if isFetch {
-		result, err := mm.GatewaySvc.FetchContent(ctx, meta)
+		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
 		}
@@ -338,18 +316,18 @@ func (mm *ModelManager) Update(ctx context.Context, clientProposal types.OrderSt
 	return model, nil
 }
 
-func (mm *ModelManager) Delete(ctx context.Context, account string, key string, group string) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group, 0)
+func (mm *ModelManager) Delete(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
 
-	model, _ := mm.CacheSvc.Get(account, meta.DataId)
+	model, _ := mm.CacheSvc.Get(req.Proposal.Owner, meta.DataId)
 	if model != nil {
 		m, ok := model.(*types.Model)
 		if ok {
-			mm.CacheSvc.Evict(account, m.DataId)
-			mm.CacheSvc.Evict(account, m.Alias+m.GroupId)
+			mm.CacheSvc.Evict(req.Proposal.Owner, m.DataId)
+			mm.CacheSvc.Evict(req.Proposal.Owner, m.Alias+m.GroupId)
 
 			return &types.Model{
 				DataId: m.DataId,
@@ -361,19 +339,8 @@ func (mm *ModelManager) Delete(ctx context.Context, account string, key string, 
 	return nil, nil
 }
 
-func (mm *ModelManager) ShowCommits(ctx context.Context, account string, key string, group string) (*types.Model, error) {
-	if !utils.IsDataId(key) {
-		value, err := mm.CacheSvc.Get(account, key+group)
-		if err != nil {
-			log.Warn(err.Error())
-		} else if value != nil {
-			dataId, ok := value.(string)
-			if ok && utils.IsDataId(dataId) {
-				key = dataId
-			}
-		}
-	}
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, account, key, group, 0)
+func (mm *ModelManager) ShowCommits(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
@@ -416,9 +383,12 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 					}
 
 					if model == nil {
-						req := &apitypes.LoadReq{
-							KeyWord:   sch,
-							PublicKey: account,
+						req := &types.MetadataProposal{
+							Proposal: saotypes.QueryProposal{
+								Owner:   "all",
+								Keyword: sch,
+								Type_:   0,
+							},
 						}
 
 						model, err = mm.Load(ctx, req)
@@ -457,9 +427,12 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 			}
 
 			if model == nil {
-				req := &apitypes.LoadReq{
-					KeyWord:   dataId,
-					PublicKey: account,
+				req := &types.MetadataProposal{
+					Proposal: saotypes.QueryProposal{
+						Owner:   "all",
+						Keyword: dataId,
+						Type_:   0,
+					},
 				}
 
 				model, err = mm.Load(ctx, req)
@@ -545,8 +518,8 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 		model.Content = make([]byte, 0)
 	}
 	mm.CacheSvc.Put(account, model.DataId, model)
-	mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
 
+	// mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
 	// Reserved for open data model search feature...
 	// for _, k := range model.Tags {
 	// 	mm.CacheSvc.Put(account, k, model.DataId)

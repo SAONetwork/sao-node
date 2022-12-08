@@ -132,28 +132,28 @@ func (sc SaoClient) Test(ctx context.Context) (string, error) {
 	return resp, nil
 }
 
-func (sc SaoClient) Create(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.Create(ctx, orderProposal, orderId, content)
+func (sc SaoClient) Create(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+	return sc.gatewayApi.Create(ctx, req, orderProposal, orderId, content)
 }
 
-func (sc SaoClient) CreateFile(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.CreateFile(ctx, orderProposal, orderId)
+func (sc SaoClient) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
+	return sc.gatewayApi.CreateFile(ctx, req, orderProposal, orderId)
 }
 
-func (sc SaoClient) Load(ctx context.Context, req apitypes.LoadReq) (apitypes.LoadResp, error) {
+func (sc SaoClient) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
 	return sc.gatewayApi.Load(ctx, req)
 }
 
-func (sc SaoClient) Delete(ctx context.Context, owner string, keyword string, group string) (apitypes.DeleteResp, error) {
-	return sc.gatewayApi.Delete(ctx, owner, keyword, group)
+func (sc SaoClient) Delete(ctx context.Context, req *types.MetadataProposal) (apitypes.DeleteResp, error) {
+	return sc.gatewayApi.Delete(ctx, req)
 }
 
-func (sc SaoClient) ShowCommits(ctx context.Context, owner string, keyword string, group string) (apitypes.ShowCommitsResp, error) {
-	return sc.gatewayApi.ShowCommits(ctx, owner, keyword, group)
+func (sc SaoClient) ShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
+	return sc.gatewayApi.ShowCommits(ctx, req)
 }
 
-func (sc SaoClient) Update(ctx context.Context, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
-	return sc.gatewayApi.Update(ctx, orderProposal, orderId, patch)
+func (sc SaoClient) Update(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+	return sc.gatewayApi.Update(ctx, req, orderProposal, orderId, patch)
 }
 
 func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {

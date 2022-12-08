@@ -3,6 +3,7 @@ package storage
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -14,11 +15,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
+
+	saodid "github.com/SaoNetwork/sao-did"
+	saodidtypes "github.com/SaoNetwork/sao-did/types"
+	didtypes "github.com/SaoNetwork/sao/x/did/types"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -197,6 +203,12 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 	return nil
 }
 
+func (ss *StoreSvc) getSidDocFunc() func(versionId string) (*didtypes.SidDocument, error) {
+	return func(versionId string) (*didtypes.SidDocument, error) {
+		return ss.chainSvc.GetSidDocument(ss.ctx, versionId)
+	}
+}
+
 func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 	defer s.Close()
 
@@ -212,6 +224,57 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 		return
 	}
 	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+
+	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	proposalBytesOrg, err := json.Marshal(req.Proposal)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	var obj interface{}
+	err = json.Unmarshal(proposalBytesOrg, &obj)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	proposalBytes, err := json.Marshal(obj)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
+		Payload: base64url.Encode(proposalBytes),
+		Signatures: []saodidtypes.JwsSignature{
+			saodidtypes.JwsSignature(req.Proposal.JwsSignature),
+		},
+	})
+	if err != nil {
+		log.Error("verify client order proposal signature failed: %v", err)
+		return
+	}
+
+	lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	peerInfo := string(s.Conn().RemotePeer())
+	if req.Proposal.Proposal.Gateway != peerInfo {
+		log.Errorf("invalid query, unexpect gateway:%s, should be %s", peerInfo, req.Proposal.Proposal.Gateway)
+		return
+	}
+	if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
+		log.Errorf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight)
+		return
+	}
 
 	reader, err := ss.storeManager.Get(ss.ctx, req.Cid)
 	if err != nil {

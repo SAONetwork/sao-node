@@ -18,8 +18,6 @@ import (
 	"sync"
 	"time"
 
-	apitypes "sao-storage-node/api/types"
-
 	"github.com/libp2p/go-libp2p"
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	"github.com/mitchellh/go-homedir"
@@ -336,19 +334,26 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 		return "", xerrors.Errorf("invalid params length")
 	}
 
-	var orderProposal types.OrderStoreProposal
-	err := json.Unmarshal([]byte(params[0]), &orderProposal)
+	var req types.MetadataProposal
+	err := json.Unmarshal([]byte(params[0]), &req)
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
 	}
 
-	orderId, err := strconv.ParseInt(params[1], 10, 64)
+	var orderProposal types.OrderStoreProposal
+	err = json.Unmarshal([]byte(params[1]), &orderProposal)
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+
+	orderId, err := strconv.ParseInt(params[2], 10, 64)
 	if err != nil {
 		return "", xerrors.Errorf(err.Error())
 	}
 
-	resp, err := rs.GatewayApi.Create(rs.Ctx, orderProposal, uint64(orderId), []byte(params[2]))
+	resp, err := rs.GatewayApi.Create(rs.Ctx, &req, orderProposal, uint64(orderId), []byte(params[2]))
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
@@ -366,13 +371,13 @@ func (rs *Libp2pRpcServer) load(params []string) (string, error) {
 		return "", xerrors.Errorf("invalid params length")
 	}
 
-	var req apitypes.LoadReq
+	var req types.MetadataProposal
 	err := json.Unmarshal([]byte(params[0]), &req)
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
 	}
-	resp, err := rs.GatewayApi.Load(rs.Ctx, req)
+	resp, err := rs.GatewayApi.Load(rs.Ctx, &req)
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
@@ -390,19 +395,26 @@ func (rs *Libp2pRpcServer) update(params []string) (string, error) {
 		return "", xerrors.Errorf("invalid params length")
 	}
 
-	var orderProposal types.OrderStoreProposal
-	err := json.Unmarshal([]byte(params[0]), &orderProposal)
+	var req types.MetadataProposal
+	err := json.Unmarshal([]byte(params[0]), &req)
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
 	}
 
-	orderId, err := strconv.ParseInt(params[1], 10, 64)
+	var orderProposal types.OrderStoreProposal
+	err = json.Unmarshal([]byte(params[1]), &orderProposal)
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+
+	orderId, err := strconv.ParseInt(params[2], 10, 64)
 	if err != nil {
 		return "", xerrors.Errorf(err.Error())
 	}
 
-	resp, err := rs.GatewayApi.Update(rs.Ctx, orderProposal, uint64(orderId), []byte(params[2]))
+	resp, err := rs.GatewayApi.Update(rs.Ctx, &req, orderProposal, uint64(orderId), []byte(params[2]))
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
