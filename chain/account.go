@@ -22,6 +22,27 @@ func newAccountRegistry(ctx context.Context, chainId string) (cosmosaccount.Regi
 	)
 }
 
+func GetAccountSecret(ctx context.Context, chainId string, name string, passphrase string) (string, string, error) {
+	accountRegistry, err := newAccountRegistry(ctx, chainId)
+	if err != nil {
+		return "", "", err
+	}
+
+	account, err := accountRegistry.GetByName(name)
+	if err != nil {
+		return "", "", err
+	}
+	address, err := account.Address("cosmos")
+	if err != nil {
+		return "", "", err
+	}
+	secret, err := accountRegistry.ExportHex(name, passphrase)
+	if err != nil {
+		return "", "", err
+	}
+	return address, secret, nil
+}
+
 func List(ctx context.Context, chainId string) error {
 	accountRegistry, err := newAccountRegistry(ctx, chainId)
 	if err != nil {
