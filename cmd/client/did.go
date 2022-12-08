@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
-	"golang.org/x/term"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 	"syscall"
+
+	"golang.org/x/term"
 
 	did "github.com/SaoNetwork/sao-did"
 	"github.com/tendermint/tendermint/libs/json"
@@ -72,6 +73,9 @@ var didCreateCmd = &cli.Command{
 			}
 
 			chainSvc, err := chain.NewChainSvc(cctx.Context, "cosmos", chainAddress, "/websocket")
+			if err != nil {
+				return err
+			}
 			hash, err := chainSvc.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
 			if err != nil {
 				return err
