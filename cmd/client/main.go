@@ -14,8 +14,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var log = logging.Logger("saoclient")
-
 const (
 	DEFAULT_DURATION = 365
 	DEFAULT_REPLICA  = 1
