@@ -162,22 +162,14 @@ var createFileCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-		proposalJsonBytes, err := proposal.Marshal()
-		if err != nil {
-			return err
-		}
-		jws, err := didManager.CreateJWS(proposalJsonBytes)
-		if err != nil {
-			return err
-		}
-		clientProposal := types.OrderStoreProposal{
-			Proposal:     proposal,
-			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
-		}
-
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
+		if err != nil {
+			return err
 		}
 
 		var orderId uint64 = 0

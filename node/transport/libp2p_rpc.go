@@ -353,7 +353,7 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 		return "", xerrors.Errorf(err.Error())
 	}
 
-	resp, err := rs.GatewayApi.Create(rs.Ctx, &req, orderProposal, uint64(orderId), []byte(params[2]))
+	resp, err := rs.GatewayApi.Create(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
@@ -414,7 +414,7 @@ func (rs *Libp2pRpcServer) update(params []string) (string, error) {
 		return "", xerrors.Errorf(err.Error())
 	}
 
-	resp, err := rs.GatewayApi.Update(rs.Ctx, &req, orderProposal, uint64(orderId), []byte(params[2]))
+	resp, err := rs.GatewayApi.Update(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
