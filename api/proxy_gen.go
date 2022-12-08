@@ -19,9 +19,9 @@ type GatewayApiStruct struct {
 
 		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"none"`
 
-		Create func(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) `perm:"write"`
+		Create func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) `perm:"write"`
 
-		CreateFile func(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) `perm:"write"`
+		CreateFile func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) `perm:"write"`
 
 		Delete func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) `perm:"write"`
 
@@ -43,7 +43,7 @@ type GatewayApiStruct struct {
 
 		Test func(p0 context.Context, p1 string) (string, error) `perm:"none"`
 
-		Update func(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) `perm:"write"`
+		Update func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) `perm:"write"`
 	}
 }
 
@@ -72,25 +72,25 @@ func (s *GatewayApiStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permi
 	return *new([]auth.Permission), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Create(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {
+func (s *GatewayApiStruct) Create(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {
 	if s.Internal.Create == nil {
 		return *new(apitypes.CreateResp), ErrNotSupported
 	}
 	return s.Internal.Create(p0, p1, p2, p3, p4)
 }
 
-func (s *GatewayApiStub) Create(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {
+func (s *GatewayApiStub) Create(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) CreateFile(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) {
+func (s *GatewayApiStruct) CreateFile(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) {
 	if s.Internal.CreateFile == nil {
 		return *new(apitypes.CreateResp), ErrNotSupported
 	}
 	return s.Internal.CreateFile(p0, p1, p2, p3)
 }
 
-func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) {
+func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) {
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
@@ -204,14 +204,14 @@ func (s *GatewayApiStub) Test(p0 context.Context, p1 string) (string, error) {
 	return "", ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Update(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
+func (s *GatewayApiStruct) Update(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
 	if s.Internal.Update == nil {
 		return *new(apitypes.UpdateResp), ErrNotSupported
 	}
 	return s.Internal.Update(p0, p1, p2, p3, p4)
 }
 
-func (s *GatewayApiStub) Update(p0 context.Context, p1 *types.MetadataProposal, p2 types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
+func (s *GatewayApiStub) Update(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
 	return *new(apitypes.UpdateResp), ErrNotSupported
 }
 

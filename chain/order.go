@@ -52,7 +52,7 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal types.OrderStoreProposal) (uint64, string, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (uint64, string, error) {
 	//if signer != owner && signer != provider {
 	//	return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	//}

@@ -32,6 +32,7 @@ var modelCmd = &cli.Command{
 		createCmd,
 		patchGenCmd,
 		updateCmd,
+		updatePermissionCmd,
 		loadCmd,
 		deleteCmd,
 		commitsCmd,
@@ -177,37 +178,14 @@ var createCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-		proposalJsonBytesOrg, err := json.Marshal(proposal)
-		if err != nil {
-			return err
-		}
-
-		var obj interface{}
-		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
-		if err != nil {
-			return err
-		}
-
-		proposalJsonBytes, err := json.Marshal(obj)
-		if err != nil {
-			return err
-		}
-
-		jws, err := didManager.CreateJWS(proposalJsonBytes)
-		if err != nil {
-			return err
-		}
-		clientProposal := types.OrderStoreProposal{
-			Proposal: proposal,
-			JwsSignature: saotypes.JwsSignature{
-				Protected: jws.Signatures[0].Protected,
-				Signature: jws.Signatures[0].Signature,
-			},
-		}
-
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
+		if err != nil {
+			return err
 		}
 
 		var orderId uint64 = 0
@@ -764,7 +742,7 @@ var updateCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "owner",
-			Usage:    "file owner",
+			Usage:    "data model owner",
 			Required: true,
 		},
 		&cli.StringFlag{
@@ -930,17 +908,9 @@ var updateCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-		proposalJsonBytes, err := proposal.Marshal()
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chainSvc)
 		if err != nil {
 			return err
-		}
-		jws, err := didManager.CreateJWS(proposalJsonBytes)
-		if err != nil {
-			return err
-		}
-		clientProposal := types.OrderStoreProposal{
-			Proposal:     proposal,
-			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
 		var orderId uint64 = 0
@@ -957,6 +927,107 @@ var updateCmd = &cli.Command{
 			return err
 		}
 		fmt.Printf("alias: %s, data id: %s.\r\n", resp.Alias, resp.DataId)
+		return nil
+	},
+}
+
+var updatePermissionCmd = &cli.Command{
+	Name: "update",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "owner",
+			Usage:    "data model owner",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "data-id",
+			Usage:    "data model's dataId",
+			Required: true,
+		},
+		&cli.StringSliceFlag{
+			Name:     "readonly-dids",
+			Usage:    "DIDs with read access to the data model",
+			Required: false,
+		},
+		&cli.StringSliceFlag{
+			Name:     "readwrite-dids",
+			Usage:    "DIDs with read and write access to the data model",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		if !cctx.IsSet("owner") {
+			return xerrors.Errorf("must provide --owner")
+		}
+		owner := cctx.String("owner")
+
+		if !cctx.IsSet("data-id") {
+			return xerrors.Errorf("must provide --data-id")
+		}
+		dataId := cctx.String("data-id")
+
+		gateway := cctx.String("gateway")
+		client := saoclient.NewSaoClient(ctx, gateway)
+
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			chainAddress = client.Cfg.ChainAddress
+		}
+
+		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		if err != nil {
+			return err
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		proposal := saotypes.PermissionProposal{
+			Owner:         didManager.Id,
+			DataId:        dataId,
+			ReadonlyDids:  cctx.StringSlice("readonly-dids"),
+			ReadwriteDids: cctx.StringSlice("readwrite-dids"),
+		}
+
+		proposalJsonBytesOrg, err := json.Marshal(proposal)
+		if err != nil {
+			return err
+		}
+
+		var obj interface{}
+		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
+		if err != nil {
+			return err
+		}
+
+		proposalJsonBytes, err := json.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
+		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		if err != nil {
+			return err
+		}
+
+		request := &types.PermissionProposal{
+			Proposal: proposal,
+			JwsSignature: saotypes.JwsSignature{
+				Protected: jws.Signatures[0].Protected,
+				Signature: jws.Signatures[0].Signature,
+			},
+		}
+
+		_, err = chainSvc.UpdatePermission(ctx, owner, request)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Data model[%s]'s permission updated.\r\n", dataId)
 		return nil
 	},
 }
@@ -1034,6 +1105,36 @@ var patchGenCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain *chain.ChainSvc) (*types.OrderStoreProposal, error) {
+	proposalJsonBytesOrg, err := json.Marshal(proposal)
+	if err != nil {
+		return nil, err
+	}
+
+	var obj interface{}
+	err = json.Unmarshal(proposalJsonBytesOrg, &obj)
+	if err != nil {
+		return nil, err
+	}
+
+	proposalJsonBytes, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	jws, err := didManager.CreateJWS(proposalJsonBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &types.OrderStoreProposal{
+		Proposal: proposal,
+		JwsSignature: saotypes.JwsSignature{
+			Protected: jws.Signatures[0].Protected,
+			Signature: jws.Signatures[0].Signature,
+		},
+	}, nil
 }
 
 func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal saotypes.QueryProposal, chain *chain.ChainSvc, gatewayAddress string) (*types.MetadataProposal, error) {

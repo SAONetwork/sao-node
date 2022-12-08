@@ -56,6 +56,11 @@ type MetadataProposal struct {
 	JwsSignature saotypes.JwsSignature
 }
 
+type PermissionProposal struct {
+	Proposal     saotypes.PermissionProposal
+	JwsSignature saotypes.JwsSignature
+}
+
 type OrderStoreProposal struct {
 	Proposal     saotypes.Proposal
 	JwsSignature saotypes.JwsSignature
