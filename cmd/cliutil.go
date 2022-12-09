@@ -2,10 +2,11 @@ package cliutil
 
 import (
 	"fmt"
-	"golang.org/x/term"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	"syscall"
+
+	"golang.org/x/term"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -62,10 +63,10 @@ func AskForPassphrase() (string, error) {
 
 func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
 	var keyName string
-	if !cctx.IsSet("keyName") {
+	if !cctx.IsSet("key-name") {
 		keyName = cfg.KeyName
 	} else {
-		keyName = cctx.String("keyName")
+		keyName = cctx.String("key-name")
 	}
 
 	address, err := chain.GetAddress(cctx.Context, "sao", keyName)
