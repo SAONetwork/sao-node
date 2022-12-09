@@ -253,7 +253,7 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 		return
 	}
 	peerInfo := string(s.Conn().RemotePeer())
-	if req.Proposal.Proposal.Gateway != peerInfo {
+	if strings.Contains(req.Proposal.Proposal.Gateway, peerInfo) {
 		log.Errorf("invalid query, unexpect gateway:%s, should be %s", peerInfo, req.Proposal.Proposal.Gateway)
 		return
 	}
