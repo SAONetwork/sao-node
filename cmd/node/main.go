@@ -518,7 +518,7 @@ func prepareRepo(cctx *cli.Context) (*repo.Repo, error) {
 		return nil, err
 	}
 	if !ok {
-		return nil, xerrors.Errorf("repo at '%s' is not initialized, run 'snode init' to set it up", repoPath)
+		return nil, xerrors.Errorf("repo at '%s' is not initialized, run 'saonode init' to set it up", repoPath)
 	}
 	return repo, nil
 }
