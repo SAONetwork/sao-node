@@ -32,3 +32,35 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 	}
 	return resp, nil
 }
+
+func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
+	signerAcc, err := c.cosmos.Account(signer)
+	if err != nil {
+		return "", xerrors.Errorf("%w, check the keyring please", err)
+	}
+
+	// TODO: Cid
+	msg := &saotypes.MsgUpdataPermission{
+		Creator:  signer,
+		Proposal: proposal.Proposal,
+		JwsSignature: saotypes.JwsSignature{
+			Protected: proposal.JwsSignature.Protected,
+			Signature: proposal.JwsSignature.Signature,
+		},
+	}
+
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
+	if err != nil {
+		return "", err
+	}
+	// log.Debug("MsgStore result: ", txResp)
+	if txResp.TxResponse.Code != 0 {
+		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	var resp saotypes.MsgUpdataPermissionResponse
+	err = txResp.Decode(&resp)
+	if err != nil {
+		return "", err
+	}
+	return txResp.TxResponse.TxHash, nil
+}

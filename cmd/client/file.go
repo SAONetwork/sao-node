@@ -134,7 +134,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -150,7 +150,7 @@ var createFileCmd = &cli.Command{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   int32(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration:   uint64(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			Alias:      fileName,
@@ -162,22 +162,14 @@ var createFileCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-		proposalJsonBytes, err := proposal.Marshal()
-		if err != nil {
-			return err
-		}
-		jws, err := didManager.CreateJWS(proposalJsonBytes)
-		if err != nil {
-			return err
-		}
-		clientProposal := types.OrderStoreProposal{
-			Proposal:     proposal,
-			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
-		}
-
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
+		if err != nil {
+			return err
 		}
 
 		var orderId uint64 = 0
@@ -308,7 +300,7 @@ var downloadCmd = &cli.Command{
 			version = ""
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -419,7 +411,7 @@ var tokenGenCmd = &cli.Command{
 		gateway := cctx.String("gateway")
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
