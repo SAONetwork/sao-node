@@ -42,13 +42,9 @@ var modelCmd = &cli.Command{
 }
 
 var createCmd = &cli.Command{
-	Name: "create",
+	Name:  "create",
+	Usage: "create a new data model",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "data model owner",
-			Required: true,
-		},
 		&cli.StringFlag{
 			Name:     "content",
 			Required: false,
@@ -111,10 +107,6 @@ var createCmd = &cli.Command{
 		}
 		content := []byte(cctx.String("content"))
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
 		clientPublish := cctx.Bool("client-publish")
 
 		// TODO: check valid range
@@ -148,7 +140,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -164,7 +156,7 @@ var createCmd = &cli.Command{
 			Owner:    didManager.Id,
 			Provider: gatewayAddress,
 			GroupId:  groupId,
-			Duration: int32(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration: uint64(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:  int32(replicas),
 			Timeout:  int32(delay),
 			Alias:    cctx.String("name"),
@@ -190,7 +182,7 @@ var createCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
+			orderId, _, err = chain.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -373,11 +365,6 @@ var renewCmd = &cli.Command{
 	Name:  "renew",
 	Usage: "renew data",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "file owner",
-			Required: true,
-		},
 		&cli.StringSliceFlag{
 			Name:     "data-ids",
 			Usage:    "data model's dataId list",
@@ -412,7 +399,6 @@ var renewCmd = &cli.Command{
 		dataIds := cctx.StringSlice("data-ids")
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
-		owner := cctx.String("owner")
 
 		client := saoclient.NewSaoClient(ctx, gateway)
 
@@ -426,22 +412,34 @@ var renewCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
 
 		proposal := saotypes.RenewProposal{
 			Owner:    didManager.Id,
-			Duration: int32(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration: uint64(chain.Blocktime * time.Duration(60*60*24*duration)),
 			Timeout:  int32(delay),
 			Data:     dataIds,
 		}
 
-		proposalJsonBytes, err := proposal.Marshal()
+		proposalJsonBytesOrg, err := json.Marshal(proposal)
 		if err != nil {
 			return err
 		}
+
+		var obj interface{}
+		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
+		if err != nil {
+			return err
+		}
+
+		proposalJsonBytes, err := json.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
 		jws, err := didManager.CreateJWS(proposalJsonBytes)
 		if err != nil {
 			return err
@@ -451,7 +449,7 @@ var renewCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		_, results, err := chainSvc.RenewOrder(ctx, owner, clientProposal)
+		_, results, err := chainSvc.RenewOrder(ctx, signer, clientProposal)
 		if err != nil {
 			return err
 		}
@@ -738,13 +736,9 @@ var commitsCmd = &cli.Command{
 }
 
 var updateCmd = &cli.Command{
-	Name: "update",
+	Name:  "update",
+	Usage: "update an existing data model",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "data model owner",
-			Required: true,
-		},
 		&cli.StringFlag{
 			Name:     "patch",
 			Usage:    "patch to apply for the data model",
@@ -807,11 +801,6 @@ var updateCmd = &cli.Command{
 		ctx := cctx.Context
 
 		// ---- check parameters ----
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
-
 		if !cctx.IsSet("keyword") {
 			return xerrors.Errorf("must provide --keyword")
 		}
@@ -848,7 +837,7 @@ var updateCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -885,17 +874,17 @@ var updateCmd = &cli.Command{
 
 		force := cctx.Bool("force")
 
-		operation := uint32(0)
+		operation := uint32(1)
 
 		if force {
-			operation = 1
+			operation = 2
 		}
 
 		proposal := saotypes.Proposal{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   int32(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration:   uint64(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			DataId:     res.Metadata.DataId,
@@ -915,8 +904,7 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-
-			orderId, _, err = chainSvc.StoreOrder(ctx, owner, clientProposal)
+			orderId, _, err = chainSvc.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -932,13 +920,9 @@ var updateCmd = &cli.Command{
 }
 
 var updatePermissionCmd = &cli.Command{
-	Name: "update",
+	Name:  "update-permission",
+	Usage: "update data model's permission",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "data model owner",
-			Required: true,
-		},
 		&cli.StringFlag{
 			Name:     "data-id",
 			Usage:    "data model's dataId",
@@ -958,11 +942,6 @@ var updatePermissionCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
-
 		if !cctx.IsSet("data-id") {
 			return xerrors.Errorf("must provide --data-id")
 		}
@@ -976,7 +955,7 @@ var updatePermissionCmd = &cli.Command{
 			chainAddress = client.Cfg.ChainAddress
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -1022,7 +1001,7 @@ var updatePermissionCmd = &cli.Command{
 			},
 		}
 
-		_, err = chainSvc.UpdatePermission(ctx, owner, request)
+		_, err = chainSvc.UpdatePermission(ctx, signer, request)
 		if err != nil {
 			return err
 		}

@@ -1,12 +1,12 @@
 package cliutil
 
 import (
-	"encoding/hex"
 	"fmt"
-	"golang.org/x/term"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	"syscall"
+
+	"golang.org/x/term"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -63,26 +63,24 @@ func AskForPassphrase() (string, error) {
 
 func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
 	var keyName string
-	if !cctx.IsSet("keyName") {
+	if !cctx.IsSet("key-name") {
 		keyName = cfg.KeyName
 	} else {
-		keyName = cctx.String("keyName")
+		keyName = cctx.String("key-name")
 	}
 
-	passphrase, err := AskForPassphrase()
+	address, err := chain.GetAddress(cctx.Context, "sao", keyName)
 	if err != nil {
 		return nil, "", err
 	}
 
-	address, secret, err := chain.GetAccountSecret(cctx.Context, "sao", keyName, passphrase)
+	payload := fmt.Sprintf("cosmos %s allows to generate did", address)
+	secret, err := chain.SignByAccount(cctx.Context, "sao", keyName, []byte(payload))
 	if err != nil {
 		return nil, "", err
 	}
-	secretBytes, err := hex.DecodeString(secret)
-	if err != nil {
-		return nil, "", err
-	}
-	provider, err := saokey.NewSecp256k1Provider(secretBytes)
+
+	provider, err := saokey.NewSecp256k1Provider(secret)
 	if err != nil {
 		return nil, "", err
 	}
