@@ -22,6 +22,37 @@ func newAccountRegistry(ctx context.Context, chainId string) (cosmosaccount.Regi
 	)
 }
 
+func GetAddress(ctx context.Context, chainId string, name string) (string, error) {
+	accountRegistry, err := newAccountRegistry(ctx, chainId)
+	if err != nil {
+		return "", err
+	}
+
+	account, err := accountRegistry.GetByName(name)
+	if err != nil {
+		return "", err
+	}
+	address, err := account.Address("cosmos")
+	if err != nil {
+		return "", err
+	}
+	return address, nil
+}
+
+func SignByAccount(ctx context.Context, chainId string, name string, payload []byte) ([]byte, error) {
+	accountRegistry, err := newAccountRegistry(ctx, chainId)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, _, err := accountRegistry.Keyring.Sign(name, payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return sig, err
+}
+
 func GetAccountSecret(ctx context.Context, chainId string, name string, passphrase string) (string, string, error) {
 	accountRegistry, err := newAccountRegistry(ctx, chainId)
 	if err != nil {

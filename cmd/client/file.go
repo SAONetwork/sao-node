@@ -35,11 +35,6 @@ var createFileCmd = &cli.Command{
 	Name: "create-file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "owner",
-			Usage:    "file owner",
-			Required: true,
-		},
-		&cli.StringFlag{
 			Name:     "file-name",
 			Required: true,
 		},
@@ -94,10 +89,6 @@ var createFileCmd = &cli.Command{
 		// if !cctx.IsSet("content") || cctx.String("content") == "" {
 		// 	return xerrors.Errorf("must provide non-empty --content.")
 		// }
-		if !cctx.IsSet("owner") {
-			return xerrors.Errorf("must provide --owner")
-		}
-		owner := cctx.String("owner")
 
 		if !cctx.IsSet("file-name") {
 			return xerrors.Errorf("must provide --file-name")
@@ -134,7 +125,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -150,7 +141,7 @@ var createFileCmd = &cli.Command{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   int32(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration:   uint64(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			Alias:      fileName,
@@ -174,7 +165,7 @@ var createFileCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = chain.StoreOrder(ctx, owner, clientProposal)
+			orderId, _, err = chain.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
