@@ -82,3 +82,7 @@ const (
 	ModelTypeFile = ModelType("FILE")
 	ModelTypeRule = ModelType("RULE")
 )
+
+type ConsensusProposal interface {
+	Marshal() ([]byte, error)
+}
