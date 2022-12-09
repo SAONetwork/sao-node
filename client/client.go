@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
@@ -12,15 +11,12 @@ import (
 
 	apiclient "sao-storage-node/api/client"
 
-	"github.com/thanhpk/randstr"
-
 	"github.com/mitchellh/go-homedir"
 )
 
 type SaoClientConfig struct {
 	GroupId      string
-	Seed         string
-	Alg          string
+	KeyName      string
 	ChainAddress string
 	Gateway      string
 	Token        string
@@ -116,12 +112,39 @@ func NewSaoClient(ctx context.Context, gatewayAddr string) *SaoClient {
 func defaultSaoClientConfig() *SaoClientConfig {
 	return &SaoClientConfig{
 		GroupId:      utils.GenerateGroupId(),
-		Alg:          "secp256k1",
-		Seed:         hex.EncodeToString(randstr.Bytes(32)),
+		KeyName:      "",
 		ChainAddress: "http://localhost:26657",
 		Gateway:      "http://127.0.0.1:8888/rpc/v0",
 		Token:        "DEFAULT_TOKEN",
 	}
+}
+
+func (sc SaoClient) SaveConfig(cfg *SaoClientConfig) error {
+	cliPath, err := homedir.Expand(SAO_CLI_PATH)
+	if err != nil {
+		return err
+	}
+
+	configPath := filepath.Join(cliPath, "config.toml")
+
+	c, err := os.Open(configPath)
+	if err != nil {
+		return err
+	}
+
+	dc, err := utils.NodeBytes(cfg)
+	if err != nil {
+		return err
+	}
+	_, err = c.Write(dc)
+	if err != nil {
+		return err
+	}
+
+	if err := c.Close(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (sc SaoClient) Test(ctx context.Context) (string, error) {

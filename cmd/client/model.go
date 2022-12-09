@@ -147,7 +147,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -286,7 +286,7 @@ var loadCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -448,7 +448,7 @@ var renewCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -538,7 +538,7 @@ var statusCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -618,7 +618,7 @@ var deleteCmd = &cli.Command{
 		keyword := cctx.String("keyword")
 
 		client := saoclient.NewSaoClient(ctx, gateway)
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -689,7 +689,7 @@ var commitsCmd = &cli.Command{
 		keyword := cctx.String("keyword")
 
 		client := saoclient.NewSaoClient(ctx, gateway)
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -870,7 +870,7 @@ var updateCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
