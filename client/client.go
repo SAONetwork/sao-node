@@ -155,11 +155,11 @@ func (sc SaoClient) Test(ctx context.Context) (string, error) {
 	return resp, nil
 }
 
-func (sc SaoClient) Create(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+func (sc SaoClient) Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	return sc.gatewayApi.Create(ctx, req, orderProposal, orderId, content)
 }
 
-func (sc SaoClient) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
+func (sc SaoClient) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
 	return sc.gatewayApi.CreateFile(ctx, req, orderProposal, orderId)
 }
 
@@ -175,7 +175,7 @@ func (sc SaoClient) ShowCommits(ctx context.Context, req *types.MetadataProposal
 	return sc.gatewayApi.ShowCommits(ctx, req)
 }
 
-func (sc SaoClient) Update(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+func (sc SaoClient) Update(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	return sc.gatewayApi.Update(ctx, req, orderProposal, orderId, patch)
 }
 
