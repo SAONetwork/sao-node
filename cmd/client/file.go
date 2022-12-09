@@ -141,7 +141,7 @@ var createFileCmd = &cli.Command{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration:   uint64(time.Duration(60*60*24*duration) * time.Second / chain.Blocktime),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			Alias:      fileName,
