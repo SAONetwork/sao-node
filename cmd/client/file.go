@@ -134,7 +134,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -308,7 +308,7 @@ var downloadCmd = &cli.Command{
 			version = ""
 		}
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
@@ -419,7 +419,7 @@ var tokenGenCmd = &cli.Command{
 		gateway := cctx.String("gateway")
 		client := saoclient.NewSaoClient(ctx, gateway)
 
-		didManager, err := cliutil.GetDidManager(cctx, client.Cfg.Seed, client.Cfg.Alg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
