@@ -67,11 +67,6 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 	} else {
 		keyName = cctx.String("keyName")
 	}
-	//
-	//passphrase, err := AskForPassphrase()
-	//if err != nil {
-	//	return nil, "", err
-	//}
 
 	address, err := chain.GetAddress(cctx.Context, "sao", keyName)
 	if err != nil {
@@ -83,11 +78,7 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 	if err != nil {
 		return nil, "", err
 	}
-	fmt.Println("secret", secret)
-	//secretBytes, err := hex.DecodeString(secret)
-	//if err != nil {
-	//	return nil, "", err
-	//}
+
 	provider, err := saokey.NewSecp256k1Provider(secret)
 	if err != nil {
 		return nil, "", err
