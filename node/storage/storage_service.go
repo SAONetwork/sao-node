@@ -3,7 +3,6 @@ package storage
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -231,20 +230,7 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 		return
 	}
 
-	proposalBytesOrg, err := json.Marshal(req.Proposal)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	var obj interface{}
-	err = json.Unmarshal(proposalBytesOrg, &obj)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	proposalBytes, err := json.Marshal(obj)
+	proposalBytes, err := req.Proposal.Proposal.Marshal()
 	if err != nil {
 		log.Error(err)
 		return

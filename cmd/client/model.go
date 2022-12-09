@@ -164,7 +164,7 @@ var createCmd = &cli.Command{
 			Owner:    didManager.Id,
 			Provider: gatewayAddress,
 			GroupId:  groupId,
-			Duration: uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration: int32(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:  int32(replicas),
 			Timeout:  int32(delay),
 			Alias:    cctx.String("name"),
@@ -433,7 +433,7 @@ var renewCmd = &cli.Command{
 
 		proposal := saotypes.RenewProposal{
 			Owner:    didManager.Id,
-			Duration: uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration: int32(chain.Blocktime * time.Duration(60*24*duration)),
 			Timeout:  int32(delay),
 			Data:     dataIds,
 		}
@@ -895,7 +895,7 @@ var updateCmd = &cli.Command{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration:   int32(chain.Blocktime * time.Duration(60*24*duration)),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			DataId:     res.Metadata.DataId,
