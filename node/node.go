@@ -335,7 +335,7 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 	return jwt.Sign(&p, jwt.NewHS256(key))
 }
 
-func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
 	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
@@ -360,7 +360,7 @@ func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderPro
 	}, nil
 }
 
-func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
+func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
 	cidStr := orderProposal.Proposal.Cid
 	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
@@ -450,7 +450,7 @@ func (n *Node) Delete(ctx context.Context, req *types.MetadataProposal) (apitype
 	}, nil
 }
 
-func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderProposal types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
 	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {

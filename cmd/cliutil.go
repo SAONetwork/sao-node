@@ -2,12 +2,15 @@ package cliutil
 
 import (
 	"encoding/hex"
+	"fmt"
+	"golang.org/x/term"
+	"sao-storage-node/chain"
+	saoclient "sao-storage-node/client"
+	"syscall"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
-	saodidtypes "github.com/SaoNetwork/sao-did/types"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -49,44 +52,50 @@ var FlagVeryVerbose = &cli.BoolFlag{
 	Destination: &IsVeryVerbose,
 }
 
-func GetDidManager(cctx *cli.Context, defaultSeed string, defaultAlg string) (*saodid.DidManager, error) {
-	var secret []byte
-	var err error
-	if cctx.IsSet("secret") {
-		seed := cctx.String("secret")
-		secret, err = hex.DecodeString(seed)
-		if err != nil {
-			return nil, err
-		}
+func AskForPassphrase() (string, error) {
+	fmt.Print("Enter passphrase:")
+	passphrase, err := term.ReadPassword(syscall.Stdin)
+	if err != nil {
+		return "", err
+	}
+	return string(passphrase), nil
+}
+
+func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
+	var keyName string
+	if !cctx.IsSet("keyName") {
+		keyName = cfg.KeyName
 	} else {
-		secret, err = hex.DecodeString(defaultSeed)
-		if err != nil {
-			return nil, err
-		}
+		keyName = cctx.String("keyName")
 	}
 
-	alg := defaultAlg
-	if cctx.IsSet("alg") {
-		alg := cctx.String("alg")
-		if alg != SECP256K1 {
-			return nil, xerrors.Errorf("unsupported alg %s", alg)
-		}
+	passphrase, err := AskForPassphrase()
+	if err != nil {
+		return nil, "", err
 	}
 
-	var provider saodidtypes.DidProvider
-	if alg == SECP256K1 {
-		provider, err = saokey.NewSecp256k1Provider(secret)
-		if err != nil {
-			return nil, err
-		}
+	address, secret, err := chain.GetAccountSecret(cctx.Context, "sao", keyName, passphrase)
+	if err != nil {
+		return nil, "", err
 	}
+	secretBytes, err := hex.DecodeString(secret)
+	if err != nil {
+		return nil, "", err
+	}
+	provider, err := saokey.NewSecp256k1Provider(secretBytes)
+	if err != nil {
+		return nil, "", err
+	}
+	resolver := saokey.NewKeyResolver()
 
-	didManager := saodid.NewDidManager(provider, saokey.NewKeyResolver())
+	didManager := saodid.NewDidManager(provider, resolver)
 	_, err = didManager.Authenticate([]string{}, "")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return &didManager, nil
+
+	cfg.KeyName = keyName
+	return &didManager, address, nil
 }
 
 func GetChainId() string {
