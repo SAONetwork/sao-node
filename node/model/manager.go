@@ -171,7 +171,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	return model, nil
 }
 
-func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*types.Model, error) {
+func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*types.Model, error) {
 	orderProposal := clientProposal.Proposal
 	if orderProposal.Alias == "" {
 		orderProposal.Alias = orderProposal.Cid
@@ -225,7 +225,7 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 	return model, nil
 }
 
-func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal, clientProposal types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
+func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal, clientProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())

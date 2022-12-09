@@ -45,7 +45,7 @@ type FetchResult struct {
 
 type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error)
-	CommitModel(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
+	CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error)
 	Stop(ctx context.Context) error
 }
@@ -208,7 +208,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 	}, nil
 }
 
-func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error) {
+func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error) {
 	// TODO: consider store node may ask earlier than file split
 	// TODO: if big data, consider store to staging dir.
 	// TODO: support split file.

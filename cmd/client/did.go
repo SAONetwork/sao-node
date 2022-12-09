@@ -41,6 +41,9 @@ var didCreateCmd = &cli.Command{
 		}
 
 		chainSvc, err := chain.NewChainSvc(cctx.Context, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return err
+		}
 		hash, err := chainSvc.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
 		if err != nil {
 			return err
