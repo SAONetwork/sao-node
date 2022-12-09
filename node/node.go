@@ -337,12 +337,12 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 
 func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
-	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	err := n.validSignature(ctx, req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
 
-	err = n.validSignature(ctx, orderProposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
+	err = n.validSignature(ctx, orderProposal.Proposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
@@ -388,7 +388,7 @@ func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orde
 		}
 
 		// verify signature
-		err = n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+		err = n.validSignature(ctx, req.Proposal, req.Proposal.Owner, req.JwsSignature)
 		if err != nil {
 			return apitypes.CreateResp{}, err
 		}
@@ -414,7 +414,7 @@ func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orde
 }
 
 func (n *Node) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
-	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	err := n.validSignature(ctx, req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
@@ -435,7 +435,7 @@ func (n *Node) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.
 }
 
 func (n *Node) Delete(ctx context.Context, req *types.MetadataProposal) (apitypes.DeleteResp, error) {
-	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	err := n.validSignature(ctx, req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
@@ -452,7 +452,7 @@ func (n *Node) Delete(ctx context.Context, req *types.MetadataProposal) (apitype
 
 func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
-	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	err := n.validSignature(ctx, req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
 	}
@@ -475,7 +475,7 @@ func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderPro
 }
 
 func (n *Node) ShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
-	err := n.validSignature(ctx, req, req.Proposal.Owner, req.JwsSignature)
+	err := n.validSignature(ctx, req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.ShowCommitsResp{}, err
 	}
@@ -605,6 +605,10 @@ func (n *Node) validSignature(ctx context.Context, proposal interface{}, owner s
 	if err != nil {
 		return err
 	}
+
+	log.Debug("Proposal: ", proposalBytes)
+	log.Debug("Protected: ", signature.Protected)
+	log.Debug("Signature: ", signature.Signature)
 
 	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),

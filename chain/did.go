@@ -2,7 +2,7 @@ package chain
 
 import (
 	"context"
-	didtypes "github.com/SaoNetwork/sao/x/did/types"
+
 	"golang.org/x/xerrors"
 
 	"github.com/SaoNetwork/sao/x/did/types"
@@ -25,7 +25,7 @@ func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did str
 		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
-	msg := &didtypes.MsgUpdatePaymentAddress{
+	msg := &types.MsgUpdatePaymentAddress{
 		Creator:   creator,
 		Did:       did,
 		AccountId: accountId,

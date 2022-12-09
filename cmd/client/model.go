@@ -42,7 +42,8 @@ var modelCmd = &cli.Command{
 }
 
 var createCmd = &cli.Command{
-	Name: "create",
+	Name:  "create",
+	Usage: "create a new data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "content",
@@ -418,15 +419,27 @@ var renewCmd = &cli.Command{
 
 		proposal := saotypes.RenewProposal{
 			Owner:    didManager.Id,
-			Duration: uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration: uint64(chain.Blocktime * time.Duration(60*60*24*duration)),
 			Timeout:  int32(delay),
 			Data:     dataIds,
 		}
 
-		proposalJsonBytes, err := proposal.Marshal()
+		proposalJsonBytesOrg, err := json.Marshal(proposal)
 		if err != nil {
 			return err
 		}
+
+		var obj interface{}
+		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
+		if err != nil {
+			return err
+		}
+
+		proposalJsonBytes, err := json.Marshal(obj)
+		if err != nil {
+			return err
+		}
+
 		jws, err := didManager.CreateJWS(proposalJsonBytes)
 		if err != nil {
 			return err
@@ -723,7 +736,8 @@ var commitsCmd = &cli.Command{
 }
 
 var updateCmd = &cli.Command{
-	Name: "update",
+	Name:  "update",
+	Usage: "update an existing data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "patch",
@@ -860,10 +874,10 @@ var updateCmd = &cli.Command{
 
 		force := cctx.Bool("force")
 
-		operation := uint32(0)
+		operation := uint32(1)
 
 		if force {
-			operation = 1
+			operation = 2
 		}
 
 		proposal := saotypes.Proposal{
@@ -906,7 +920,8 @@ var updateCmd = &cli.Command{
 }
 
 var updatePermissionCmd = &cli.Command{
-	Name: "update",
+	Name:  "update-permission",
+	Usage: "update data model's permission",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "data-id",

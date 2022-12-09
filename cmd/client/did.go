@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/tendermint/tendermint/libs/json"
-	"github.com/urfave/cli/v2"
 	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
+
+	"github.com/tendermint/tendermint/libs/json"
+	"github.com/urfave/cli/v2"
 )
 
 var didCmd = &cli.Command{
@@ -22,7 +23,7 @@ var didCreateCmd = &cli.Command{
 	Name: "create",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "keyName",
+			Name:     "key-name",
 			Required: true,
 			Usage:    "cosmos key name which did will be generated on",
 		},
@@ -51,7 +52,7 @@ var didCreateCmd = &cli.Command{
 
 		err = saoclient.SaveConfig(saoclient.Cfg)
 		if err != nil {
-			fmt.Errorf("save local config failed: %v", err)
+			return fmt.Errorf("save local config failed: %v", err)
 		}
 
 		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
@@ -64,7 +65,7 @@ var didSignCmd = &cli.Command{
 	Name: "sign",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "keyName",
+			Name:     "key-name",
 			Required: true,
 		},
 	},
