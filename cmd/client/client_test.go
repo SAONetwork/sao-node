@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	saoclient "sao-storage-node/client"
 	"sao-storage-node/utils"
 	"testing"
@@ -67,14 +66,7 @@ func TestSignature(t *testing.T) {
 		Gateway:         "peerInfo",
 	}
 
-	proposalBytesOrg, err := json.Marshal(proposal)
-	require.NoError(t, err)
-
-	var obj interface{}
-	err = json.Unmarshal(proposalBytesOrg, &obj)
-	require.NoError(t, err)
-
-	proposalBytes, err := json.Marshal(obj)
+	proposalBytes, err := proposal.Marshal()
 	require.NoError(t, err)
 
 	jws, err := didManager.CreateJWS(proposalBytes)
