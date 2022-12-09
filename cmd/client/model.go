@@ -424,23 +424,12 @@ var renewCmd = &cli.Command{
 			Data:     dataIds,
 		}
 
-		proposalJsonBytesOrg, err := json.Marshal(proposal)
+		proposalBytes, err := proposal.Marshal()
 		if err != nil {
 			return err
 		}
 
-		var obj interface{}
-		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
-		if err != nil {
-			return err
-		}
-
-		proposalJsonBytes, err := json.Marshal(obj)
-		if err != nil {
-			return err
-		}
-
-		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
 			return err
 		}
@@ -976,23 +965,12 @@ var updatePermissionCmd = &cli.Command{
 			ReadwriteDids: cctx.StringSlice("readwrite-dids"),
 		}
 
-		proposalJsonBytesOrg, err := json.Marshal(proposal)
+		proposalBytes, err := proposal.Marshal()
 		if err != nil {
 			return err
 		}
 
-		var obj interface{}
-		err = json.Unmarshal(proposalJsonBytesOrg, &obj)
-		if err != nil {
-			return err
-		}
-
-		proposalJsonBytes, err := json.Marshal(obj)
-		if err != nil {
-			return err
-		}
-
-		jws, err := didManager.CreateJWS(proposalJsonBytes)
+		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
 			return err
 		}
@@ -1091,23 +1069,12 @@ var patchGenCmd = &cli.Command{
 }
 
 func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain *chain.ChainSvc) (*types.OrderStoreProposal, error) {
-	proposalJsonBytesOrg, err := json.Marshal(proposal)
+	proposalBytes, err := proposal.Marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	var obj interface{}
-	err = json.Unmarshal(proposalJsonBytesOrg, &obj)
-	if err != nil {
-		return nil, err
-	}
-
-	proposalJsonBytes, err := json.Marshal(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	jws, err := didManager.CreateJWS(proposalJsonBytes)
+	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -1134,23 +1101,12 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 	proposal.LastValidHeight = uint64(lastHeight + 200)
 	proposal.Gateway = peerInfo
 
-	proposalJsonBytesOrg, err := json.Marshal(proposal)
+	proposalBytes, err := proposal.Marshal()
 	if err != nil {
 		return nil, err
 	}
 
-	var obj interface{}
-	err = json.Unmarshal(proposalJsonBytesOrg, &obj)
-	if err != nil {
-		return nil, err
-	}
-
-	proposalJsonBytes, err := json.Marshal(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	jws, err := didManager.CreateJWS(proposalJsonBytes)
+	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
 		return nil, err
 	}
