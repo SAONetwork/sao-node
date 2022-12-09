@@ -156,7 +156,7 @@ var createCmd = &cli.Command{
 			Owner:    didManager.Id,
 			Provider: gatewayAddress,
 			GroupId:  groupId,
-			Duration: uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration: uint64(time.Duration(60*60*24*duration) * time.Second / chain.Blocktime),
 			Replica:  int32(replicas),
 			Timeout:  int32(delay),
 			Alias:    cctx.String("name"),
@@ -419,7 +419,7 @@ var renewCmd = &cli.Command{
 
 		proposal := saotypes.RenewProposal{
 			Owner:    didManager.Id,
-			Duration: uint64(chain.Blocktime * time.Duration(60*60*24*duration)),
+			Duration: uint64(time.Duration(60*60*24*duration) * time.Second / chain.Blocktime),
 			Timeout:  int32(delay),
 			Data:     dataIds,
 		}
@@ -472,6 +472,10 @@ var renewCmd = &cli.Command{
 
 		for dataId, info := range renewedOrders {
 			fmt.Printf("successfully renewed model[%s]: %s.\n", dataId, info)
+		}
+
+		for dataId, orderId := range renewModels {
+			fmt.Printf("successfully renewed model[%s] with orderId[%d].\n", dataId, orderId)
 		}
 
 		for dataId, err := range failedOrders {
@@ -884,7 +888,7 @@ var updateCmd = &cli.Command{
 			Owner:      didManager.Id,
 			Provider:   gatewayAddress,
 			GroupId:    groupId,
-			Duration:   uint64(chain.Blocktime * time.Duration(60*24*duration)),
+			Duration:   uint64(time.Duration(60*60*24*duration) * time.Second / chain.Blocktime),
 			Replica:    int32(replicas),
 			Timeout:    int32(delay),
 			DataId:     res.Metadata.DataId,
@@ -1127,7 +1131,7 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 		return nil, err
 	}
 
-	proposal.LastValidHeight = uint64(lastHeight)
+	proposal.LastValidHeight = uint64(lastHeight + 200)
 	proposal.Gateway = peerInfo
 
 	proposalJsonBytesOrg, err := json.Marshal(proposal)
