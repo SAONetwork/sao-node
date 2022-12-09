@@ -126,8 +126,7 @@ func (sc SaoClient) SaveConfig(cfg *SaoClientConfig) error {
 	}
 
 	configPath := filepath.Join(cliPath, "config.toml")
-
-	c, err := os.Open(configPath)
+	c, err := os.OpenFile(configPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
 	if err != nil {
 		return err
 	}
