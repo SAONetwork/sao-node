@@ -6,12 +6,11 @@ SAO Network is consist of gateway nodes and storage nodes. Gateway node and stor
 
 ## Node Management
 
-* .sao_http_file
-
-* .sao_ipfs
-* .sao_staging
-* .sao_cli
-* .sao-storage-node
+* .sao-node/
+   - http-files
+   - ipfs
+   - staging
+* .sao-cli
 
 
 
@@ -288,3 +287,7 @@ $ saoclient model update-permission --readonly-dids did:key:zQ3shYVX2m4CJKRAm2vb
 
 
 
+# port
+* gateway: 5151
+* http: 5152
+* p2p: tcp 5153/udp 5154

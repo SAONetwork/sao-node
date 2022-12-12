@@ -118,7 +118,10 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 		if client == nil {
 			return xerrors.Errorf("failed to create client")
 		}
@@ -246,7 +249,10 @@ var loadCmd = &cli.Command{
 			version = ""
 		}
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -394,7 +400,10 @@ var renewCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -487,7 +496,10 @@ var statusCmd = &cli.Command{
 		}
 		dataIds := cctx.StringSlice("data-ids")
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -576,7 +588,11 @@ var deleteCmd = &cli.Command{
 		}
 		dataId := cctx.String("data-id")
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
@@ -645,7 +661,10 @@ var commitsCmd = &cli.Command{
 		}
 		keyword := cctx.String("keyword")
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
@@ -805,7 +824,10 @@ var updateCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -927,7 +949,10 @@ var updatePermissionCmd = &cli.Command{
 		}
 		dataId := cctx.String("data-id")
 
-		client := getSaoClient(cctx)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {

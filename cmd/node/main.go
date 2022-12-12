@@ -39,7 +39,7 @@ var log = logging.Logger("node")
 
 const (
 	FlagStorageRepo        = "repo"
-	FlagStorageDefaultRepo = "~/.sao-storage-node"
+	FlagStorageDefaultRepo = "~/.sao-node"
 )
 
 var FlagRepo = &cli.StringFlag{

@@ -86,7 +86,7 @@ func DefaultSaoNode() *Node {
 	return &Node{
 		Common: defCommon(),
 		Api: API{
-			ListenAddress:    "/ip4/127.0.0.1/tcp/8888/http",
+			ListenAddress:    "/ip4/127.0.0.1/tcp/5151/http",
 			Timeout:          30 * time.Second,
 			EnablePermission: false,
 		},
@@ -97,9 +97,9 @@ func DefaultSaoNode() *Node {
 		},
 		Transport: Transport{
 			TransportListenAddress: []string{
-				"/ip4/0.0.0.0/udp/26662",
+				"/ip4/0.0.0.0/udp/5154",
 			},
-			StagingPath:      "~/.sao_staging",
+			StagingPath:      "~/.sao-node/staging",
 			StagingSapceSize: 32 * 1024 * 1024 * 1024,
 		},
 		Module: Module{
@@ -108,8 +108,8 @@ func DefaultSaoNode() *Node {
 		},
 		SaoHttpFileServer: SaoHttpFileServer{
 			Enable:                  true,
-			HttpFileServerAddress:   "localhost:8886",
-			HttpFileServerPath:      "~/.sao_http_file",
+			HttpFileServerAddress:   "localhost:5152",
+			HttpFileServerPath:      "~/.sao-node/http-files",
 			EnableHttpFileServerLog: false,
 			TokenPeriod:             24 * time.Hour,
 		},
@@ -119,7 +119,7 @@ func DefaultSaoNode() *Node {
 		},
 		SaoIpfs: SaoIpfs{
 			Enable: true,
-			Repo:   "~/.sao_ipfs",
+			Repo:   "~/.sao-node/ipfs",
 		},
 	}
 }
@@ -133,7 +133,7 @@ func defCommon() Common {
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{
-				"/ip4/0.0.0.0/tcp/26660",
+				"/ip4/0.0.0.0/tcp/5153",
 			},
 		},
 	}

@@ -72,6 +72,7 @@ func (ss *StoreSvc) Start(ctx context.Context) error {
 			}
 			err := ss.process(ctx, t)
 			if err != nil {
+				// TODO: retry mechanism
 				log.Error(err)
 			}
 		case <-ctx.Done():
