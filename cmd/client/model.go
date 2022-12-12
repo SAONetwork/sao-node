@@ -571,8 +571,8 @@ var deleteCmd = &cli.Command{
 	Usage: "delete data model",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "keyword",
-			Usage:    "data model's alias, dataId or tag",
+			Name:     "data-id",
+			Usage:    "data model's dataId",
 			Required: true,
 		},
 	},
@@ -581,57 +581,57 @@ var deleteCmd = &cli.Command{
 
 		gateway := cctx.String("gateway")
 
-		if !cctx.IsSet("keyword") {
-			return xerrors.Errorf("must provide --keyword")
+		if !cctx.IsSet("data-id") {
+			return xerrors.Errorf("must provide --data-id")
 		}
-		keyword := cctx.String("keyword")
+		dataId := cctx.String("data-id")
 
 		client := saoclient.NewSaoClient(ctx, gateway)
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
-		if err != nil {
-			return err
-		}
-
-		groupId := cctx.String("platform")
-		if groupId == "" {
-			groupId = client.Cfg.GroupId
-		}
-
-		proposal := saotypes.QueryProposal{
-			Owner:   didManager.Id,
-			Keyword: keyword,
-			GroupId: groupId,
-		}
-
-		if !utils.IsDataId(keyword) {
-			proposal.Type_ = 2
-		}
-
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
 		}
 
-		request, err := buildQueryRequest(ctx, didManager, proposal, chain, gatewayAddress)
+		proposal := saotypes.TerminateProposal{
+			Owner:  didManager.Id,
+			DataId: dataId,
+		}
+
+		proposalBytes, err := proposal.Marshal()
 		if err != nil {
 			return err
 		}
 
-		resp, err := client.Delete(ctx, request)
+		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("data model %s deleted.\r\n", resp.Alias)
+		request := types.OrderTerminateProposal{
+			Proposal:     proposal,
+			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
+		}
+
+		_, _, err = chainSvc.TerminateOrder(ctx, signer, request)
+		if err != nil {
+			return err
+		}
+
+		result, err := client.Delete(ctx, &request)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("data model %s deleted.\r\n", result.DataId)
 
 		return nil
 	},

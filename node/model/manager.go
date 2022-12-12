@@ -316,13 +316,8 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	return model, nil
 }
 
-func (mm *ModelManager) Delete(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
-	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
-	}
-
-	model, _ := mm.CacheSvc.Get(req.Proposal.Owner, meta.DataId)
+func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminateProposal) (*types.Model, error) {
+	model, _ := mm.CacheSvc.Get(req.Proposal.Owner, req.Proposal.DataId)
 	if model != nil {
 		m, ok := model.(*types.Model)
 		if ok {

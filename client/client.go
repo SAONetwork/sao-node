@@ -166,7 +166,7 @@ func (sc SaoClient) Load(ctx context.Context, req *types.MetadataProposal) (apit
 	return sc.gatewayApi.Load(ctx, req)
 }
 
-func (sc SaoClient) Delete(ctx context.Context, req *types.MetadataProposal) (apitypes.DeleteResp, error) {
+func (sc SaoClient) Delete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
 	return sc.gatewayApi.Delete(ctx, req)
 }
 
