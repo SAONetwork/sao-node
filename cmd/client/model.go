@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"sao-storage-node/chain"
-	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/types"
 	"sao-storage-node/utils"
@@ -57,7 +56,7 @@ var createCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:     "delay",
-			Usage:    "how long to wait for the data ready",
+			Usage:    "how long to wait for the data ready() ",
 			Value:    24 * 60 * 60,
 			Required: false,
 		},
@@ -113,14 +112,13 @@ var createCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		gateway := cctx.String("gateway")
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 		if client == nil {
 			return xerrors.Errorf("failed to create client")
 		}
@@ -236,8 +234,6 @@ var loadCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String("gateway")
-
 		if !cctx.IsSet("keyword") {
 			return xerrors.Errorf("must provide --keyword")
 		}
@@ -250,7 +246,7 @@ var loadCmd = &cli.Command{
 			version = ""
 		}
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -391,8 +387,6 @@ var renewCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String("gateway")
-
 		if !cctx.IsSet("data-ids") {
 			return xerrors.Errorf("must provide --data-ids")
 		}
@@ -400,7 +394,7 @@ var renewCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -488,14 +482,12 @@ var statusCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String("gateway")
-
 		if !cctx.IsSet("data-ids") {
 			return xerrors.Errorf("must provide --data-ids")
 		}
 		dataIds := cctx.StringSlice("data-ids")
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -579,14 +571,12 @@ var deleteCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String("gateway")
-
 		if !cctx.IsSet("data-id") {
 			return xerrors.Errorf("must provide --data-id")
 		}
 		dataId := cctx.String("data-id")
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
 			chainAddress = client.Cfg.ChainAddress
@@ -650,14 +640,12 @@ var commitsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String("gateway")
-
 		if !cctx.IsSet("keyword") {
 			return xerrors.Errorf("must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
@@ -817,8 +805,7 @@ var updateCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		gateway := cctx.String("gateway")
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -907,7 +894,7 @@ var updateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("alias: %s, data id: %s.\r\n", resp.Alias, resp.DataId)
+		fmt.Printf("alias: %s, data id: %s, commitId: %s.\r\n", resp.Alias, resp.DataId, resp.CommitId)
 		return nil
 	},
 }
@@ -940,8 +927,7 @@ var updatePermissionCmd = &cli.Command{
 		}
 		dataId := cctx.String("data-id")
 
-		gateway := cctx.String("gateway")
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := getSaoClient(cctx)
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {

@@ -33,7 +33,7 @@ var TestCmd = &cli.Command{
 		ctx := cctx.Context
 		gateway := cctx.String("gateway")
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client := saoclient.NewSaoClient(ctx, "~/.sao_cli", gateway)
 		resp, err := client.Test(ctx)
 		if err != nil {
 			return err
@@ -46,7 +46,7 @@ var TestCmd = &cli.Command{
 func TestSignature(t *testing.T) {
 	ctx := context.TODO()
 	gateway := ""
-	client := saoclient.NewSaoClient(ctx, gateway)
+	client := saoclient.NewSaoClient(ctx, "~/.sao_cli", gateway)
 	require.NotNil(t, client)
 
 	secret, err := hex.DecodeString("a3709843cbd4e72d7215512e28385123b44eab5e27f36001d74ee1cff671502d")

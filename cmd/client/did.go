@@ -29,7 +29,7 @@ var didCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		saoclient := saoclient.NewSaoClient(cctx.Context, "none")
+		saoclient := saoclient.NewSaoClient(cctx.Context, cctx.String(FlagClientRepo), "none")
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -70,7 +70,7 @@ var didSignCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		saoclient := saoclient.NewSaoClient(cctx.Context, "none")
+		saoclient := saoclient.NewSaoClient(cctx.Context, cctx.String(FlagClientRepo), "none")
 		didManager, _, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
 		if err != nil {
 			return err
