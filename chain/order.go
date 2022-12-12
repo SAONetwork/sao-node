@@ -135,6 +135,32 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 	return txResp.TxResponse.TxHash, renewResp.Result, nil
 }
 
+func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, map[string]string, error) {
+	signerAcc, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", nil, xerrors.Errorf("chain get account: %w, check the keyring please", err)
+	}
+
+	msg := &saotypes.MsgTerminate{
+		Creator:      creator,
+		Proposal:     terminateProposal.Proposal,
+		JwsSignature: terminateProposal.JwsSignature,
+	}
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
+	if err != nil {
+		return "", nil, err
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", nil, xerrors.Errorf("MsgTerminate tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	var terminateResp saotypes.MsgRenewResponse
+	err = txResp.Decode(&terminateResp)
+	if err != nil {
+		return "", nil, err
+	}
+	return txResp.TxResponse.TxHash, terminateResp.Result, nil
+}
+
 func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error) {
 	queryResp, err := c.orderClient.Order(ctx, &ordertypes.QueryGetOrderRequest{
 		Id: orderId,

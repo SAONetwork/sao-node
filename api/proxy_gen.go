@@ -23,7 +23,7 @@ type GatewayApiStruct struct {
 
 		CreateFile func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) `perm:"write"`
 
-		Delete func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) `perm:"write"`
+		Delete func(p0 context.Context, p1 *types.OrderTerminateProposal) (apitypes.DeleteResp, error) `perm:"write"`
 
 		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) `perm:"read"`
 
@@ -94,14 +94,14 @@ func (s *GatewayApiStub) CreateFile(p0 context.Context, p1 *types.MetadataPropos
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
-func (s *GatewayApiStruct) Delete(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) {
+func (s *GatewayApiStruct) Delete(p0 context.Context, p1 *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
 	if s.Internal.Delete == nil {
 		return *new(apitypes.DeleteResp), ErrNotSupported
 	}
 	return s.Internal.Delete(p0, p1)
 }
 
-func (s *GatewayApiStub) Delete(p0 context.Context, p1 *types.MetadataProposal) (apitypes.DeleteResp, error) {
+func (s *GatewayApiStub) Delete(p0 context.Context, p1 *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
 	return *new(apitypes.DeleteResp), ErrNotSupported
 }
 

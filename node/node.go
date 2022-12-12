@@ -434,7 +434,7 @@ func (n *Node) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.
 	}, nil
 }
 
-func (n *Node) Delete(ctx context.Context, req *types.MetadataProposal) (apitypes.DeleteResp, error) {
+func (n *Node) Delete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.DeleteResp{}, err

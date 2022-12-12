@@ -15,7 +15,7 @@ type GatewayApi interface {
 	Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) //perm:write
 	CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error)             //perm:write
 	Load(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error)                                                                              //perm:read
-	Delete(ctx context.Context, req *types.MetadataProposal) (apitypes.DeleteResp, error)                                                                          //perm:write
+	Delete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error)                                                                    //perm:write
 	ShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error)                                                                //perm:read
 	Update(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error)   //perm:write
 	GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error)                                                                                             //perm:read

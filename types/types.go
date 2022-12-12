@@ -71,6 +71,11 @@ type OrderRenewProposal struct {
 	JwsSignature saotypes.JwsSignature
 }
 
+type OrderTerminateProposal struct {
+	Proposal     saotypes.TerminateProposal
+	JwsSignature saotypes.JwsSignature
+}
+
 const (
 	ModelTypes = "adsf"
 )
