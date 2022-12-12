@@ -97,6 +97,11 @@ var createCmd = &cli.Command{
 			Value:    "",
 			Required: false,
 		},
+		&cli.BoolFlag{
+			Name:     "public",
+			Value:    false,
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -114,6 +119,7 @@ var createCmd = &cli.Command{
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
 		gateway := cctx.String("gateway")
+		isPublic := cctx.Bool("public")
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
@@ -175,6 +181,16 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
+		queryProposal := saotypes.QueryProposal{
+			Owner:   didManager.Id,
+			Keyword: dataId,
+		}
+
+		if isPublic {
+			queryProposal.Owner = "all"
+			proposal.Owner = "all"
+		}
+
 		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
 		if err != nil {
 			return err
@@ -186,11 +202,6 @@ var createCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-		}
-
-		queryProposal := saotypes.QueryProposal{
-			Owner:   didManager.Id,
-			Keyword: dataId,
 		}
 
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, chain, gatewayAddress)
@@ -1069,6 +1080,12 @@ var patchGenCmd = &cli.Command{
 }
 
 func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain *chain.ChainSvc) (*types.OrderStoreProposal, error) {
+	if proposal.Owner == "all" {
+		return &types.OrderStoreProposal{
+			Proposal: proposal,
+		}, nil
+	}
+
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
 		return nil, err
@@ -1100,6 +1117,12 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 
 	proposal.LastValidHeight = uint64(lastHeight + 200)
 	proposal.Gateway = peerInfo
+
+	if proposal.Owner == "all" {
+		return &types.MetadataProposal{
+			Proposal: proposal,
+		}, nil
+	}
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
