@@ -28,7 +28,7 @@ var FlagRepo = &cli.StringFlag{
 	Usage:    "repo directory for sao client",
 	Required: false,
 	EnvVars:  []string{"SAO_CLIENT_PATH"},
-	Value:    "~/.sao_cli",
+	Value:    "~/.sao-cli",
 }
 
 var gateway = &cli.StringFlag{
@@ -43,7 +43,7 @@ var platform = &cli.StringFlag{
 	Required: false,
 }
 
-func getSaoClient(cctx *cli.Context) *client.SaoClient {
+func getSaoClient(cctx *cli.Context) (*client.SaoClient, error) {
 	return client.NewSaoClient(cctx.Context, cctx.String(FlagClientRepo), cctx.String(FlagGateway))
 }
 
