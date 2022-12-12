@@ -101,14 +101,18 @@ var createFileCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		gateway := cctx.String("gateway")
+		gateway := cctx.String(FlagGateway)
+		repo := cctx.String(FlagClientRepo)
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client, err := saoclient.NewSaoClient(ctx, repo, gateway)
+		if err != nil {
+			return err
+		}
 
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
@@ -234,8 +238,9 @@ var uploadCmd = &cli.Command{
 			return err
 		}
 
+		repo := cctx.String(FlagClientRepo)
 		for _, file := range files {
-			c := saoclient.DoTransport(ctx, multiaddr, peerId, file)
+			c := saoclient.DoTransport(ctx, repo, multiaddr, peerId, file)
 			if c != cid.Undef {
 				fmt.Printf("file [%s] successfully uploaded, CID is %s.\r\n", file, c.String())
 			} else {
@@ -270,14 +275,15 @@ var downloadCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String("gateway")
-
 		if !cctx.IsSet("keywords") {
 			return xerrors.Errorf("must provide --keywords")
 		}
 		keywords := cctx.StringSlice("keywords")
 
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 
 		groupId := cctx.String("platform")
 		if groupId == "" {
@@ -375,7 +381,11 @@ var peerInfoCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+
 		resp, err := client.GetPeerInfo(ctx)
 		if err != nil {
 			return err
@@ -400,7 +410,10 @@ var tokenGenCmd = &cli.Command{
 		ctx := cctx.Context
 
 		gateway := cctx.String("gateway")
-		client := saoclient.NewSaoClient(ctx, gateway)
+		client, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
 
 		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
