@@ -27,7 +27,6 @@ var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
 	Name:        "chain-address",
 	EnvVars:     []string{"SAO_CHAIN_API"},
-	Value:       "http://localhost:26657",
 	Destination: &ChainAddress,
 }
 
@@ -35,7 +34,7 @@ var NetType string
 var FlagNetType = &cli.StringFlag{
 	Name:        "net",
 	Usage:       "sao network type: [devnet/testnet/mainnet]",
-	Value:       "testnet",
+	Value:       "devnet",
 	Destination: &NetType,
 }
 
