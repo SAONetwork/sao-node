@@ -327,7 +327,7 @@ var downloadCmd = &cli.Command{
 			}
 
 			if !utils.IsDataId(keyword) {
-				proposal.Type_ = 2
+				proposal.KeywordType = 2
 			}
 
 			request, err := buildQueryRequest(ctx, didManager, proposal, chain, gatewayAddress)

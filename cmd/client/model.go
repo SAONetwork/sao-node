@@ -283,7 +283,7 @@ var loadCmd = &cli.Command{
 		}
 
 		if !utils.IsDataId(keyword) {
-			proposal.Type_ = 2
+			proposal.KeywordType = 2
 		}
 
 		chainAddress := cliutil.ChainAddress
@@ -693,7 +693,7 @@ var commitsCmd = &cli.Command{
 		}
 
 		if !utils.IsDataId(keyword) {
-			proposal.Type_ = 2
+			proposal.KeywordType = 2
 		}
 
 		chainAddress := cliutil.ChainAddress
@@ -872,7 +872,7 @@ var updateCmd = &cli.Command{
 		}
 
 		if !utils.IsDataId(keyword) {
-			queryProposal.Type_ = 2
+			queryProposal.KeywordType = 2
 		}
 
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, chainSvc, gatewayAddress)
