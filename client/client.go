@@ -27,7 +27,7 @@ type SaoClient struct {
 	gatewayApi api.GatewayApi
 }
 
-func NewSaoClient(ctx context.Context, gatewayAddr string) *SaoClient {
+func NewSaoClient(ctx context.Context, repo string, gatewayAddr string) *SaoClient {
 	cliPath, err := homedir.Expand(SAO_CLI_PATH)
 	if err != nil {
 		log.Error(err.Error())

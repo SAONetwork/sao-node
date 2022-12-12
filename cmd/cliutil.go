@@ -14,10 +14,6 @@ import (
 )
 
 const (
-	SECP256K1 = "secp256k1"
-)
-
-const (
 	devNetChainId  = "sao"
 	testNetChainId = "sao-testnet-fcf77b"
 	mainNetChainId = "sao"
