@@ -7,6 +7,7 @@ package main
 import (
 	"os"
 	"sao-storage-node/build"
+	"sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 	"sao-storage-node/cmd/account"
 
@@ -17,10 +18,21 @@ import (
 const (
 	DEFAULT_DURATION = 365
 	DEFAULT_REPLICA  = 1
+
+	FlagClientRepo = "repo"
+	FlagGateway    = "gateway"
 )
 
+var FlagRepo = &cli.StringFlag{
+	Name:     FlagClientRepo,
+	Usage:    "repo directory for sao client",
+	Required: false,
+	EnvVars:  []string{"SAO_CLIENT_PATH"},
+	Value:    "~/.sao-cli",
+}
+
 var gateway = &cli.StringFlag{
-	Name:     "gateway",
+	Name:     FlagGateway,
 	EnvVars:  []string{"SAO_GATEWAY_API"},
 	Required: false,
 }
@@ -31,16 +43,15 @@ var platform = &cli.StringFlag{
 	Required: false,
 }
 
-var secret = &cli.StringFlag{
-	Name:     "secret",
-	Usage:    "client secret",
-	Required: false,
+func getSaoClient(cctx *cli.Context) (*client.SaoClient, error) {
+	return client.NewSaoClient(cctx.Context, cctx.String(FlagClientRepo), cctx.String(FlagGateway))
 }
 
 func before(cctx *cli.Context) error {
-	_ = logging.SetLogLevel("saoclient", "INFO")
-	_ = logging.SetLogLevel("chain", "INFO")
-	_ = logging.SetLogLevel("transport-client", "INFO")
+	// by default, do not print any log for client.
+	_ = logging.SetLogLevel("saoclient", "TRACE")
+	_ = logging.SetLogLevel("chain", "TRACE")
+	_ = logging.SetLogLevel("transport-client", "TRACE")
 
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("saoclient", "DEBUG")
@@ -60,9 +71,9 @@ func main() {
 		Before:               before,
 		Flags: []cli.Flag{
 			cliutil.FlagChainAddress,
+			FlagRepo,
 			gateway,
 			platform,
-			secret,
 			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},

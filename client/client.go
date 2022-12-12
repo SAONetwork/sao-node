@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
@@ -25,13 +26,13 @@ type SaoClientConfig struct {
 type SaoClient struct {
 	Cfg        *SaoClientConfig
 	gatewayApi api.GatewayApi
+	repo       string
 }
 
-func NewSaoClient(ctx context.Context, gatewayAddr string) *SaoClient {
-	cliPath, err := homedir.Expand(SAO_CLI_PATH)
+func NewSaoClient(ctx context.Context, repo string, gatewayAddr string) (*SaoClient, error) {
+	cliPath, err := homedir.Expand(repo)
 	if err != nil {
-		log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 
 	configPath := filepath.Join(cliPath, "config.toml")
@@ -40,73 +41,64 @@ func NewSaoClient(ctx context.Context, gatewayAddr string) *SaoClient {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(cliPath, 0755) //nolint: gosec
 			if err != nil && !os.IsExist(err) {
-				log.Error(err.Error())
-				return nil
+				return nil, err
 			}
 
 			c, err := os.Create(configPath)
 			if err != nil {
-				log.Error(err.Error())
-				return nil
+				return nil, err
 			}
 
 			dc, err := utils.NodeBytes(defaultSaoClientConfig())
 			if err != nil {
-				log.Error(err.Error())
-				return nil
+				return nil, err
 			}
 			_, err = c.Write(dc)
 			if err != nil {
-				log.Error(err.Error())
-				return nil
+				return nil, err
 			}
 
 			if err := c.Close(); err != nil {
-				log.Error(err.Error())
-				return nil
+				return nil, err
 			}
 		}
 	}
 	c, err := utils.FromFile(configPath, defaultSaoClientConfig())
 	if err != nil {
-		log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 	cfg, ok := c.(*SaoClientConfig)
 	if !ok {
-		log.Error("invalid config: ", c)
-		return nil
+		return nil, xerrors.Errorf("invalid config: %v", c)
 	}
 
 	if gatewayAddr == "none" {
 		return &SaoClient{
 			Cfg: cfg,
-		}
+		}, nil
 	} else if gatewayAddr == "" {
 		gatewayAddr = cfg.Gateway
 	}
 
 	if gatewayAddr == "" {
-		log.Error("invalid gateway")
-		return nil
+		return nil, xerrors.Errorf("invalid gateway")
 	}
 
 	if len(cfg.Token) == 0 {
-		log.Error("invalid token")
-		return nil
+		return nil, xerrors.New("invalid token")
 	}
 
 	gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gatewayAddr, cfg.Token)
 	if err != nil {
-		log.Error(err.Error())
-		return nil
+		return nil, err
 	}
 	defer closer()
 
 	return &SaoClient{
 		Cfg:        cfg,
 		gatewayApi: gatewayApi,
-	}
+		repo:       repo,
+	}, nil
 }
 
 func defaultSaoClientConfig() *SaoClientConfig {
@@ -120,7 +112,7 @@ func defaultSaoClientConfig() *SaoClientConfig {
 }
 
 func (sc SaoClient) SaveConfig(cfg *SaoClientConfig) error {
-	cliPath, err := homedir.Expand(SAO_CLI_PATH)
+	cliPath, err := homedir.Expand(sc.repo)
 	if err != nil {
 		return err
 	}

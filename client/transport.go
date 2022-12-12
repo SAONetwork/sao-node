@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("transport-client")
 
-func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
+func DoTransport(ctx context.Context, repo string, remoteAddr string, remotePeerId string, fpath string) cid.Cid {
 	file, err := os.Open(fpath)
 	if err != nil {
 		log.Error(err)
@@ -43,7 +43,7 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 		return cid.Undef
 	}
 
-	clientKey := fetchKey()
+	clientKey := fetchKey(repo)
 	if clientKey == nil {
 		log.Error("failed to generate transport key")
 		return cid.Undef
@@ -165,8 +165,8 @@ func DoTransport(ctx context.Context, remoteAddr string, remotePeerId string, fp
 	return contentCid
 }
 
-func fetchKey() ic.PrivKey {
-	kstorePath, err := homedir.Expand(filepath.Join(SAO_CLI_PATH, "keystore"))
+func fetchKey(repo string) ic.PrivKey {
+	kstorePath, err := homedir.Expand(filepath.Join(repo, "keystore"))
 	if err != nil {
 		log.Error(err.Error())
 		return nil

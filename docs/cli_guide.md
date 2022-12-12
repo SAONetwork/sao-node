@@ -2,7 +2,17 @@
 
 SAO Network is consist of gateway nodes and storage nodes. Gateway node and storage node can be combined into one node.
 
+* 
+
 ## Node Management
+
+* .sao-node/
+   - http-files
+   - ipfs
+   - staging
+* .sao-cli
+
+
 
 #### init
 
@@ -86,6 +96,8 @@ $ saonode run
 ```
 
 ## Gateway Node
+
+
 
 1. prepare cosmos account with some balance.
 
@@ -185,8 +197,6 @@ Account: testuser
 Address: cosmos1fedjcvhrk4agdf63rtzxzsk68jqddnkre4xdd6
 Mnemonic:
 stool rug blame artwork stereo resource artefact gallery permit mail carry pitch truck thing giraffe you prepare kitten february stairs oxygen aunt skirt tray
-
-$ 
 ```
 
 2. a did as data owner
@@ -202,11 +212,82 @@ the generated did did:key:zQ3shXWxQcZWLYENfBrg4B3iv8kdUxsEQYCbJg3x6dCr1rC4P can 
 
 #### create model
 
+```bash
+$ saoclient model create --content '[{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]' -name my_notes
+alias: my_notes, data id: 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+```
+
+#### patch model
+
+```bash
+$ saoclient model patch-gen --origin '[{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]' --target '[{"id": 3, "title":"Note 3"}]'
+  Patch      : [{"op":"remove","path":"/1"},{"op":"remove","path":"/0"},{"op":"add","path":"/0","value":{"id":3,"title":"Note 3"}}]
+  Target Cid : bafkreifzcud7fnbzia5rtci253jntjqwtxn532rmo3fqpvtszaygoxhxke
+```
+
 #### update model
+
+```bash
+$ saoclient model update --keyword my_notes --patch '[{"op":"remove","path":"/0/title"},{"op":"replace","path":"/0/id","value":4}]'  --cid bafkreih2glvg5xml2tpzs5ivewmtt7wpdl6gvqep6ozmvtt62qdfspz4ti
+alias: my_notes, data id: 612a9104-ed58-4ebe-9c90-d1f3d609f2fa, commitId: 40b425b0-46a6-4fa1-a1e3-1859900421a9.
+```
+
+#### commits
+
+```bash
+$ saoclient model commits --keyword my_notes
+  Model DataId : 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+  Model Alias  : my_notes
+  -----------------------------------------------------------
+  Version |Commit                              |Height
+  -----------------------------------------------------------
+  v0	  |612a9104-ed58-4ebe-9c90-d1f3d609f2fa|4082
+  v1	  |6e709d08-1133-449c-a111-ad99afdc526d|4391
+  v2	  |40b425b0-46a6-4fa1-a1e3-1859900421a9|4652
+  -----------------------------------------------------------
+```
 
 #### renew model
 
+```bash
+$ saoclient model renew --data-ids 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+successfully renewed model[612a9104-ed58-4ebe-9c90-d1f3d609f2fa] with orderId[9].
+```
+
+#### load model
+
+````bash
+$ saoclient model load --keyword my_notes                                                                       
+2022-12-12T12:29:47.558+0800	INFO	chain	chain/chain.go:56	initialize chain client
+2022-12-12T12:29:47.573+0800	INFO	chain	chain/chain.go:70	initialize chain listener
+  DataId    : 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+  Alias     : my_notes
+  CommitId  : 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+  Version   : v0
+  Cid       : bafkreidw636luhqz7f3u2hj5e2w2xij5lplxdrycuznntxrimuojiillly
+  Content   : [{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]
+➜  sao-storage-node git:(data_model_dev) ./saoclient model load --keyword 612a9104-ed58-4ebe-9c90-d1f3d609f2fa        
+2022-12-12T12:30:04.006+0800	INFO	chain	chain/chain.go:56	initialize chain client
+2022-12-12T12:30:04.017+0800	INFO	chain	chain/chain.go:70	initialize chain listener
+  DataId    : 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+  Alias     : my_notes
+  CommitId  : 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+  Version   : v0
+  Cid       : bafkreidw636luhqz7f3u2hj5e2w2xij5lplxdrycuznntxrimuojiillly
+  Content   : [{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]
+````
+
+
+
 #### update permission
 
-#### create file
+```bash
+$ saoclient model update-permission --readonly-dids did:key:zQ3shYVX2m4CJKRAm2vbTUnjRWcnwW22ZHRhS6GhHYk7xUdjz --readwrite-dids did:key:zQ3shsfykXBJGhueLVH3f7ts23vRs6C2wzUAfYaQfQchXiceF --data-id 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
+```
 
+
+
+# port
+* gateway: 5151
+* http: 5152
+* p2p: tcp 5153/udp 5154
