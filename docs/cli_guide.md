@@ -184,36 +184,26 @@ $ saonode run
 
 
 # Client
+env var SAO_CLIENT_PATH
 
-#### preparation
-
-1. a local cosmos account:
-
+#### init
 ```bash
-$ saoclient account create
-Enter account name:testuser
-ChainId:  sao-testnet-fcf77b
-Account: testuser
-Address: cosmos1fedjcvhrk4agdf63rtzxzsk68jqddnkre4xdd6
-Mnemonic:
-stool rug blame artwork stereo resource artefact gallery permit mail carry pitch truck thing giraffe you prepare kitten february stairs oxygen aunt skirt tray
+$ saoclient --repo ~/.sao_cli2 --chain-address http://192.168.50.66:26657 --gateway http://192.168.50.66:8888/rpc/v0 init --keyName testuser2
+repo /home/leor/.sao_cli2 is initialized.
+account created: 
+Account: testuser2
+Address: cosmos10ehax037q70ktx0zwav3cmujyy5rcffaej72xj
+Mnemonic: siege dust patient sorry used lyrics cage canoe sustain tobacco gloom turn inner matter quote harbor swear scout pigeon page slender isolate catalog nurse
+Please deposit some coins to pay message gas fee and confirm with 'yes':
+yes
+Created DID did:key:zQ3shhBpMfP2hki8UAkxCs4P3VCSBRFUUj1RVYYdSdquU1qv8. tx hash 2C1A76352CDFE6EB33106EC4D6C2A0309144F9376318C3B15E003F241082D8DE
+sao client initialized.
 ```
-
-2. a did as data owner
-
-```bash
-$ saoclient --net devnet did create --key-name testuser
-2022-12-09T18:43:00.844+0800	INFO	chain	chain/chain.go:56	initialize chain client
-2022-12-09T18:43:00.846+0800	INFO	chain	chain/chain.go:70	initialize chain listener
-Created DID did:key:zQ3shXWxQcZWLYENfBrg4B3iv8kdUxsEQYCbJg3x6dCr1rC4P. tx hash 9491126617A8C19A2BD548F214BE7883CF1C5B4474A2B756C558600FB0EA12BC
-```
-
-the generated did did:key:zQ3shXWxQcZWLYENfBrg4B3iv8kdUxsEQYCbJg3x6dCr1rC4P can be used as data owner.
 
 #### create model
 
 ```bash
-$ saoclient model create --content '[{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]' -name my_notes
+$ saoclient model create --content '[{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]' --name my_notes
 alias: my_notes, data id: 612a9104-ed58-4ebe-9c90-d1f3d609f2fa
 ```
 

@@ -33,7 +33,7 @@ var (
 )
 
 type Repo struct {
-	path       string
+	Path       string
 	configPath string
 
 	readonly bool
@@ -50,14 +50,14 @@ func NewRepo(path string) (*Repo, error) {
 	}
 
 	return &Repo{
-		path:       path,
+		Path:       path,
 		configPath: filepath.Join(path, fsConfig),
 	}, nil
 }
 
 func (r *Repo) Exists() (bool, error) {
 	// TODO:
-	_, err := os.Stat(filepath.Join(r.path, fsKeystore))
+	_, err := os.Stat(filepath.Join(r.Path, fsKeystore))
 	notexist := os.IsNotExist(err)
 	if notexist {
 		err = nil
@@ -74,8 +74,8 @@ func (r *Repo) Init(chainAddress string) error {
 		return nil
 	}
 
-	log.Infof("Initializing repo at '%s'", r.path)
-	err = os.MkdirAll(r.path, 0755) //nolint: gosec
+	log.Infof("Initializing repo at '%s'", r.Path)
+	err = os.MkdirAll(r.Path, 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return err
 	}
@@ -116,7 +116,7 @@ func (r *Repo) GeneratePeerId() (crypto.PrivKey, error) {
 }
 
 func (r *Repo) GetKeyBytes() ([]byte, error) {
-	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
+	libp2pPath := filepath.Join(r.Path, fsKeystore, fsLibp2pKey)
 	key, err := os.ReadFile(libp2pPath)
 	if err != nil {
 		return nil, err
@@ -125,7 +125,7 @@ func (r *Repo) GetKeyBytes() ([]byte, error) {
 }
 
 func (r *Repo) PeerId() (crypto.PrivKey, error) {
-	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
+	libp2pPath := filepath.Join(r.Path, fsKeystore, fsLibp2pKey)
 	key, err := os.ReadFile(libp2pPath)
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func (r *Repo) PeerId() (crypto.PrivKey, error) {
 }
 
 func (r *Repo) setPeerId(data []byte) error {
-	libp2pPath := filepath.Join(r.path, fsKeystore, fsLibp2pKey)
+	libp2pPath := filepath.Join(r.Path, fsKeystore, fsLibp2pKey)
 	err := os.WriteFile(libp2pPath, data, 0600)
 	if err != nil {
 		return err
@@ -197,7 +197,7 @@ func (r *Repo) defaultConfig(chainAddress string) interface{} {
 }
 
 func (r *Repo) initKeystore() error {
-	kstorePath := filepath.Join(r.path, fsKeystore)
+	kstorePath := filepath.Join(r.Path, fsKeystore)
 	if _, err := os.Stat(kstorePath); err == nil {
 		return ErrRepoExists
 	} else if !os.IsNotExist(err) {
@@ -208,5 +208,5 @@ func (r *Repo) initKeystore() error {
 
 // join joins path elements with fsr.path
 func (fsr *Repo) join(paths ...string) string {
-	return filepath.Join(append([]string{fsr.path}, paths...)...)
+	return filepath.Join(append([]string{fsr.Path}, paths...)...)
 }

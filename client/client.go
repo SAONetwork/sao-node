@@ -6,11 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"sao-storage-node/api"
-	apitypes "sao-storage-node/api/types"
-	"sao-storage-node/types"
-	"sao-storage-node/utils"
-
 	apiclient "sao-storage-node/api/client"
+	"sao-storage-node/chain"
+	"sao-storage-node/utils"
 
 	"github.com/mitchellh/go-homedir"
 )
@@ -24,81 +22,114 @@ type SaoClientConfig struct {
 }
 
 type SaoClient struct {
-	Cfg        *SaoClientConfig
-	gatewayApi api.GatewayApi
-	repo       string
+	api.GatewayApi
+	chain.ChainSvcApi
+	Cfg  *SaoClientConfig
+	repo string
 }
 
-func NewSaoClient(ctx context.Context, repo string, gatewayAddr string) (*SaoClient, error) {
-	cliPath, err := homedir.Expand(repo)
+type SaoClientOptions struct {
+	Repo      string
+	Gateway   string
+	ChainAddr string
+	KeyName   string
+}
+
+func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func(), error) {
+	cliPath, err := homedir.Expand(opt.Repo)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
+	// prepare config file
 	configPath := filepath.Join(cliPath, "config.toml")
 	_, err = os.Stat(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(cliPath, 0755) //nolint: gosec
 			if err != nil && !os.IsExist(err) {
-				return nil, err
+				return nil, nil, err
 			}
 
 			c, err := os.Create(configPath)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
-			dc, err := utils.NodeBytes(defaultSaoClientConfig())
+			config := defaultSaoClientConfig()
+			if opt.Gateway != "" && opt.Gateway != "none" {
+				config.Gateway = opt.Gateway
+			}
+			if opt.ChainAddr != "" && opt.ChainAddr != "none" {
+				config.ChainAddress = opt.ChainAddr
+			}
+			if opt.KeyName != "" {
+				config.KeyName = opt.KeyName
+			}
+
+			dc, err := utils.NodeBytes(config)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			_, err = c.Write(dc)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 
 			if err := c.Close(); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 	c, err := utils.FromFile(configPath, defaultSaoClientConfig())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	cfg, ok := c.(*SaoClientConfig)
 	if !ok {
-		return nil, xerrors.Errorf("invalid config: %v", c)
+		return nil, nil, xerrors.Errorf("invalid config: %v", c)
 	}
 
-	if gatewayAddr == "none" {
-		return &SaoClient{
-			Cfg: cfg,
-		}, nil
-	} else if gatewayAddr == "" {
-		gatewayAddr = cfg.Gateway
+	// prepare Gateway api
+	var gatewayApi api.GatewayApi = nil
+	var closer = func() {}
+	if opt.Gateway != "none" {
+		if opt.Gateway == "" {
+			opt.Gateway = cfg.Gateway
+		}
+		if opt.Gateway == "" {
+			return nil, nil, xerrors.Errorf("invalid Gateway")
+		}
+
+		if len(cfg.Token) == 0 {
+			return nil, nil, xerrors.New("invalid token")
+		}
+
+		gatewayApi, closer, err = apiclient.NewGatewayApi(ctx, opt.Gateway, cfg.Token)
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 
-	if gatewayAddr == "" {
-		return nil, xerrors.Errorf("invalid gateway")
+	var chainApi chain.ChainSvcApi = nil
+	if opt.ChainAddr != "none" {
+		// prepare chain svc
+		if opt.ChainAddr == "" {
+			opt.ChainAddr = cfg.ChainAddress
+		}
+		chainSvc, err := chain.NewChainSvc(ctx, opt.Repo, "cosmos", opt.ChainAddr, "/websocket")
+		if err != nil {
+			return nil, nil, xerrors.Errorf("new cosmos chain: %w", err)
+		}
+		chainApi = chainSvc
 	}
-
-	if len(cfg.Token) == 0 {
-		return nil, xerrors.New("invalid token")
-	}
-
-	gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gatewayAddr, cfg.Token)
-	if err != nil {
-		return nil, err
-	}
-	defer closer()
 
 	return &SaoClient{
-		Cfg:        cfg,
-		gatewayApi: gatewayApi,
-		repo:       repo,
-	}, nil
+		GatewayApi:  gatewayApi,
+		ChainSvcApi: chainApi,
+		Cfg:         cfg,
+		repo:        opt.Repo,
+	}, closer, nil
 }
 
 func defaultSaoClientConfig() *SaoClientConfig {
@@ -136,56 +167,4 @@ func (sc SaoClient) SaveConfig(cfg *SaoClientConfig) error {
 		return err
 	}
 	return nil
-}
-
-func (sc SaoClient) Test(ctx context.Context) (string, error) {
-	resp, err := sc.gatewayApi.Test(ctx, "hello")
-	if err != nil {
-		return "", err
-	}
-	return resp, nil
-}
-
-func (sc SaoClient) Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.Create(ctx, req, orderProposal, orderId, content)
-}
-
-func (sc SaoClient) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
-	return sc.gatewayApi.CreateFile(ctx, req, orderProposal, orderId)
-}
-
-func (sc SaoClient) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
-	return sc.gatewayApi.Load(ctx, req)
-}
-
-func (sc SaoClient) Delete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
-	return sc.gatewayApi.Delete(ctx, req)
-}
-
-func (sc SaoClient) ShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
-	return sc.gatewayApi.ShowCommits(ctx, req)
-}
-
-func (sc SaoClient) Update(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
-	return sc.gatewayApi.Update(ctx, req, orderProposal, orderId, patch)
-}
-
-func (sc SaoClient) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error) {
-	return sc.gatewayApi.GetPeerInfo(ctx)
-}
-
-func (sc SaoClient) GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error) {
-	return sc.gatewayApi.GenerateToken(ctx, owner)
-}
-
-func (sc SaoClient) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
-	return sc.gatewayApi.GetHttpUrl(ctx, dataId)
-}
-
-func (sc SaoClient) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp, error) {
-	return sc.gatewayApi.GetIpfsUrl(ctx, cid)
-}
-
-func (sc SaoClient) NodeAddress(ctx context.Context) (string, error) {
-	return sc.gatewayApi.NodeAddress(ctx)
 }

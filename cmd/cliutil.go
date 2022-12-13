@@ -58,19 +58,21 @@ func AskForPassphrase() (string, error) {
 
 func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
 	var keyName string
-	if !cctx.IsSet("key-name") {
+	if !cctx.IsSet("keyName") {
 		keyName = cfg.KeyName
 	} else {
-		keyName = cctx.String("key-name")
+		keyName = cctx.String("keyName")
 	}
 
-	address, err := chain.GetAddress(cctx.Context, "sao", keyName)
+	repo := cctx.String("repo")
+
+	address, err := chain.GetAddress(cctx.Context, repo, keyName)
 	if err != nil {
 		return nil, "", err
 	}
 
 	payload := fmt.Sprintf("cosmos %s allows to generate did", address)
-	secret, err := chain.SignByAccount(cctx.Context, "sao", keyName, []byte(payload))
+	secret, err := chain.SignByAccount(cctx.Context, repo, keyName, []byte(payload))
 	if err != nil {
 		return nil, "", err
 	}
