@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"sao-storage-node/chain"
-	cliutil "sao-storage-node/cmd"
 	"strings"
 	"syscall"
 
@@ -29,7 +28,7 @@ var listCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		err := chain.List(ctx, cliutil.GetChainId())
+		err := chain.List(ctx, cctx.String("repo"))
 		if err != nil {
 			return err
 		}
@@ -60,10 +59,14 @@ var createCmd = &cli.Command{
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
-		err := chain.Create(ctx, cliutil.GetChainId(), name)
+		accountName, address, mnemonic, err := chain.Create(ctx, cctx.String("repo"), name)
 		if err != nil {
 			return err
 		}
+		fmt.Println("Account: ", accountName)
+		fmt.Println("Address: ", address)
+		fmt.Println("Mnemonic: ", mnemonic)
+		fmt.Println()
 
 		return nil
 	},
@@ -97,7 +100,7 @@ var exportCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Export(ctx, cliutil.GetChainId(), name, string(passphrase))
+		err = chain.Export(ctx, cctx.String("repo"), name, string(passphrase))
 		if err != nil {
 			return err
 		}
@@ -151,7 +154,7 @@ var importCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Import(ctx, cliutil.GetChainId(), name, secret, string(passphrase))
+		err = chain.Import(ctx, cctx.String("repo"), name, secret, string(passphrase))
 		if err != nil {
 			return err
 		}

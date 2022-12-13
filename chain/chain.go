@@ -9,6 +9,7 @@ import (
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -29,6 +30,7 @@ type ChainSvc struct {
 type ChainSvcApi interface {
 	Stop(ctx context.Context) error
 	GetLastHeight(ctx context.Context) (int64, error)
+	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
 	GetSidDocument(ctx context.Context, versionId string) (*didtypes.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	Que3ryMeta(ctx context.Context, dataId string, height int64) (*modeltypes.QueryGetMetadataResponse, error)
@@ -50,14 +52,16 @@ type ChainSvcApi interface {
 	UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
 	SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
 	UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
+	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, map[string]string, error)
 }
 
-func NewChainSvc(ctx context.Context, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
+func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
 	log.Infof("initialize chain client")
 
 	cosmos, err := cosmosclient.New(ctx,
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(chainAddress),
+		cosmosclient.WithHome(repo),
 	)
 	if err != nil {
 		return nil, err
@@ -98,4 +102,8 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 
 func (c *ChainSvc) GetLastHeight(ctx context.Context) (int64, error) {
 	return c.cosmos.LatestBlockHeight(ctx)
+}
+
+func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coins, error) {
+	return c.cosmos.BankBalances(ctx, address, nil)
 }

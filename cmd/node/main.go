@@ -142,7 +142,7 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -194,7 +194,7 @@ var joinCmd = &cli.Command{
 		chainAddress := cliutil.ChainAddress
 		creator := cctx.String("creator")
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -272,7 +272,7 @@ var resetCmd = &cli.Command{
 			chainAddress = cfg.Chain.Remote
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -334,7 +334,7 @@ var quitCmd = &cli.Command{
 			chainAddress = cfg.Chain.Remote
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}

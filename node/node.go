@@ -114,7 +114,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	// chain
-	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
+	chainSvc, err := chain.NewChainSvc(ctx, repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	if err != nil {
 		return nil, err
 	}

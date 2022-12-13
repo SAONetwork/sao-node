@@ -118,17 +118,14 @@ var createCmd = &cli.Command{
 			return xerrors.Errorf("extend-info should no longer than 1024 characters")
 		}
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
+
 		if client == nil {
 			return xerrors.Errorf("failed to create client")
-		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
 		}
 
 		groupId := cctx.String("platform")
@@ -171,19 +168,14 @@ var createCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
-
-		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
 		if err != nil {
 			return err
 		}
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = chain.StoreOrder(ctx, signer, clientProposal)
+			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -194,7 +186,7 @@ var createCmd = &cli.Command{
 			Keyword: dataId,
 		}
 
-		request, err := buildQueryRequest(ctx, didManager, queryProposal, chain, gatewayAddress)
+		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
 		if err != nil {
 			return err
 		}
@@ -249,10 +241,12 @@ var loadCmd = &cli.Command{
 			version = ""
 		}
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
+
 		groupId := cctx.String("platform")
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
@@ -275,22 +269,12 @@ var loadCmd = &cli.Command{
 			proposal.Type_ = 2
 		}
 
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
-
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
-
 		gatewayAddress, err := client.NodeAddress(ctx)
 		if err != nil {
 			return err
 		}
 
-		request, err := buildQueryRequest(ctx, didManager, proposal, chain, gatewayAddress)
+		request, err := buildQueryRequest(ctx, didManager, proposal, client, gatewayAddress)
 		if err != nil {
 			return err
 		}
@@ -400,20 +384,11 @@ var renewCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
-
-		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
+		defer closer()
 
 		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
@@ -441,7 +416,7 @@ var renewCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		_, results, err := chainSvc.RenewOrder(ctx, signer, clientProposal)
+		_, results, err := client.RenewOrder(ctx, signer, clientProposal)
 		if err != nil {
 			return err
 		}
@@ -496,20 +471,11 @@ var statusCmd = &cli.Command{
 		}
 		dataIds := cctx.StringSlice("data-ids")
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
-
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
+		defer closer()
 
 		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
@@ -528,12 +494,12 @@ var statusCmd = &cli.Command{
 				Keyword: dataId,
 			}
 
-			request, err := buildQueryRequest(ctx, didManager, proposal, chain, gatewayAddress)
+			request, err := buildQueryRequest(ctx, didManager, proposal, client, gatewayAddress)
 			if err != nil {
 				return err
 			}
 
-			res, err := chain.QueryMetadata(ctx, request, 0)
+			res, err := client.QueryMetadata(ctx, request, 0)
 			if err != nil {
 				if len(states) > 0 {
 					states = fmt.Sprintf("%s\n[%s]: %s", states, dataId, err.Error())
@@ -588,20 +554,11 @@ var deleteCmd = &cli.Command{
 		}
 		dataId := cctx.String("data-id")
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
-
-		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
+		defer closer()
 
 		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
@@ -627,7 +584,7 @@ var deleteCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		_, _, err = chainSvc.TerminateOrder(ctx, signer, request)
+		_, _, err = client.TerminateOrder(ctx, signer, request)
 		if err != nil {
 			return err
 		}
@@ -661,10 +618,12 @@ var commitsCmd = &cli.Command{
 		}
 		keyword := cctx.String("keyword")
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
+		defer closer()
+
 		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
@@ -685,22 +644,12 @@ var commitsCmd = &cli.Command{
 			proposal.Type_ = 2
 		}
 
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
-
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
-
 		gatewayAddress, err := client.NodeAddress(ctx)
 		if err != nil {
 			return err
 		}
 
-		request, err := buildQueryRequest(ctx, didManager, proposal, chain, gatewayAddress)
+		request, err := buildQueryRequest(ctx, didManager, proposal, client, gatewayAddress)
 		if err != nil {
 			return err
 		}
@@ -824,15 +773,11 @@ var updateCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
+		defer closer()
 
 		groupId := cctx.String("platform")
 		if groupId == "" {
@@ -849,11 +794,6 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
-
 		queryProposal := saotypes.QueryProposal{
 			Owner:   didManager.Id,
 			Keyword: keyword,
@@ -864,12 +804,12 @@ var updateCmd = &cli.Command{
 			queryProposal.Type_ = 2
 		}
 
-		request, err := buildQueryRequest(ctx, didManager, queryProposal, chainSvc, gatewayAddress)
+		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
 		if err != nil {
 			return err
 		}
 
-		res, err := chainSvc.QueryMetadata(ctx, request, 0)
+		res, err := client.QueryMetadata(ctx, request, 0)
 		if err != nil {
 			return err
 		}
@@ -899,14 +839,14 @@ var updateCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chainSvc)
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
 		if err != nil {
 			return err
 		}
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = chainSvc.StoreOrder(ctx, signer, clientProposal)
+			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -949,24 +889,15 @@ var updatePermissionCmd = &cli.Command{
 		}
 		dataId := cctx.String("data-id")
 
-		client, err := getSaoClient(cctx)
+		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = client.Cfg.ChainAddress
-		}
+		defer closer()
 
 		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
 			return err
-		}
-
-		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
 
 		proposal := saotypes.PermissionProposal{
@@ -994,7 +925,7 @@ var updatePermissionCmd = &cli.Command{
 			},
 		}
 
-		_, err = chainSvc.UpdatePermission(ctx, signer, request)
+		_, err = client.UpdatePermission(ctx, signer, request)
 		if err != nil {
 			return err
 		}
@@ -1079,7 +1010,7 @@ var patchGenCmd = &cli.Command{
 	},
 }
 
-func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain *chain.ChainSvc) (*types.OrderStoreProposal, error) {
+func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain chain.ChainSvcApi) (*types.OrderStoreProposal, error) {
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
 		return nil, err
@@ -1098,7 +1029,7 @@ func buildClientProposal(ctx context.Context, didManager *did.DidManager, propos
 	}, nil
 }
 
-func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal saotypes.QueryProposal, chain *chain.ChainSvc, gatewayAddress string) (*types.MetadataProposal, error) {
+func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal saotypes.QueryProposal, chain chain.ChainSvcApi, gatewayAddress string) (*types.MetadataProposal, error) {
 	lastHeight, err := chain.GetLastHeight(ctx)
 	if err != nil {
 		return nil, err

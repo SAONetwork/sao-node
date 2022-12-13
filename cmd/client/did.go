@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sao-storage-node/chain"
 	saoclient "sao-storage-node/client"
 	cliutil "sao-storage-node/cmd"
 
@@ -29,26 +28,23 @@ var didCreateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		saoclient, err := saoclient.NewSaoClient(cctx.Context, cctx.String(FlagClientRepo), "none")
+		opt := saoclient.SaoClientOptions{
+			Repo:      cctx.String(FlagClientRepo),
+			Gateway:   "none",
+			ChainAddr: cliutil.ChainAddress,
+		}
+		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {
 			return err
 		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = saoclient.Cfg.ChainAddress
-		}
+		defer closer()
 
 		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
 		if err != nil {
 			return err
 		}
 
-		chainSvc, err := chain.NewChainSvc(cctx.Context, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return err
-		}
-		hash, err := chainSvc.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
+		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
 		if err != nil {
 			return err
 		}
@@ -73,10 +69,16 @@ var didSignCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		saoclient, err := saoclient.NewSaoClient(cctx.Context, cctx.String(FlagClientRepo), "none")
+		opt := saoclient.SaoClientOptions{
+			Repo:      cctx.String(FlagClientRepo),
+			Gateway:   "none",
+			ChainAddr: "none",
+		}
+		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {
 			return err
 		}
+		defer closer()
 
 		didManager, _, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
 		if err != nil {

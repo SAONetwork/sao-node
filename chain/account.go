@@ -3,27 +3,24 @@ package chain
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+	"github.com/mitchellh/go-homedir"
 )
 
-func newAccountRegistry(ctx context.Context, chainId string) (cosmosaccount.Registry, error) {
-	home, err := os.UserHomeDir()
+func newAccountRegistry(ctx context.Context, repo string) (cosmosaccount.Registry, error) {
+	repoPath, err := homedir.Expand(repo)
 	if err != nil {
 		return cosmosaccount.Registry{}, err
 	}
-	homePath := filepath.Join(home, "."+chainId)
 
 	return cosmosaccount.New(
 		cosmosaccount.WithKeyringBackend(cosmosaccount.KeyringTest),
-		cosmosaccount.WithHome(homePath),
+		cosmosaccount.WithHome(repoPath),
 	)
 }
 
-func GetAddress(ctx context.Context, chainId string, name string) (string, error) {
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
+func GetAddress(ctx context.Context, repo string, name string) (string, error) {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
 		return "", err
 	}
@@ -39,8 +36,8 @@ func GetAddress(ctx context.Context, chainId string, name string) (string, error
 	return address, nil
 }
 
-func SignByAccount(ctx context.Context, chainId string, name string, payload []byte) ([]byte, error) {
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
+func SignByAccount(ctx context.Context, repo string, name string, payload []byte) ([]byte, error) {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
 		return nil, err
 	}
@@ -53,29 +50,8 @@ func SignByAccount(ctx context.Context, chainId string, name string, payload []b
 	return sig, err
 }
 
-func GetAccountSecret(ctx context.Context, chainId string, name string, passphrase string) (string, string, error) {
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
-	if err != nil {
-		return "", "", err
-	}
-
-	account, err := accountRegistry.GetByName(name)
-	if err != nil {
-		return "", "", err
-	}
-	address, err := account.Address("cosmos")
-	if err != nil {
-		return "", "", err
-	}
-	secret, err := accountRegistry.ExportHex(name, passphrase)
-	if err != nil {
-		return "", "", err
-	}
-	return address, secret, nil
-}
-
-func List(ctx context.Context, chainId string) error {
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
+func List(ctx context.Context, repo string) error {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
 		return err
 	}
@@ -98,32 +74,27 @@ func List(ctx context.Context, chainId string) error {
 	return nil
 }
 
-func Create(ctx context.Context, chainId string, name string) error {
-	fmt.Println("ChainId: ", chainId)
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
+func Create(ctx context.Context, repo string, name string) (string, string, string, error) {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return err
+		return "", "", "", err
 	}
 
 	account, mnemonic, err := accountRegistry.Create(name)
 	if err != nil {
-		return err
+		return "", "", "", err
 	}
 
 	address, err := account.Address("cosmos")
 	if err != nil {
-		return err
+		return "", "", "", err
 	}
-	fmt.Println("Account:", account.Name)
-	fmt.Println("Address:", address)
-	fmt.Println("Mnemonic:")
-	fmt.Println(mnemonic)
 
-	return nil
+	return account.Name, address, mnemonic, nil
 }
 
-func Import(ctx context.Context, chainId string, name string, secret string, passphrase string) error {
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
+func Import(ctx context.Context, repo string, name string, secret string, passphrase string) error {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
 		return err
 	}
@@ -143,8 +114,8 @@ func Import(ctx context.Context, chainId string, name string, secret string, pas
 	return nil
 }
 
-func Export(ctx context.Context, chainId string, name string, passphrase string) error {
-	accountRegistry, err := newAccountRegistry(ctx, chainId)
+func Export(ctx context.Context, repo string, name string, passphrase string) error {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
 		return err
 	}
