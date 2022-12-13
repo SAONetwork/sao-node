@@ -2,8 +2,8 @@ package api
 
 import (
 	"context"
-	apitypes "sao-storage-node/api/types"
-	"sao-storage-node/types"
+	apitypes "sao-node/api/types"
+	"sao-node/types"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 )

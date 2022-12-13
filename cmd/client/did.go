@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"sao-storage-node/chain"
-	saoclient "sao-storage-node/client"
-	cliutil "sao-storage-node/cmd"
+	"sao-node/chain"
+	saoclient "sao-node/client"
+	cliutil "sao-node/cmd"
 
 	"github.com/tendermint/tendermint/libs/json"
 	"github.com/urfave/cli/v2"

@@ -2,8 +2,8 @@ package gateway
 
 import (
 	"context"
-	"sao-storage-node/node/transport"
-	"sao-storage-node/types"
+	"sao-node/node/transport"
+	"sao-node/types"
 	"sync"
 	"time"
 

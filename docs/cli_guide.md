@@ -266,7 +266,7 @@ $ saoclient model load --keyword my_notes
   Version   : v0
   Cid       : bafkreidw636luhqz7f3u2hj5e2w2xij5lplxdrycuznntxrimuojiillly
   Content   : [{"id": 1, "title": "Note 1"}, {"id": 2, "title": "Note 2"}]
-➜  sao-storage-node git:(data_model_dev) ./saoclient model load --keyword 612a9104-ed58-4ebe-9c90-d1f3d609f2fa        
+➜  sao-node git:(data_model_dev) ./saoclient model load --keyword 612a9104-ed58-4ebe-9c90-d1f3d609f2fa        
 2022-12-12T12:30:04.006+0800	INFO	chain	chain/chain.go:56	initialize chain client
 2022-12-12T12:30:04.017+0800	INFO	chain	chain/chain.go:70	initialize chain listener
   DataId    : 612a9104-ed58-4ebe-9c90-d1f3d609f2fa

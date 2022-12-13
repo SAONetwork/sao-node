@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sao-storage-node/chain"
-	cliutil "sao-storage-node/cmd"
+	"sao-node/chain"
+	cliutil "sao-node/cmd"
 	"strings"
 	"syscall"
 
