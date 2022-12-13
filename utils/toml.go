@@ -1,0 +1,53 @@
+package utils
+
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/BurntSushi/toml"
+	"github.com/kelseyhightower/envconfig"
+	"golang.org/x/xerrors"
+)
+
+// FromFile loads config from a specified file overriding defaults specified in
+// the def parameter. If file does not exist or is empty defaults are assumed.
+func FromFile(path string, def interface{}) (interface{}, error) {
+	file, err := os.Open(path)
+	switch {
+	case os.IsNotExist(err):
+		return def, nil
+	case err != nil:
+		return nil, err
+	}
+
+	defer file.Close() //nolint:errcheck // The file is RO
+	return FromReader(file, def)
+}
+
+// FromReader loads config from a reader instance.
+func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
+	cfg := def
+	_, err := toml.NewDecoder(reader).Decode(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	err = envconfig.Process("SAO", cfg)
+	if err != nil {
+		return nil, fmt.Errorf("processing env vars overrides: %s", err)
+	}
+
+	return cfg, nil
+}
+
+func NodeBytes(cfg interface{}) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	e := toml.NewEncoder(buf)
+	if err := e.Encode(cfg); err != nil {
+		return nil, xerrors.Errorf("encoding node config: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

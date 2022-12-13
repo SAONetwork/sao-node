@@ -5,30 +5,69 @@ package main
 // * guic transfer data
 
 import (
+	"bufio"
+	"cosmossdk.io/math"
 	"fmt"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 	"os"
-	apiclient "sao-storage-node/api/client"
-	"sao-storage-node/build"
-	saoclient "sao-storage-node/client"
-	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/types"
+	"sao-node/build"
+	"sao-node/chain"
+	"sao-node/client"
+	cliutil "sao-node/cmd"
+	"sao-node/cmd/account"
+	"strings"
 )
-
-var log = logging.Logger("saoclient")
 
 const (
 	DEFAULT_DURATION = 365
 	DEFAULT_REPLICA  = 1
+
+	FlagClientRepo = "repo"
+	FlagGateway    = "gateway"
+	FlagKeyName    = "keyName"
 )
 
+var flagRepo = &cli.StringFlag{
+	Name:     FlagClientRepo,
+	Usage:    "repo directory for sao client",
+	Required: false,
+	EnvVars:  []string{"SAO_CLIENT_PATH"},
+	Value:    "~/.sao-cli",
+}
+
+var flagGateway = &cli.StringFlag{
+	Name:     FlagGateway,
+	EnvVars:  []string{"SAO_GATEWAY_API"},
+	Required: false,
+}
+
+var flagPlatform = &cli.StringFlag{
+	Name:     "platform",
+	Usage:    "platform to manage the data model",
+	Required: false,
+}
+
+func getSaoClient(cctx *cli.Context) (*client.SaoClient, func(), error) {
+	opt := client.SaoClientOptions{
+		Repo:      cctx.String(FlagClientRepo),
+		Gateway:   cctx.String(FlagGateway),
+		ChainAddr: cliutil.ChainAddress,
+		KeyName:   cctx.String(FlagKeyName),
+	}
+	return client.NewSaoClient(cctx.Context, opt)
+}
+
 func before(cctx *cli.Context) error {
-	_ = logging.SetLogLevel("saoclient", "INFO")
+	// by default, do not print any log for client.
+	_ = logging.SetLogLevel("saoclient", "TRACE")
+	_ = logging.SetLogLevel("chain", "TRACE")
+	_ = logging.SetLogLevel("transport-client", "TRACE")
 
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("saoclient", "DEBUG")
+		_ = logging.SetLogLevel("chain", "DEBUG")
+		_ = logging.SetLogLevel("transport-client", "DEBUG")
 	}
 
 	return nil
@@ -42,11 +81,19 @@ func main() {
 		Version:              build.UserVersion(),
 		Before:               before,
 		Flags: []cli.Flag{
+			cliutil.FlagChainAddress,
+			flagRepo,
+			flagGateway,
+			flagPlatform,
+			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
-			testCmd,
-			createCmd,
+			initCmd,
+			account.AccountCmd,
+			modelCmd,
+			fileCmd,
+			didCmd,
 		},
 	}
 	app.Setup()
@@ -57,217 +104,74 @@ func main() {
 	}
 }
 
-var testCmd = &cli.Command{
-	Name: "create",
+var initCmd = &cli.Command{
+	Name: "init",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
+			Name:     FlagKeyName,
+			Usage:    "cosmos account key name",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
+		repo := cctx.String(FlagClientRepo)
+
+		saoclient, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
+		fmt.Printf("repo %s is initialized.", repo)
+		fmt.Println()
 
-		client := saoclient.NewSaoClient(gatewayApi)
-		resp, err := client.Test(ctx)
+		accountName, address, mnemonic, err := chain.Create(cctx.Context, repo, saoclient.Cfg.KeyName)
+		fmt.Println("account created: ")
+		fmt.Println("Account:", accountName)
+		fmt.Println("Address:", address)
+		fmt.Println("Mnemonic:", mnemonic)
+
+		for {
+			coins, err := saoclient.GetBalance(cctx.Context, address)
+			askFor := false
+			if err != nil {
+				fmt.Errorf("%v", err)
+				askFor = true
+			} else {
+				if coins.AmountOf("stake").LT(math.NewInt(1000)) {
+					askFor = true
+				}
+			}
+			if askFor {
+				fmt.Print("Please deposit enough coins to pay gas. Confirm with 'yes' :")
+				reader := bufio.NewReader(os.Stdin)
+				indata, err := reader.ReadBytes('\n')
+				if err != nil {
+					return err
+				}
+				_ = strings.Replace(string(indata), "\n", "", -1)
+			} else {
+				break
+			}
+		}
+
+		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
 		if err != nil {
 			return err
 		}
-		fmt.Println(resp)
+
+		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
+		if err != nil {
+			return err
+		}
+
+		err = saoclient.SaveConfig(saoclient.Cfg)
+		if err != nil {
+			return fmt.Errorf("save local config failed: %v", err)
+		}
+
+		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
+		fmt.Println()
+		fmt.Println("sao client initialized.")
 		return nil
 	},
 }
-
-var createCmd = &cli.Command{
-	Name: "create",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "from",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "content",
-			Required: true,
-		},
-		&cli.IntFlag{
-			Name:     "duration",
-			Usage:    "how long do you want to store the data.",
-			Value:    DEFAULT_DURATION,
-			Required: false,
-		},
-		&cli.IntFlag{
-			Name:     "replica",
-			Usage:    "how many copies to store.",
-			Value:    DEFAULT_REPLICA,
-			Required: false,
-		},
-		&cli.StringFlag{
-			Name:     "gateway",
-			Value:    "http://127.0.0.1:8888/rpc/v0",
-			EnvVars:  []string{"SAO_GATEWAY_API"},
-			Required: false,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-
-		// ---- check parameters ----
-		if !cctx.IsSet("content") || cctx.String("content") == "" {
-			return xerrors.Errorf("must provide non-empty --content.")
-		}
-		content := cctx.String("content")
-
-		if !cctx.IsSet("from") {
-			return xerrors.Errorf("must provide --from")
-		}
-		from := cctx.String("from")
-
-		// TODO: check valid range
-		duration := cctx.Int("duration")
-		replicas := cctx.Int("replicas")
-
-		gateway := cctx.String("gateway")
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gateway, nil)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		client := saoclient.NewSaoClient(gatewayApi)
-		dataId, err := client.Create(ctx, types.OrderMeta{
-			Creator:  from,
-			Duration: duration,
-			Replica:  replicas,
-		}, content)
-		if err != nil {
-			return err
-		}
-		fmt.Println(dataId)
-		return nil
-	},
-}
-
-//var storeCmd = &cli.Command{
-//	Name:  "order",
-//	Usage: "submit a order",
-//	Flags: []cli.Flag{
-//		&cli.StringFlag{
-//			Name:     "from",
-//			Usage:    "client address",
-//			Required: true,
-//		},
-//		&cli.StringFlag{
-//			Name:     "content",
-//			Usage:    "data content to store",
-//			Required: false,
-//		},
-//		&cli.PathFlag{
-//			Name:     "filepath",
-//			Usage:    "file's path to store. if --content is provided, --filepath will be ignored",
-//			Required: false,
-//		},
-//		&cli.IntFlag{
-//			Name:  "duration",
-//			Usage: "how long do you want to store the data.",
-//			//Value:    DEFAULT_DURATION,
-//			Required: false,
-//		},
-//		&cli.IntFlag{
-//			Name:  "replica",
-//			Usage: "how many copies to store.",
-//			//Value:    DEFAULT_REPLICA,
-//			Required: false,
-//		},
-//		&cli.StringSliceFlag{
-//			Name:     "gateways",
-//			Usage:    "gateway connection list, separated by comma",
-//			Required: false,
-//		},
-//	},
-//	Action: func(cctx *cli.Context) error {
-//		var dataReader io.Reader
-//		var err error
-//		if cctx.IsSet("content") {
-//			dataReader = strings.NewReader(cctx.String("content"))
-//		} else if cctx.IsSet("filepath") {
-//			f, err := os.Open(cctx.String("filepath"))
-//			if err != nil {
-//				return err
-//			}
-//			dataReader = f
-//			defer f.Close()
-//		} else {
-//			return xerrors.Errorf("either --content or --filepath should be provided.")
-//		}
-//
-//		// calculate data cid
-//		cid, err := generateDataCid(dataReader)
-//		if err != nil {
-//			return err
-//		}
-//
-//		// gateway selection.
-//		var gateways []string
-//		if cctx.IsSet("gateways") {
-//			gateways = strings.Split(cctx.String("gateways"), ",")
-//		} else {
-//			// TODO: should configure default gateway or read from env.
-//			//return xerrors.Errorf("--gateways must be provided.")
-//		}
-//
-//		nodeInfo, err := uploadData(gateways, dataReader)
-//		if err != nil {
-//			return err
-//		}
-//
-//		// store message on chain
-//		addressPrefix := "cosmos"
-//		cosmos, err := cosmosclient.New(cctx.Context, cosmosclient.WithAddressPrefix(addressPrefix))
-//		if err != nil {
-//			return err
-//		}
-//
-//		account, err := cosmos.Account(cctx.String("from"))
-//		if err != nil {
-//			return err
-//		}
-//
-//		addr, err := account.Address(addressPrefix)
-//		if err != nil {
-//			return err
-//		}
-//
-//		msg := &types.MsgStore{
-//			Creator:  addr,
-//			Cid:      cid.String(),
-//			Provider: nodeInfo.Address,
-//			Duration: int32(cctx.Int("duration")),
-//			Replica:  int32(cctx.Int("replica")),
-//		}
-//		txResp, err := cosmos.BroadcastTx(account, msg)
-//		if err != nil {
-//			return err
-//		}
-//		log.Debug("MsgStore result: ", txResp)
-//		if txResp.TxResponse.Code != 0 {
-//			return xerrors.Errorf("MsgStore transaction %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
-//		} else {
-//			dataResp := &types.MsgStoreResponse{}
-//			err = txResp.Decode(dataResp)
-//			if err != nil {
-//				return err
-//			}
-//			log.Infof("MsgStore transaction %v succeed: orderId=%d", txResp.TxResponse.TxHash, dataResp.OrderId)
-//		}
-//
-//		return nil
-//	},
-//}
