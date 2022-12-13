@@ -3,7 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
-	"sao-storage-node/types"
+	"sao-node/types"
 	"strconv"
 	"time"
 

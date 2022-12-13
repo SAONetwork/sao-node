@@ -6,10 +6,10 @@ package main
 
 import (
 	"os"
-	"sao-storage-node/build"
-	"sao-storage-node/client"
-	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/cmd/account"
+	"sao-node/build"
+	"sao-node/client"
+	cliutil "sao-node/cmd"
+	"sao-node/cmd/account"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"

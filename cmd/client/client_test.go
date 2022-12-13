@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	saoclient "sao-storage-node/client"
-	"sao-storage-node/utils"
+	saoclient "sao-node/client"
+	"sao-node/utils"
 	"testing"
 
 	saodid "github.com/SaoNetwork/sao-did"
