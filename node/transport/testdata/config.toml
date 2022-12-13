@@ -1,0 +1,15 @@
+[Cache]
+  CacheCapacity = 1000
+  ContentLimit = 2097152
+
+[Chain]
+  Remote = "http://localhost:26657"
+  WsEndpoint = "/websocket"
+  AddressPrefix = "cosmos"
+
+[Libp2p]
+  ListenAddress = ["/ip4/0.0.0.0/udp/26658", "/ip4/0.0.0.0/tcp/26659", "/ip6/::/udp/26658", "/ip6/::/tcp/26659"]
+
+[Api]
+  ListenAddress = "/ip4/127.0.0.1/tcp/8888/http"
+  Timeout = "30s"

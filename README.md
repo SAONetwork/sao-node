@@ -1,4 +1,4 @@
-# sao-storage-node
+# sao-node
 
 ## Build & start consensus node
 	$ git clone git@github.com:SaoNetwork/sao-consensus.git
@@ -7,9 +7,9 @@
 	$ make
 	$ saod start
 
-## Build storage node
-	$ git clone git@github.com:SaoNetwork/sao-storage-node.git
-	$ cd sao-storage-node
+## Build node
+	$ git clone git@github.com:SaoNetwork/sao-node.git
+	$ cd sao-node
 	$ git checkout data_model_dev
 	$ make
 
@@ -29,7 +29,7 @@
 	$ saod tx bank send alice cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4 100000000stake
 	$ saod tx bank send alice cosmos124uad7f4dvpnfre44yv8dh2ztrvkmcd4xgymrz 100000000stake
 
-## Init & start storage node
+## Init & start node
 	$ ./saonode init --creator cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4
 	...
 	563D7EB1856FC26B3720313DAE413F184C3C96FD0DA5869ED6B69BD924830FE6
