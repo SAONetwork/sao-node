@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sao-storage-node/chain"
-	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/types"
-	"sao-storage-node/utils"
+	"sao-node/chain"
+	cliutil "sao-node/cmd"
+	"sao-node/types"
+	"sao-node/utils"
 	"strconv"
 	"strings"
 	"time"
@@ -174,14 +174,6 @@ var createCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
-<<<<<<< HEAD
-		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
-=======
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
-		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
-		}
-
 		queryProposal := saotypes.QueryProposal{
 			Owner:   didManager.Id,
 			Keyword: dataId,
@@ -192,8 +184,7 @@ var createCmd = &cli.Command{
 			proposal.Owner = "all"
 		}
 
-		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
->>>>>>> 8c81d9052ef2bc3ef550058eed0898deb1fb3fb0
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
 		if err != nil {
 			return err
 		}
@@ -206,16 +197,7 @@ var createCmd = &cli.Command{
 			}
 		}
 
-<<<<<<< HEAD
-		queryProposal := saotypes.QueryProposal{
-			Owner:   didManager.Id,
-			Keyword: dataId,
-		}
-
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
-=======
-		request, err := buildQueryRequest(ctx, didManager, queryProposal, chain, gatewayAddress)
->>>>>>> 8c81d9052ef2bc3ef550058eed0898deb1fb3fb0
 		if err != nil {
 			return err
 		}

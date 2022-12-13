@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/mitchellh/go-homedir"
 
-	"sao-storage-node/node/config"
+	"sao-node/node/config"
 )
 
 var secret = []byte("SAO Network")

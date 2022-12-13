@@ -2,7 +2,7 @@ package chain
 
 import (
 	"context"
-	"sao-storage-node/types"
+	"sao-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"

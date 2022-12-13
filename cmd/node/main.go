@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sao-storage-node/api"
-	"sao-storage-node/build"
-	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/cmd/account"
-	"sao-storage-node/node"
-	"sao-storage-node/node/config"
-	"sao-storage-node/node/repo"
+	"sao-node/api"
+	"sao-node/build"
+	cliutil "sao-node/cmd"
+	"sao-node/cmd/account"
+	"sao-node/node"
+	"sao-node/node/config"
+	"sao-node/node/repo"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
@@ -25,7 +25,7 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"os"
-	"sao-storage-node/chain"
+	"sao-node/chain"
 
 	manet "github.com/multiformats/go-multiaddr/net"
 

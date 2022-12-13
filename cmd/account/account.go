@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sao-storage-node/chain"
+	"sao-node/chain"
 	"strings"
 	"syscall"
 

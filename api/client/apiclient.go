@@ -3,7 +3,7 @@ package apiclient
 import (
 	"context"
 	"net/http"
-	"sao-storage-node/api"
+	"sao-node/api"
 
 	"github.com/filecoin-project/go-jsonrpc"
 )

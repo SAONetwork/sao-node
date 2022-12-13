@@ -1,7 +1,7 @@
 package validator
 
 import (
-	"sao-storage-node/node/model/rule_engine"
+	"sao-node/node/model/rule_engine"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
