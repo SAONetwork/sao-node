@@ -380,9 +380,9 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 					if model == nil {
 						req := &types.MetadataProposal{
 							Proposal: saotypes.QueryProposal{
-								Owner:   "all",
-								Keyword: sch,
-								Type_:   0,
+								Owner:       "all",
+								Keyword:     sch,
+								KeywordType: 0,
 							},
 						}
 
@@ -424,9 +424,9 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 			if model == nil {
 				req := &types.MetadataProposal{
 					Proposal: saotypes.QueryProposal{
-						Owner:   "all",
-						Keyword: dataId,
-						Type_:   0,
+						Owner:       "all",
+						Keyword:     dataId,
+						KeywordType: 0,
 					},
 				}
 
