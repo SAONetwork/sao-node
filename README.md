@@ -1,4 +1,4 @@
-# sao-storage-node
+# sao-node
 
 ## Project Build
 

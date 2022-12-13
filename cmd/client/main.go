@@ -11,11 +11,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"os"
-	"sao-storage-node/build"
-	"sao-storage-node/chain"
-	"sao-storage-node/client"
-	cliutil "sao-storage-node/cmd"
-	"sao-storage-node/cmd/account"
+	"sao-node/build"
+	"sao-node/chain"
+	"sao-node/client"
+	cliutil "sao-node/cmd"
+	"sao-node/cmd/account"
 	"strings"
 )
 

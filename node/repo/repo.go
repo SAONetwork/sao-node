@@ -6,8 +6,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"sao-storage-node/node/config"
-	"sao-storage-node/utils"
+	"sao-node/node/config"
+	"sao-node/utils"
 	"sync"
 
 	"github.com/ipfs/go-datastore"

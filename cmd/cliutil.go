@@ -2,8 +2,8 @@ package cliutil
 
 import (
 	"fmt"
-	"sao-storage-node/chain"
-	saoclient "sao-storage-node/client"
+	"sao-node/chain"
+	saoclient "sao-node/client"
 	"syscall"
 
 	"golang.org/x/term"

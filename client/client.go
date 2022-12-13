@@ -5,10 +5,11 @@ import (
 	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
-	"sao-storage-node/api"
-	apiclient "sao-storage-node/api/client"
-	"sao-storage-node/chain"
-	"sao-storage-node/utils"
+	"sao-node/api"
+	"sao-node/chain"
+	"sao-node/utils"
+
+	apiclient "sao-node/api/client"
 
 	"github.com/mitchellh/go-homedir"
 )
