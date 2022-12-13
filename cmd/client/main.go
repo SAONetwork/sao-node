@@ -148,7 +148,7 @@ var initCmd = &cli.Command{
 				if err != nil {
 					return err
 				}
-				answer := strings.Replace(string(indata), "\n", "", -1)
+				_ = strings.Replace(string(indata), "\n", "", -1)
 			} else {
 				break
 			}
