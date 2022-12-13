@@ -585,6 +585,10 @@ func (n *Node) getSidDocFunc() func(versionId string) (*didtypes.SidDocument, er
 }
 
 func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusProposal, owner string, signature saotypes.JwsSignature) error {
+	if owner == "all" {
+		return nil
+	}
+
 	didManager, err := saodid.NewDidManagerWithDid(owner, n.getSidDocFunc())
 	if err != nil {
 		return err

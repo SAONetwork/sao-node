@@ -1,4 +1,4 @@
-module sao-storage-node
+module sao-node
 
 go 1.19
 
@@ -10,7 +10,8 @@ require (
 )
 
 require (
-	github.com/SaoNetwork/sao v0.0.0-00010101000000-000000000000
+	cosmossdk.io/math v1.0.0-beta.3
+	github.com/SaoNetwork/sao v0.0.2
 	github.com/SaoNetwork/sao-did v0.0.11
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
@@ -54,14 +55,13 @@ require (
 )
 
 require (
-	github.com/cosmos/cosmos-sdk v0.46.6 // indirect
+	github.com/cosmos/cosmos-sdk v0.46.6
 	github.com/libp2p/go-libp2p v0.23.2
 )
 
 require (
 	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
 	cosmossdk.io/errors v1.0.0-beta.7 // indirect
-	cosmossdk.io/math v1.0.0-beta.3 // indirect
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
@@ -355,6 +355,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/SaoNetwork/sao => ../sao-consensus
+//replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1

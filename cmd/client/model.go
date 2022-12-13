@@ -96,6 +96,11 @@ var createCmd = &cli.Command{
 			Value:    "",
 			Required: false,
 		},
+		&cli.BoolFlag{
+			Name:     "public",
+			Value:    false,
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -112,6 +117,7 @@ var createCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
+		isPublic := cctx.Bool("public")
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
@@ -168,7 +174,26 @@ var createCmd = &cli.Command{
 			ExtendInfo: extendInfo,
 		}
 
+<<<<<<< HEAD
 		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
+=======
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		queryProposal := saotypes.QueryProposal{
+			Owner:   didManager.Id,
+			Keyword: dataId,
+		}
+
+		if isPublic {
+			queryProposal.Owner = "all"
+			proposal.Owner = "all"
+		}
+
+		clientProposal, err := buildClientProposal(ctx, didManager, proposal, chain)
+>>>>>>> 8c81d9052ef2bc3ef550058eed0898deb1fb3fb0
 		if err != nil {
 			return err
 		}
@@ -181,12 +206,16 @@ var createCmd = &cli.Command{
 			}
 		}
 
+<<<<<<< HEAD
 		queryProposal := saotypes.QueryProposal{
 			Owner:   didManager.Id,
 			Keyword: dataId,
 		}
 
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
+=======
+		request, err := buildQueryRequest(ctx, didManager, queryProposal, chain, gatewayAddress)
+>>>>>>> 8c81d9052ef2bc3ef550058eed0898deb1fb3fb0
 		if err != nil {
 			return err
 		}
@@ -266,7 +295,7 @@ var loadCmd = &cli.Command{
 		}
 
 		if !utils.IsDataId(keyword) {
-			proposal.Type_ = 2
+			proposal.KeywordType = 2
 		}
 
 		gatewayAddress, err := client.NodeAddress(ctx)
@@ -641,7 +670,7 @@ var commitsCmd = &cli.Command{
 		}
 
 		if !utils.IsDataId(keyword) {
-			proposal.Type_ = 2
+			proposal.KeywordType = 2
 		}
 
 		gatewayAddress, err := client.NodeAddress(ctx)
@@ -801,7 +830,7 @@ var updateCmd = &cli.Command{
 		}
 
 		if !utils.IsDataId(keyword) {
-			queryProposal.Type_ = 2
+			queryProposal.KeywordType = 2
 		}
 
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
@@ -1011,6 +1040,12 @@ var patchGenCmd = &cli.Command{
 }
 
 func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain chain.ChainSvcApi) (*types.OrderStoreProposal, error) {
+	if proposal.Owner == "all" {
+		return &types.OrderStoreProposal{
+			Proposal: proposal,
+		}, nil
+	}
+
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
 		return nil, err
@@ -1042,6 +1077,12 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 
 	proposal.LastValidHeight = uint64(lastHeight + 200)
 	proposal.Gateway = peerInfo
+
+	if proposal.Owner == "all" {
+		return &types.MetadataProposal{
+			Proposal: proposal,
+		}, nil
+	}
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
