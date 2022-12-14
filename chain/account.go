@@ -3,11 +3,12 @@ package chain
 import (
 	"context"
 	"fmt"
+
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/mitchellh/go-homedir"
 )
 
-func newAccountRegistry(ctx context.Context, repo string) (cosmosaccount.Registry, error) {
+func newAccountRegistry(_ context.Context, repo string) (cosmosaccount.Registry, error) {
 	repoPath, err := homedir.Expand(repo)
 	if err != nil {
 		return cosmosaccount.Registry{}, err

@@ -9,8 +9,8 @@ import (
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
+	sid "github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
-	didtypes "github.com/SaoNetwork/sao/x/did/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	logging "github.com/ipfs/go-log/v2"
@@ -100,14 +100,14 @@ func TestSignature(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func getSidDocFunc() func(versionId string) (*didtypes.SidDocument, error) {
-	return func(versionId string) (*didtypes.SidDocument, error) {
-		keys := make([]*didtypes.PubKey, 0)
-		keys = append(keys, &didtypes.PubKey{
+func getSidDocFunc() func(versionId string) (*sid.SidDocument, error) {
+	return func(versionId string) (*sid.SidDocument, error) {
+		keys := make([]*sid.PubKey, 0)
+		keys = append(keys, &sid.PubKey{
 			Name:  "",
 			Value: "",
 		})
-		return &didtypes.SidDocument{
+		return &sid.SidDocument{
 			VersionId: versionId,
 			Keys:      keys,
 		}, nil

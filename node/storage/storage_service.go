@@ -19,11 +19,11 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
+	sid "github.com/SaoNetwork/sao-did/sid"
 	logging "github.com/ipfs/go-log/v2"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
-	didtypes "github.com/SaoNetwork/sao/x/did/types"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -203,8 +203,8 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (ss *StoreSvc) getSidDocFunc() func(versionId string) (*didtypes.SidDocument, error) {
-	return func(versionId string) (*didtypes.SidDocument, error) {
+func (ss *StoreSvc) getSidDocFunc() func(versionId string) (*sid.SidDocument, error) {
+	return func(versionId string) (*sid.SidDocument, error) {
 		return ss.chainSvc.GetSidDocument(ss.ctx, versionId)
 	}
 }

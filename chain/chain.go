@@ -4,6 +4,7 @@ import (
 	"context"
 	"sao-node/types"
 
+	sid "github.com/SaoNetwork/sao-did/sid"
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
@@ -31,7 +32,7 @@ type ChainSvcApi interface {
 	Stop(ctx context.Context) error
 	GetLastHeight(ctx context.Context) (int64, error)
 	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
-	GetSidDocument(ctx context.Context, versionId string) (*didtypes.SidDocument, error)
+	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	Que3ryMeta(ctx context.Context, dataId string, height int64) (*modeltypes.QueryGetMetadataResponse, error)
 	QueryDataId(ctx context.Context, key string) (string, error)

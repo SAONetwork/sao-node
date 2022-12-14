@@ -6,10 +6,7 @@ package main
 
 import (
 	"bufio"
-	"cosmossdk.io/math"
 	"fmt"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
 	"os"
 	"sao-node/build"
 	"sao-node/chain"
@@ -17,6 +14,10 @@ import (
 	cliutil "sao-node/cmd"
 	"sao-node/cmd/account"
 	"strings"
+
+	"cosmossdk.io/math"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 )
 
 const (
@@ -58,7 +59,7 @@ func getSaoClient(cctx *cli.Context) (*client.SaoClient, func(), error) {
 	return client.NewSaoClient(cctx.Context, opt)
 }
 
-func before(cctx *cli.Context) error {
+func before(_ *cli.Context) error {
 	// by default, do not print any log for client.
 	_ = logging.SetLogLevel("saoclient", "TRACE")
 	_ = logging.SetLogLevel("chain", "TRACE")
@@ -125,6 +126,9 @@ var initCmd = &cli.Command{
 		fmt.Println()
 
 		accountName, address, mnemonic, err := chain.Create(cctx.Context, repo, saoclient.Cfg.KeyName)
+		if err != nil {
+			return err
+		}
 		fmt.Println("account created: ")
 		fmt.Println("Account:", accountName)
 		fmt.Println("Address:", address)
@@ -134,7 +138,7 @@ var initCmd = &cli.Command{
 			coins, err := saoclient.GetBalance(cctx.Context, address)
 			askFor := false
 			if err != nil {
-				fmt.Errorf("%v", err)
+				fmt.Printf("%v", err)
 				askFor = true
 			} else {
 				if coins.AmountOf("stake").LT(math.NewInt(1000)) {
