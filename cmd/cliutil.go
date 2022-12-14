@@ -13,12 +13,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	devNetChainId  = "sao"
-	testNetChainId = "sao-testnet-fcf77b"
-	mainNetChainId = "sao"
-)
-
 var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
 	Name:        "chain-address",
