@@ -15,8 +15,8 @@ import (
 	"sort"
 
 	saodid "github.com/SaoNetwork/sao-did"
+	sid "github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
-	didtypes "github.com/SaoNetwork/sao/x/did/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -578,8 +578,8 @@ func (n *Node) NetPeers(context.Context) ([]types.PeerInfo, error) {
 	return out, nil
 }
 
-func (n *Node) getSidDocFunc() func(versionId string) (*didtypes.SidDocument, error) {
-	return func(versionId string) (*didtypes.SidDocument, error) {
+func (n *Node) getSidDocFunc() func(versionId string) (*sid.SidDocument, error) {
+	return func(versionId string) (*sid.SidDocument, error) {
 		return n.chainSvc.GetSidDocument(n.ctx, versionId)
 	}
 }

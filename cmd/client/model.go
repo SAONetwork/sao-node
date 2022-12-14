@@ -1021,7 +1021,7 @@ var patchGenCmd = &cli.Command{
 	},
 }
 
-func buildClientProposal(ctx context.Context, didManager *did.DidManager, proposal saotypes.Proposal, chain chain.ChainSvcApi) (*types.OrderStoreProposal, error) {
+func buildClientProposal(_ context.Context, didManager *did.DidManager, proposal saotypes.Proposal, _ chain.ChainSvcApi) (*types.OrderStoreProposal, error) {
 	if proposal.Owner == "all" {
 		return &types.OrderStoreProposal{
 			Proposal: proposal,
