@@ -173,6 +173,9 @@ var createCmd = &cli.Command{
 			Operation:  1,
 			ExtendInfo: extendInfo,
 		}
+		if proposal.Alias == "" {
+			proposal.Alias = proposal.Cid
+		}
 
 		queryProposal := saotypes.QueryProposal{
 			Owner:   didManager.Id,

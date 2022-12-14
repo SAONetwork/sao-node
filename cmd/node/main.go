@@ -83,7 +83,6 @@ func main() {
 		Flags: []cli.Flag{
 			FlagRepo,
 			cliutil.FlagChainAddress,
-			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{

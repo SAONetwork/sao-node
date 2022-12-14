@@ -18,7 +18,6 @@ func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
 		Creator: creator,
 	}
 
-	// TODO: recheck - seems BroadcastTx will return after confirmed on chain.
 	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
 		return "", err

@@ -26,14 +26,6 @@ var FlagChainAddress = &cli.StringFlag{
 	Destination: &ChainAddress,
 }
 
-var NetType string
-var FlagNetType = &cli.StringFlag{
-	Name:        "net",
-	Usage:       "sao network type: [devnet/testnet/mainnet]",
-	Value:       "devnet",
-	Destination: &NetType,
-}
-
 // IsVeryVerbose is a global var signalling if the CLI is running in very
 // verbose mode or not (default: false).
 var IsVeryVerbose bool
@@ -91,16 +83,4 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 
 	cfg.KeyName = keyName
 	return &didManager, address, nil
-}
-
-func GetChainId() string {
-	switch NetType {
-	case "devnet":
-		return devNetChainId
-	case "testnet":
-		return testNetChainId
-	case "mainnet":
-		return mainNetChainId
-	}
-	return devNetChainId
 }

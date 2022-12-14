@@ -85,7 +85,6 @@ func main() {
 			flagRepo,
 			flagGateway,
 			flagPlatform,
-			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
