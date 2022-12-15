@@ -243,8 +243,9 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 			saodidtypes.JwsSignature(req.Proposal.JwsSignature),
 		},
 	})
+
 	if err != nil {
-		log.Error("verify client order proposal signature failed: %v", err)
+		log.Errorf("verify client order proposal signature failed: %v", err)
 		return
 	}
 
