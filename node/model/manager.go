@@ -77,6 +77,11 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 
 	version := req.Proposal.Version
 	if req.Proposal.Version != "" {
+		match, err := regexp.Match(`^v\d+$`, []byte(req.Proposal.Version))
+		if err != nil || !match {
+			return nil, xerrors.Errorf("invalid Version: %s", req.Proposal.Version)
+		}
+
 		index, err := strconv.Atoi(strings.ReplaceAll(req.Proposal.Version, "v", ""))
 		if err != nil {
 			return nil, xerrors.Errorf(err.Error())
@@ -106,11 +111,12 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	if req.Proposal.CommitId != "" {
 		isFound := false
 		for i, commit := range meta.Commits {
-			if strings.HasPrefix(commit, req.Proposal.CommitId) {
-				commitInfo := strings.Split(commit, "\032")
-				if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
-					return nil, xerrors.Errorf("invalid commit information: %s", commit)
-				}
+			commitInfo := strings.Split(commit, "\032")
+			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+				return nil, xerrors.Errorf("invalid commit information: %s", commit)
+			}
+
+			if commitInfo[0] == req.Proposal.CommitId {
 				height, err := strconv.ParseInt(commitInfo[1], 10, 64)
 				if err != nil {
 					return nil, xerrors.Errorf(err.Error())
