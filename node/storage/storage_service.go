@@ -196,10 +196,10 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 }
 
 func (ss *StoreSvc) Stop(ctx context.Context) error {
-	close(ss.taskChan)
 	if err := ss.chainSvc.UnsubscribeShardTask(ctx, ss.nodeAddress); err != nil {
 		return err
 	}
+	close(ss.taskChan)
 	return nil
 }
 
