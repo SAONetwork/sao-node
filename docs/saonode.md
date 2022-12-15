@@ -38,7 +38,7 @@ saonode [GLOBAL OPTIONS] command [COMMAND OPTIONS] [ARGUMENTS...]
 
 initialize a sao network node
 
-**Options**
+_Options_
 ```
 --creator           node's account on sao chain
 --multiaddr         nodes' multiaddr (default: /ip4/127.0.0.1/tcp/5153/)
@@ -47,15 +47,15 @@ initialize a sao network node
 
 join sao network
 
-**Options**
+_Options_
 ```
 --creator           node's account on sao chain
 ```
-## reset
+## update
 
 update node information
 
-**Options**
+_Options_
 ```
 --accept-order      whether this node can accept shard as a storage node
 --creator           node's account on sao chain
@@ -71,7 +71,7 @@ quit sao network
 
 >can re-join sao network by 'join' cmd. after quiting, no new shard will be assign to this node.
 
-**Options**
+_Options_
 ```
 --creator           node's account on chain
 ```
@@ -95,14 +95,14 @@ list all sao chain account in local keystore
 
 create a new local account with the given name
 
-**Options**
+_Options_
 ```
 --key-name          account name
 ```
 ### import
 
 
-**Options**
+_Options_
 ```
 --key-name          account name to import
 ```
@@ -110,7 +110,7 @@ create a new local account with the given name
 
 Export the given local account's encrypted private key
 
-**Options**
+_Options_
 ```
 --key-name          account name to export
 ```
