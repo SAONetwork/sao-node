@@ -599,10 +599,6 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 		return err
 	}
 
-	log.Debug("Proposal: ", proposalBytes)
-	log.Debug("Protected: ", signature.Protected)
-	log.Debug("Signature: ", signature.Signature)
-
 	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
 		Signatures: []saodidtypes.JwsSignature{
