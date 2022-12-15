@@ -96,12 +96,15 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 			if err != nil {
 				return nil, xerrors.Errorf(err.Error())
 			}
+		} else {
+			return nil, xerrors.Errorf("invalid Version: %s", req.Proposal.Version)
 		}
 	} else {
 		version = fmt.Sprintf("v%d", len(meta.Commits)-1)
 	}
 
 	if req.Proposal.CommitId != "" {
+		isFound := false
 		for i, commit := range meta.Commits {
 			if strings.HasPrefix(commit, req.Proposal.CommitId) {
 				commitInfo := strings.Split(commit, "\032")
@@ -118,8 +121,13 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 				}
 
 				version = fmt.Sprintf("v%d", i)
+				isFound = true
 				break
 			}
+		}
+
+		if !isFound {
+			return nil, xerrors.Errorf("invalid CommitId: %s", req.Proposal.CommitId)
 		}
 	}
 
