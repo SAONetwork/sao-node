@@ -2,6 +2,7 @@ package utils
 
 import (
 	"encoding/json"
+	"fmt"
 
 	applier "github.com/evanphx/json-patch"
 	creator "github.com/mattbaird/jsonpatch"
@@ -10,6 +11,12 @@ import (
 )
 
 func GeneratePatch(contentOrigin string, contentTarget string) (string, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("Invalid input!!!")
+		}
+	}()
+
 	var model interface{}
 	err := json.Unmarshal([]byte(contentOrigin), &model)
 	if err != nil {
@@ -52,6 +59,12 @@ func GeneratePatch(contentOrigin string, contentTarget string) (string, error) {
 }
 
 func ApplyPatch(jsonDataOrg []byte, patch []byte) ([]byte, error) {
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println("Invalid input!!!")
+		}
+	}()
+
 	patcher, err := applier.DecodePatch(patch)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
