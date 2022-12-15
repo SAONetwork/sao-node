@@ -202,7 +202,7 @@ func (cs *ChainSvc) SubscribeShardTask(ctx context.Context, nodeAddr string, sha
 
 	go func() {
 		for c := range ch {
-			log.Info("event: ", c)
+			// log.Debugf("event: ", c)
 			providers := c.Events["new-shard.provider"]
 			var i int
 			for ii, provider := range providers {
