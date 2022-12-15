@@ -97,7 +97,7 @@ func prepareCommands(commands []*cli.Command, level int) []string {
 
 		flags := prepareArgsWithValues(command.VisibleFlags())
 		if len(flags) > 0 {
-			prepared += fmt.Sprintf("\n**Options**")
+			prepared += fmt.Sprintf("\n_Options_")
 			prepared += fmt.Sprintf("\n```")
 			prepared += fmt.Sprintf("\n%s", strings.Join(flags, ""))
 			prepared += fmt.Sprintf("```")

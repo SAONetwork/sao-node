@@ -94,6 +94,7 @@ func main() {
 			quitCmd,
 			runCmd,
 			authCmd,
+			infoCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -470,6 +471,76 @@ var runCmd = &cli.Command{
 			node.ShutdownHandler{Component: "storagenode", StopFunc: snode.Stop},
 		)
 		<-finishCh
+		return nil
+	},
+}
+
+var infoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "show node information",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		repo, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+
+		var apiClient api.GatewayApiStruct
+
+		c, err := repo.Config()
+		if err != nil {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		key, err := repo.GetKeyBytes()
+		if err != nil {
+			return err
+		}
+
+		token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+		if err != nil {
+			return err
+		}
+
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+string(token))
+
+		ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+		if err != nil {
+			return err
+		}
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return err
+		}
+
+		apiAddress := "http://" + addr + "/rpc/v0"
+		closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		address, err := apiClient.NodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+		resp, err := apiClient.GetPeerInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		console := color.New(color.FgMagenta, color.Bold)
+		fmt.Printf("%-15s", "Account:")
+		console.Println(address)
+		fmt.Printf("%-15s", "Peer Info:")
+		console.Println(resp.PeerInfo)
 		return nil
 	},
 }

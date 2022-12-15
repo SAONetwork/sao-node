@@ -48,7 +48,7 @@ initialize a cli sao client
      create sao chain account locally which will be used as default account in following commands. 
     under --repo directory, there are client configuration file and keystore.
 
-**Options**
+_Options_
 ```
 --key-name, -k      sao chain account key name
 ```
@@ -62,7 +62,7 @@ data model management
 
 create a new data model
 
-**Options**
+_Options_
 ```
 --cid               data content cid, make sure gateway has this cid file before using this flag. you must either specify --content or --cid. 
 --client-publish    true if client sends MsgStore message on chain, or leave it to gateway to send
@@ -82,7 +82,7 @@ generate data model patch
 
 >used to before update cmd. you will get patch diff and target cid.
 
-**Options**
+_Options_
 ```
 --origin            the original data model content
 --target            the target data model content
@@ -93,7 +93,7 @@ update an existing data model
 
 >use patch cmd to generate --patch flag and --cid first. permission error will be reported if you don't have model write perm
 
-**Options**
+_Options_
 ```
 --cid               target content cid
 --client-publish    true if client sends MsgStore message on chain, or leave it to gateway to send
@@ -113,7 +113,7 @@ update data model's permission
 
 >only data model owner can update permission
 
-**Options**
+_Options_
 ```
 --data-id           data model's dataId
 --readonly-dids     DIDs with read access to the data model
@@ -125,7 +125,7 @@ load data model
 
 >only owner and dids with r/rw permission can load data model.
 
-**Options**
+_Options_
 ```
 --commit-id         data model's commitId
 --dump              dump data model content to ./<dataid>.json
@@ -136,7 +136,7 @@ load data model
 
 delete data model
 
-**Options**
+_Options_
 ```
 --data-id           data model's dataId
 ```
@@ -144,7 +144,7 @@ delete data model
 
 list data model historical commits
 
-**Options**
+_Options_
 ```
 --keyword           data model's alias, dataId or tag
 ```
@@ -152,7 +152,7 @@ list data model historical commits
 
 renew data model
 
-**Options**
+_Options_
 ```
 --client-publish    true if client sends MsgStore message on chain, or leave it to gateway to send
 --data-ids          data model's dataId list
@@ -163,7 +163,7 @@ renew data model
 
 check models' status
 
-**Options**
+_Options_
 ```
 --data-ids          data model's dataId list
 ```
@@ -175,7 +175,7 @@ file management
 
 Create a file
 
-**Options**
+_Options_
 ```
 --cid               
 --client-publish    true if client sends MsgStore message on chain, or leave it to gateway to send
@@ -199,7 +199,7 @@ generate token to access http file server
 
 upload file(s) to storage network
 
-**Options**
+_Options_
 ```
 --filepath          file's path to upload
 --multiaddr         remote multiaddr
@@ -208,7 +208,7 @@ upload file(s) to storage network
 
 download file(s) from storage network
 
-**Options**
+_Options_
 ```
 --commit-id         file commitId
 --keywords          storage network dataId(s) of the file(s)
@@ -222,7 +222,7 @@ did management
 
 create a new did based on the given sao account.
 
-**Options**
+_Options_
 ```
 --key-name          sao chain key name which did will be generated on
 --override          override default client configuration's key account.
@@ -231,7 +231,7 @@ create a new did based on the given sao account.
 
 using the given did to sign a payload
 
-**Options**
+_Options_
 ```
 --key-name          sao chain key name which did will be generated on
 ```
@@ -247,14 +247,14 @@ list all sao chain account in local keystore
 
 create a new local account with the given name
 
-**Options**
+_Options_
 ```
 --key-name          account name
 ```
 ### import
 
 
-**Options**
+_Options_
 ```
 --key-name          account name to import
 ```
@@ -262,7 +262,7 @@ create a new local account with the given name
 
 Export the given local account's encrypted private key
 
-**Options**
+_Options_
 ```
 --key-name          account name to export
 ```
