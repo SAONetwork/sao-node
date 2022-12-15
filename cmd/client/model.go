@@ -25,8 +25,9 @@ import (
 )
 
 var modelCmd = &cli.Command{
-	Name:  "model",
-	Usage: "data model management",
+	Name:      "model",
+	Usage:     "data model management",
+	UsageText: "model related commands including create, update, update permission, etc.",
 	Subcommands: []*cli.Command{
 		createCmd,
 		patchGenCmd,
@@ -47,26 +48,35 @@ var createCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "content",
 			Required: false,
+			Usage:    "data model content to create. you must either specify --content or --cid",
+		},
+		&cli.StringFlag{
+			Name:     "cid",
+			Usage:    "data content cid, make sure gateway has this cid file before using this flag. you must either specify --content or --cid. ",
+			Value:    "",
+			Required: false,
 		},
 		&cli.IntFlag{
 			Name:     "duration",
-			Usage:    "how long do you want to store the data.",
+			Usage:    "how many days do you want to store the data",
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
 		&cli.IntFlag{
 			Name:     "delay",
-			Usage:    "how long to wait for the data ready() ",
+			Usage:    "how many epochs to wait for the content to be completed storing",
 			Value:    24 * 60 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
 			Name:     "client-publish",
+			Usage:    "true if client sends MsgStore message on chain, or leave it to gateway to send",
 			Value:    false,
 			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "name",
+			Usage:    "alias name for this data model, this alias name can be used to update, load, etc.",
 			Value:    "",
 			Required: false,
 		},
@@ -79,14 +89,9 @@ var createCmd = &cli.Command{
 			Value:    "",
 			Required: false,
 		},
-		&cli.StringFlag{
-			Name:     "cid",
-			Value:    "",
-			Required: false,
-		},
 		&cli.IntFlag{
 			Name:     "replica",
-			Usage:    "how many copies to store.",
+			Usage:    "how many copies to store",
 			Value:    DEFAULT_REPLICA,
 			Required: false,
 		},
@@ -215,8 +220,9 @@ var createCmd = &cli.Command{
 }
 
 var loadCmd = &cli.Command{
-	Name:  "load",
-	Usage: "load data model",
+	Name:      "load",
+	Usage:     "load data model",
+	UsageText: "only owner and dids with r/rw permission can load data model.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "keyword",
@@ -225,7 +231,7 @@ var loadCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "version",
-			Usage:    "data model's version",
+			Usage:    "data model's version. you can find out version in commits cmd",
 			Required: false,
 		},
 		&cli.StringFlag{
@@ -236,7 +242,7 @@ var loadCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:     "dump",
 			Value:    false,
-			Usage:    "dump data model content to current path",
+			Usage:    "dump data model content to ./<dataid>.json",
 			Required: false,
 		},
 	},
@@ -363,7 +369,7 @@ var loadCmd = &cli.Command{
 
 var renewCmd = &cli.Command{
 	Name:  "renew",
-	Usage: "renew data",
+	Usage: "renew data model",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
 			Name:     "data-ids",
@@ -372,7 +378,7 @@ var renewCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:     "duration",
-			Usage:    "how long do you want to store the data.",
+			Usage:    "how many days do you want to renew the data.",
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
@@ -384,6 +390,7 @@ var renewCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:     "client-publish",
+			Usage:    "true if client sends MsgStore message on chain, or leave it to gateway to send",
 			Value:    false,
 			Required: false,
 		},
@@ -699,8 +706,9 @@ var commitsCmd = &cli.Command{
 }
 
 var updateCmd = &cli.Command{
-	Name:  "update",
-	Usage: "update an existing data model",
+	Name:      "update",
+	Usage:     "update an existing data model",
+	UsageText: "use patch cmd to generate --patch flag and --cid first. permission error will be reported if you don't have model write perm",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "patch",
@@ -709,18 +717,19 @@ var updateCmd = &cli.Command{
 		},
 		&cli.IntFlag{
 			Name:     "duration",
-			Usage:    "how long do you want to store the data.",
+			Usage:    "how many days do you want to store the data.",
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
 		&cli.IntFlag{
 			Name:     "delay",
-			Usage:    "how long to wait for the file ready",
+			Usage:    "how many epochs to wait for data update complete",
 			Value:    24 * 60 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
 			Name:     "client-publish",
+			Usage:    "true if client sends MsgStore message on chain, or leave it to gateway to send",
 			Value:    false,
 			Required: false,
 		},
@@ -741,11 +750,12 @@ var updateCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "keyword",
-			Usage:    "data model's alias, dataId or tag",
+			Usage:    "data model's alias name, dataId or tag",
 			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "cid",
+			Usage:    "target content cid",
 			Required: true,
 		},
 		&cli.IntFlag{
@@ -876,8 +886,9 @@ var updateCmd = &cli.Command{
 }
 
 var updatePermissionCmd = &cli.Command{
-	Name:  "update-permission",
-	Usage: "update data model's permission",
+	Name:      "update-permission",
+	Usage:     "update data model's permission",
+	UsageText: "only data model owner can update permission",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "data-id",
@@ -950,17 +961,18 @@ var updatePermissionCmd = &cli.Command{
 }
 
 var patchGenCmd = &cli.Command{
-	Name:  "patch-gen",
-	Usage: "generate data model patch",
+	Name:      "patch-gen",
+	Usage:     "generate data model patch",
+	UsageText: "used to before update cmd. you will get patch diff and target cid.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "origin",
-			Usage:    "the original data model\r\n",
+			Usage:    "the original data model content",
 			Required: true,
 		},
 		&cli.StringFlag{
 			Name:     "target",
-			Usage:    "the target data model\r\n",
+			Usage:    "the target data model content",
 			Required: true,
 		},
 	},

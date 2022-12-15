@@ -25,7 +25,6 @@ const (
 
 	FlagClientRepo = "repo"
 	FlagGateway    = "gateway"
-	FlagKeyName    = "keyName"
 )
 
 var flagRepo = &cli.StringFlag{
@@ -38,6 +37,7 @@ var flagRepo = &cli.StringFlag{
 
 var flagGateway = &cli.StringFlag{
 	Name:     FlagGateway,
+	Usage:    "gateway connection",
 	EnvVars:  []string{"SAO_GATEWAY_API"},
 	Required: false,
 }
@@ -53,7 +53,7 @@ func getSaoClient(cctx *cli.Context) (*client.SaoClient, func(), error) {
 		Repo:      cctx.String(FlagClientRepo),
 		Gateway:   cctx.String(FlagGateway),
 		ChainAddr: cliutil.ChainAddress,
-		KeyName:   cctx.String(FlagKeyName),
+		KeyName:   cctx.String(cliutil.FlagKeyName),
 	}
 	return client.NewSaoClient(cctx.Context, opt)
 }
@@ -76,7 +76,7 @@ func before(cctx *cli.Context) error {
 func main() {
 	app := &cli.App{
 		Name:                 "saoclient",
-		Usage:                "cli client for network client",
+		Usage:                "command line for sao network client",
 		EnableBashCompletion: true,
 		Version:              build.UserVersion(),
 		Before:               before,
@@ -89,10 +89,11 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
-			account.AccountCmd,
 			modelCmd,
 			fileCmd,
 			didCmd,
+			account.AccountCmd,
+			cliutil.GenerateDocCmd,
 		},
 	}
 	app.Setup()
@@ -104,12 +105,17 @@ func main() {
 }
 
 var initCmd = &cli.Command{
-	Name: "init",
+	Name:  "init",
+	Usage: "initialize a cli sao client",
+	UsageText: "if you want to use sao cli client, you must first init using this command.\n " +
+		"create sao chain account locally which will be used as default account in following commands. \n" +
+		"under --repo directory, there are client configuration file and keystore.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     FlagKeyName,
-			Usage:    "cosmos account key name",
+			Name:     cliutil.FlagKeyName,
+			Usage:    "sao chain account key name",
 			Required: true,
+			Aliases:  []string{"k"},
 		},
 	},
 	Action: func(cctx *cli.Context) error {
