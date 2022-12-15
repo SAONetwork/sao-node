@@ -9,7 +9,6 @@ import (
 )
 
 type GatewayApi interface {
-	Test(ctx context.Context, msg string) (string, error)                                                                                                          //perm:none
 	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error)                                                                                       //perm:none
 	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)                                                                                          //perm:admin
 	Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) //perm:write

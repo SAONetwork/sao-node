@@ -195,6 +195,7 @@ func (cs *ChainSvc) UnsubscribeOrderComplete(ctx context.Context, orderId uint64
 }
 
 func (cs *ChainSvc) SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error {
+	log.Debugf("SubscribeShardTask")
 	ch, err := cs.listener.Subscribe(ctx, subscriber, QueryOrderShard(nodeAddr))
 	if err != nil {
 		return err
@@ -240,11 +241,13 @@ func (cs *ChainSvc) SubscribeShardTask(ctx context.Context, nodeAddr string, sha
 				ShardOperation: operation,
 			}
 		}
+		log.Info("shard task loop ends.")
 	}()
 	return nil
 }
 
 func (cs *ChainSvc) UnsubscribeShardTask(ctx context.Context, nodeAddr string) error {
+	log.Debug("UnsubscribeShardTask")
 	err := cs.listener.Unsubscribe(ctx, subscriber, QueryOrderShard(nodeAddr))
 	if err != nil {
 		return err

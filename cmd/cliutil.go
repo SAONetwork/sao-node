@@ -2,8 +2,10 @@ package cliutil
 
 import (
 	"fmt"
+	"os"
 	"sao-node/chain"
 	saoclient "sao-node/client"
+	gen "sao-node/gen/doc"
 	"syscall"
 
 	"golang.org/x/term"
@@ -13,25 +15,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const (
-	devNetChainId  = "sao"
-	testNetChainId = "sao-testnet-fcf77b"
-	mainNetChainId = "sao"
-)
+const FlagKeyName = "key-name"
 
 var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
 	Name:        "chain-address",
+	Usage:       "sao chain api",
 	EnvVars:     []string{"SAO_CHAIN_API"},
 	Destination: &ChainAddress,
-}
-
-var NetType string
-var FlagNetType = &cli.StringFlag{
-	Name:        "net",
-	Usage:       "sao network type: [devnet/testnet/mainnet]",
-	Value:       "devnet",
-	Destination: &NetType,
 }
 
 // IsVeryVerbose is a global var signalling if the CLI is running in very
@@ -93,14 +84,44 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 	return &didManager, address, nil
 }
 
-func GetChainId() string {
-	switch NetType {
-	case "devnet":
-		return devNetChainId
-	case "testnet":
-		return testNetChainId
-	case "mainnet":
-		return mainNetChainId
-	}
-	return devNetChainId
+// TODO: move to makefile
+var GenerateDocCmd = &cli.Command{
+	Name:   "doc",
+	Hidden: true,
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "output",
+			Usage:    "file path to export to",
+			Required: false,
+		},
+		&cli.StringFlag{
+			Name:     "doctype",
+			Usage:    "current supported type: markdown / man",
+			Required: false,
+			Value:    "markdown",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		var output string
+		var err error
+		if cctx.String("doctype") == "markdown" {
+			output, err = gen.ToMarkdown(cctx.App)
+		} else {
+			output, err = cctx.App.ToMan()
+		}
+		if err != nil {
+			return err
+		}
+		outputFile := cctx.String("output")
+		if outputFile == "" {
+			outputFile = fmt.Sprintf("./docs/%s.md", cctx.App.Name)
+		}
+		err = os.WriteFile(outputFile, []byte(output), 0644)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("markdown doc is exported to %s", outputFile)
+		fmt.Println()
+		return nil
+	},
 }
