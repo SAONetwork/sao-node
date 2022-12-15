@@ -88,8 +88,8 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	var shard []byte
 	var err error
 
-	// check if it's a renew order(Operation is 2)
-	if task.OrderOperation != "2" || task.ShardOperation != "2" {
+	// check if it's a renew order(Operation is 3)
+	if task.OrderOperation != "3" || task.ShardOperation != "3" {
 		// check if gateway is node itself
 		if task.Gateway == ss.nodeAddress {
 			shard, err = ss.getShardFromLocal(task.Owner, task.Cid)
