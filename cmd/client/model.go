@@ -759,6 +759,11 @@ var updateCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.IntFlag{
+			Name:     "size",
+			Usage:    "target content size",
+			Required: true,
+		},
+		&cli.IntFlag{
 			Name:     "replica",
 			Usage:    "how many copies to store.",
 			Value:    DEFAULT_REPLICA,
@@ -860,6 +865,7 @@ var updateCmd = &cli.Command{
 			CommitId:   utils.GenerateCommitId(),
 			Rule:       cctx.String("rule"),
 			Operation:  operation,
+			Size_:      uint64(cctx.Int("size")),
 			ExtendInfo: extendInfo,
 		}
 
@@ -1031,6 +1037,9 @@ var patchGenCmd = &cli.Command{
 
 		fmt.Print("  Target Cid : ")
 		console.Println(targetCid)
+
+		fmt.Print("  Target Size : ")
+		console.Println(len(content))
 
 		return nil
 	},

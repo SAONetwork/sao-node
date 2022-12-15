@@ -210,11 +210,10 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		log.Info("store manager daemon initialized")
 
 		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
-
-		log.Info("storage node initialized")
 		if err != nil {
 			return nil, err
 		}
+		log.Info("storage node initialized")
 		go sn.storeSvc.Start(ctx)
 		sn.stopFuncs = append(sn.stopFuncs, sn.storeSvc.Stop)
 	}
