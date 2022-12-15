@@ -32,26 +32,29 @@ var fileCmd = &cli.Command{
 }
 
 var createFileCmd = &cli.Command{
-	Name: "create-file",
+	Name:  "create",
+	Usage: "Create a file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "file-name",
+			Usage:    "local file path",
 			Required: true,
 		},
 		&cli.IntFlag{
 			Name:     "duration",
-			Usage:    "how long do you want to store the data.",
+			Usage:    "how many days do you want to store the data.",
 			Value:    DEFAULT_DURATION,
 			Required: false,
 		},
 		&cli.IntFlag{
 			Name:     "delay",
-			Usage:    "how long to wait for the file ready",
+			Usage:    "how many epochs to wait for the file ready",
 			Value:    24 * 60 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
 			Name:     "client-publish",
+			Usage:    "true if client sends MsgStore message on chain, or leave it to gateway to send",
 			Value:    false,
 			Required: false,
 		},

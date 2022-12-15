@@ -77,6 +77,7 @@ func before(_ *cli.Context) error {
 func main() {
 	app := &cli.App{
 		Name:                 "saonode",
+		Usage:                "Command line for sao network node",
 		EnableBashCompletion: true,
 		Version:              build.UserVersion(),
 		Before:               before,
@@ -86,14 +87,15 @@ func main() {
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
-			account.AccountCmd,
 			initCmd,
 			joinCmd,
-			resetCmd,
+			updateCmd,
 			peersCmd,
 			quitCmd,
 			runCmd,
 			authCmd,
+			account.AccountCmd,
+			cliutil.GenerateDocCmd,
 		},
 	}
 	app.Setup()
@@ -105,16 +107,19 @@ func main() {
 }
 
 var initCmd = &cli.Command{
-	Name: "init",
+	Name:  "init",
+	Usage: "initialize a sao network node",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "creator",
-			Usage: "node's account name",
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "multiaddr",
-			Usage: "nodes' multiaddr",
-			Value: "/ip4/127.0.0.1/tcp/26660/",
+			Name:     "multiaddr",
+			Usage:    "nodes' multiaddr",
+			Value:    "/ip4/127.0.0.1/tcp/5153/",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -180,11 +185,13 @@ func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 }
 
 var joinCmd = &cli.Command{
-	Name: "join",
+	Name:  "join",
+	Usage: "join sao network",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "creator",
-			Usage: "node's account name",
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -208,21 +215,22 @@ var joinCmd = &cli.Command{
 	},
 }
 
-var resetCmd = &cli.Command{
-	Name:  "reset",
-	Usage: "update peer information.",
+var updateCmd = &cli.Command{
+	Name:  "update",
+	Usage: "update node information",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "creator",
-			Usage: "node's account name",
+			Usage: "node's account on sao chain",
 		},
 		&cli.StringSliceFlag{
 			Name:     "multiaddrs",
-			Usage:    "multiaddrs",
+			Usage:    "node's multiaddrs",
 			Required: false,
 		},
 		&cli.BoolFlag{
 			Name:     "accept-order",
+			Usage:    "whether this node can accept shard as a storage node",
 			Value:    true,
 			Required: false,
 		},
@@ -300,12 +308,13 @@ var resetCmd = &cli.Command{
 }
 
 var quitCmd = &cli.Command{
-	Name:  "quit",
-	Usage: "node quit sao network",
+	Name:      "quit",
+	Usage:     "quit sao network",
+	UsageText: "can re-join sao network by 'join' cmd. after quiting, no new shard will be assign to this node.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "creator",
-			Usage: "node's account name",
+			Usage: "node's account on chain",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -436,7 +445,8 @@ var peersCmd = &cli.Command{
 }
 
 var runCmd = &cli.Command{
-	Name: "run",
+	Name:  "run",
+	Usage: "start node",
 	Action: func(cctx *cli.Context) error {
 		myFigure := figure.NewFigure("Sao Network", "", true)
 		myFigure.Print()
