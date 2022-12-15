@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sao-node/chain"
+	cliutil "sao-node/cmd"
 	"strings"
 	"syscall"
 
@@ -24,7 +25,8 @@ var AccountCmd = &cli.Command{
 }
 
 var listCmd = &cli.Command{
-	Name: "list",
+	Name:  "list",
+	Usage: "list all sao chain account in local keystore",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
@@ -38,18 +40,20 @@ var listCmd = &cli.Command{
 }
 
 var createCmd = &cli.Command{
-	Name: "create",
+	Name:  "create",
+	Usage: "create a new local account with the given name",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "name",
-			Usage: "account name",
+			Name:     cliutil.FlagKeyName,
+			Usage:    "account name",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		name := cctx.String("name")
-		if !cctx.IsSet("name") {
+		name := cctx.String(cliutil.FlagKeyName)
+		if !cctx.IsSet(cliutil.FlagKeyName) {
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("Enter account name:")
 			indata, err := reader.ReadBytes('\n')
@@ -73,18 +77,20 @@ var createCmd = &cli.Command{
 }
 
 var exportCmd = &cli.Command{
-	Name: "export",
+	Name:  "export",
+	Usage: "Export the given local account's encrypted private key",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "name",
-			Usage: "account name",
+			Name:     cliutil.FlagKeyName,
+			Usage:    "account name to export",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		name := cctx.String("name")
-		if !cctx.IsSet("name") {
+		name := cctx.String(cliutil.FlagKeyName)
+		if !cctx.IsSet(cliutil.FlagKeyName) {
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("Enter account name:")
 			indata, err := reader.ReadBytes('\n')
@@ -113,15 +119,16 @@ var importCmd = &cli.Command{
 	Name: "import",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "name",
-			Usage: "account name",
+			Name:     cliutil.FlagKeyName,
+			Usage:    "account name to import",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		name := cctx.String("name")
-		if !cctx.IsSet("name") {
+		name := cctx.String(cliutil.FlagKeyName)
+		if !cctx.IsSet(cliutil.FlagKeyName) {
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Print("Enter account name:")
 			indata, err := reader.ReadBytes('\n')

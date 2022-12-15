@@ -5,20 +5,23 @@ import (
 )
 
 type Common struct {
-	Chain  Chain
-	Libp2p Libp2p
+	Chain     Chain
+	Libp2p    Libp2p
+	Module    Module
+	Transport Transport
 }
 
-// gateway node config
 type Node struct {
 	Common
+
+	// gateway
 	Cache             Cache
-	Transport         Transport
-	Api               API
-	Module            Module
 	SaoHttpFileServer SaoHttpFileServer
-	Storage           Storage
-	SaoIpfs           SaoIpfs
+	Api               API
+
+	// storage
+	Storage Storage
+	SaoIpfs SaoIpfs
 }
 
 type SaoHttpFileServer struct {
@@ -95,17 +98,6 @@ func DefaultSaoNode() *Node {
 			CacheCapacity: 1000,
 			ContentLimit:  2 * 1024 * 1024,
 		},
-		Transport: Transport{
-			TransportListenAddress: []string{
-				"/ip4/0.0.0.0/udp/5154",
-			},
-			StagingPath:      "~/.sao-node/staging",
-			StagingSapceSize: 32 * 1024 * 1024 * 1024,
-		},
-		Module: Module{
-			GatewayEnable: true,
-			StorageEnable: true,
-		},
 		SaoHttpFileServer: SaoHttpFileServer{
 			Enable:                  true,
 			HttpFileServerAddress:   "localhost:5152",
@@ -135,6 +127,17 @@ func defCommon() Common {
 			ListenAddress: []string{
 				"/ip4/0.0.0.0/tcp/5153",
 			},
+		},
+		Transport: Transport{
+			TransportListenAddress: []string{
+				"/ip4/0.0.0.0/udp/5154",
+			},
+			StagingPath:      "~/.sao-node/staging",
+			StagingSapceSize: 32 * 1024 * 1024 * 1024,
+		},
+		Module: Module{
+			GatewayEnable: true,
+			StorageEnable: true,
 		},
 	}
 }

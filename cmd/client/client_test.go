@@ -15,42 +15,9 @@ import (
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
-
-	"github.com/urfave/cli/v2"
 )
 
 var log = logging.Logger("saoclient")
-
-var TestCmd = &cli.Command{
-	Name: "test",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:     "abc",
-			Required: false,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-		gateway := cctx.String(FlagGateway)
-
-		opt := saoclient.SaoClientOptions{
-			Repo:      "~/.sao_cli",
-			Gateway:   gateway,
-			ChainAddr: "none",
-		}
-		client, closer, err := saoclient.NewSaoClient(ctx, opt)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		resp, err := client.Test(ctx, "")
-		if err != nil {
-			return err
-		}
-		log.Info(resp)
-		return nil
-	},
-}
 
 func TestSignature(t *testing.T) {
 	ctx := context.TODO()

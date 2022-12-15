@@ -77,24 +77,26 @@ func before(_ *cli.Context) error {
 func main() {
 	app := &cli.App{
 		Name:                 "saonode",
+		Usage:                "Command line for sao network node",
 		EnableBashCompletion: true,
 		Version:              build.UserVersion(),
 		Before:               before,
 		Flags: []cli.Flag{
 			FlagRepo,
 			cliutil.FlagChainAddress,
-			cliutil.FlagNetType,
 			cliutil.FlagVeryVerbose,
 		},
 		Commands: []*cli.Command{
-			account.AccountCmd,
 			initCmd,
 			joinCmd,
-			resetCmd,
+			updateCmd,
 			peersCmd,
 			quitCmd,
 			runCmd,
 			authCmd,
+			infoCmd,
+			account.AccountCmd,
+			cliutil.GenerateDocCmd,
 		},
 	}
 	app.Setup()
@@ -106,16 +108,19 @@ func main() {
 }
 
 var initCmd = &cli.Command{
-	Name: "init",
+	Name:  "init",
+	Usage: "initialize a sao network node",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "creator",
-			Usage: "node's account name",
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
 		},
 		&cli.StringFlag{
-			Name:  "multiaddr",
-			Usage: "nodes' multiaddr",
-			Value: "/ip4/127.0.0.1/tcp/26660/",
+			Name:     "multiaddr",
+			Usage:    "nodes' multiaddr",
+			Value:    "/ip4/127.0.0.1/tcp/5153/",
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -181,11 +186,13 @@ func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 }
 
 var joinCmd = &cli.Command{
-	Name: "join",
+	Name:  "join",
+	Usage: "join sao network",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "creator",
-			Usage: "node's account name",
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -209,21 +216,22 @@ var joinCmd = &cli.Command{
 	},
 }
 
-var resetCmd = &cli.Command{
-	Name:  "reset",
-	Usage: "update peer information.",
+var updateCmd = &cli.Command{
+	Name:  "update",
+	Usage: "update node information",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "creator",
-			Usage: "node's account name",
+			Usage: "node's account on sao chain",
 		},
 		&cli.StringSliceFlag{
 			Name:     "multiaddrs",
-			Usage:    "multiaddrs",
+			Usage:    "node's multiaddrs",
 			Required: false,
 		},
 		&cli.BoolFlag{
 			Name:     "accept-order",
+			Usage:    "whether this node can accept shard as a storage node",
 			Value:    true,
 			Required: false,
 		},
@@ -301,12 +309,13 @@ var resetCmd = &cli.Command{
 }
 
 var quitCmd = &cli.Command{
-	Name:  "quit",
-	Usage: "node quit sao network",
+	Name:      "quit",
+	Usage:     "quit sao network",
+	UsageText: "can re-join sao network by 'join' cmd. after quiting, no new shard will be assign to this node.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "creator",
-			Usage: "node's account name",
+			Usage: "node's account on chain",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -437,7 +446,8 @@ var peersCmd = &cli.Command{
 }
 
 var runCmd = &cli.Command{
-	Name: "run",
+	Name:  "run",
+	Usage: "start node",
 	Action: func(cctx *cli.Context) error {
 		myFigure := figure.NewFigure("Sao Network", "", true)
 		myFigure.Print()
@@ -461,6 +471,76 @@ var runCmd = &cli.Command{
 			node.ShutdownHandler{Component: "storagenode", StopFunc: snode.Stop},
 		)
 		<-finishCh
+		return nil
+	},
+}
+
+var infoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "show node information",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		repo, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+
+		var apiClient api.GatewayApiStruct
+
+		c, err := repo.Config()
+		if err != nil {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		key, err := repo.GetKeyBytes()
+		if err != nil {
+			return err
+		}
+
+		token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+		if err != nil {
+			return err
+		}
+
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+string(token))
+
+		ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+		if err != nil {
+			return err
+		}
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return err
+		}
+
+		apiAddress := "http://" + addr + "/rpc/v0"
+		closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		address, err := apiClient.NodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+		resp, err := apiClient.GetPeerInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		console := color.New(color.FgMagenta, color.Bold)
+		fmt.Printf("%-15s", "Account:")
+		console.Println(address)
+		fmt.Printf("%-15s", "Peer Info:")
+		console.Println(resp.PeerInfo)
 		return nil
 	},
 }
