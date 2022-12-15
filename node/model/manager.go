@@ -75,6 +75,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		return nil, xerrors.Errorf(err.Error())
 	}
 
+	version := req.Proposal.Version
 	if req.Proposal.Version != "" {
 		index, err := strconv.Atoi(strings.ReplaceAll(req.Proposal.Version, "v", ""))
 		if err != nil {
@@ -97,7 +98,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 			}
 		}
 	} else {
-		req.Proposal.Version = fmt.Sprintf("v%d", len(meta.Commits)-1)
+		version = fmt.Sprintf("v%d", len(meta.Commits)-1)
 	}
 
 	if req.Proposal.CommitId != "" {
@@ -116,7 +117,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 					return nil, xerrors.Errorf(err.Error())
 				}
 
-				req.Proposal.Version = fmt.Sprintf("v%d", i)
+				version = fmt.Sprintf("v%d", i)
 				break
 			}
 		}
@@ -163,7 +164,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 		model.Cid = result.Cid
 		model.Content = result.Content
-		model.Version = req.Proposal.Version
+		model.Version = version
 	}
 
 	mm.cacheModel(req.Proposal.Owner, model)
