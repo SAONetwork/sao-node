@@ -180,10 +180,12 @@ func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, 
 	log.Debugf("SubscribeOrderComplete %s succeed", QueryOrderComplete(orderId))
 
 	go func() {
+		log.Debugf("new thread wait chan")
 		<-ch
 		// TODO: replace with real data id.
 		// uuid, _ := uuid.GenerateUUID()
 		doneChan <- OrderCompleteResult{}
+		log.Debugf("new thread quit chan")
 	}()
 	return nil
 }
