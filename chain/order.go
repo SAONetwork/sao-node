@@ -178,10 +178,16 @@ func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, 
 	}
 
 	go func() {
-		<-ch
-		// TODO: replace with real data id.
-		// uuid, _ := uuid.GenerateUUID()
-		doneChan <- OrderCompleteResult{}
+		c := <-ch
+		log.Debugf("event: ", c)
+		errorInfo := c.Events["order-completed.error-info"][0]
+		if len(errorInfo) > 0 {
+			doneChan <- OrderCompleteResult{
+				Result: errorInfo,
+			}
+		} else {
+			doneChan <- OrderCompleteResult{}
+		}
 	}()
 	return nil
 }
