@@ -784,7 +784,7 @@ var updateCmd = &cli.Command{
 		}
 		keyword := cctx.String("keyword")
 
-		size := uint64(cctx.Int("size"))
+		size := cctx.Int("size")
 		if size <= 0 {
 			return xerrors.Errorf("invalid size")
 		}
@@ -870,7 +870,7 @@ var updateCmd = &cli.Command{
 			CommitId:   utils.GenerateCommitId(),
 			Rule:       cctx.String("rule"),
 			Operation:  operation,
-			Size_:      size,
+			Size_:      uint64(size),
 			ExtendInfo: extendInfo,
 		}
 
