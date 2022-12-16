@@ -3,6 +3,7 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -245,7 +246,10 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 	timeout := false
 	select {
-	case <-doneChan:
+	case resutl := <-doneChan:
+		if len(resutl.Result) > 0 {
+			return nil, fmt.Errorf(resutl.Result)
+		}
 	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
 		timeout = true
 	case <-ctx.Done():
