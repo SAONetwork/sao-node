@@ -1,6 +1,7 @@
 package model
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"regexp"
@@ -289,6 +290,9 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, xerrors.Errorf(err.Error())
 	}
 	log.Debug("newContent: ", string(newContent))
+	if bytes.Compare(orgModel.Content, newContent) == 0 {
+		return nil, xerrors.Errorf("no content updated.")
+	}
 
 	if len(newContent) != int(clientProposal.Proposal.Size_) {
 		return nil, xerrors.Errorf("given size(%d) doesn't match target content size(%d)", int(clientProposal.Proposal.Size_), len(newContent))
@@ -296,7 +300,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 
 	newContentCid, err := utils.CalculateCid(newContent)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 	if newContentCid.String() != clientProposal.Proposal.Cid {
 		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)

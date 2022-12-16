@@ -172,12 +172,15 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Or
 }
 
 func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error {
+	log.Debugf("SubscribeOrderComplete %s", QueryOrderComplete(orderId))
 	ch, err := cs.listener.Subscribe(ctx, subscriber, QueryOrderComplete(orderId))
 	if err != nil {
 		return err
 	}
+	log.Debugf("SubscribeOrderComplete %s succeed", QueryOrderComplete(orderId))
 
 	go func() {
+		log.Debugf("new thread coming in chan")
 		c := <-ch
 		log.Debugf("event: ", c)
 		errorInfo := c.Events["order-completed.error-info"][0]
@@ -188,6 +191,7 @@ func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, 
 		} else {
 			doneChan <- OrderCompleteResult{}
 		}
+		log.Debugf("new thread quit chan")
 	}()
 	return nil
 }
