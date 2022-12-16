@@ -241,8 +241,6 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		return nil, err
 	}
 
-	log.Debug("SubscribeOrderComplete")
-
 	timeout := false
 	select {
 	case <-doneChan:
