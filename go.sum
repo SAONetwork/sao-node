@@ -82,8 +82,8 @@ github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/SaoNetwork/sao v0.0.2 h1:6tUnf+MCegMNIyWOsRojg3l/bt//zfzWUvEIW5q4Ctk=
 github.com/SaoNetwork/sao v0.0.2/go.mod h1:qZiMnbDI9QiTV0axlatXpmzKBySD1n2UPsp+CtEUbAs=
-github.com/SaoNetwork/sao-did v0.0.11 h1:ADJDFrdmudPWiTdBw7y7B6jDQTKR7ZvW6Qut0RzXXLY=
-github.com/SaoNetwork/sao-did v0.0.11/go.mod h1:TyL3KVpNamdLvipQ8L++H2IG1gzN5m4kHNVnX0Qascc=
+github.com/SaoNetwork/sao-did v0.0.12 h1:PchVFK+z8e8uxdZNP3xLmP/hic/xTypy2mIw72yxRcE=
+github.com/SaoNetwork/sao-did v0.0.12/go.mod h1:Xl9sUZtuMwF8ooxvXMS5AOpgv5qKP0D6d0lex6rNJi4=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
 github.com/Shopify/sarama v1.30.0/go.mod h1:zujlQQx1kzHsh4jfV1USnptCQrHAEZ2Hk8fTKCulPVs=
 github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMxUHB2q5Ap20/P/eIdh4G0pI=

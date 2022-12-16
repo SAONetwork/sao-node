@@ -290,6 +290,10 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	}
 	log.Debug("newContent: ", string(newContent))
 
+	if len(newContent) != int(clientProposal.Proposal.Size_) {
+		return nil, xerrors.Errorf("given size(%d) doesn't match target content size(%d)", int(clientProposal.Proposal.Size_), len(newContent))
+	}
+
 	newContentCid, err := utils.CalculateCid(newContent)
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())

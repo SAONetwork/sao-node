@@ -784,6 +784,11 @@ var updateCmd = &cli.Command{
 		}
 		keyword := cctx.String("keyword")
 
+		size := uint64(cctx.Int("size"))
+		if size <= 0 {
+			return xerrors.Errorf("invalid size")
+		}
+
 		patch := []byte(cctx.String("patch"))
 		contentCid := cctx.String("cid")
 		newCid, err := cid.Decode(contentCid)
@@ -865,7 +870,7 @@ var updateCmd = &cli.Command{
 			CommitId:   utils.GenerateCommitId(),
 			Rule:       cctx.String("rule"),
 			Operation:  operation,
-			Size_:      uint64(cctx.Int("size")),
+			Size_:      size,
 			ExtendInfo: extendInfo,
 		}
 
@@ -886,7 +891,7 @@ var updateCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("alias: %s, data id: %s, commitId: %s.\r\n", resp.Alias, resp.DataId, resp.CommitId)
+		fmt.Printf("alias: %s, data id: %s, commit id: %s.\r\n", resp.Alias, resp.DataId, resp.CommitId)
 		return nil
 	},
 }
