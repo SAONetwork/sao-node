@@ -122,7 +122,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("Complete order succeed: txHash:%s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
+	log.Infof("Complete order succeed: txHash: %s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
 	return nil
 }
 
