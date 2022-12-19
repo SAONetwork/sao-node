@@ -119,7 +119,7 @@ func (ss *GatewaySvc) handleShardComplete(req types.ShardCompleteReq) types.Shar
 	}
 
 	// query tx
-	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash, req.Height)
 	if err != nil {
 		return types.ShardCompleteResp{
 			Code:    types.ErrorCodeInternalErr,
@@ -344,8 +344,9 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	var txHash string
 	var shards map[string]*saotypes.ShardMeta
 	var txType types.AssignTxType
+	var height int64
 	if orderId == 0 {
-		resp, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
+		resp, txId, h, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
 			return nil, err
 		}
@@ -353,17 +354,19 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		shards = resp.Shards
 		txHash = txId
 		txType = types.AssignTxTypeStore
+		height = h
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
 		log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
-		resp, txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
+		resp, txId, h, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
 		if err != nil {
 			return nil, err
 		}
 		orderId = resp.OrderId
 		shards = resp.Shards
 		txHash = txId
+		height = h
 		txType = types.AssignTxTypeReady
 		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
 		log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
@@ -377,6 +380,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 			OrderId:      orderId,
 			TxHash:       txHash,
 			Assignee:     node,
+			Height:       height,
 			AssignTxType: txType,
 		}
 		if node == gs.nodeAddress {

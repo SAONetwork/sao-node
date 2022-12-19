@@ -113,7 +113,7 @@ func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssig
 		}
 	}
 
-	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash, req.Height)
 	if err != nil {
 		return types.ShardAssignResp{
 			Code:    types.ErrorCodeInternalErr,
@@ -252,7 +252,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	}
 
 	log.Info("Complete order")
-	txHash, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
+	txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
 	if err != nil {
 		return err
 	}
@@ -260,6 +260,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	completeReq := types.ShardCompleteReq{
 		OrderId: task.OrderId,
 		Cids:    []cid.Cid{task.Cid},
+		Height:  height,
 		TxHash:  txHash,
 		Code:    0,
 	}

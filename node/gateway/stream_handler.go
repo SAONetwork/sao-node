@@ -88,9 +88,8 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 		respond(types.ShardCompleteResp{Code: 0})
 		return
 	}
-
 	// query tx
-	resultTx, err := ssh.chainSvc.GetTx(ssh.ctx, req.TxHash)
+	resultTx, err := ssh.chainSvc.GetTx(ssh.ctx, req.TxHash, req.Height)
 	if err != nil {
 		respond(types.ShardCompleteResp{
 			Code:    types.ErrorCodeInternalErr,
