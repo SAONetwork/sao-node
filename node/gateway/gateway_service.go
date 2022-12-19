@@ -244,6 +244,8 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 	for node, shard := range shards {
 		peerInfo := ""
+		log.Info("node:", node)
+		log.Info("shard:", shard)
 		for _, peer := range strings.Split(shard.Peer, ",") {
 			log.Info("peer:", peer)
 			log.Info("peerInfo:", peerInfo)
