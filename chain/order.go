@@ -29,10 +29,10 @@ type OrderCompleteResult struct {
 	Result string
 }
 
-func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (string, error) {
+func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, error) {
 	signerAcc, err := c.cosmos.Account(provider)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return saotypes.MsgReadyResponse{}, "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
 	}
 
 	msg := &saotypes.MsgReady{
@@ -41,13 +41,18 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", err
+		return saotypes.MsgReadyResponse{}, "", err
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return saotypes.MsgReadyResponse{}, "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	var readyResp saotypes.MsgReadyResponse
+	err = txResp.Decode(&readyResp)
+	if err != nil {
+		return saotypes.MsgReadyResponse{}, "", err
 	}
 
-	return txResp.TxResponse.TxHash, nil
+	return readyResp, txResp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, error) {

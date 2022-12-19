@@ -221,7 +221,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	}
 
 	var txId string
-	var shards map[string]*saotypes.ShardMeta = nil
+	var shards map[string]*saotypes.ShardMeta
 	if orderId == 0 {
 		resp, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
@@ -232,11 +232,13 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
-		txId, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
+		resp, txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
 		if err != nil {
 			return nil, err
 		}
+		orderId = resp.OrderId
 		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
+		log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
 	}
 
 	log.Infof("assigning shards to nodes...")
