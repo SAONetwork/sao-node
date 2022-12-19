@@ -239,16 +239,29 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	log.Infof("assigning shards to nodes...")
 	// assign shards to storage nodes
 	order, err := gs.chainSvc.GetOrder(ctx, orderId)
-	for node, _ := range order.Shards {
+	if err != nil {
+		return nil, err
+	}
+	for node := range order.Shards {
 		peerInfos, err := gs.chainSvc.GetNodePeer(ctx, node)
 		if err != nil {
 			log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
 			continue
 		}
+		peerInfo := ""
+		for _, peer := range strings.Split("peerInfos", ",") {
+			if strings.Contains(peer, "tcp") && !strings.Contains(peer, "127.0.0.1") {
+				peerInfo = peer
+			}
+		}
+		if peerInfo == "" {
+			log.Errorf("no valid libp2p address found in %s", peerInfos)
+		}
+
 		resp := types.ShardAssignResp{}
 		err = transport.HandleRequest(
 			ctx,
-			peerInfos,
+			peerInfo,
 			node,
 			gs.shardStreamHandler.host,
 			types.ShardAssignProtocol,
