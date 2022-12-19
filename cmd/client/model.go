@@ -199,7 +199,7 @@ var createCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -882,7 +882,7 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}

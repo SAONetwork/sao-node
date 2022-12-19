@@ -22,6 +22,7 @@ type ShardAssignReq struct {
 	OrderId      uint64
 	Assignee     string
 	TxHash       string
+	Height       int64
 	AssignTxType AssignTxType
 }
 
@@ -98,6 +99,7 @@ type ShardCompleteReq struct {
 	OrderId uint64
 	Cids    []cid.Cid
 	TxHash  string
+	Height  int64
 	Code    uint64
 	Message string
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"sao-node/types"
+	"time"
 
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
@@ -47,9 +48,9 @@ type ChainSvcApi interface {
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
 	StartStatusReporter(ctx context.Context, creator string, status uint32)
-	OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, error)
-	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, error)
-	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error)
+	OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error)
+	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error)
+	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, int64, error)
 	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
 	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error)
 	//SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
@@ -57,7 +58,7 @@ type ChainSvcApi interface {
 	//SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
 	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, map[string]string, error)
-	GetTx(ctx context.Context, hash string) (*coretypes.ResultTx, error)
+	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
 }
 
 func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
@@ -113,7 +114,17 @@ func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coi
 	return c.cosmos.BankBalances(ctx, address, nil)
 }
 
-func (c *ChainSvc) GetTx(ctx context.Context, hash string) (*coretypes.ResultTx, error) {
+func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coretypes.ResultTx, error) {
+	for {
+		curHeight, err := c.GetLastHeight(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if curHeight >= height {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 	hashBytes, err := hex.DecodeString(hash)
 	if err != nil {
 		return nil, err
