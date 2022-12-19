@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sao-node/chain"
 	"sao-node/node/config"
+	"sao-node/node/transport"
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
@@ -64,7 +65,7 @@ func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.Chai
 	cs := &GatewaySvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
-		shardStreamHandler: NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath),
+		shardStreamHandler: NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath, chainSvc, nodeAddress),
 		storeManager:       storeManager,
 		nodeAddress:        nodeAddress,
 		stagingPath:        cfg.Transport.StagingPath,
@@ -219,8 +220,8 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		return nil, err
 	}
 
+	var txId string
 	if orderId == 0 {
-		var txId string
 		orderId, txId, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
 			return nil, err
@@ -228,22 +229,61 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
-		txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
+		txId, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
 		if err != nil {
 			return nil, err
 		}
 		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
 	}
 
-	doneChan := make(chan chain.OrderCompleteResult)
-	err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
-	if err != nil {
-		return nil, err
+	log.Infof("assigning shards to nodes...")
+	// assign shards to storage nodes
+	order, err := gs.chainSvc.GetOrder(ctx, orderId)
+	for node, _ := range order.Shards {
+		peerInfos, err := gs.chainSvc.GetNodePeer(ctx, node)
+		if err != nil {
+			log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
+			continue
+		}
+		resp := types.ShardAssignResp{}
+		err = transport.HandleRequest(
+			ctx,
+			peerInfos,
+			node,
+			gs.shardStreamHandler.host,
+			types.ShardAssignProtocol,
+			&types.ShardAssignReq{
+				OrderId:  orderId,
+				TxHash:   txId,
+				Assignee: node,
+			},
+			&resp,
+		)
+		if err != nil {
+			log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
+		}
+		if resp.Code == 0 {
+			log.Infof("assigned order %d shard to node %s.", orderId, node)
+		} else {
+			log.Errorf("assigned order %d shards to node %s failed: %v", orderId, node, resp.Message)
+		}
 	}
+
+	// TODO: wsevent
+	//doneChan := make(chan chain.OrderCompleteResult)
+	//err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
+	//if err != nil {
+	//	return nil, err
+	//}
+
+	log.Infof("waiting for all nodes order %d shard completion.", orderId)
+	doneChan := make(chan struct{})
+	gs.shardStreamHandler.AddCompleteChannel(orderId, doneChan)
 
 	timeout := false
 	select {
 	case <-doneChan:
+		log.Debugf("complete channel done. order %d completes", orderId)
 	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
 		timeout = true
 	case <-ctx.Done():
@@ -251,12 +291,13 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	}
 	close(doneChan)
 
-	err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
-	if err != nil {
-		log.Error(err)
-	} else {
-		log.Debugf("UnsubscribeOrderComplete")
-	}
+	// TODO: wsevent
+	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
+	//if err != nil {
+	//	log.Error(err)
+	//} else {
+	//	log.Debugf("UnsubscribeOrderComplete")
+	//}
 
 	log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, orderProposal.Owner, orderProposal.Cid)
 	err = UnstageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid)

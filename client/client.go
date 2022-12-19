@@ -138,7 +138,7 @@ func defaultSaoClientConfig() *SaoClientConfig {
 		GroupId:      utils.GenerateGroupId(),
 		KeyName:      "",
 		ChainAddress: "http://localhost:26657",
-		Gateway:      "http://127.0.0.1:8888/rpc/v0",
+		Gateway:      "http://127.0.0.1:5151/rpc/v0",
 		Token:        "DEFAULT_TOKEN",
 	}
 }

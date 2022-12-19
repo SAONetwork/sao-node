@@ -22,6 +22,7 @@ var FlagChainAddress = &cli.StringFlag{
 	Name:        "chain-address",
 	Usage:       "sao chain api",
 	EnvVars:     []string{"SAO_CHAIN_API"},
+	Value:       "http://localhost:26657",
 	Destination: &ChainAddress,
 }
 

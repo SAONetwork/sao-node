@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 	"io"
 	"os"
 	"path/filepath"
@@ -27,8 +29,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"
-	"github.com/libp2p/go-libp2p/core/peer"
-	ma "github.com/multiformats/go-multiaddr"
 )
 
 var log = logging.Logger("storage")
@@ -55,10 +55,12 @@ func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.Ch
 	}
 
 	host.SetStreamHandler(types.ShardLoadProtocol, ss.HandleShardStream)
+	host.SetStreamHandler(types.ShardAssignProtocol, ss.HandleShardAssignStream)
 
-	if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
-		return nil, err
-	}
+	// TODO: wsevent
+	//if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
+	//	return nil, err
+	//}
 
 	return &ss, nil
 }
@@ -123,6 +125,18 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		return err
 	}
 	log.Infof("Complete order succeed: txHash: %s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
+
+	peerInfos, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
+	resp := types.ShardCompleteResp{}
+	err = transport.HandleRequest(ctx, peerInfos, task.Gateway, ss.host, types.ShardCompleteProtocol, &types.ShardCompleteReq{
+		OrderId: task.OrderId,
+		Cids:    []cid.Cid{task.Cid},
+		TxHash:  txHash,
+		Code:    0,
+	}, &resp)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -146,59 +160,24 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	if err != nil {
 		return nil, err
 	}
-
-	for _, peerInfo := range strings.Split(peerInfos, ",") {
-		if strings.Contains(peerInfo, "udp") {
-			continue
-		}
-
-		a, err := ma.NewMultiaddr(peerInfo)
-		if err != nil {
-			return nil, err
-		}
-		log.Info("conn: ", peerInfo)
-		log.Info("a: ", peerInfo)
-		pi, err := peer.AddrInfoFromP2pAddr(a)
-		if err != nil {
-			return nil, err
-		}
-		err = ss.host.Connect(ctx, *pi)
-		if err != nil {
-			return nil, err
-		}
-		stream, err := ss.host.NewStream(ctx, pi.ID, types.ShardStoreProtocol)
-		if err != nil {
-			return nil, err
-		}
-		defer stream.Close()
-		log.Infof("open stream(%s) to gateway %s", types.ShardStoreProtocol, peerInfo)
-
-		// Set a deadline on reading from the stream so it doesn't hang
-		_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
-		defer stream.SetReadDeadline(time.Time{}) // nolint
-
-		req := types.ShardReq{
-			Owner:   owner,
-			OrderId: orderId,
-			Cid:     cid,
-		}
-		log.Debugf("send ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
-		var resp types.ShardResp
-		if err = transport.DoRequest(ctx, stream, &req, &resp, "json"); err != nil {
-			// TODO: handle error
-			return nil, err
-		}
-		log.Debugf("receive ShardResp: content=%s", string(resp.Content))
-		return resp.Content, nil
+	resp := types.ShardResp{}
+	err = transport.HandleRequest(ctx, peerInfos, gateway, ss.host, types.ShardStoreProtocol, &types.ShardReq{
+		Owner:   owner,
+		OrderId: orderId,
+		Cid:     cid,
+	}, &resp)
+	if err != nil {
+		return nil, err
 	}
+	return resp.Content, nil
 
-	return nil, xerrors.Errorf("no valid node peer found")
 }
 
 func (ss *StoreSvc) Stop(ctx context.Context) error {
-	if err := ss.chainSvc.UnsubscribeShardTask(ctx, ss.nodeAddress); err != nil {
-		return err
-	}
+	// TODO: wsevent
+	//if err := ss.chainSvc.UnsubscribeShardTask(ctx, ss.nodeAddress); err != nil {
+	//	return err
+	//}
 	close(ss.taskChan)
 	return nil
 }
@@ -206,6 +185,129 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 func (ss *StoreSvc) getSidDocFunc() func(versionId string) (*sid.SidDocument, error) {
 	return func(versionId string) (*sid.SidDocument, error) {
 		return ss.chainSvc.GetSidDocument(ss.ctx, versionId)
+	}
+}
+
+func (ss *StoreSvc) HandleShardAssignStream(s network.Stream) {
+	defer s.Close()
+
+	respond := func(resp types.ShardAssignResp) {
+		err := resp.Marshal(s, "json")
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+
+		if err = s.CloseWrite(); err != nil {
+			log.Error(err.Error())
+			return
+		}
+	}
+
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
+	defer s.SetReadDeadline(time.Time{}) // nolint
+
+	var req types.ShardAssignReq
+	err := req.Unmarshal(s, "json")
+	if err != nil {
+		respond(types.ShardAssignResp{
+			Code:    types.ErrorCodeInvalidRequest,
+			Message: fmt.Sprintf("failed to unmarshal request: %v", err),
+		})
+		return
+	}
+
+	// validate request
+	if req.Assignee != ss.nodeAddress {
+		respond(types.ShardAssignResp{
+			Code:    types.ErrorCodeInvalidShardAssignee,
+			Message: fmt.Sprintf("shard assignee is %s, but current node is %s", req.Assignee, ss.nodeAddress),
+		})
+		return
+	}
+
+	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	if resultTx.TxResult.Code == 0 {
+		txb := tx.Tx{}
+		err = txb.Unmarshal(resultTx.Tx)
+		if err != nil {
+			respond(types.ShardAssignResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			})
+			return
+		}
+
+		if req.AssignTxType == types.AssignTxTypeStore {
+			m := saotypes.MsgStore{}
+			err = m.Unmarshal(txb.Body.Messages[0].Value)
+		} else {
+			m := saotypes.MsgReady{}
+			err = m.Unmarshal(txb.Body.Messages[0].Value)
+		}
+		if err != nil {
+			respond(types.ShardAssignResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			})
+			return
+		}
+
+		order, err := ss.chainSvc.GetOrder(ss.ctx, req.OrderId)
+		if err != nil {
+			respond(types.ShardAssignResp{
+				Code:    types.ErrorCodeInternalErr,
+				Message: fmt.Sprintf("internal error: %v", err),
+			})
+			return
+		}
+
+		var shardCids []string
+		for key, shard := range order.Shards {
+			if key == ss.nodeAddress {
+				shardCids = append(shardCids, shard.Cid)
+			}
+		}
+		if len(shardCids) <= 0 {
+			respond(types.ShardAssignResp{
+				Code:    types.ErrorCodeInvalidProvider,
+				Message: fmt.Sprintf("order %d doesn't have shard provider %s", req.OrderId, ss.nodeAddress),
+			})
+			return
+		}
+		var shardTasks []*chain.ShardTask
+		for _, shardCid := range shardCids {
+			cid, err := cid.Decode(shardCid)
+			if err != nil {
+				respond(types.ShardAssignResp{
+					Code:    types.ErrorCodeInvalidShardCid,
+					Message: fmt.Sprintf("invalid cid %s", shardCid),
+				})
+				return
+			}
+
+			shardTasks = append(shardTasks, &chain.ShardTask{
+				Owner:          order.Owner,
+				OrderId:        req.OrderId,
+				Gateway:        order.Provider,
+				Cid:            cid,
+				OrderOperation: "",
+				ShardOperation: "",
+			})
+		}
+		for _, task := range shardTasks {
+			ss.taskChan <- task
+		}
+
+		respond(types.ShardAssignResp{Code: 0})
+		return
+	} else {
+		respond(types.ShardAssignResp{
+			Code:    types.ErrorCodeInvalidTx,
+			Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+		})
+		return
 	}
 }
 
@@ -220,7 +322,6 @@ func (ss *StoreSvc) HandleShardStream(s network.Stream) {
 	err := req.Unmarshal(s, "json")
 	if err != nil {
 		log.Error(err)
-		// TODO: respond error
 		return
 	}
 	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)

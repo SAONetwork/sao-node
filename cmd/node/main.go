@@ -174,6 +174,7 @@ func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if ok {
 		return nil, xerrors.Errorf("repo at '%s' is already initialized", repoPath)
 	}

@@ -2,6 +2,8 @@ package chain
 
 import (
 	"context"
+	"encoding/hex"
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"sao-node/types"
 
 	sid "github.com/SaoNetwork/sao-did/sid"
@@ -49,11 +51,12 @@ type ChainSvcApi interface {
 	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error)
 	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
 	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error)
-	SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
-	UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
-	SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
-	UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
+	//SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
+	//UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
+	//SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
+	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
 	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, map[string]string, error)
+	GetTx(ctx context.Context, hash string) (*coretypes.ResultTx, error)
 }
 
 func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
@@ -107,4 +110,12 @@ func (c *ChainSvc) GetLastHeight(ctx context.Context) (int64, error) {
 
 func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coins, error) {
 	return c.cosmos.BankBalances(ctx, address, nil)
+}
+
+func (c *ChainSvc) GetTx(ctx context.Context, hash string) (*coretypes.ResultTx, error) {
+	hashBytes, err := hex.DecodeString(hash)
+	if err != nil {
+		return nil, err
+	}
+	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
 }
