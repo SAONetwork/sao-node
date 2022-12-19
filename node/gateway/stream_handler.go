@@ -32,7 +32,7 @@ var (
 	once    sync.Once
 )
 
-func NewShardStreamHandler(ctx context.Context, host host.Host, path string, chainSvc chain.ChainSvcApi, nodeAddress string) *ShardStreamHandler {
+func NewShardStreamHandler(ctx context.Context, host host.Host, path string, chainSvc chain.ChainSvcApi, nodeAddress string, completeChan map[uint64]chan struct{}) *ShardStreamHandler {
 	once.Do(func() {
 		handler = &ShardStreamHandler{
 			ctx:          ctx,
@@ -40,7 +40,7 @@ func NewShardStreamHandler(ctx context.Context, host host.Host, path string, cha
 			stagingPath:  path,
 			chainSvc:     chainSvc,
 			nodeAddress:  nodeAddress,
-			completeChan: make(map[uint64]chan struct{}),
+			completeChan: completeChan,
 		}
 
 		host.SetStreamHandler(types.ShardStoreProtocol, handler.HandleShardStream)
@@ -48,10 +48,6 @@ func NewShardStreamHandler(ctx context.Context, host host.Host, path string, cha
 	})
 
 	return handler
-}
-
-func (ssh *ShardStreamHandler) AddCompleteChannel(orderId uint64, completeChan chan struct{}) {
-	ssh.completeChan[orderId] = completeChan
 }
 
 func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
@@ -168,7 +164,6 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 			Code:    types.ErrorCodeInvalidTx,
 			Message: fmt.Sprintf("tx %s failed with code %d", req.TxHash, resultTx.TxResult.Code),
 		})
-		return
 	}
 }
 
@@ -256,5 +251,6 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, s
 func (ssh *ShardStreamHandler) Stop(ctx context.Context) error {
 	log.Info("stopping shard stream handler...")
 	ssh.host.RemoveStreamHandler(types.ShardStoreProtocol)
+	ssh.host.RemoveStreamHandler(types.ShardCompleteProtocol)
 	return nil
 }

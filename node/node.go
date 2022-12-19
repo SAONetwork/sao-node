@@ -165,6 +165,11 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	var status = NODE_STATUS_ONLINE
 	var storageManager *store.StoreManager = nil
+	notifyChan := make(map[string]chan interface{})
+	if cfg.Module.StorageEnable && cfg.Module.GatewayEnable {
+		notifyChan[types.ShardAssignProtocol] = make(chan interface{})
+		notifyChan[types.ShardCompleteProtocol] = make(chan interface{})
+	}
 	if cfg.Module.StorageEnable {
 		status = status | NODE_STATUS_SERVE_STORAGE
 		if cfg.Storage.AcceptOrder {
@@ -209,7 +214,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		storageManager = store.NewStoreManager(backends)
 		log.Info("store manager daemon initialized")
 
-		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager, notifyChan)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +225,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	if cfg.Module.GatewayEnable {
 		status = status | NODE_STATUS_SERVE_GATEWAY
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
@@ -268,6 +273,13 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	}
 
 	chainSvc.StartStatusReporter(ctx, sn.address, status)
+
+	sn.stopFuncs = append(sn.stopFuncs, func(ctx context.Context) error {
+		for _, c := range notifyChan {
+			close(c)
+		}
+		return nil
+	})
 
 	return &sn, nil
 }
