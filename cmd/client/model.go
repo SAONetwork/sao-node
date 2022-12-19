@@ -65,7 +65,7 @@ var createCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how many epochs to wait for the content to be completed storing",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -199,10 +199,11 @@ var createCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
+			orderId = resp.OrderId
 		}
 
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
@@ -385,7 +386,7 @@ var renewCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how long to wait for the file ready",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -724,7 +725,7 @@ var updateCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how many epochs to wait for data update complete",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -881,10 +882,11 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
+			orderId = resp.OrderId
 		}
 
 		resp, err := client.Update(ctx, request, clientProposal, orderId, patch)

@@ -91,6 +91,13 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 
 	// query tx
 	resultTx, err := ssh.chainSvc.GetTx(ssh.ctx, req.TxHash)
+	if err != nil {
+		respond(types.ShardCompleteResp{
+			Code:    types.ErrorCodeInternalErr,
+			Message: fmt.Sprintf("internal error: %v", err),
+		})
+		return
+	}
 	if resultTx.TxResult.Code == 0 {
 		txb := tx.Tx{}
 		err = txb.Unmarshal(resultTx.Tx)

@@ -11,7 +11,7 @@ require (
 
 require (
 	cosmossdk.io/math v1.0.0-beta.3
-	github.com/SaoNetwork/sao v0.0.2
+	github.com/SaoNetwork/sao v0.0.4
 	github.com/SaoNetwork/sao-did v0.0.12
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be

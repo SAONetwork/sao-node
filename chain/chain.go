@@ -3,8 +3,9 @@ package chain
 import (
 	"context"
 	"encoding/hex"
-	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 	"sao-node/types"
+
+	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	sid "github.com/SaoNetwork/sao-did/sid"
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
@@ -46,8 +47,8 @@ type ChainSvcApi interface {
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
 	StartStatusReporter(ctx context.Context, creator string, status uint32)
-	OrderReady(ctx context.Context, provider string, orderId uint64) (string, error)
-	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (uint64, string, error)
+	OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, error)
+	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, error)
 	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error)
 	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
 	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error)
