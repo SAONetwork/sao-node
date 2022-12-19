@@ -30,7 +30,7 @@ type CommonMarshaler interface {
 func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protocol protocol.ID, req interface{}, resp interface{}) error {
 	var pi *peer.AddrInfo
 	for _, peerInfo := range strings.Split(peerInfos, ",") {
-		if strings.Contains(peerInfos, "tcp") && !strings.Contains(peerInfos, "127.0.0.1") {
+		if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
 			continue
 		}
 
