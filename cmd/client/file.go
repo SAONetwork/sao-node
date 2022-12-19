@@ -49,7 +49,7 @@ var createFileCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how many epochs to wait for the file ready",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{

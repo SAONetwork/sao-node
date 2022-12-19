@@ -65,7 +65,7 @@ var createCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how many epochs to wait for the content to be completed storing",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -385,7 +385,7 @@ var renewCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how long to wait for the file ready",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -724,7 +724,7 @@ var updateCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how many epochs to wait for data update complete",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
