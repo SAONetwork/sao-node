@@ -222,6 +222,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 	var txHash string
 	var shards map[string]*saotypes.ShardMeta
+	var txType AssignTxType
 	if orderId == 0 {
 		resp, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
@@ -230,6 +231,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		orderId = resp.OrderId
 		shards = resp.Shards
 		txHash = txId
+		txType = types.AssignTxTypeStore
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
 		log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
 	} else {
@@ -241,6 +243,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		orderId = resp.OrderId
 		shards = resp.Shards
 		txHash = txId
+		txType = types.AssignTxTypeReady
 		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
 		log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
 	}
@@ -271,9 +274,10 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 			gs.shardStreamHandler.host,
 			types.ShardAssignProtocol,
 			&types.ShardAssignReq{
-				OrderId:  orderId,
-				TxHash:   txHash,
-				Assignee: node,
+				OrderId:      orderId,
+				TxHash:       txHash,
+				Assignee:     node,
+				AssignTxType: txType,
 			},
 			&resp,
 		)
