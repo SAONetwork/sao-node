@@ -3,6 +3,8 @@ package gateway
 import (
 	"bytes"
 	"context"
+	"fmt"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 	"io"
 	"os"
 	"path/filepath"
@@ -59,20 +61,134 @@ type GatewaySvc struct {
 	nodeAddress        string
 	stagingPath        string
 	cfg                *config.Node
+	notifyChan         map[string]chan interface{}
+	completeChan       map[uint64]chan struct{}
 }
 
-func NewGatewaySvc(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, cfg *config.Node, storeManager *store.StoreManager) *GatewaySvc {
+func NewGatewaySvc(
+	ctx context.Context,
+	nodeAddress string,
+	chainSvc *chain.ChainSvc,
+	host host.Host,
+	cfg *config.Node,
+	storeManager *store.StoreManager,
+	notifyChan map[string]chan interface{},
+) *GatewaySvc {
 	cs := &GatewaySvc{
-		ctx:                ctx,
-		chainSvc:           chainSvc,
-		shardStreamHandler: NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath, chainSvc, nodeAddress),
-		storeManager:       storeManager,
-		nodeAddress:        nodeAddress,
-		stagingPath:        cfg.Transport.StagingPath,
-		cfg:                cfg,
+		ctx:          ctx,
+		chainSvc:     chainSvc,
+		storeManager: storeManager,
+		nodeAddress:  nodeAddress,
+		stagingPath:  cfg.Transport.StagingPath,
+		cfg:          cfg,
+		notifyChan:   notifyChan,
+		completeChan: make(map[uint64]chan struct{}),
+	}
+	cs.shardStreamHandler = NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath, chainSvc, nodeAddress, cs.completeChan)
+
+	if c, exists := notifyChan[types.ShardCompleteProtocol]; exists {
+		go cs.subscribeShardComplete(ctx, c)
 	}
 
 	return cs
+}
+
+func (ss *GatewaySvc) subscribeShardComplete(ctx context.Context, shardChan chan interface{}) {
+	for {
+		select {
+		case t, ok := <-shardChan:
+			if !ok {
+				return
+			}
+			// process
+			resp := ss.handleShardComplete(t.(types.ShardCompleteReq))
+			if resp.Code != 0 {
+				log.Errorf(resp.Message)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// how to merge this function in stream handler??
+func (ss *GatewaySvc) handleShardComplete(req types.ShardCompleteReq) types.ShardCompleteResp {
+	if req.Code != 0 {
+		// TODO: notify channel that storage node can't handle this shard.
+		log.Debugf("storage node can't handle order %d shards %v: %s", req.OrderId, req.Cids, req.Message)
+		return types.ShardCompleteResp{Code: 0}
+	}
+
+	// query tx
+	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	if resultTx.TxResult.Code == 0 {
+		txb := tx.Tx{}
+		err = txb.Unmarshal(resultTx.Tx)
+		if err != nil {
+			return types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			}
+		}
+
+		m := saotypes.MsgComplete{}
+		err = m.Unmarshal(txb.Body.Messages[0].Value)
+		if err != nil {
+			return types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			}
+		}
+
+		order, err := ss.chainSvc.GetOrder(ss.ctx, m.OrderId)
+		if err != nil {
+			return types.ShardCompleteResp{
+				Code:    types.ErrorCodeInternalErr,
+				Message: fmt.Sprintf("internal error: %v", err),
+			}
+		}
+
+		if order.Provider != ss.nodeAddress {
+			return types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidOrderProvider,
+				Message: fmt.Sprintf("order %d provider is %s, not %s", m.OrderId, order.Provider, ss.nodeAddress),
+			}
+		}
+
+		shardCids := make(map[string]struct{})
+		for key, shard := range order.Shards {
+			if key == m.Creator {
+				shardCids[shard.Cid] = struct{}{}
+			}
+		}
+		if len(shardCids) <= 0 {
+			return types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidProvider,
+				Message: fmt.Sprintf("order %d doesn't have shard provider %s", m.OrderId, m.Creator),
+			}
+		}
+
+		for _, cid := range req.Cids {
+			if _, ok := shardCids[cid.String()]; !ok {
+				return types.ShardCompleteResp{
+					Code:    types.ErrorCodeInvalidShardCid,
+					Message: fmt.Sprintf("%v is not in the given order %d", cid.String(), m.OrderId),
+				}
+			}
+		}
+
+		if order.Status == saotypes.OrderCompleted {
+			// update channel.
+			ss.completeChan[m.OrderId] <- struct{}{}
+		}
+		return types.ShardCompleteResp{Code: 0}
+	} else {
+		// respond storage node to re-handle this shard.
+		return types.ShardCompleteResp{
+			Code:    types.ErrorCodeInvalidTx,
+			Message: fmt.Sprintf("tx %s failed with code %d", req.TxHash, resultTx.TxResult.Code),
+		}
+	}
 }
 
 func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error) {
@@ -221,12 +337,14 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	}
 
 	var txId string
+	var assignTxType types.AssignTxType
 	if orderId == 0 {
 		orderId, txId, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
 			return nil, err
 		}
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
+		assignTxType = types.AssignTxTypeStore
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
 		txId, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
@@ -234,38 +352,51 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 			return nil, err
 		}
 		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
+		assignTxType = types.AssignTxTypeReady
 	}
 
 	log.Infof("assigning shards to nodes...")
 	// assign shards to storage nodes
 	order, err := gs.chainSvc.GetOrder(ctx, orderId)
 	for node, _ := range order.Shards {
-		peerInfos, err := gs.chainSvc.GetNodePeer(ctx, node)
-		if err != nil {
-			log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
-			continue
+		shardAssignReq := types.ShardAssignReq{
+			OrderId:      orderId,
+			TxHash:       txId,
+			Assignee:     node,
+			AssignTxType: assignTxType,
 		}
-		resp := types.ShardAssignResp{}
-		err = transport.HandleRequest(
-			ctx,
-			peerInfos,
-			node,
-			gs.shardStreamHandler.host,
-			types.ShardAssignProtocol,
-			&types.ShardAssignReq{
-				OrderId:  orderId,
-				TxHash:   txId,
-				Assignee: node,
-			},
-			&resp,
-		)
-		if err != nil {
-			log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
-		}
-		if resp.Code == 0 {
-			log.Infof("assigned order %d shard to node %s.", orderId, node)
+		if node == gs.nodeAddress {
+			if c, exists := gs.notifyChan[types.ShardAssignProtocol]; exists {
+				c <- shardAssignReq
+			} else {
+				log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, "no channel defined")
+				continue
+			}
 		} else {
-			log.Errorf("assigned order %d shards to node %s failed: %v", orderId, node, resp.Message)
+			peerInfos, err := gs.chainSvc.GetNodePeer(ctx, node)
+			if err != nil {
+				log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
+				continue
+			}
+			resp := types.ShardAssignResp{}
+			err = transport.HandleRequest(
+				ctx,
+				peerInfos,
+				node,
+				gs.shardStreamHandler.host,
+				types.ShardAssignProtocol,
+				&shardAssignReq,
+				&resp,
+			)
+			if err != nil {
+				log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
+				continue
+			}
+			if resp.Code == 0 {
+				log.Infof("assigned order %d shard to node %s.", orderId, node)
+			} else {
+				log.Errorf("assigned order %d shards to node %s failed: %v", orderId, node, resp.Message)
+			}
 		}
 	}
 
@@ -277,19 +408,19 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	//}
 
 	log.Infof("waiting for all nodes order %d shard completion.", orderId)
-	doneChan := make(chan struct{})
-	gs.shardStreamHandler.AddCompleteChannel(orderId, doneChan)
+	gs.completeChan[orderId] = make(chan struct{})
 
 	timeout := false
 	select {
-	case <-doneChan:
+	case <-gs.completeChan[orderId]:
 		log.Debugf("complete channel done. order %d completes", orderId)
 	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
 		timeout = true
 	case <-ctx.Done():
 		timeout = true
 	}
-	close(doneChan)
+	close(gs.completeChan[orderId])
+	delete(gs.completeChan, orderId)
 
 	// TODO: wsevent
 	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)

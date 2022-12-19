@@ -41,9 +41,18 @@ type StoreSvc struct {
 	stagingPath  string
 	storeManager *store.StoreManager
 	ctx          context.Context
+	completeChan chan interface{}
 }
 
-func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.ChainSvc, host host.Host, stagingPath string, storeManager *store.StoreManager) (*StoreSvc, error) {
+func NewStoreService(
+	ctx context.Context,
+	nodeAddress string,
+	chainSvc *chain.ChainSvc,
+	host host.Host,
+	stagingPath string,
+	storeManager *store.StoreManager,
+	notifyChan map[string]chan interface{},
+) (*StoreSvc, error) {
 	ss := StoreSvc{
 		nodeAddress:  nodeAddress,
 		chainSvc:     chainSvc,
@@ -54,15 +63,130 @@ func NewStoreService(ctx context.Context, nodeAddress string, chainSvc *chain.Ch
 		ctx:          ctx,
 	}
 
-	host.SetStreamHandler(types.ShardLoadProtocol, ss.HandleShardStream)
+	host.SetStreamHandler(types.ShardLoadProtocol, ss.HandleShardLoadStream)
+
+	if c, exists := notifyChan[types.ShardAssignProtocol]; exists {
+		// inprocess channel way to receive shard assign
+		go ss.subscribeShardAssign(ctx, c)
+	}
+
+	if c, exists := notifyChan[types.ShardCompleteProtocol]; exists {
+		ss.completeChan = c
+	}
+
+	// p2p way to receive shard assign
 	host.SetStreamHandler(types.ShardAssignProtocol, ss.HandleShardAssignStream)
 
-	// TODO: wsevent
+	// wsevent way to receive shard assign
 	//if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
 	//	return nil, err
 	//}
 
 	return &ss, nil
+}
+
+func (ss *StoreSvc) subscribeShardAssign(ctx context.Context, shardChan chan interface{}) {
+	for {
+		select {
+		case t, ok := <-shardChan:
+			if !ok {
+				return
+			}
+			// process
+			resp := ss.handleShardAssign(t.(types.ShardAssignReq))
+			if resp.Code != 0 {
+				log.Errorf(resp.Message)
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssignResp {
+	// validate request
+	if req.Assignee != ss.nodeAddress {
+		return types.ShardAssignResp{
+			Code:    types.ErrorCodeInvalidShardAssignee,
+			Message: fmt.Sprintf("shard assignee is %s, but current node is %s", req.Assignee, ss.nodeAddress),
+		}
+	}
+
+	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	if resultTx.TxResult.Code == 0 {
+		txb := tx.Tx{}
+		err = txb.Unmarshal(resultTx.Tx)
+		if err != nil {
+			return types.ShardAssignResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			}
+		}
+
+		// validate tx
+		if req.AssignTxType == types.AssignTxTypeStore {
+			m := saotypes.MsgStore{}
+			err = m.Unmarshal(txb.Body.Messages[0].Value)
+		} else {
+			m := saotypes.MsgReady{}
+			err = m.Unmarshal(txb.Body.Messages[0].Value)
+		}
+		if err != nil {
+			return types.ShardAssignResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			}
+		}
+
+		order, err := ss.chainSvc.GetOrder(ss.ctx, req.OrderId)
+		if err != nil {
+			return types.ShardAssignResp{
+				Code:    types.ErrorCodeInternalErr,
+				Message: fmt.Sprintf("internal error: %v", err),
+			}
+		}
+
+		var shardCids []string
+		for key, shard := range order.Shards {
+			if key == ss.nodeAddress {
+				shardCids = append(shardCids, shard.Cid)
+			}
+		}
+		if len(shardCids) <= 0 {
+			return types.ShardAssignResp{
+				Code:    types.ErrorCodeInvalidProvider,
+				Message: fmt.Sprintf("order %d doesn't have shard provider %s", req.OrderId, ss.nodeAddress),
+			}
+		}
+		var shardTasks []*chain.ShardTask
+		for _, shardCid := range shardCids {
+			cid, err := cid.Decode(shardCid)
+			if err != nil {
+				return types.ShardAssignResp{
+					Code:    types.ErrorCodeInvalidShardCid,
+					Message: fmt.Sprintf("invalid cid %s", shardCid),
+				}
+			}
+
+			shardTasks = append(shardTasks, &chain.ShardTask{
+				Owner:          order.Owner,
+				OrderId:        req.OrderId,
+				Gateway:        order.Provider,
+				Cid:            cid,
+				OrderOperation: "",
+				ShardOperation: "",
+			})
+		}
+		for _, task := range shardTasks {
+			ss.taskChan <- task
+		}
+		return types.ShardAssignResp{Code: 0}
+	} else {
+		return types.ShardAssignResp{
+			Code:    types.ErrorCodeInvalidTx,
+			Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+		}
+	}
 }
 
 func (ss *StoreSvc) Start(ctx context.Context) error {
@@ -125,17 +249,21 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		return err
 	}
 	log.Infof("Complete order succeed: txHash: %s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
-
-	peerInfos, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
-	resp := types.ShardCompleteResp{}
-	err = transport.HandleRequest(ctx, peerInfos, task.Gateway, ss.host, types.ShardCompleteProtocol, &types.ShardCompleteReq{
+	completeReq := types.ShardCompleteReq{
 		OrderId: task.OrderId,
 		Cids:    []cid.Cid{task.Cid},
 		TxHash:  txHash,
 		Code:    0,
-	}, &resp)
-	if err != nil {
-		return err
+	}
+	if task.Gateway == ss.nodeAddress {
+		ss.completeChan <- completeReq
+	} else {
+		peerInfos, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
+		resp := types.ShardCompleteResp{}
+		err = transport.HandleRequest(ctx, peerInfos, task.Gateway, ss.host, types.ShardCompleteProtocol, &completeReq, &resp)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -179,6 +307,10 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 	//	return err
 	//}
 	close(ss.taskChan)
+
+	ss.host.RemoveStreamHandler(types.ShardAssignProtocol)
+	ss.host.RemoveStreamHandler(types.ShardLoadProtocol)
+
 	return nil
 }
 
@@ -215,103 +347,13 @@ func (ss *StoreSvc) HandleShardAssignStream(s network.Stream) {
 			Code:    types.ErrorCodeInvalidRequest,
 			Message: fmt.Sprintf("failed to unmarshal request: %v", err),
 		})
-		return
-	}
-
-	// validate request
-	if req.Assignee != ss.nodeAddress {
-		respond(types.ShardAssignResp{
-			Code:    types.ErrorCodeInvalidShardAssignee,
-			Message: fmt.Sprintf("shard assignee is %s, but current node is %s", req.Assignee, ss.nodeAddress),
-		})
-		return
-	}
-
-	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
-	if resultTx.TxResult.Code == 0 {
-		txb := tx.Tx{}
-		err = txb.Unmarshal(resultTx.Tx)
-		if err != nil {
-			respond(types.ShardAssignResp{
-				Code:    types.ErrorCodeInvalidTx,
-				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
-			})
-			return
-		}
-
-		if req.AssignTxType == types.AssignTxTypeStore {
-			m := saotypes.MsgStore{}
-			err = m.Unmarshal(txb.Body.Messages[0].Value)
-		} else {
-			m := saotypes.MsgReady{}
-			err = m.Unmarshal(txb.Body.Messages[0].Value)
-		}
-		if err != nil {
-			respond(types.ShardAssignResp{
-				Code:    types.ErrorCodeInvalidTx,
-				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
-			})
-			return
-		}
-
-		order, err := ss.chainSvc.GetOrder(ss.ctx, req.OrderId)
-		if err != nil {
-			respond(types.ShardAssignResp{
-				Code:    types.ErrorCodeInternalErr,
-				Message: fmt.Sprintf("internal error: %v", err),
-			})
-			return
-		}
-
-		var shardCids []string
-		for key, shard := range order.Shards {
-			if key == ss.nodeAddress {
-				shardCids = append(shardCids, shard.Cid)
-			}
-		}
-		if len(shardCids) <= 0 {
-			respond(types.ShardAssignResp{
-				Code:    types.ErrorCodeInvalidProvider,
-				Message: fmt.Sprintf("order %d doesn't have shard provider %s", req.OrderId, ss.nodeAddress),
-			})
-			return
-		}
-		var shardTasks []*chain.ShardTask
-		for _, shardCid := range shardCids {
-			cid, err := cid.Decode(shardCid)
-			if err != nil {
-				respond(types.ShardAssignResp{
-					Code:    types.ErrorCodeInvalidShardCid,
-					Message: fmt.Sprintf("invalid cid %s", shardCid),
-				})
-				return
-			}
-
-			shardTasks = append(shardTasks, &chain.ShardTask{
-				Owner:          order.Owner,
-				OrderId:        req.OrderId,
-				Gateway:        order.Provider,
-				Cid:            cid,
-				OrderOperation: "",
-				ShardOperation: "",
-			})
-		}
-		for _, task := range shardTasks {
-			ss.taskChan <- task
-		}
-
-		respond(types.ShardAssignResp{Code: 0})
-		return
 	} else {
-		respond(types.ShardAssignResp{
-			Code:    types.ErrorCodeInvalidTx,
-			Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
-		})
-		return
+		respond(ss.handleShardAssign(req))
 	}
+
 }
 
-func (ss *StoreSvc) HandleShardStream(s network.Stream) {
+func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 	defer s.Close()
 
 	// Set a deadline on reading from the stream so it doesn't hang
