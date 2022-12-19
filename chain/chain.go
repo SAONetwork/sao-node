@@ -120,7 +120,7 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 		if err != nil {
 			return nil, err
 		}
-		if curHeight >= height {
+		if curHeight > height {
 			break
 		}
 		time.Sleep(time.Second)
