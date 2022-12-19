@@ -228,8 +228,8 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 			return nil, err
 		}
 		orderId = resp.OrderId
-		shards = resp.Shards
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
+		log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
 		txId, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
