@@ -222,7 +222,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 	var txHash string
 	var shards map[string]*saotypes.ShardMeta
-	var txType AssignTxType
+	var txType types.AssignTxType
 	if orderId == 0 {
 		resp, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
