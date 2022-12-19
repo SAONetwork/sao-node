@@ -249,7 +249,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 			continue
 		}
 		peerInfo := ""
-		for _, peer := range strings.Split("peerInfos", ",") {
+		for _, peer := range strings.Split(peerInfos, ",") {
 			log.Info("peer:", peer)
 			log.Info("peerInfo:", peerInfo)
 			if strings.Contains(peer, "tcp") && !strings.Contains(peer, "127.0.0.1") {
