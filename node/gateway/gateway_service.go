@@ -120,6 +120,12 @@ func (ss *GatewaySvc) handleShardComplete(req types.ShardCompleteReq) types.Shar
 
 	// query tx
 	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	if err != nil {
+		return types.ShardCompleteResp{
+			Code:    types.ErrorCodeInternalErr,
+			Message: fmt.Sprintf("internal error: %v", err),
+		}
+	}
 	if resultTx.TxResult.Code == 0 {
 		txb := tx.Tx{}
 		err = txb.Unmarshal(resultTx.Tx)
