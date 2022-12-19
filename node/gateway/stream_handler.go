@@ -2,6 +2,10 @@ package gateway
 
 import (
 	"context"
+	"fmt"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
+	"sao-node/chain"
 	"sao-node/node/transport"
 	"sao-node/types"
 	"sync"
@@ -15,9 +19,12 @@ import (
 )
 
 type ShardStreamHandler struct {
-	ctx         context.Context
-	host        host.Host
-	stagingPath string
+	ctx          context.Context
+	host         host.Host
+	stagingPath  string
+	chainSvc     chain.ChainSvcApi
+	nodeAddress  string
+	completeChan map[uint64]chan struct{}
 }
 
 var (
@@ -25,18 +32,144 @@ var (
 	once    sync.Once
 )
 
-func NewShardStreamHandler(ctx context.Context, host host.Host, path string) *ShardStreamHandler {
+func NewShardStreamHandler(ctx context.Context, host host.Host, path string, chainSvc chain.ChainSvcApi, nodeAddress string) *ShardStreamHandler {
 	once.Do(func() {
 		handler = &ShardStreamHandler{
-			ctx:         ctx,
-			host:        host,
-			stagingPath: path,
+			ctx:          ctx,
+			host:         host,
+			stagingPath:  path,
+			chainSvc:     chainSvc,
+			nodeAddress:  nodeAddress,
+			completeChan: make(map[uint64]chan struct{}),
 		}
 
 		host.SetStreamHandler(types.ShardStoreProtocol, handler.HandleShardStream)
+		host.SetStreamHandler(types.ShardCompleteProtocol, handler.HandleShardCompleteStream)
 	})
 
 	return handler
+}
+
+func (ssh *ShardStreamHandler) AddCompleteChannel(orderId uint64, completeChan chan struct{}) {
+	ssh.completeChan[orderId] = completeChan
+}
+
+func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
+	defer s.Close()
+
+	respond := func(resp types.ShardCompleteResp) {
+		err := resp.Marshal(s, "json")
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+
+		if err = s.CloseWrite(); err != nil {
+			log.Error(err.Error())
+			return
+		}
+	}
+
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
+	defer s.SetReadDeadline(time.Time{}) // nolint
+
+	var req types.ShardCompleteReq
+	err := req.Unmarshal(s, "json")
+	if err != nil {
+		log.Error(err)
+		respond(types.ShardCompleteResp{
+			Code:    types.ErrorCodeInvalidRequest,
+			Message: fmt.Sprintf("failed to unmarshal request: %v", err),
+		})
+		return
+	}
+	log.Debugf("receive ShardCompleteReq")
+
+	if req.Code != 0 {
+		// TODO: notify channel that storage node can't handle this shard.
+		log.Debugf("storage node can't handle order %d shards %v: %s", req.OrderId, req.Cids, req.Message)
+		respond(types.ShardCompleteResp{Code: 0})
+		return
+	}
+
+	// query tx
+	resultTx, err := ssh.chainSvc.GetTx(ssh.ctx, req.TxHash)
+	if resultTx.TxResult.Code == 0 {
+		txb := tx.Tx{}
+		err = txb.Unmarshal(resultTx.Tx)
+		if err != nil {
+			respond(types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			})
+			return
+		}
+
+		m := saotypes.MsgComplete{}
+		err = m.Unmarshal(txb.Body.Messages[0].Value)
+		if err != nil {
+			respond(types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidTx,
+				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			})
+			return
+		}
+
+		order, err := ssh.chainSvc.GetOrder(ssh.ctx, m.OrderId)
+		if err != nil {
+			respond(types.ShardCompleteResp{
+				Code:    types.ErrorCodeInternalErr,
+				Message: fmt.Sprintf("internal error: %v", err),
+			})
+			return
+		}
+
+		if order.Provider != ssh.nodeAddress {
+			respond(types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidOrderProvider,
+				Message: fmt.Sprintf("order %d provider is %s, not %s", m.OrderId, order.Provider, ssh.nodeAddress),
+			})
+			return
+		}
+
+		shardCids := make(map[string]struct{})
+		for key, shard := range order.Shards {
+			if key == m.Creator {
+				shardCids[shard.Cid] = struct{}{}
+			}
+		}
+		if len(shardCids) <= 0 {
+			respond(types.ShardCompleteResp{
+				Code:    types.ErrorCodeInvalidProvider,
+				Message: fmt.Sprintf("order %d doesn't have shard provider %s", m.OrderId, m.Creator),
+			})
+			return
+		}
+
+		for _, cid := range req.Cids {
+			if _, ok := shardCids[cid.String()]; !ok {
+				respond(types.ShardCompleteResp{
+					Code:    types.ErrorCodeInvalidShardCid,
+					Message: fmt.Sprintf("%v is not in the given order %d", cid.String(), m.OrderId),
+				})
+				return
+			}
+		}
+
+		if order.Status == saotypes.OrderCompleted {
+			// update channel.
+			ssh.completeChan[m.OrderId] <- struct{}{}
+		}
+		respond(types.ShardCompleteResp{Code: 0})
+	} else {
+		// respond storage node to re-handle this shard.
+		respond(types.ShardCompleteResp{
+			Code:    types.ErrorCodeInvalidTx,
+			Message: fmt.Sprintf("tx %s failed with code %d", req.TxHash, resultTx.TxResult.Code),
+		})
+		return
+	}
 }
 
 func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {

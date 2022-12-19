@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sao-node/node/config"
@@ -59,6 +60,7 @@ func (r *Repo) Exists() (bool, error) {
 	// TODO:
 	_, err := os.Stat(filepath.Join(r.Path, fsKeystore))
 	notexist := os.IsNotExist(err)
+	fmt.Println("notexist", notexist)
 	if notexist {
 		err = nil
 	}

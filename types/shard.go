@@ -12,6 +12,14 @@ import (
 const (
 	ShardLoadProtocol  = "/sao/load/shard/1.0"
 	ShardStoreProtocol = "/sao/store/shard/1.0"
+
+	ErrorCodeInvalidRequest       = 1
+	ErrorCodeInvalidTx            = 2
+	ErrorCodeInternalErr          = 3
+	ErrorCodeInvalidProvider      = 4
+	ErrorCodeInvalidShardCid      = 5
+	ErrorCodeInvalidOrderProvider = 6
+	ErrorCodeInvalidShardAssignee = 7
 )
 
 type ShardStaging struct {
