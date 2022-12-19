@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"github.com/cosmos/cosmos-sdk/types/tx"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,6 +13,9 @@ import (
 	"sao-node/types"
 	"strings"
 	"time"
+
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/ipfs/go-cid"
@@ -260,7 +261,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 	} else {
 		peerInfos, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
 		resp := types.ShardCompleteResp{}
-		err = transport.HandleRequest(ctx, peerInfos, task.Gateway, ss.host, types.ShardCompleteProtocol, &completeReq, &resp)
+		err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardCompleteProtocol, &completeReq, &resp)
 		if err != nil {
 			return err
 		}
@@ -289,7 +290,7 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 		return nil, err
 	}
 	resp := types.ShardResp{}
-	err = transport.HandleRequest(ctx, peerInfos, gateway, ss.host, types.ShardStoreProtocol, &types.ShardReq{
+	err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardStoreProtocol, &types.ShardReq{
 		Owner:   owner,
 		OrderId: orderId,
 		Cid:     cid,

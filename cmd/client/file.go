@@ -49,7 +49,7 @@ var createFileCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:     "delay",
 			Usage:    "how many epochs to wait for the file ready",
-			Value:    24 * 60 * 60,
+			Value:    1 * 60,
 			Required: false,
 		},
 		&cli.BoolFlag{
@@ -161,10 +161,11 @@ var createFileCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
+			orderId = resp.OrderId
 		}
 
 		queryProposal := saotypes.QueryProposal{

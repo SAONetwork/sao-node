@@ -3,14 +3,15 @@ package transport
 import (
 	"context"
 	"fmt"
+	"io"
+	"strings"
+	"time"
+
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
-	"io"
-	"strings"
-	"time"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -26,10 +27,10 @@ type CommonMarshaler interface {
 	Marshal(io.Writer, string) error
 }
 
-func HandleRequest(ctx context.Context, peerInfos string, nodeAddress string, host host.Host, protocol protocol.ID, req interface{}, resp interface{}) error {
+func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protocol protocol.ID, req interface{}, resp interface{}) error {
 	var pi *peer.AddrInfo
 	for _, peerInfo := range strings.Split(peerInfos, ",") {
-		if strings.Contains(peerInfo, "udp") {
+		if strings.Contains(peerInfos, "tcp") && !strings.Contains(peerInfos, "127.0.0.1") {
 			continue
 		}
 

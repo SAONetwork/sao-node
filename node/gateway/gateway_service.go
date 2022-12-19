@@ -5,6 +5,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
+	"github.com/multiformats/go-multiaddr"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,10 +20,6 @@ import (
 	"sao-node/utils"
 	"strings"
 	"time"
-
-	"github.com/ipfs/go-cid"
-	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multiaddr"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"golang.org/x/xerrors"
@@ -336,34 +335,43 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		return nil, err
 	}
 
-	var txId string
-	var assignTxType types.AssignTxType
+	var txHash string
+	var shards map[string]*saotypes.ShardMeta
+	var txType types.AssignTxType
 	if orderId == 0 {
-		orderId, txId, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
+		resp, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
 			return nil, err
 		}
+		orderId = resp.OrderId
+		shards = resp.Shards
+		txHash = txId
+		txType = types.AssignTxTypeStore
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
-		assignTxType = types.AssignTxTypeStore
+		log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
-		txId, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
+		resp, txId, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
 		if err != nil {
 			return nil, err
 		}
+		orderId = resp.OrderId
+		shards = resp.Shards
+		txHash = txId
+		txType = types.AssignTxTypeReady
 		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
-		assignTxType = types.AssignTxTypeReady
+		log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
 	}
 
 	log.Infof("assigning shards to nodes...")
 	// assign shards to storage nodes
-	order, err := gs.chainSvc.GetOrder(ctx, orderId)
-	for node, _ := range order.Shards {
-		shardAssignReq := types.ShardAssignReq{
+
+	for node, shard := range shards {
+		var shardAssignReq = types.ShardAssignReq{
 			OrderId:      orderId,
-			TxHash:       txId,
+			TxHash:       txHash,
 			Assignee:     node,
-			AssignTxType: assignTxType,
+			AssignTxType: txType,
 		}
 		if node == gs.nodeAddress {
 			if c, exists := gs.notifyChan[types.ShardAssignProtocol]; exists {
@@ -373,16 +381,10 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 				continue
 			}
 		} else {
-			peerInfos, err := gs.chainSvc.GetNodePeer(ctx, node)
-			if err != nil {
-				log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
-				continue
-			}
 			resp := types.ShardAssignResp{}
 			err = transport.HandleRequest(
 				ctx,
-				peerInfos,
-				node,
+				shard.Peer,
 				gs.shardStreamHandler.host,
 				types.ShardAssignProtocol,
 				&shardAssignReq,
