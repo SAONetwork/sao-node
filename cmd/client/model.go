@@ -199,10 +199,11 @@ var createCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
+			orderId = resp.OrderId
 		}
 
 		request, err := buildQueryRequest(ctx, didManager, queryProposal, client, gatewayAddress)
@@ -881,10 +882,11 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
+			orderId = resp.OrderId
 		}
 
 		resp, err := client.Update(ctx, request, clientProposal, orderId, patch)

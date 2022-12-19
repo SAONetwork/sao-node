@@ -221,11 +221,14 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	}
 
 	var txId string
+	var shards map[string]*saotypes.ShardMeta = nil
 	if orderId == 0 {
-		orderId, txId, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
+		resp, txId, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 		if err != nil {
 			return nil, err
 		}
+		orderId = resp.OrderId
+		shards = resp.Shards
 		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
 	} else {
 		log.Debugf("Sending OrderReady... orderId=%d", orderId)
@@ -238,18 +241,10 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 	log.Infof("assigning shards to nodes...")
 	// assign shards to storage nodes
-	order, err := gs.chainSvc.GetOrder(ctx, orderId)
-	if err != nil {
-		return nil, err
-	}
-	for node := range order.Shards {
-		peerInfos, err := gs.chainSvc.GetNodePeer(ctx, node)
-		if err != nil {
-			log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
-			continue
-		}
+
+	for node, shard := range shards {
 		peerInfo := ""
-		for _, peer := range strings.Split(peerInfos, ",") {
+		for _, peer := range strings.Split(shard.Peer, ",") {
 			log.Info("peer:", peer)
 			log.Info("peerInfo:", peerInfo)
 			if strings.Contains(peer, "tcp") && !strings.Contains(peer, "127.0.0.1") {
@@ -258,14 +253,13 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 			}
 		}
 		if peerInfo == "" {
-			log.Errorf("no valid libp2p address found in %s", peerInfos)
+			log.Errorf("no valid libp2p address found in %s", shard.Peer)
 		}
 
 		resp := types.ShardAssignResp{}
 		err = transport.HandleRequest(
 			ctx,
 			peerInfo,
-			node,
 			gs.shardStreamHandler.host,
 			types.ShardAssignProtocol,
 			&types.ShardAssignReq{

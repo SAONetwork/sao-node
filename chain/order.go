@@ -50,13 +50,13 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (uint64, string, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, error) {
 	//if signer != owner && signer != provider {
 	//	return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
 	//}
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
-		return 0, "", xerrors.Errorf("%w, check the keyring please", err)
+		return saotypes.MsgStoreResponse{}, "", xerrors.Errorf("%w, check the keyring please", err)
 	}
 
 	// TODO: Cid
@@ -71,18 +71,18 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return 0, "", err
+		return saotypes.MsgStoreResponse{}, "", err
 	}
 	// log.Debug("MsgStore result: ", txResp)
 	if txResp.TxResponse.Code != 0 {
-		return 0, "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return saotypes.MsgStoreResponse{}, "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	var storeResp saotypes.MsgStoreResponse
 	err = txResp.Decode(&storeResp)
 	if err != nil {
-		return 0, "", err
+		return saotypes.MsgStoreResponse{}, "", err
 	}
-	return storeResp.OrderId, txResp.TxResponse.TxHash, nil
+	return storeResp, txResp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, error) {

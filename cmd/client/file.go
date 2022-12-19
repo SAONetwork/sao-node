@@ -161,10 +161,11 @@ var createFileCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			orderId, _, err = client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
+			orderId = resp.OrderId
 		}
 
 		queryProposal := saotypes.QueryProposal{
