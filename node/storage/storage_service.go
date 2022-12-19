@@ -232,6 +232,11 @@ func (ss *StoreSvc) HandleShardAssignStream(s network.Stream) {
 	}
 
 	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash)
+	if err != nil {
+		log.Error("TxHash:", req.TxHash)
+		log.Error(err.Error())
+		return
+	}
 	if resultTx.TxResult.Code == 0 {
 		txb := tx.Tx{}
 		err = txb.Unmarshal(resultTx.Tx)
