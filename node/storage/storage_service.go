@@ -181,8 +181,8 @@ func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssig
 				OrderId:        req.OrderId,
 				Gateway:        order.Provider,
 				Cid:            cid,
-				OrderOperation: "",
-				ShardOperation: "",
+				OrderOperation: string(order.Operation),
+				ShardOperation: string(order.Operation),
 			})
 		}
 		for _, task := range shardTasks {
