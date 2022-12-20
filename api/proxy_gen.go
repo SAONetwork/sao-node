@@ -35,13 +35,17 @@ type SaoApiStruct struct {
 
 		ModelCreateFile func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) `perm:"write"`
 
-		ModelDelete func(p0 context.Context, p1 *types.OrderTerminateProposal) (apitypes.DeleteResp, error) `perm:"write"`
+		ModelDelete func(p0 context.Context, p1 *types.OrderTerminateProposal, p2 bool) (apitypes.DeleteResp, error) `perm:"write"`
 
 		ModelLoad func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) `perm:"read"`
+
+		ModelRenewOrder func(p0 context.Context, p1 *types.OrderRenewProposal, p2 bool) (apitypes.RenewResp, error) `perm:"write"`
 
 		ModelShowCommits func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.ShowCommitsResp, error) `perm:"read"`
 
 		ModelUpdate func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) `perm:"write"`
+
+		ModelUpdatePermission func(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) `perm:"write"`
 	}
 }
 
@@ -158,14 +162,14 @@ func (s *SaoApiStub) ModelCreateFile(p0 context.Context, p1 *types.MetadataPropo
 	return *new(apitypes.CreateResp), ErrNotSupported
 }
 
-func (s *SaoApiStruct) ModelDelete(p0 context.Context, p1 *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
+func (s *SaoApiStruct) ModelDelete(p0 context.Context, p1 *types.OrderTerminateProposal, p2 bool) (apitypes.DeleteResp, error) {
 	if s.Internal.ModelDelete == nil {
 		return *new(apitypes.DeleteResp), ErrNotSupported
 	}
-	return s.Internal.ModelDelete(p0, p1)
+	return s.Internal.ModelDelete(p0, p1, p2)
 }
 
-func (s *SaoApiStub) ModelDelete(p0 context.Context, p1 *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
+func (s *SaoApiStub) ModelDelete(p0 context.Context, p1 *types.OrderTerminateProposal, p2 bool) (apitypes.DeleteResp, error) {
 	return *new(apitypes.DeleteResp), ErrNotSupported
 }
 
@@ -178,6 +182,17 @@ func (s *SaoApiStruct) ModelLoad(p0 context.Context, p1 *types.MetadataProposal)
 
 func (s *SaoApiStub) ModelLoad(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) {
 	return *new(apitypes.LoadResp), ErrNotSupported
+}
+
+func (s *SaoApiStruct) ModelRenewOrder(p0 context.Context, p1 *types.OrderRenewProposal, p2 bool) (apitypes.RenewResp, error) {
+	if s.Internal.ModelRenewOrder == nil {
+		return *new(apitypes.RenewResp), ErrNotSupported
+	}
+	return s.Internal.ModelRenewOrder(p0, p1, p2)
+}
+
+func (s *SaoApiStub) ModelRenewOrder(p0 context.Context, p1 *types.OrderRenewProposal, p2 bool) (apitypes.RenewResp, error) {
+	return *new(apitypes.RenewResp), ErrNotSupported
 }
 
 func (s *SaoApiStruct) ModelShowCommits(p0 context.Context, p1 *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
@@ -200,6 +215,17 @@ func (s *SaoApiStruct) ModelUpdate(p0 context.Context, p1 *types.MetadataProposa
 
 func (s *SaoApiStub) ModelUpdate(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) {
 	return *new(apitypes.UpdateResp), ErrNotSupported
+}
+
+func (s *SaoApiStruct) ModelUpdatePermission(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) {
+	if s.Internal.ModelUpdatePermission == nil {
+		return *new(apitypes.UpdatePermissionResp), ErrNotSupported
+	}
+	return s.Internal.ModelUpdatePermission(p0, p1, p2)
+}
+
+func (s *SaoApiStub) ModelUpdatePermission(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) {
+	return *new(apitypes.UpdatePermissionResp), ErrNotSupported
 }
 
 var _ SaoApi = new(SaoApiStruct)

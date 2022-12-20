@@ -445,13 +445,13 @@ func (n *Node) ModelLoad(ctx context.Context, req *types.MetadataProposal) (apit
 	}, nil
 }
 
-func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
+func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposal, isPublish bool) (apitypes.DeleteResp, error) {
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
 
-	model, err := n.manager.Delete(ctx, req)
+	model, err := n.manager.Delete(ctx, req, isPublish)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
@@ -499,6 +499,36 @@ func (n *Node) ModelShowCommits(ctx context.Context, req *types.MetadataProposal
 		DataId:  model.DataId,
 		Alias:   model.Alias,
 		Commits: model.Commits,
+	}, nil
+}
+
+func (n *Node) ModelRenewOrder(ctx context.Context, req *types.OrderRenewProposal, isPublish bool) (apitypes.RenewResp, error) {
+	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
+	if err != nil {
+		return apitypes.RenewResp{}, err
+	}
+
+	results, err := n.manager.Renew(ctx, req, isPublish)
+	if err != nil {
+		return apitypes.RenewResp{}, err
+	}
+	return apitypes.RenewResp{
+		Results: results,
+	}, nil
+}
+
+func (n *Node) ModelUpdatePermission(ctx context.Context, req *types.PermissionProposal, isPublish bool) (apitypes.UpdatePermissionResp, error) {
+	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
+	if err != nil {
+		return apitypes.UpdatePermissionResp{}, err
+	}
+
+	model, err := n.manager.UpdatePermission(ctx, req, isPublish)
+	if err != nil {
+		return apitypes.UpdatePermissionResp{}, err
+	}
+	return apitypes.UpdatePermissionResp{
+		DataId: model.DataId,
 	}, nil
 }
 
