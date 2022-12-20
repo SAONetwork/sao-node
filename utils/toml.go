@@ -2,12 +2,10 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"github.com/kelseyhightower/envconfig"
 	"golang.org/x/xerrors"
 )
 
@@ -32,11 +30,6 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 	_, err := toml.NewDecoder(reader).Decode(cfg)
 	if err != nil {
 		return nil, err
-	}
-
-	err = envconfig.Process("SAO", cfg)
-	if err != nil {
-		return nil, fmt.Errorf("processing env vars overrides: %s", err)
 	}
 
 	return cfg, nil
