@@ -369,7 +369,7 @@ var peersCmd = &cli.Command{
 			return err
 		}
 
-		var apiClient api.GatewayApiStruct
+		var apiClient api.SaoApiStruct
 
 		c, err := repo.Config()
 		if err != nil {
@@ -410,7 +410,7 @@ var peersCmd = &cli.Command{
 		}
 		defer closer()
 
-		peers, err := apiClient.NetPeers(ctx)
+		peers, err := apiClient.GetNetPeers(ctx)
 		if err != nil {
 			return err
 		}
@@ -487,7 +487,7 @@ var infoCmd = &cli.Command{
 			return err
 		}
 
-		var apiClient api.GatewayApiStruct
+		var apiClient api.SaoApiStruct
 
 		c, err := repo.Config()
 		if err != nil {
@@ -528,7 +528,7 @@ var infoCmd = &cli.Command{
 		}
 		defer closer()
 
-		address, err := apiClient.NodeAddress(ctx)
+		address, err := apiClient.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
