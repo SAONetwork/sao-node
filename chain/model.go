@@ -57,10 +57,6 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 	if txResp.TxResponse.Code != 0 {
 		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
-	var resp saotypes.MsgUpdataPermissionResponse
-	err = txResp.Decode(&resp)
-	if err != nil {
-		return "", err
-	}
+
 	return txResp.TxResponse.TxHash, nil
 }

@@ -485,7 +485,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 }
 
 func (gs *GatewaySvc) TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error {
-	_, _, err := gs.chainSvc.TerminateOrder(ctx, gs.nodeAddress, *req)
+	_, err := gs.chainSvc.TerminateOrder(ctx, gs.nodeAddress, *req)
 	if err != nil {
 		return err
 	}
