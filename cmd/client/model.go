@@ -405,6 +405,7 @@ var renewCmd = &cli.Command{
 		dataIds := cctx.StringSlice("data-ids")
 		duration := cctx.Int("duration")
 		delay := cctx.Int("delay")
+		clientPublish := cctx.Bool("client-publish")
 
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
@@ -438,9 +439,18 @@ var renewCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		_, results, err := client.RenewOrder(ctx, signer, clientProposal)
-		if err != nil {
-			return err
+		var results map[string]string
+		if clientPublish {
+			_, results, err = client.RenewOrder(ctx, signer, clientProposal)
+			if err != nil {
+				return err
+			}
+		} else {
+			res, err := client.ModelRenewOrder(ctx, &clientProposal, !clientPublish)
+			if err != nil {
+				return err
+			}
+			results = res.Results
 		}
 
 		var renewModels = make(map[string]uint64, len(results))
@@ -575,6 +585,7 @@ var deleteCmd = &cli.Command{
 			return xerrors.Errorf("must provide --data-id")
 		}
 		dataId := cctx.String("data-id")
+		clientPublish := cctx.Bool("client-publish")
 
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
@@ -606,12 +617,14 @@ var deleteCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		_, _, err = client.TerminateOrder(ctx, signer, request)
-		if err != nil {
-			return err
+		if clientPublish {
+			_, _, err = client.TerminateOrder(ctx, signer, request)
+			if err != nil {
+				return err
+			}
 		}
 
-		result, err := client.ModelDelete(ctx, &request)
+		result, err := client.ModelDelete(ctx, &request, !clientPublish)
 		if err != nil {
 			return err
 		}
@@ -926,6 +939,7 @@ var updatePermissionCmd = &cli.Command{
 			return xerrors.Errorf("must provide --data-id")
 		}
 		dataId := cctx.String("data-id")
+		clientPublish := cctx.Bool("client-publish")
 
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
@@ -963,9 +977,16 @@ var updatePermissionCmd = &cli.Command{
 			},
 		}
 
-		_, err = client.UpdatePermission(ctx, signer, request)
-		if err != nil {
-			return err
+		if clientPublish {
+			_, err = client.UpdatePermission(ctx, signer, request)
+			if err != nil {
+				return err
+			}
+		} else {
+			_, err = client.ModelUpdatePermission(ctx, request, !clientPublish)
+			if err != nil {
+				return err
+			}
 		}
 
 		fmt.Printf("Data model[%s]'s permission updated.\r\n", dataId)

@@ -24,10 +24,6 @@ type UpdateResp struct {
 	Cid      string
 }
 
-type RenewResp struct {
-	Result map[string]string
-}
-
 type LoadResp struct {
 	DataId   string
 	Alias    string
@@ -40,6 +36,14 @@ type LoadResp struct {
 type DeleteResp struct {
 	DataId string
 	Alias  string
+}
+
+type UpdatePermissionResp struct {
+	DataId string
+}
+
+type RenewResp struct {
+	Results map[string]string
 }
 
 type ShowCommitsResp struct {

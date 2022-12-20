@@ -24,11 +24,15 @@ type SaoApi interface {
 	// ModelLoad load an existing data model
 	ModelLoad(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) //perm:read
 	// ModelDelete delete an existing model
-	ModelDelete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) //perm:write
+	ModelDelete(ctx context.Context, req *types.OrderTerminateProposal, isPublish bool) (apitypes.DeleteResp, error) //perm:write
 	// ModelShowCommits list a data models' historical commits
 	ModelShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) //perm:read
 	// ModelUpdate update an existing data model
 	ModelUpdate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) //perm:write
+	// ModelRenewOrder renew a list of orders
+	ModelRenewOrder(ctx context.Context, req *types.OrderRenewProposal, isPublish bool) (apitypes.RenewResp, error) //perm:write
+	// ModelUpdatePermission update an existing model's read/write permission
+	ModelUpdatePermission(ctx context.Context, req *types.PermissionProposal, isPublish bool) (apitypes.UpdatePermissionResp, error) //perm:write
 
 	// MethodGroup: Common
 
