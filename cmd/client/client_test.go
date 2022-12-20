@@ -68,6 +68,7 @@ func TestSignature(t *testing.T) {
 }
 
 func getSidDocFunc() func(versionId string) (*sid.SidDocument, error) {
+	log.Info("getSidDocFunc...")
 	return func(versionId string) (*sid.SidDocument, error) {
 		keys := make([]*sid.PubKey, 0)
 		keys = append(keys, &sid.PubKey{

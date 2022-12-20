@@ -51,6 +51,8 @@ type GatewaySvcApi interface {
 	CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error)
 	TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error
+	RenewOrder(ctx context.Context, req *types.OrderRenewProposal) (map[string]string, error)
+	UpdateModelPermission(ctx context.Context, req *types.PermissionProposal) error
 	Stop(ctx context.Context) error
 }
 
@@ -484,6 +486,24 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 func (gs *GatewaySvc) TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error {
 	_, _, err := gs.chainSvc.TerminateOrder(ctx, gs.nodeAddress, *req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (gs *GatewaySvc) RenewOrder(ctx context.Context, req *types.OrderRenewProposal) (map[string]string, error) {
+	_, results, err := gs.chainSvc.RenewOrder(ctx, gs.nodeAddress, *req)
+	if err != nil {
+		return nil, err
+	}
+
+	return results, nil
+}
+
+func (gs *GatewaySvc) UpdateModelPermission(ctx context.Context, req *types.PermissionProposal) error {
+	_, err := gs.chainSvc.UpdatePermission(ctx, gs.nodeAddress, req)
 	if err != nil {
 		return err
 	}

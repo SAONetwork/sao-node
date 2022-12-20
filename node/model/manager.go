@@ -290,7 +290,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, xerrors.Errorf(err.Error())
 	}
 	log.Debug("newContent: ", string(newContent))
-	if bytes.Compare(orgModel.Content, newContent) == 0 {
+	if bytes.Equal(orgModel.Content, newContent) {
 		return nil, xerrors.Errorf("no content updated.")
 	}
 
@@ -339,9 +339,12 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	return model, nil
 }
 
-func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminateProposal) (*types.Model, error) {
-	if false {
-		mm.GatewaySvc.TerminateOrder(ctx, req)
+func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminateProposal, isPublish bool) (*types.Model, error) {
+	if isPublish {
+		err := mm.GatewaySvc.TerminateOrder(ctx, req)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	model, _ := mm.CacheSvc.Get(req.Proposal.Owner, req.Proposal.DataId)
@@ -371,6 +374,31 @@ func (mm *ModelManager) ShowCommits(ctx context.Context, req *types.MetadataProp
 		DataId:  meta.DataId,
 		Alias:   meta.Alias,
 		Commits: meta.Commits,
+	}, nil
+}
+
+func (mm *ModelManager) Renew(ctx context.Context, req *types.OrderRenewProposal, isPublish bool) (map[string]string, error) {
+	if isPublish {
+		results, err := mm.GatewaySvc.RenewOrder(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		return results, nil
+	}
+
+	return nil, nil
+}
+
+func (mm *ModelManager) UpdatePermission(ctx context.Context, req *types.PermissionProposal, isPublish bool) (*types.Model, error) {
+	if isPublish {
+		err := mm.GatewaySvc.UpdateModelPermission(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &types.Model{
+		DataId: req.Proposal.DataId,
 	}, nil
 }
 
