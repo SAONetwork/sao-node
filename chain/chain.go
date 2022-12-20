@@ -57,7 +57,7 @@ type ChainSvcApi interface {
 	//UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
 	//SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
-	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, map[string]string, error)
+	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error)
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
 }
 

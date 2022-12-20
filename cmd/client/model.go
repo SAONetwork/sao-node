@@ -618,7 +618,7 @@ var deleteCmd = &cli.Command{
 		}
 
 		if clientPublish {
-			_, _, err = client.TerminateOrder(ctx, signer, request)
+			_, err = client.TerminateOrder(ctx, signer, request)
 			if err != nil {
 				return err
 			}
