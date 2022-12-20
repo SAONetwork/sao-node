@@ -340,6 +340,10 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 }
 
 func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminateProposal) (*types.Model, error) {
+	if false {
+		mm.GatewaySvc.TerminateOrder(ctx, req)
+	}
+
 	model, _ := mm.CacheSvc.Get(req.Proposal.Owner, req.Proposal.DataId)
 	if model != nil {
 		m, ok := model.(*types.Model)

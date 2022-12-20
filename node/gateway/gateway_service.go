@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/cosmos/cosmos-sdk/types/tx"
-	"github.com/ipfs/go-cid"
-	"github.com/mitchellh/go-homedir"
-	"github.com/multiformats/go-multiaddr"
 	"io"
 	"os"
 	"path/filepath"
@@ -20,6 +16,11 @@ import (
 	"sao-node/utils"
 	"strings"
 	"time"
+
+	"github.com/cosmos/cosmos-sdk/types/tx"
+	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
+	"github.com/multiformats/go-multiaddr"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"golang.org/x/xerrors"
@@ -49,6 +50,7 @@ type GatewaySvcApi interface {
 	QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error)
 	CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error)
+	TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error
 	Stop(ctx context.Context) error
 }
 
@@ -480,9 +482,18 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	}
 }
 
-func (cs *GatewaySvc) Stop(ctx context.Context) error {
+func (gs *GatewaySvc) TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error {
+	_, _, err := gs.chainSvc.TerminateOrder(ctx, gs.nodeAddress, *req)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (gs *GatewaySvc) Stop(ctx context.Context) error {
 	log.Info("stopping order service...")
-	cs.shardStreamHandler.Stop(ctx)
+	gs.shardStreamHandler.Stop(ctx)
 
 	return nil
 }
