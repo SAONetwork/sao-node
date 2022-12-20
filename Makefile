@@ -21,6 +21,13 @@ api-gen:
 	goimports -w api
 .PHONY: api-gen
 
+docsgen-md-bin:
+	$(GOCC) build $(GOFLAGS) -o docgen-md ./gen/apidoc
+
+docsgen-md: docsgen-md-bin
+	./docgen-md "api/api_gateway.go" "SaoApi" "api" "./api" > docs/api.md
+
+
 clean:
 	rm -rf $(BINS)
 .PHONY: clean

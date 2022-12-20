@@ -21,8 +21,8 @@ func permissionedProxies(in, out interface{}) {
 	}
 }
 
-func PermissionedSaoNodeAPI(a GatewayApi) GatewayApi {
-	var out GatewayApiStruct
+func PermissionedSaoNodeAPI(a SaoApi) SaoApi {
+	var out SaoApiStruct
 	permissionedProxies(a, &out)
 	return &out
 }

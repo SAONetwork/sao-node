@@ -23,7 +23,7 @@ type SaoClientConfig struct {
 }
 
 type SaoClient struct {
-	api.GatewayApi
+	api.SaoApi
 	chain.ChainSvcApi
 	Cfg  *SaoClientConfig
 	repo string
@@ -92,7 +92,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 	}
 
 	// prepare Gateway api
-	var gatewayApi api.GatewayApi = nil
+	var gatewayApi api.SaoApi = nil
 	var closer = func() {}
 	if opt.Gateway != "none" {
 		if opt.Gateway == "" {
@@ -126,7 +126,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 	}
 
 	return &SaoClient{
-		GatewayApi:  gatewayApi,
+		SaoApi:      gatewayApi,
 		ChainSvcApi: chainApi,
 		Cfg:         cfg,
 		repo:        opt.Repo,
