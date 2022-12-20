@@ -284,7 +284,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	return &sn, nil
 }
 
-func newRpcServer(ga api.GatewayApi, cfg *config.API) (*http.Server, error) {
+func newRpcServer(ga api.SaoApi, cfg *config.API) (*http.Server, error) {
 	log.Info("initialize rpc server")
 
 	handler, err := GatewayRpcHandler(ga, cfg.EnablePermission)
@@ -346,7 +346,7 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 	return jwt.Sign(&p, jwt.NewHS256(key))
 }
 
-func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+func (n *Node) ModelCreate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
 	// verify signature
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
@@ -371,7 +371,7 @@ func (n *Node) Create(ctx context.Context, req *types.MetadataProposal, orderPro
 	}, nil
 }
 
-func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
+func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
 	// Asynchronous order and the content has been uploaded already
 	cidStr := orderProposal.Proposal.Cid
 	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
@@ -424,7 +424,7 @@ func (n *Node) CreateFile(ctx context.Context, req *types.MetadataProposal, orde
 	}
 }
 
-func (n *Node) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
+func (n *Node) ModelLoad(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.LoadResp{}, err
@@ -445,7 +445,7 @@ func (n *Node) Load(ctx context.Context, req *types.MetadataProposal) (apitypes.
 	}, nil
 }
 
-func (n *Node) Delete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
+func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposal) (apitypes.DeleteResp, error) {
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
@@ -461,7 +461,7 @@ func (n *Node) Delete(ctx context.Context, req *types.OrderTerminateProposal) (a
 	}, nil
 }
 
-func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+func (n *Node) ModelUpdate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
 	// verify signature
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
@@ -485,7 +485,7 @@ func (n *Node) Update(ctx context.Context, req *types.MetadataProposal, orderPro
 	}, nil
 }
 
-func (n *Node) ShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
+func (n *Node) ModelShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.ShowCommitsResp{}, err
@@ -545,11 +545,11 @@ func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp,
 	}
 }
 
-func (n *Node) NodeAddress(ctx context.Context) (string, error) {
+func (n *Node) GetNodeAddress(ctx context.Context) (string, error) {
 	return n.address, nil
 }
 
-func (n *Node) NetPeers(context.Context) ([]types.PeerInfo, error) {
+func (n *Node) GetNetPeers(context.Context) ([]types.PeerInfo, error) {
 	host := n.host
 	conns := host.Network().Conns()
 	out := make([]types.PeerInfo, len(conns))

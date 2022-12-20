@@ -33,12 +33,12 @@ type Libp2pRpcServer struct {
 	Ctx              context.Context
 	DbLk             sync.Mutex
 	Db               datastore.Batching
-	GatewayApi       api.GatewayApi
+	GatewayApi       api.SaoApi
 	StagingPath      string
 	StagingSapceSize int64
 }
 
-func StartLibp2pRpcServer(ctx context.Context, ga api.GatewayApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*Libp2pRpcServer, error) {
+func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*Libp2pRpcServer, error) {
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
 		log.Error(err.Error())
@@ -118,11 +118,11 @@ func (rs *Libp2pRpcServer) HandleStream(s network.Stream) {
 		case "Sao.Upload":
 			req.Params = append(req.Params, filepath.Join(rs.StagingPath, s.Conn().RemotePeer().String()))
 			result, err = rs.upload(req.Params)
-		case "Sao.Create":
+		case "Sao.ModelCreate":
 			result, err = rs.create(req.Params)
-		case "Sao.Load":
+		case "Sao.ModelLoad":
 			result, err = rs.load(req.Params)
-		case "Sao.Update":
+		case "Sao.ModelUpdate":
 			result, err = rs.update(req.Params)
 		default:
 			resp.Error = "N/a"
@@ -353,7 +353,7 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 		return "", xerrors.Errorf(err.Error())
 	}
 
-	resp, err := rs.GatewayApi.Create(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
+	resp, err := rs.GatewayApi.ModelCreate(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
@@ -377,7 +377,7 @@ func (rs *Libp2pRpcServer) load(params []string) (string, error) {
 		log.Error(err.Error())
 		return "", nil
 	}
-	resp, err := rs.GatewayApi.Load(rs.Ctx, &req)
+	resp, err := rs.GatewayApi.ModelLoad(rs.Ctx, &req)
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil
@@ -414,7 +414,7 @@ func (rs *Libp2pRpcServer) update(params []string) (string, error) {
 		return "", xerrors.Errorf(err.Error())
 	}
 
-	resp, err := rs.GatewayApi.Update(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
+	resp, err := rs.GatewayApi.ModelUpdate(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil

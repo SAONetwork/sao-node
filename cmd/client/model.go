@@ -154,7 +154,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		resp, err := client.Create(ctx, request, clientProposal, orderId, content)
+		resp, err := client.ModelCreate(ctx, request, clientProposal, orderId, content)
 		if err != nil {
 			return err
 		}
@@ -290,7 +290,7 @@ var loadCmd = &cli.Command{
 			proposal.KeywordType = 2
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -300,7 +300,7 @@ var loadCmd = &cli.Command{
 			return err
 		}
 
-		resp, err := client.Load(ctx, request)
+		resp, err := client.ModelLoad(ctx, request)
 		if err != nil {
 			return err
 		}
@@ -504,7 +504,7 @@ var statusCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -611,7 +611,7 @@ var deleteCmd = &cli.Command{
 			return err
 		}
 
-		result, err := client.Delete(ctx, &request)
+		result, err := client.ModelDelete(ctx, &request)
 		if err != nil {
 			return err
 		}
@@ -666,7 +666,7 @@ var commitsCmd = &cli.Command{
 			proposal.KeywordType = 2
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -676,7 +676,7 @@ var commitsCmd = &cli.Command{
 			return err
 		}
 
-		resp, err := client.ShowCommits(ctx, request)
+		resp, err := client.ModelShowCommits(ctx, request)
 		if err != nil {
 			return err
 		}
@@ -824,7 +824,7 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -889,7 +889,7 @@ var updateCmd = &cli.Command{
 			orderId = resp.OrderId
 		}
 
-		resp, err := client.Update(ctx, request, clientProposal, orderId, patch)
+		resp, err := client.ModelUpdate(ctx, request, clientProposal, orderId, patch)
 		if err != nil {
 			return err
 		}

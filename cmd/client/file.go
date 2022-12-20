@@ -33,7 +33,7 @@ var fileCmd = &cli.Command{
 
 var createFileCmd = &cli.Command{
 	Name:  "create",
-	Usage: "Create a file",
+	Usage: "ModelCreate a file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     "file-name",
@@ -131,7 +131,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -178,7 +178,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		resp, err := client.CreateFile(ctx, request, clientProposal, orderId)
+		resp, err := client.ModelCreateFile(ctx, request, clientProposal, orderId)
 		if err != nil {
 			return err
 		}
@@ -296,7 +296,7 @@ var downloadCmd = &cli.Command{
 			return err
 		}
 
-		gatewayAddress, err := client.NodeAddress(ctx)
+		gatewayAddress, err := client.GetNodeAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -319,7 +319,7 @@ var downloadCmd = &cli.Command{
 				return err
 			}
 
-			resp, err := client.Load(ctx, request)
+			resp, err := client.ModelLoad(ctx, request)
 			if err != nil {
 				return err
 			}

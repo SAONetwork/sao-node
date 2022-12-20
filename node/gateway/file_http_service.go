@@ -84,7 +84,7 @@ func (hfs *HttpFileServer) GenerateToken(owner string) (string, string) {
 		},
 	}
 
-	// Create token with claims
+	// ModelCreate token with claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	if token == nil {
 		log.Error("failed to generate token")

@@ -39,7 +39,7 @@ func ServeRPC(h http.Handler, addr multiaddr.Multiaddr) (*http.Server, error) {
 	return srv, err
 }
 
-func GatewayRpcHandler(ga api.GatewayApi, enablePermission bool) (http.Handler, error) {
+func GatewayRpcHandler(ga api.SaoApi, enablePermission bool) (http.Handler, error) {
 	m := mux.NewRouter()
 
 	if enablePermission {

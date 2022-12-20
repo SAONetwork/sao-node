@@ -12,7 +12,7 @@ const (
 	namespace = "Sao"
 )
 
-func NewGatewayApi(ctx context.Context, address string, token string) (api.GatewayApi, jsonrpc.ClientCloser, error) {
+func NewGatewayApi(ctx context.Context, address string, token string) (api.SaoApi, jsonrpc.ClientCloser, error) {
 	var res api.GatewayApiStruct
 
 	headers := http.Header{}
