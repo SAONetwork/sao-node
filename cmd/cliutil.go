@@ -5,7 +5,7 @@ import (
 	"os"
 	"sao-node/chain"
 	saoclient "sao-node/client"
-	gen "sao-node/gen/doc"
+	gen "sao-node/gen/clidoc"
 	"syscall"
 
 	"golang.org/x/term"
@@ -32,7 +32,7 @@ var IsVeryVerbose bool
 
 // FlagVeryVerbose enables very verbose mode, which is useful when debugging
 // the CLI itself. It should be included as a flag on the top-level command
-// (e.g. lotus -vv, lotus-miner -vv).
+// (e.g. saonode -vv).
 var FlagVeryVerbose = &cli.BoolFlag{
 	Name:        "vv",
 	Usage:       "enables very verbose mode, useful for debugging the CLI",
@@ -87,7 +87,7 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 
 // TODO: move to makefile
 var GenerateDocCmd = &cli.Command{
-	Name:   "doc",
+	Name:   "clidoc",
 	Hidden: true,
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -121,7 +121,7 @@ var GenerateDocCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Printf("markdown doc is exported to %s", outputFile)
+		fmt.Printf("markdown clidoc is exported to %s", outputFile)
 		fmt.Println()
 		return nil
 	},
