@@ -5,17 +5,16 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"sao-node/node/config"
-	"sao-node/utils"
-	"sync"
-
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
+	"os"
+	"path/filepath"
+	"sao-node/node/config"
+	"sao-node/utils"
+	"sync"
 )
 
 var log = logging.Logger("repo")
@@ -177,7 +176,8 @@ func (r *Repo) initConfig(chainAddress string) error {
 		return err
 	}
 
-	comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
+	comm, err := config.ConfigComment(r.defaultConfig(chainAddress))
+	//comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
 	if err != nil {
 		return xerrors.Errorf("load default: %w", err)
 	}

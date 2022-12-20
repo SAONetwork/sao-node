@@ -27,6 +27,8 @@ docsgen-md-bin:
 docsgen-md: docsgen-md-bin
 	./docgen-md "api/api_gateway.go" "SaoApi" "api" "./api" > docs/api.md
 
+docsgen-cfg:
+	$(GOCC) run ./gen/cfgdoc > ./node/config/doc_gen.go
 
 clean:
 	rm -rf $(BINS)
