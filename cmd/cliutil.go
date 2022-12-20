@@ -32,7 +32,7 @@ var IsVeryVerbose bool
 
 // FlagVeryVerbose enables very verbose mode, which is useful when debugging
 // the CLI itself. It should be included as a flag on the top-level command
-// (e.g. lotus -vv, lotus-miner -vv).
+// (e.g. saonode -vv).
 var FlagVeryVerbose = &cli.BoolFlag{
 	Name:        "vv",
 	Usage:       "enables very verbose mode, useful for debugging the CLI",
