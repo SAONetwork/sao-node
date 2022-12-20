@@ -6,6 +6,7 @@
   * [GenerateToken](#GenerateToken)
   * [GetHttpUrl](#GetHttpUrl)
   * [GetIpfsUrl](#GetIpfsUrl)
+  * [GetNetPeers](#GetNetPeers)
   * [GetNodeAddress](#GetNodeAddress)
   * [GetPeerInfo](#GetPeerInfo)
 * [Model](#Model)
@@ -115,6 +116,26 @@ Response:
 {
   "Url": "string value"
 }
+```
+
+### GetNetPeers
+GetNetPeers get current node's connected peer list
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "ID": "5G3K37EdUF",
+    "Addrs": [
+      "string value"
+    ]
+  }
+]
 ```
 
 ### GetNodeAddress

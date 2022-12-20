@@ -12,11 +12,11 @@ const FILE_INFO_PREFIX = "fileInfo_"
 const CHUNK_SIZE int = 32 * 1024 * 1024
 
 type PeerInfo struct {
-	ID          peer.ID
-	Agent       string
-	Addrs       []string
-	Protocols   []string
-	ConnMgrMeta *ConnMgrInfo
+	ID peer.ID
+	//Agent       string
+	Addrs []string
+	//Protocols   []string
+	//ConnMgrMeta *ConnMgrInfo
 }
 
 type ConnMgrInfo struct {

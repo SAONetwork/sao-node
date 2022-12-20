@@ -18,15 +18,11 @@ import (
 )
 
 func main() {
-	//comments, groupComments := ParseApiASTInfo("api/api_gateway.go", "SaoApi", "api", "./api")
 	comments, groupComments := ParseApiASTInfo(os.Args[1], os.Args[2], os.Args[3], os.Args[4])
 	_, t, permStruct := GetAPIType(os.Args[2], os.Args[3])
 	groups := make(map[string]*MethodGroup)
 	for i := 0; i < t.NumMethod(); i++ {
 		m := t.Method(i)
-		if m.Name == "GetNetPeers" {
-			continue
-		}
 
 		groupName := MethodGroupFromName(m.Name)
 

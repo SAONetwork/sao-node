@@ -558,30 +558,10 @@ func (n *Node) GetNetPeers(context.Context) ([]types.PeerInfo, error) {
 		peer := conn.RemotePeer()
 		info := types.PeerInfo{ID: peer}
 
-		agent, err := host.Peerstore().Get(peer, "AgentVersion")
-		if err == nil {
-			info.Agent = agent.(string)
-		}
-
 		for _, a := range host.Peerstore().Addrs(peer) {
 			info.Addrs = append(info.Addrs, a.String())
 		}
 		sort.Strings(info.Addrs)
-
-		protocols, err := host.Peerstore().GetProtocols(peer)
-		if err == nil {
-			sort.Strings(protocols)
-			info.Protocols = protocols
-		}
-
-		if cm := host.ConnManager().GetTagInfo(peer); cm != nil {
-			info.ConnMgrMeta = &types.ConnMgrInfo{
-				FirstSeen: cm.FirstSeen,
-				Value:     cm.Value,
-				Tags:      cm.Tags,
-				Conns:     cm.Conns,
-			}
-		}
 
 		out[i] = info
 	}
