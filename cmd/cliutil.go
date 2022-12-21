@@ -50,10 +50,10 @@ func AskForPassphrase() (string, error) {
 
 func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
 	var keyName string
-	if !cctx.IsSet("keyName") {
+	if !cctx.IsSet(FlagKeyName) {
 		keyName = cfg.KeyName
 	} else {
-		keyName = cctx.String("keyName")
+		keyName = cctx.String(FlagKeyName)
 	}
 
 	repo := cctx.String("repo")

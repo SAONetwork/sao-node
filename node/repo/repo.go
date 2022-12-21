@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -59,7 +58,6 @@ func (r *Repo) Exists() (bool, error) {
 	// TODO:
 	_, err := os.Stat(filepath.Join(r.Path, fsKeystore))
 	notexist := os.IsNotExist(err)
-	fmt.Println("notexist", notexist)
 	if notexist {
 		err = nil
 	}

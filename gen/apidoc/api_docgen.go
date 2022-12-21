@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go/ast"
@@ -12,6 +13,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"sao-node/api"
+	apitypes "sao-node/api/types"
+	"sao-node/types"
 	"sort"
 	"strings"
 	"unicode"
@@ -150,6 +153,114 @@ var ExampleValues = map[reflect.Type]interface{}{
 	reflect.TypeOf(int32(32)):           int32(32),
 	reflect.TypeOf(peer.ID("peer id")):  peer.ID("peer id"),
 	reflect.TypeOf(int(32)):             int(32),
+	reflect.TypeOf(true):                true,
+}
+
+func addExample(v interface{}) {
+	ExampleValues[reflect.TypeOf(v)] = v
+}
+
+func init() {
+	addExample(apitypes.RenewResp{
+		Results: map[string]string{
+			"1e05407f-a7af-4b1c-b9e5-99d492f07720": "New Order=1",
+			"1e05407f-a7af-4b1c-b9e5-99d492f07721": "renew fail root cause",
+		},
+	})
+
+	sig := saotypes.JwsSignature{
+		Protected: "eyJraWQiOiJkaWQ6c2lkOjY3YTJiZTczMTU3NDA4MjNlYmI2YTI3ZTJjZmQ3ODI1ZmMwMjEwMmE5NDIyMzVkZDI1ODlhZjQ3YTJkYWZiYTQ_dmVyc2lvbi1pZD02N2EyYmU3MzE1NzQwODIzZWJiNmEyN2UyY2ZkNzgyNWZjMDIxMDJhOTQyMjM1ZGQyNTg5YWY0N2EyZGFmYmE0IzhNalI1RlpCUUUiLCJhbGciOiJFUzI1NksifQ",
+		Signature: "qbkzpCz_Yd8IeYmtmpGG2gdj-fkr5GwrHp5liBAOCSF5MQpHrZDFxp_GfTHv1sh8oDmR8JF2g9-GyVct7UJ24w",
+	}
+	addExample(&types.MetadataProposal{
+		Proposal: saotypes.QueryProposal{
+			Owner:           "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+			Keyword:         "fd248a7c-cf9f-4902-8327-58629aef96e9",
+			GroupId:         "30293f0f-3e0f-4b3c-aff1-890a2fdf063b",
+			KeywordType:     1,
+			LastValidHeight: 711397,
+			Gateway:         "/ip4/172.16.0.10/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/172.16.0.10/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT",
+			CommitId:        "",
+			Version:         "",
+		},
+		JwsSignature: sig,
+	})
+
+	loadResp := apitypes.LoadResp{
+		DataId:   "fd248a7c-cf9f-4902-8327-58629aef96e9",
+		Alias:    "note_ca0b1124-f013-4c69-8249-41694d540871",
+		CommitId: "fd248a7c-cf9f-4902-8327-58629aef96e9",
+		Version:  "v0",
+		Cid:      "bafkreide7eax3pd3qsbolguprfta7thinb4wmbvyh2kestrdeiydg77tsq",
+		Content:  `{"content":"","isEdit":false,"time":"2022-12-20 06:41","title":"sample"}`,
+	}
+	addExample(loadResp)
+
+	addExample(&types.OrderStoreProposal{
+		Proposal: saotypes.Proposal{
+			Owner:         "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+			Provider:      "cosmos197vlml2yg75rg9dmf07sau0mn0053p9dscrfsf",
+			GroupId:       "30293f0f-3e0f-4b3c-aff1-890a2fdf063b",
+			Duration:      31536000,
+			Replica:       1,
+			Timeout:       86400,
+			Alias:         "notes",
+			DataId:        "c2b37317-9612-41fe-8260-7c8aea0dbd07",
+			CommitId:      "c2b37317-9612-41fe-8260-7c8aea0dbd07",
+			Tags:          nil,
+			Cid:           "bafkreib3yoebpagjbkvhrsyhi7jpllylcqt4zpime5vho6ehpljv3dda4u",
+			Rule:          "",
+			ExtendInfo:    "",
+			Size_:         40,
+			Operation:     1,
+			ReadonlyDids:  []string{},
+			ReadwriteDids: []string{},
+		},
+		JwsSignature: sig,
+	})
+
+	addExample(apitypes.CreateResp{
+		DataId: "c2b37317-9612-41fe-8260-7c8aea0dbd07",
+		Alias:  "notes",
+		TxId:   "",
+		Cid:    "bafkreib3yoebpagjbkvhrsyhi7jpllylcqt4zpime5vho6ehpljv3dda4u",
+	})
+
+	addExample(&types.OrderTerminateProposal{
+		Proposal: saotypes.TerminateProposal{
+			Owner:  "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+			DataId: "fd248a7c-cf9f-4902-8327-58629aef96e9",
+		},
+		JwsSignature: sig,
+	})
+
+	addExample(apitypes.DeleteResp{
+		DataId: "fd248a7c-cf9f-4902-8327-58629aef96e9",
+		Alias:  "note_ca0b1124-f013-4c69-8249-41694d540871",
+	})
+
+	addExample(apitypes.UpdateResp{
+		DataId:   "fd248a7c-cf9f-4902-8327-58629aef96e9",
+		CommitId: "fd248a7c-cf9f-4902-8327-58629aef96e9",
+		Alias:    "notes",
+		TxId:     "",
+		Cid:      "bafkreide7eax3pd3qsbolguprfta7thinb4wmbvyh2kestrdeiydg77tsq",
+	})
+
+	addExample(apitypes.ShowCommitsResp{
+		DataId:  "c2b37317-9612-41fe-8260-7c8aea0dbd07",
+		Alias:   "notes",
+		Commits: []string{"c2b37317-9612-41fe-8260-7c8aea0dbd07711196", "85de5f5e-0cfb-4e0c-abe7-bf93aec087f3712565"},
+	})
+
+	addExample(types.PeerInfo{
+		ID:    peer.ID("12D3KooWSsWdkkKzvHSV6cc8ET6eyiDoHkYeW9GwF9RuQXiWF3cS"),
+		Addrs: []string{"/ip4/127.0.0.1/tcp/26660", "/ip4/172.16.0.11/tcp/26660"},
+	})
+
+	addExample(apitypes.GetPeerInfoResp{
+		PeerInfo: "/ip4/172.16.0.10/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/172.16.0.10/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT",
+	})
 }
 
 func ExampleValue(method string, t, parent reflect.Type) interface{} {
