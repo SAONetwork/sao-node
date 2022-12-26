@@ -983,7 +983,7 @@ var updatePermissionCmd = &cli.Command{
 				return err
 			}
 		} else {
-			_, err = client.ModelUpdatePermission(ctx, request, !clientPublish)
+			_, err := client.ModelUpdatePermission(ctx, request, !clientPublish)
 			if err != nil {
 				return err
 			}

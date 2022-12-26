@@ -5,6 +5,7 @@ import (
 	"fmt"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"go/ast"
 	"go/parser"
@@ -161,6 +162,9 @@ func addExample(v interface{}) {
 }
 
 func init() {
+	cid, _ := cid.Decode("bafkreihrwzskd3wixnkuikjidbx7ntgqugyiquglldl7yx2q2jbpzeoiyi")
+	addExample(cid)
+
 	addExample(apitypes.RenewResp{
 		Results: map[string]string{
 			"1e05407f-a7af-4b1c-b9e5-99d492f07720": "New Order=1",
@@ -172,6 +176,7 @@ func init() {
 		Protected: "eyJraWQiOiJkaWQ6c2lkOjY3YTJiZTczMTU3NDA4MjNlYmI2YTI3ZTJjZmQ3ODI1ZmMwMjEwMmE5NDIyMzVkZDI1ODlhZjQ3YTJkYWZiYTQ_dmVyc2lvbi1pZD02N2EyYmU3MzE1NzQwODIzZWJiNmEyN2UyY2ZkNzgyNWZjMDIxMDJhOTQyMjM1ZGQyNTg5YWY0N2EyZGFmYmE0IzhNalI1RlpCUUUiLCJhbGciOiJFUzI1NksifQ",
 		Signature: "qbkzpCz_Yd8IeYmtmpGG2gdj-fkr5GwrHp5liBAOCSF5MQpHrZDFxp_GfTHv1sh8oDmR8JF2g9-GyVct7UJ24w",
 	}
+	addExample(sig)
 	addExample(&types.MetadataProposal{
 		Proposal: saotypes.QueryProposal{
 			Owner:           "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
@@ -260,6 +265,31 @@ func init() {
 
 	addExample(apitypes.GetPeerInfoResp{
 		PeerInfo: "/ip4/172.16.0.10/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/172.16.0.10/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT",
+	})
+
+	addExample(apitypes.GenerateTokenResp{
+		Server: "localhost:5152",
+		Token:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiJkaWQ6a2V5OnpRM3NodXZYcWZMTHFDbmtHaGh5VkdMQ3EyOXR1bktURmVINjdla2QzVHlyMmVaWFgiLCJleHAiOjE2NzE2NzgzMzF9.jV6Jk4UQnl8TfXS9WtjYw2JXMKaIeAulNwQma_fQVAs",
+	})
+
+	addExample(apitypes.GetUrlResp{
+		Url: "http://localhost:5152/saonetwork/a4cc25ff-80b1-4815-8c5e-af3ff133420b",
+	})
+
+	addExample(saotypes.PermissionProposal{
+		Owner:         "did:key:zQ3shuvXqfLLqCnkGhhyVGLCq29tunKTFeH67ekd3Tyr2eZXX",
+		DataId:        "4821b0f9-736c-4d48-95b7-4f80cd432781",
+		ReadonlyDids:  []string{"did:key:zQ3shpp99D7y2z3B2Qq6yGpWcTrxLHHnawrdHDXhVFjhE8x6h"},
+		ReadwriteDids: []string{"did:key:zQ3shpp99D7y2z3B2Qq6yGpWcTrxLHHnawrdHDXhVFjhE8x66"},
+	})
+
+	addExample(apitypes.UpdatePermissionResp{DataId: "4821b0f9-736c-4d48-95b7-4f80cd432781"})
+
+	addExample(saotypes.RenewProposal{
+		Owner:    "did:key:zQ3shuvXqfLLqCnkGhhyVGLCq29tunKTFeH67ekd3Tyr2eZXX",
+		Duration: 31536000,
+		Timeout:  86400,
+		Data:     []string{"4821b0f9-736c-4d48-95b7-4f80cd432781"},
 	})
 }
 
