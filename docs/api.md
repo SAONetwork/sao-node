@@ -75,8 +75,8 @@ Inputs:
 Response:
 ```json
 {
-  "Server": "string value",
-  "Token": "string value"
+  "Server": "localhost:5152",
+  "Token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXkiOiJkaWQ6a2V5OnpRM3NodXZYcWZMTHFDbmtHaGh5VkdMQ3EyOXR1bktURmVINjdla2QzVHlyMmVaWFgiLCJleHAiOjE2NzE2NzgzMzF9.jV6Jk4UQnl8TfXS9WtjYw2JXMKaIeAulNwQma_fQVAs"
 }
 ```
 
@@ -96,7 +96,7 @@ Inputs:
 Response:
 ```json
 {
-  "Url": "string value"
+  "Url": "http://localhost:5152/saonetwork/a4cc25ff-80b1-4815-8c5e-af3ff133420b"
 }
 ```
 
@@ -116,7 +116,7 @@ Inputs:
 Response:
 ```json
 {
-  "Url": "string value"
+  "Url": "http://localhost:5152/saonetwork/a4cc25ff-80b1-4815-8c5e-af3ff133420b"
 }
 ```
 
@@ -365,16 +365,16 @@ Inputs:
 [
   {
     "Proposal": {
-      "owner": "string value",
-      "duration": 42,
-      "timeout": 32,
+      "owner": "did:key:zQ3shuvXqfLLqCnkGhhyVGLCq29tunKTFeH67ekd3Tyr2eZXX",
+      "duration": 31536000,
+      "timeout": 86400,
       "data": [
-        "string value"
+        "4821b0f9-736c-4d48-95b7-4f80cd432781"
       ]
     },
     "JwsSignature": {
-      "protected": "string value",
-      "signature": "string value"
+      "protected": "eyJraWQiOiJkaWQ6c2lkOjY3YTJiZTczMTU3NDA4MjNlYmI2YTI3ZTJjZmQ3ODI1ZmMwMjEwMmE5NDIyMzVkZDI1ODlhZjQ3YTJkYWZiYTQ_dmVyc2lvbi1pZD02N2EyYmU3MzE1NzQwODIzZWJiNmEyN2UyY2ZkNzgyNWZjMDIxMDJhOTQyMjM1ZGQyNTg5YWY0N2EyZGFmYmE0IzhNalI1RlpCUUUiLCJhbGciOiJFUzI1NksifQ",
+      "signature": "qbkzpCz_Yd8IeYmtmpGG2gdj-fkr5GwrHp5liBAOCSF5MQpHrZDFxp_GfTHv1sh8oDmR8JF2g9-GyVct7UJ24w"
     }
   },
   true
@@ -499,18 +499,18 @@ Inputs:
 [
   {
     "Proposal": {
-      "owner": "string value",
-      "dataId": "string value",
+      "owner": "did:key:zQ3shuvXqfLLqCnkGhhyVGLCq29tunKTFeH67ekd3Tyr2eZXX",
+      "dataId": "4821b0f9-736c-4d48-95b7-4f80cd432781",
       "readonlyDids": [
-        "string value"
+        "did:key:zQ3shpp99D7y2z3B2Qq6yGpWcTrxLHHnawrdHDXhVFjhE8x6h"
       ],
       "readwriteDids": [
-        "string value"
+        "did:key:zQ3shpp99D7y2z3B2Qq6yGpWcTrxLHHnawrdHDXhVFjhE8x66"
       ]
     },
     "JwsSignature": {
-      "protected": "string value",
-      "signature": "string value"
+      "protected": "eyJraWQiOiJkaWQ6c2lkOjY3YTJiZTczMTU3NDA4MjNlYmI2YTI3ZTJjZmQ3ODI1ZmMwMjEwMmE5NDIyMzVkZDI1ODlhZjQ3YTJkYWZiYTQ_dmVyc2lvbi1pZD02N2EyYmU3MzE1NzQwODIzZWJiNmEyN2UyY2ZkNzgyNWZjMDIxMDJhOTQyMjM1ZGQyNTg5YWY0N2EyZGFmYmE0IzhNalI1RlpCUUUiLCJhbGciOiJFUzI1NksifQ",
+      "signature": "qbkzpCz_Yd8IeYmtmpGG2gdj-fkr5GwrHp5liBAOCSF5MQpHrZDFxp_GfTHv1sh8oDmR8JF2g9-GyVct7UJ24w"
     }
   },
   true
@@ -520,7 +520,7 @@ Inputs:
 Response:
 ```json
 {
-  "DataId": "string value"
+  "DataId": "4821b0f9-736c-4d48-95b7-4f80cd432781"
 }
 ```
 
