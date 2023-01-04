@@ -15,6 +15,7 @@ import (
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -26,6 +27,7 @@ var log = logging.Logger("chain")
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
 	cosmos      cosmosclient.Client
+	bankClient  banktypes.QueryClient
 	orderClient ordertypes.QueryClient
 	nodeClient  nodetypes.QueryClient
 	didClient   didtypes.QueryClient
@@ -73,6 +75,7 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 		return nil, err
 	}
 
+	bankClient := banktypes.NewQueryClient(cosmos.Context())
 	orderClient := ordertypes.NewQueryClient(cosmos.Context())
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	didClient := didtypes.NewQueryClient(cosmos.Context())
@@ -88,6 +91,7 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 	}
 	return &ChainSvc{
 		cosmos:      cosmos,
+		bankClient:  bankClient,
 		orderClient: orderClient,
 		nodeClient:  nodeClient,
 		didClient:   didClient,
