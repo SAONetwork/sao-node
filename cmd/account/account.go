@@ -11,6 +11,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
+	"golang.org/x/xerrors"
 )
 
 var AccountCmd = &cli.Command{
@@ -30,7 +31,17 @@ var listCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		err := chain.List(ctx, cctx.String("repo"))
+		repoPath := cctx.String("repo")
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			return xerrors.Errorf("no chain address specified")
+		}
+
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+		err = chain.List(ctx, repoPath)
 		if err != nil {
 			return err
 		}

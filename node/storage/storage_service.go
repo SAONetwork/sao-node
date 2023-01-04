@@ -181,8 +181,8 @@ func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssig
 				OrderId:        req.OrderId,
 				Gateway:        order.Provider,
 				Cid:            cid,
-				OrderOperation: string(order.Operation),
-				ShardOperation: string(order.Operation),
+				OrderOperation: fmt.Sprint("%l", order.Operation),
+				ShardOperation: fmt.Sprint("%l", order.Operation),
 			})
 		}
 		for _, task := range shardTasks {
@@ -268,6 +268,9 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		ss.completeChan <- completeReq
 	} else {
 		peerInfos, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
+		if err != nil {
+			return err
+		}
 		resp := types.ShardCompleteResp{}
 		err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardCompleteProtocol, &completeReq, &resp)
 		if err != nil {
