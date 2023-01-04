@@ -3,7 +3,9 @@ package chain
 import (
 	"context"
 	"fmt"
+	"math/big"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
@@ -86,6 +88,31 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	}
 
 	return nil
+}
+
+func (c *ChainSvc) Send(ctx context.Context, from string, to string, amount int64) (string, error) {
+	signerAcc, err := c.cosmos.Account(from)
+	if err != nil {
+		return "", fmt.Errorf("%w, check the keyring please", err)
+	}
+
+	tx, err := c.cosmos.BankSendTx(ctx, signerAcc, to, append(make(types.Coins, 0), types.Coin{
+		Denom:  DENOM,
+		Amount: types.NewIntFromBigInt(big.NewInt(amount)),
+	}))
+	if err != nil {
+		return "", err
+	}
+
+	txResp, err := tx.Broadcast(ctx)
+	if err != nil {
+		return "", err
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", fmt.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+
+	return txResp.TxResponse.TxHash, nil
 }
 
 func Create(ctx context.Context, repo string, name string) (string, string, string, error) {
