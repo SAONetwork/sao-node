@@ -70,6 +70,7 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(chainAddress),
 		cosmosclient.WithHome(repo),
+		cosmosclient.WithGas("auto"),
 	)
 	if err != nil {
 		return nil, err
