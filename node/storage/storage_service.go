@@ -431,11 +431,13 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 	}
 
 	var resp = &types.ShardResp{
-		OrderId: req.OrderId,
-		Cid:     req.Cid,
-		Content: shardContent,
+		OrderId:    req.OrderId,
+		Cid:        req.Cid,
+		Content:    shardContent,
+		RequestId:  req.RequestId,
+		ResponseId: time.Now().UnixMilli(),
 	}
-	log.Debugf("send ShardResp: Content len %d", len(shardContent))
+	log.Debugf("send ShardResp(requestId=%d,responseId=%d): Content len %d", resp.RequestId, resp.ResponseId, len(shardContent))
 
 	err = resp.Marshal(s, "json")
 	if err != nil {
