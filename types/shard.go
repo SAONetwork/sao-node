@@ -28,16 +28,19 @@ type ShardStaging struct {
 
 // TODO: store node should sign the request.
 type ShardReq struct {
-	Owner    string
-	OrderId  uint64
-	Cid      cid.Cid
-	Proposal *MetadataProposal
+	Owner     string
+	OrderId   uint64
+	Cid       cid.Cid
+	Proposal  *MetadataProposal
+	RequestId int64
 }
 
 type ShardResp struct {
-	OrderId uint64
-	Cid     cid.Cid
-	Content []byte
+	OrderId    uint64
+	Cid        cid.Cid
+	Content    []byte
+	RequestId  int64
+	ResponseId int64
 }
 
 func (f *ShardReq) Unmarshal(r io.Reader, format string) (err error) {

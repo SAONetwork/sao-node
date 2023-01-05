@@ -378,7 +378,7 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 		log.Error(err)
 		return
 	}
-	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+	log.Debugf("receive ShardReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
 
 	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
 	if err != nil {
