@@ -95,6 +95,7 @@ func main() {
 			runCmd,
 			authCmd,
 			infoCmd,
+			claimCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -542,6 +543,37 @@ var infoCmd = &cli.Command{
 		console.Println(address)
 		fmt.Printf("%-15s", "Peer Info:")
 		console.Println(resp.PeerInfo)
+		return nil
+	},
+}
+
+var claimCmd = &cli.Command{
+	Name:  "claim",
+	Usage: "claim sao network storage reward",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		chainAddress := cliutil.ChainAddress
+		creator := cctx.String("creator")
+
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		if tx, err := chain.ClaimReward(ctx, creator); err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
+		}
+
 		return nil
 	},
 }
