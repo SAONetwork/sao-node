@@ -484,7 +484,7 @@ var infoCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "creator",
 			Usage:    "node's account on sao chain",
-			Required: true,
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -500,7 +500,61 @@ var infoCmd = &cli.Command{
 		if err != nil {
 			return fmt.Errorf("new cosmos chain: %w", err)
 		}
-		chain.ShowNodeInfo(ctx, cctx.String("creator"))
+
+		creator := cctx.String("creator")
+		if creator == "" {
+			repo, err := prepareRepo(cctx)
+			if err != nil {
+				return err
+			}
+
+			var apiClient api.SaoApiStruct
+
+			c, err := repo.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			key, err := repo.GetKeyBytes()
+			if err != nil {
+				return err
+			}
+
+			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+			if err != nil {
+				return err
+			}
+
+			headers := http.Header{}
+			headers.Add("Authorization", "Bearer "+string(token))
+
+			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+			if err != nil {
+				return err
+			}
+			_, addr, err := manet.DialArgs(ma)
+			if err != nil {
+				return err
+			}
+
+			apiAddress := "http://" + addr + "/rpc/v0"
+			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			creator, err = apiClient.GetNodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		chain.ShowNodeInfo(ctx, creator)
 
 		return nil
 	},
