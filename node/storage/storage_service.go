@@ -181,8 +181,8 @@ func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssig
 				OrderId:        req.OrderId,
 				Gateway:        order.Provider,
 				Cid:            cid,
-				OrderOperation: fmt.Sprint("%l", order.Operation),
-				ShardOperation: fmt.Sprint("%l", order.Operation),
+				OrderOperation: fmt.Sprintf("%d", order.Operation),
+				ShardOperation: fmt.Sprintf("%d", order.Operation),
 			})
 		}
 		for _, task := range shardTasks {
@@ -419,16 +419,19 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 		return
 	}
 
+	log.Debugf("Get %v", req.Cid)
 	reader, err := ss.storeManager.Get(ss.ctx, req.Cid)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+	log.Debug("ReadAll")
 	shardContent, err := io.ReadAll(reader)
 	if err != nil {
 		log.Error(err)
 		return
 	}
+	log.Debug("ReadAll Complete")
 
 	var resp = &types.ShardResp{
 		OrderId:    req.OrderId,
