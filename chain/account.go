@@ -90,6 +90,20 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	return nil
 }
 
+func (c *ChainSvc) ShowBalance(ctx context.Context, address string) {
+	fmt.Println("Address:", address)
+
+	resp, err := c.bankClient.Balance(ctx, &banktypes.QueryBalanceRequest{
+		Address: address,
+		Denom:   DENOM,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	fmt.Println("Balance:", resp.Balance.Amount.Uint64(), DENOM)
+}
+
 func (c *ChainSvc) Send(ctx context.Context, from string, to string, amount int64) (string, error) {
 	signerAcc, err := c.cosmos.Account(from)
 	if err != nil {

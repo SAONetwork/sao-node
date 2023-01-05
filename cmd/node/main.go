@@ -554,6 +554,7 @@ var infoCmd = &cli.Command{
 				return err
 			}
 		}
+		chain.ShowBalance(ctx, creator)
 		chain.ShowNodeInfo(ctx, creator)
 
 		return nil
