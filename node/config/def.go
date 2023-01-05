@@ -26,7 +26,7 @@ func DefaultSaoNode() *Node {
 		},
 		Storage: Storage{
 			AcceptOrder: true,
-			Ipfs:        []Ipfs{},
+			Ipfs:        []Ipfs{Ipfs{Conn: "Conn"}},
 		},
 		SaoIpfs: SaoIpfs{
 			Enable: true,
