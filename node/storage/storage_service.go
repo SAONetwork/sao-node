@@ -239,17 +239,18 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 			}
 
 			cid, _ := utils.CalculateCid(shard)
-			log.Debugf("ipfs cid %v, task cid %v", cid, task.Cid)
+			log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
 			if cid.String() != task.Cid.String() {
 				return xerrors.Errorf("ipfs cid %v != task cid %v", cid, task.Cid)
 			}
 		}
 
 		// store to backends
-		_, err = ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
+		ipfsCid, err := ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
 		if err != nil {
 			return err
 		}
+		log.Debugf("ipfs add cid: %s orderId %v", ipfsCid, task.OrderId)
 	} else {
 		// make sure the data is still there
 		isExist := ss.storeManager.IsExist(ctx, task.Cid)
