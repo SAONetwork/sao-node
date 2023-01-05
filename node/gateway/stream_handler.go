@@ -3,13 +3,14 @@ package gateway
 import (
 	"context"
 	"fmt"
-	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"github.com/cosmos/cosmos-sdk/types/tx"
 	"sao-node/chain"
 	"sao-node/node/transport"
 	"sao-node/types"
 	"sync"
 	"time"
+
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -187,7 +188,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 		// TODO: respond error
 		return
 	}
-	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid)
+	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid, req.RequestId)
 
 	contentBytes, err := GetStagedShard(ssh.stagingPath, req.Owner, req.Cid)
 	if err != nil {
@@ -196,9 +197,11 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 		return
 	}
 	var resp = &types.ShardResp{
-		OrderId: req.OrderId,
-		Cid:     req.Cid,
-		Content: contentBytes,
+		OrderId:    req.OrderId,
+		Cid:        req.Cid,
+		Content:    contentBytes,
+		RequestId:  req.RequestId,
+		ResponseId: time.Now().Unix(),
 	}
 	log.Debugf("send ShardResp: Content=%v", string(contentBytes))
 
@@ -239,8 +242,9 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, s
 	defer stream.SetReadDeadline(time.Time{}) // nolint
 
 	request := types.ShardReq{
-		Cid:      shardCid,
-		Proposal: req,
+		Cid:       shardCid,
+		Proposal:  req,
+		RequestId: time.Now().Unix(),
 	}
 	log.Infof("send ShardReq with cid:%v, to the storage node %s", request.Cid, addr)
 
@@ -249,7 +253,7 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, s
 		return nil, err
 	}
 
-	log.Debugf("receive ShardResp with content length:%d, from the storage node %s", len(resp.Content), addr)
+	log.Debugf("receive ShardResp(requestId=%d,responseId=%d) with content length:%d, from the storage node %s", resp.RequestId, resp.ResponseId, len(resp.Content), addr)
 
 	return resp.Content, nil
 }
