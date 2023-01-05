@@ -118,6 +118,15 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		return
 	}
 	fmt.Printf("Node Information:%+v\n", resp.Node)
+
+	pledgeResp, err := c.nodeClient.Pledge(ctx, &nodetypes.QueryGetPledgeRequest{
+		Creator: creator,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	fmt.Printf("Node Pledge:%+v\n", pledgeResp.Pledge)
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
