@@ -250,7 +250,6 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		if err != nil {
 			return err
 		}
-		log.Debugf("ipfs add cid: %v orderId %v", ipfsCid, task.OrderId)
 	} else {
 		// make sure the data is still there
 		isExist := ss.storeManager.IsExist(ctx, task.Cid)

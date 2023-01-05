@@ -69,10 +69,11 @@ func (ss *StoreManager) Close() error {
 func (ss *StoreManager) Store(ctx context.Context, cid cid.Cid, reader io.Reader) (any, error) {
 	var err error
 	for _, back := range ss.backends {
-		_, err = back.Store(ctx, reader)
+		cid, err = back.Store(ctx, reader)
 		if err != nil {
 			log.Errorf("%s store error: %v", back.Id(), err)
 		}
+		log.Debugf("ipfs add cid %v", cid)
 	}
 	return nil, nil
 }
