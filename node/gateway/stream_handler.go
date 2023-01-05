@@ -201,9 +201,9 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 		Cid:        req.Cid,
 		Content:    contentBytes,
 		RequestId:  req.RequestId,
-		ResponseId: time.Now().Unix(),
+		ResponseId: time.Now().UnixMilli(),
 	}
-	log.Debugf("send ShardResp: Content=%v", string(contentBytes))
+	log.Debugf("send ShardResp(requestId=%d,responseId=%d): Content=%v", req.RequestId, resp.ResponseId, string(contentBytes))
 
 	err = resp.Marshal(s, "json")
 	if err != nil {
@@ -244,7 +244,7 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, s
 	request := types.ShardReq{
 		Cid:       shardCid,
 		Proposal:  req,
-		RequestId: time.Now().Unix(),
+		RequestId: time.Now().UnixMilli(),
 	}
 	log.Infof("send ShardReq with cid:%v, to the storage node %s", request.Cid, addr)
 
