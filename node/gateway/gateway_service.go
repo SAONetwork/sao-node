@@ -270,7 +270,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 					continue
 				}
 
-				shardContent, err = gs.shardStreamHandler.Fetch(req, peerInfo, shardCid)
+				shardContent, err = gs.shardStreamHandler.Fetch(req, peerInfo, meta.OrderId, shardCid)
 				if err != nil {
 					return nil, err
 				}
