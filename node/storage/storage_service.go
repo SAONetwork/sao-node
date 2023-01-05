@@ -246,7 +246,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 		}
 
 		// store to backends
-		ipfsCid, err := ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
+		_, err := ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
 		if err != nil {
 			return err
 		}
