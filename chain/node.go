@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
@@ -106,6 +107,17 @@ func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, e
 		return 0, err
 	}
 	return resp.Node.Status, nil
+}
+
+func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
+	resp, err := c.nodeClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
+		Creator: creator,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	fmt.Printf("Node Information:%+v\n", resp.Node)
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
