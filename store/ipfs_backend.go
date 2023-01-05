@@ -12,6 +12,7 @@ import (
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
+	ma "github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 )
 
@@ -30,10 +31,11 @@ func NewIpfsBackend(connectionString string, api icore.CoreAPI) (*IpfsBackend, e
 	}
 
 	var conn string
-	if strings.HasPrefix(connectionString, "ipfs+http") {
-		conn = strings.Replace(connectionString, "ipfs+http", "http", 1)
-	} else if strings.HasPrefix(connectionString, "ipfs+https") {
-		conn = strings.Replace(connectionString, "ipfs+https", "https", 1)
+	if strings.HasPrefix(connectionString, "ipfs+ma:") {
+		conn = strings.Replace(connectionString, "ipfs+ma:", "", 1)
+		// }
+		// else if strings.HasPrefix(connectionString, "ipfs+https") {
+		// 	conn = strings.Replace(connectionString, "ipfs+https", "https", 1)
 	} else {
 		return nil, xerrors.Errorf("unsupported ipfs connection protocol")
 	}
@@ -58,7 +60,15 @@ func (b *IpfsBackend) Open() error {
 		return nil
 	}
 
-	api, err := httpapi.NewPathApi(b.ipfsAddress)
+	addr, err := ma.NewMultiaddr(b.ipfsAddress)
+	if err != nil {
+		return err
+	}
+	api, err := httpapi.NewApi(addr)
+	if err != nil {
+		return err
+	}
+
 	b.api = api
 	return err
 }

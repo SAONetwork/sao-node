@@ -425,13 +425,11 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 		log.Error(err)
 		return
 	}
-	log.Debug("ReadAll")
 	shardContent, err := io.ReadAll(reader)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	log.Debug("ReadAll Complete")
 
 	var resp = &types.ShardResp{
 		OrderId:    req.OrderId,
