@@ -84,7 +84,7 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 	}
 
 	//hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
-	log.Debugf("%s store hash: %v", b.Id(), r.String())
+	log.Debugf("%s store hash: %s %v", b.Id(), r.String(), r.Cid())
 	return r.String(), err
 }
 
