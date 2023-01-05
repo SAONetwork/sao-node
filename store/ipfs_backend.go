@@ -85,7 +85,7 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 
 	//hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
 	log.Debugf("%s store hash: %s %v", b.Id(), r.String(), r.Cid())
-	return r.String(), err
+	return r.Cid().String(), err
 }
 
 func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
