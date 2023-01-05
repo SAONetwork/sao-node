@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"sao-node/chain"
 	saoclient "sao-node/client"
 	cliutil "sao-node/cmd"
 
@@ -14,6 +15,7 @@ var didCmd = &cli.Command{
 	Usage: "did management",
 	Subcommands: []*cli.Command{
 		didCreateCmd,
+		didShowInfoCmd,
 		didSignCmd,
 	},
 }
@@ -65,6 +67,35 @@ var didCreateCmd = &cli.Command{
 
 		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
 		fmt.Println()
+		return nil
+	},
+}
+
+var didShowInfoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "show did information",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "did-url",
+			Usage:    "did URL",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		repoPath := cctx.String("repo")
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			return fmt.Errorf("no chain address specified")
+		}
+
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return fmt.Errorf("new cosmos chain: %w", err)
+		}
+		chain.ShowDidInfo(ctx, cctx.String("did-url"))
+
 		return nil
 	},
 }

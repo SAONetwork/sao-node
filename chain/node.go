@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
@@ -69,6 +70,25 @@ func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, s
 	return txResp.TxResponse.TxHash, nil
 }
 
+func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, error) {
+	account, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+	}
+
+	msg := &nodetypes.MsgClaimReward{
+		Creator: creator,
+	}
+	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
+	if err != nil {
+		return "", err
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", xerrors.Errorf("MsgReset tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	return txResp.TxResponse.TxHash, nil
+}
+
 func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, error) {
 	resp, err := c.nodeClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
 		Creator: creator,
@@ -89,6 +109,26 @@ func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, e
 	return resp.Node.Status, nil
 }
 
+func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
+	resp, err := c.nodeClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
+		Creator: creator,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	fmt.Printf("Node Information:%+v\n", resp.Node)
+
+	pledgeResp, err := c.nodeClient.Pledge(ctx, &nodetypes.QueryGetPledgeRequest{
+		Creator: creator,
+	})
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+	fmt.Printf("Node Pledge:%+v\n", pledgeResp.Pledge)
+}
+
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
 	go func() {
 		ticker := time.NewTicker(15 * time.Minute)
@@ -97,12 +137,12 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 		for {
 			select {
 			case <-ticker.C:
-				_, err := c.Reset(ctx, creator, "", status)
+				txHash, err := c.Reset(ctx, creator, "", status)
 				if err != nil {
 					log.Error(err.Error())
 				}
 
-				log.Infof("Reported node status[%b] to SAO network.", status)
+				log.Infof("Reported node status[%b] to SAO network, txHash=%s", status, txHash)
 			case <-ctx.Done():
 				return
 			}

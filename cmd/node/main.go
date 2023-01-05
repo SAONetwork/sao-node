@@ -95,6 +95,7 @@ func main() {
 			runCmd,
 			authCmd,
 			infoCmd,
+			claimCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -479,69 +480,114 @@ var runCmd = &cli.Command{
 var infoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "show node information",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: false,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		repo, err := prepareRepo(cctx)
+		repoPath := cctx.String("repo")
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			return fmt.Errorf("no chain address specified")
+		}
+
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
 		if err != nil {
+			return fmt.Errorf("new cosmos chain: %w", err)
+		}
+
+		creator := cctx.String("creator")
+		if creator == "" {
+			repo, err := prepareRepo(cctx)
+			if err != nil {
+				return err
+			}
+
+			var apiClient api.SaoApiStruct
+
+			c, err := repo.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			key, err := repo.GetKeyBytes()
+			if err != nil {
+				return err
+			}
+
+			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+			if err != nil {
+				return err
+			}
+
+			headers := http.Header{}
+			headers.Add("Authorization", "Bearer "+string(token))
+
+			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+			if err != nil {
+				return err
+			}
+			_, addr, err := manet.DialArgs(ma)
+			if err != nil {
+				return err
+			}
+
+			apiAddress := "http://" + addr + "/rpc/v0"
+			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			creator, err = apiClient.GetNodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		chain.ShowBalance(ctx, creator)
+		chain.ShowNodeInfo(ctx, creator)
+
+		return nil
+	},
+}
+
+var claimCmd = &cli.Command{
+	Name:  "claim",
+	Usage: "claim sao network storage reward",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		chainAddress := cliutil.ChainAddress
+		creator := cctx.String("creator")
+
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+
+		if tx, err := chain.ClaimReward(ctx, creator); err != nil {
 			return err
+		} else {
+			fmt.Println(tx)
 		}
 
-		var apiClient api.SaoApiStruct
-
-		c, err := repo.Config()
-		if err != nil {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
-		}
-
-		cfg, ok := c.(*config.Node)
-		if !ok {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
-		}
-
-		key, err := repo.GetKeyBytes()
-		if err != nil {
-			return err
-		}
-
-		token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
-		if err != nil {
-			return err
-		}
-
-		headers := http.Header{}
-		headers.Add("Authorization", "Bearer "+string(token))
-
-		ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
-		if err != nil {
-			return err
-		}
-		_, addr, err := manet.DialArgs(ma)
-		if err != nil {
-			return err
-		}
-
-		apiAddress := "http://" + addr + "/rpc/v0"
-		closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		address, err := apiClient.GetNodeAddress(ctx)
-		if err != nil {
-			return err
-		}
-		resp, err := apiClient.GetPeerInfo(ctx)
-		if err != nil {
-			return err
-		}
-
-		console := color.New(color.FgMagenta, color.Bold)
-		fmt.Printf("%-15s", "Account:")
-		console.Println(address)
-		fmt.Printf("%-15s", "Peer Info:")
-		console.Println(resp.PeerInfo)
 		return nil
 	},
 }
