@@ -11,6 +11,7 @@ import (
 	"sao-node/node/transport"
 	"sao-node/store"
 	"sao-node/types"
+	"sao-node/utils"
 	"strings"
 	"time"
 
@@ -235,6 +236,12 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 			shard, err = ss.getShardFromGateway(ctx, task.Owner, task.Gateway, task.OrderId, task.Cid)
 			if err != nil {
 				return err
+			}
+
+			cid, _ := utils.CalculateCid(shard)
+			log.Debugf("ipfs cid %v, task cid %v", cid, task.Cid)
+			if cid.String() != task.Cid.String() {
+				return xerrors.Errorf("ipfs cid %v != task cid %v", cid, task.Cid)
 			}
 		}
 
