@@ -217,7 +217,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	}
 }
 
-func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, shardCid cid.Cid) ([]byte, error) {
+func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, orderId uint64, shardCid cid.Cid) ([]byte, error) {
 	a, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
 		return nil, err
@@ -243,6 +243,7 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, s
 
 	request := types.ShardReq{
 		Cid:       shardCid,
+		OrderId:   orderId,
 		Proposal:  req,
 		RequestId: time.Now().UnixMilli(),
 	}

@@ -491,9 +491,25 @@ var infoCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
+
 		chainAddress := cliutil.ChainAddress
 		if chainAddress == "" {
-			return fmt.Errorf("no chain address specified")
+			r, err := prepareRepo(cctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := r.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			chainAddress = cfg.Chain.Remote
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
