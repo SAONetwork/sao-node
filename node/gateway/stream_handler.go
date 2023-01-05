@@ -203,7 +203,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 		RequestId:  req.RequestId,
 		ResponseId: time.Now().UnixMilli(),
 	}
-	log.Debugf("send ShardResp(requestId=%d,responseId=%d): Content=%v", req.RequestId, resp.ResponseId, string(contentBytes))
+	log.Debugf("send ShardResp(requestId=%d,responseId=%d): len(Content)=%d", req.RequestId, resp.ResponseId, len(contentBytes))
 
 	err = resp.Marshal(s, "json")
 	if err != nil {
