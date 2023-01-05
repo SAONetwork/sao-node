@@ -274,7 +274,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	chainSvc.StartStatusReporter(ctx, sn.address, status)
 
-	sn.stopFuncs = append(sn.stopFuncs, func(ctx context.Context) error {
+	sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
 		for _, c := range notifyChan {
 			close(c)
 		}

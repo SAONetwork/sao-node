@@ -3,10 +3,16 @@ package chain
 import (
 	"context"
 	"fmt"
+	"math/big"
+
+	"github.com/cosmos/cosmos-sdk/types"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/mitchellh/go-homedir"
 )
+
+const DENOM string = "stake"
 
 func newAccountRegistry(_ context.Context, repo string) (cosmosaccount.Registry, error) {
 	repoPath, err := homedir.Expand(repo)
@@ -51,7 +57,7 @@ func SignByAccount(ctx context.Context, repo string, name string, payload []byte
 	return sig, err
 }
 
-func List(ctx context.Context, repo string) error {
+func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
 		return err
@@ -70,9 +76,43 @@ func List(ctx context.Context, repo string) error {
 
 		fmt.Println("Account:", account.Name)
 		fmt.Println("Address:", address)
+
+		resp, err := c.bankClient.Balance(ctx, &banktypes.QueryBalanceRequest{
+			Address: address,
+			Denom:   DENOM,
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Println("Balance:", resp.Balance.Amount.Uint64(), DENOM)
 	}
 
 	return nil
+}
+
+func (c *ChainSvc) Send(ctx context.Context, from string, to string, amount int64) (string, error) {
+	signerAcc, err := c.cosmos.Account(from)
+	if err != nil {
+		return "", fmt.Errorf("%w, check the keyring please", err)
+	}
+
+	tx, err := c.cosmos.BankSendTx(ctx, signerAcc, to, append(make(types.Coins, 0), types.Coin{
+		Denom:  DENOM,
+		Amount: types.NewIntFromBigInt(big.NewInt(amount)),
+	}))
+	if err != nil {
+		return "", err
+	}
+
+	txResp, err := tx.Broadcast(ctx)
+	if err != nil {
+		return "", err
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", fmt.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+
+	return txResp.TxResponse.TxHash, nil
 }
 
 func Create(ctx context.Context, repo string, name string) (string, string, string, error) {

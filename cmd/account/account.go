@@ -11,6 +11,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
+	"golang.org/x/xerrors"
 )
 
 var AccountCmd = &cli.Command{
@@ -19,6 +20,7 @@ var AccountCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		listCmd,
 		createCmd,
+		sendCmd,
 		importCmd,
 		exportCmd,
 	},
@@ -30,7 +32,17 @@ var listCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		err := chain.List(ctx, cctx.String("repo"))
+		repoPath := cctx.String("repo")
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			return xerrors.Errorf("no chain address specified")
+		}
+
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+		err = chain.List(ctx, repoPath)
 		if err != nil {
 			return err
 		}
@@ -110,6 +122,52 @@ var exportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		return nil
+	},
+}
+
+var sendCmd = &cli.Command{
+	Name:  "send",
+	Usage: "send SAO tokens from one account to another",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "from",
+			Usage:    "the original account to spend tokens",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "to",
+			Usage:    "the target account to received tokens",
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:     "amount",
+			Usage:    "the token amount to send",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		repoPath := cctx.String("repo")
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			return xerrors.Errorf("no chain address specified")
+		}
+
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		if err != nil {
+			return xerrors.Errorf("new cosmos chain: %w", err)
+		}
+		from := cctx.String("from")
+		to := cctx.String("to")
+		amount := cctx.Int64("amount")
+		txHash, err := chain.Send(ctx, from, to, amount)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%d stakes has been transferred from %s to %s, txHash=%s\n", amount, from, to, txHash)
 
 		return nil
 	},
