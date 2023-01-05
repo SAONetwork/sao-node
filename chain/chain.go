@@ -61,7 +61,7 @@ type ChainSvcApi interface {
 }
 
 func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
-	log.Infof("initialize chain client")
+	log.Debugf("initialize chain client")
 
 	cosmos, err := cosmosclient.New(ctx,
 		cosmosclient.WithAddressPrefix(addressPrefix),
@@ -78,7 +78,7 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	didClient := didtypes.NewQueryClient(cosmos.Context())
 
-	log.Info("initialize chain listener")
+	log.Debugf("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
 	if err != nil {
 		return nil, err
