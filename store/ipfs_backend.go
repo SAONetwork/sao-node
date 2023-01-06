@@ -97,11 +97,17 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 
 func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
 	path := icorepath.New(cid.String())
-	r, err := b.api.Unixfs().Get(ctx, path)
+	s, err := b.api.Block().Stat(ctx, path)
+	// r, err := b.api.Unixfs().Get(ctx, path)
 	if err != nil {
 		return false, err
 	}
-	return r != nil, nil
+	err = s.Path().IsValid()
+	if err != nil {
+		return false, err
+	}
+	// return r != nil, nil
+	return true, nil
 }
 
 func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error) {
