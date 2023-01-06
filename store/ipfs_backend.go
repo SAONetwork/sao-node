@@ -106,7 +106,8 @@ func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
 
 func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error) {
 	path := icorepath.New(cid.String())
-	r, err := b.api.Unixfs().Get(ctx, path)
+	// r, err := b.api.Unixfs().Get(ctx, path)
+	r, err := b.api.Block().Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
