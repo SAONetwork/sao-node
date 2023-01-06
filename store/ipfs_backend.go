@@ -79,7 +79,10 @@ func (b *IpfsBackend) Close() error {
 
 func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) {
 	// r, err := b.api.Unixfs().Add(ctx, files.NewReaderFile(reader), options.Unixfs.Pin(true), options.Unixfs.CidVersion(1))
-	blkSt, err := b.api.Block().Put(ctx, files.NewReaderFile(reader), options.Block.Pin(true))
+	blkSt, err := b.api.Block().Put(ctx, files.NewReaderFile(reader), options.Block.Pin(true), func(settings *options.BlockPutSettings) error {
+		settings.CidPrefix.Version = 1
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +90,8 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 	//hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
 	// log.Debugf("%s store hash: %s %v", b.Id(), r.String(), r.Cid())
 	// log.Debugf("codec:%v", r.Cid().Type())
-	log.Debugf("%s store hash: %v", b.Id(), blkSt.Path().Cid())
+	log.Debugf("%s store hash: %v %v", b.Id(), blkSt.Path().Cid().Version(), blkSt.Path().Cid().Type())
+	fmt.Printf("%s store hash: %v %v", b.Id(), blkSt.Path().Cid().Version(), blkSt.Path().Cid().Type())
 	return blkSt.Path().Cid().String(), err
 }
 
