@@ -584,14 +584,85 @@ var claimCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "creator",
 			Usage:    "node's account on sao chain",
-			Required: true,
+			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress := cliutil.ChainAddress
 		creator := cctx.String("creator")
+		if creator == "" {
+			repo, err := prepareRepo(cctx)
+			if err != nil {
+				return err
+			}
+
+			var apiClient api.SaoApiStruct
+
+			c, err := repo.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			key, err := repo.GetKeyBytes()
+			if err != nil {
+				return err
+			}
+
+			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+			if err != nil {
+				return err
+			}
+
+			headers := http.Header{}
+			headers.Add("Authorization", "Bearer "+string(token))
+
+			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+			if err != nil {
+				return err
+			}
+			_, addr, err := manet.DialArgs(ma)
+			if err != nil {
+				return err
+			}
+
+			apiAddress := "http://" + addr + "/rpc/v0"
+			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+			if err != nil {
+				return err
+			}
+			defer closer()
+
+			creator, err = apiClient.GetNodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			r, err := prepareRepo(cctx)
+			if err != nil {
+				return err
+			}
+
+			c, err := r.Config()
+			if err != nil {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return xerrors.Errorf("invalid config for repo, got: %T", c)
+			}
+
+			chainAddress = cfg.Chain.Remote
+		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
