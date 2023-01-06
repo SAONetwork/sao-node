@@ -628,7 +628,7 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 		},
 	})
 	if err != nil {
-		return xerrors.Errorf("verify client proposal(%t) signature failed: %v", proposal, err)
+		return xerrors.Errorf("verify client proposal(%T) signature failed: %v", proposal, err)
 	}
 
 	return nil
