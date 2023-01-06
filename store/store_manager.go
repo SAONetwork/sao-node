@@ -18,7 +18,7 @@ type StoreBackend interface {
 	Close() error
 	Store(ctx context.Context, reader io.Reader) (any, error)
 	Remove(ctx context.Context, cid cid.Cid) error
-	Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error)
+	Get(ctx context.Context, cid cid.Cid) (io.Reader, error)
 	IsExist(ctx context.Context, cid cid.Cid) (bool, error)
 }
 
@@ -88,7 +88,7 @@ func (ss *StoreManager) Remove(ctx context.Context, cid cid.Cid) error {
 	return nil
 }
 
-func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error) {
+func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.Reader, error) {
 	for _, back := range ss.backends {
 		reader, err := back.Get(ctx, cid)
 		if err != nil {
