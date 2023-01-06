@@ -78,15 +78,17 @@ func (b *IpfsBackend) Close() error {
 }
 
 func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) {
-	r, err := b.api.Unixfs().Add(ctx, files.NewReaderFile(reader), options.Unixfs.Pin(true), options.Unixfs.CidVersion(1))
+	// r, err := b.api.Unixfs().Add(ctx, files.NewReaderFile(reader), options.Unixfs.Pin(true), options.Unixfs.CidVersion(1))
+	blkSt, err := b.api.Block().Put(ctx, files.NewReaderFile(reader), options.Block.Pin(true))
 	if err != nil {
 		return nil, err
 	}
 
 	//hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
-	log.Debugf("%s store hash: %s %v", b.Id(), r.String(), r.Cid())
-	log.Debugf("codec:%v", r.Cid().Type())
-	return r.Cid().String(), err
+	// log.Debugf("%s store hash: %s %v", b.Id(), r.String(), r.Cid())
+	// log.Debugf("codec:%v", r.Cid().Type())
+	log.Debugf("%s store hash: %v", b.Id(), blkSt.Path().Cid())
+	return blkSt.Path().Cid().String(), err
 }
 
 func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
