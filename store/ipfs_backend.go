@@ -110,7 +110,7 @@ func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
 	return true, nil
 }
 
-func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, error) {
+func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.Reader, error) {
 	path := icorepath.New(cid.String())
 	// r, err := b.api.Unixfs().Get(ctx, path)
 	r, err := b.api.Block().Get(ctx, path)
@@ -118,7 +118,7 @@ func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.ReadCloser, erro
 		return nil, err
 	}
 	//return b.ipfsApi.Cat(cid.String())
-	return r.(files.File), nil
+	return r, nil
 }
 
 func (b *IpfsBackend) Remove(ctx context.Context, cid cid.Cid) error {
