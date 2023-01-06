@@ -61,7 +61,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 func CalculateCid(content []byte) (cid.Cid, error) {
 	pref := cid.Prefix{
 		Version:  1,
-		Codec:    uint64(multicodec.Raw),
+		Codec:    uint64(multicodec.DagPb),
 		MhType:   multihash.SHA2_256,
 		MhLength: -1, // default length
 	}
