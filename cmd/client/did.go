@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sao-node/chain"
 	saoclient "sao-node/client"
 	cliutil "sao-node/cmd"
 
@@ -83,18 +82,16 @@ var didShowInfoCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-
-		repoPath := cctx.String("repo")
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			return fmt.Errorf("no chain address specified")
+		opt := saoclient.SaoClientOptions{
+			Repo: cctx.String(FlagClientRepo),
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {
-			return fmt.Errorf("new cosmos chain: %w", err)
+			return err
 		}
-		chain.ShowDidInfo(ctx, cctx.String("did-url"))
+		defer closer()
+		saoclient.ShowDidInfo(ctx, cctx.String("did-url"))
 
 		return nil
 	},
@@ -114,7 +111,7 @@ var didSignCmd = &cli.Command{
 		opt := saoclient.SaoClientOptions{
 			Repo:      cctx.String(FlagClientRepo),
 			Gateway:   "none",
-			ChainAddr: "none",
+			ChainAddr: cliutil.ChainAddress,
 		}
 		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {

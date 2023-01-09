@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/parser"
 	"github.com/SaoNetwork/sao-did/sid"
@@ -63,9 +64,7 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 		log.Error(err.Error())
 		return
 	}
-	fmt.Println()
 	fmt.Println("Did: ", did)
-	fmt.Println()
 
 	paymentAddressResp, err := c.didClient.PaymentAddress(ctx, &types.QueryGetPaymentAddressRequest{
 		Did: did,
@@ -75,7 +74,6 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 		return
 	}
 	fmt.Println("PaymentAddress:", paymentAddressResp.PaymentAddress.Address)
-	fmt.Println()
 
 	getSidDocFunc := func(versionId string) (*sid.SidDocument, error) {
 		return c.GetSidDocument(ctx, versionId)
@@ -116,7 +114,6 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 		pastSeedsResp, err := c.didClient.PastSeeds(ctx, &types.QueryGetPastSeedsRequest{
 			Did: did,
 		})
-
 		if err == nil {
 			printStringArray(pastSeedsResp.PastSeeds.Seeds, "PastSeeds", "")
 			fmt.Println()
@@ -125,6 +122,10 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 		versionsResp, err := c.didClient.SidDocumentVersion(ctx, &types.QueryGetSidDocumentVersionRequest{
 			DocId: pd.ID,
 		})
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
 
 		fmt.Println("DidDocument:")
 		for index, version := range versionsResp.SidDocumentVersion.VersionList {
@@ -193,12 +194,11 @@ func printDidDocument(didResolution saodidtypes.DidResolutionResult, prefix stri
 	if len(didResolution.DidDocument.Authentication) > 0 {
 		fmt.Println(prefix + "Authentication: ")
 		for _, vmany := range didResolution.DidDocument.Authentication {
-			switch vmany.(type) {
+			switch t := vmany.(type) {
 			case string:
-				fmt.Println(prefix + "- " + vmany.(string))
+				fmt.Println(prefix + "- " + t)
 			case saodidtypes.VerificationMethod:
-				vm := vmany.(saodidtypes.VerificationMethod)
-				printVm(vm)
+				printVm(t)
 			}
 		}
 	}
