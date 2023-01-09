@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
@@ -117,7 +118,14 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		log.Error(err.Error())
 		return
 	}
-	fmt.Printf("Node Information:%+v\n", resp.Node)
+	fmt.Println("Node Information")
+	fmt.Println("Creator:", resp.Node.Creator)
+	fmt.Printf("Status:%b\n", resp.Node.Status)
+	fmt.Println("Reputation:", resp.Node.Reputation)
+	fmt.Println("LastAliveHeigh:", resp.Node.LastAliveHeigh)
+	for _, peer := range strings.Split(resp.Node.Peer, ",") {
+		fmt.Println("P2P Peer Info:", peer)
+	}
 
 	pledgeResp, err := c.nodeClient.Pledge(ctx, &nodetypes.QueryGetPledgeRequest{
 		Creator: creator,
@@ -126,7 +134,13 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		log.Error(err.Error())
 		return
 	}
-	fmt.Printf("Node Pledge:%+v\n", pledgeResp.Pledge)
+	fmt.Println("Node Pledge")
+	fmt.Println("Reward:", pledgeResp.Pledge.Reward)
+	fmt.Println("Reward Debt:", pledgeResp.Pledge.RewardDebt)
+	fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
+	fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
+	fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
+	fmt.Println("LastRewardAt:", pledgeResp.Pledge.LastRewardAt)
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
