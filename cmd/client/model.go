@@ -36,6 +36,7 @@ var modelCmd = &cli.Command{
 		loadCmd,
 		deleteCmd,
 		commitsCmd,
+		listCmd,
 		renewCmd,
 		statusCmd,
 	},
@@ -364,6 +365,21 @@ var loadCmd = &cli.Command{
 			fmt.Printf("data model dumped to %s.\r\n", path)
 		}
 
+		return nil
+	},
+}
+
+var listCmd = &cli.Command{
+	Name:  "list",
+	Usage: "check models' status",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:     "date",
+			Usage:    "updated date of data model's to be list",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
 		return nil
 	},
 }
