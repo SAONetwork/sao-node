@@ -68,6 +68,10 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 		return err
 	}
 
+	if len(accounts) > 0 {
+		fmt.Println("======================================================")
+	}
+
 	for _, account := range accounts {
 		address, err := account.Address("cosmos")
 		if err != nil {
@@ -85,6 +89,7 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 			return err
 		}
 		fmt.Println("Balance:", resp.Balance.Amount.Uint64(), DENOM)
+		fmt.Println("======================================================")
 	}
 
 	return nil
