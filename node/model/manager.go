@@ -246,11 +246,16 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	if err != nil {
 		return nil, xerrors.Errorf(err.Error())
 	}
+	commitIds := strings.Split(clientProposal.Proposal.CommitId, "|")
+	if len(commitIds) != 2 || commitIds[0] != meta.CommitId {
+		return nil, xerrors.Errorf("invalid commitId:%s", clientProposal.Proposal.CommitId)
+	}
 
+	commitId := commitIds[0]
 	var isFetch = true
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
 	if orgModel != nil {
-		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
+		if commitId == meta.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
 			log.Debugf("load the model[%s]-%s from cache", meta.DataId, meta.Alias)
 			log.Debug("model: ", string(orgModel.Content))
