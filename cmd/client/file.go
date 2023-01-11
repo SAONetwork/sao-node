@@ -136,7 +136,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		dataId := utils.GenerateDataId()
+		dataId := utils.GenerateDataId(didManager.Id + groupId)
 		proposal := saotypes.Proposal{
 			DataId:     dataId,
 			Owner:      didManager.Id,

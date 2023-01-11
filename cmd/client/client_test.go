@@ -44,7 +44,7 @@ func TestSignature(t *testing.T) {
 
 	proposal := saotypes.QueryProposal{
 		Owner:           didManager.Id,
-		Keyword:         utils.GenerateDataId(),
+		Keyword:         utils.GenerateDataId(didManager.Id),
 		LastValidHeight: uint64(100),
 		Gateway:         "peerInfo",
 	}

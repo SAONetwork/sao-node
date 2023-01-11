@@ -160,7 +160,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		dataId := utils.GenerateDataId()
+		dataId := utils.GenerateDataId(didManager.Id + groupId)
 		proposal := saotypes.Proposal{
 			DataId:   dataId,
 			Owner:    didManager.Id,
@@ -784,6 +784,11 @@ var updateCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
+			Name:     "commit-id",
+			Usage:    "data model's last commit id",
+			Required: true,
+		},
+		&cli.StringFlag{
 			Name:     "cid",
 			Usage:    "target content cid",
 			Required: true,
@@ -847,6 +852,7 @@ var updateCmd = &cli.Command{
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
 		}
+		commitId := cctx.String("commit-id")
 
 		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
 		if err != nil {
@@ -897,7 +903,7 @@ var updateCmd = &cli.Command{
 			Alias:      res.Metadata.Alias,
 			Tags:       cctx.StringSlice("tags"),
 			Cid:        newCid.String(),
-			CommitId:   utils.GenerateCommitId(),
+			CommitId:   commitId + "|" + utils.GenerateCommitId(didManager.Id+groupId),
 			Rule:       cctx.String("rule"),
 			Operation:  operation,
 			Size_:      uint64(size),

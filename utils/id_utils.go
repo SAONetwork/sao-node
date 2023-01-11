@@ -12,6 +12,8 @@ import (
 	"golang.org/x/xerrors"
 )
 
+const NS_URL = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
+
 func IsContent(content string) bool {
 	r, _ := regexp.Compile(`^\\{.*?\\}$`)
 
@@ -31,12 +33,15 @@ func GenerateAlias(content []byte) string {
 	return uuid.FromBytesOrNil(content).String()
 }
 
-func GenerateDataId() string {
-	return uuid.NewV4().String()
+func GenerateDataId(seed string) string {
+	return GenerateCommitId(seed)
 }
 
-func GenerateCommitId() string {
-	return uuid.NewV4().String()
+func GenerateCommitId(seed string) string {
+	idv1 := uuid.NewV1().String()
+	idv5 := uuid.NewV5(uuid.FromStringOrNil(NS_URL), seed).String()
+
+	return idv1[0:18] + idv5[18:]
 }
 
 func GenerateGroupId() string {
