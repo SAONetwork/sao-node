@@ -18,6 +18,7 @@ import (
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/urfave/cli/v2"
 )
 
@@ -141,7 +142,8 @@ func GetChainAddress(cctx *cli.Context) (string, error) {
 	if strings.Contains(repoPath, "-node") {
 		r, err := repo.PrepareRepo(repoPath)
 		if err != nil {
-			return chainAddress, err
+			log.Error(err)
+			return chainAddress, nil
 		}
 
 		c, err := r.Config()

@@ -197,7 +197,7 @@ var joinCmd = &cli.Command{
 
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 		creator := cctx.String("creator")
 
@@ -277,7 +277,7 @@ var updateCmd = &cli.Command{
 
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
@@ -325,7 +325,7 @@ var quitCmd = &cli.Command{
 
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
@@ -476,7 +476,7 @@ var infoCmd = &cli.Command{
 		repoPath := cctx.String("repo")
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
@@ -613,7 +613,7 @@ var claimCmd = &cli.Command{
 
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
