@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/labstack/gommon/log"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 	"golang.org/x/xerrors"
@@ -34,7 +35,20 @@ var listCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if repoPath == "" {
+			var err error
+			if cctx.App.Name == "saoclient" {
+				repoPath, err = homedir.Expand("~/.sao-cli")
+			} else if cctx.App.Name == "saonode" {
+				repoPath, err = homedir.Expand("~/.sao-node")
+			} else {
+				return xerrors.Errorf("invalid binary: %s", cctx.App.Name)
+			}
+			if err != nil {
+				return err
+			}
+		}
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -76,7 +90,18 @@ var createCmd = &cli.Command{
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
-		accountName, address, mnemonic, err := chain.Create(ctx, cctx.String("repo"), name)
+		repoPath := cctx.String("repo")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return xerrors.Errorf("invalid binary: %s", cctx.App.Name)
+			}
+		}
+
+		accountName, address, mnemonic, err := chain.Create(ctx, repoPath, name)
 		if err != nil {
 			return err
 		}
@@ -119,7 +144,18 @@ var exportCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Export(ctx, cctx.String("repo"), name, string(passphrase))
+		repoPath := cctx.String("repo")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return xerrors.Errorf("invalid binary: %s", cctx.App.Name)
+			}
+		}
+
+		err = chain.Export(ctx, repoPath, name, string(passphrase))
 		if err != nil {
 			return err
 		}
@@ -152,7 +188,17 @@ var sendCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return xerrors.Errorf("invalid binary: %s", cctx.App.Name)
+			}
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -220,7 +266,17 @@ var importCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Import(ctx, cctx.String("repo"), name, secret, string(passphrase))
+		repoPath := cctx.String("repo")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return xerrors.Errorf("invalid binary: %s", cctx.App.Name)
+			}
+		}
+		err = chain.Import(ctx, repoPath, name, secret, string(passphrase))
 		if err != nil {
 			return err
 		}
