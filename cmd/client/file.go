@@ -126,7 +126,7 @@ var createFileCmd = &cli.Command{
 			return err
 		}
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -291,7 +291,7 @@ var downloadCmd = &cli.Command{
 			version = ""
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -401,7 +401,7 @@ var tokenGenCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}

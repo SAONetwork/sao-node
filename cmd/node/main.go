@@ -37,16 +37,11 @@ import (
 
 var log = logging.Logger("node")
 
-const (
-	FlagStorageRepo        = "repo"
-	FlagStorageDefaultRepo = "~/.sao-node"
-)
-
 var FlagRepo = &cli.StringFlag{
-	Name:    FlagStorageRepo,
+	Name:    cliutil.FlagStorageRepo,
 	Usage:   "repo directory for sao storage node",
 	EnvVars: []string{"SAO_NODE_PATH"},
-	Value:   FlagStorageDefaultRepo,
+	Value:   cliutil.FlagStorageDefaultRepo,
 }
 
 func before(_ *cli.Context) error {
@@ -129,7 +124,7 @@ var initCmd = &cli.Command{
 
 		chainAddress := cliutil.ChainAddress
 
-		repoPath := cctx.String(FlagStorageRepo)
+		repoPath := cctx.String(cliutil.FlagStorageRepo)
 		creator := cctx.String("creator")
 
 		r, err := initRepo(repoPath, chainAddress)
@@ -200,7 +195,10 @@ var joinCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress := cliutil.ChainAddress
+		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if err != nil {
+			return err
+		}
 		creator := cctx.String("creator")
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
@@ -277,9 +275,9 @@ var updateCmd = &cli.Command{
 			return xerrors.Errorf("invalid config for repo, got: %T", c)
 		}
 
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			chainAddress = cfg.Chain.Remote
+		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if err != nil {
+			return err
 		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
@@ -325,24 +323,9 @@ var quitCmd = &cli.Command{
 		// TODO: validate input
 		creator := cctx.String("creator")
 
-		r, err := prepareRepo(cctx)
+		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
 			return err
-		}
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			c, err := r.Config()
-			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			chainAddress = cfg.Chain.Remote
 		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
@@ -491,25 +474,9 @@ var infoCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			r, err := prepareRepo(cctx)
-			if err != nil {
-				return err
-			}
-
-			c, err := r.Config()
-			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			chainAddress = cfg.Chain.Remote
+		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if err != nil {
+			return err
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
@@ -644,24 +611,9 @@ var claimCmd = &cli.Command{
 			}
 		}
 
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			r, err := prepareRepo(cctx)
-			if err != nil {
-				return err
-			}
-
-			c, err := r.Config()
-			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
-			}
-
-			chainAddress = cfg.Chain.Remote
+		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if err != nil {
+			return err
 		}
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
@@ -721,18 +673,5 @@ var authCmd = &cli.Command{
 }
 
 func prepareRepo(cctx *cli.Context) (*repo.Repo, error) {
-	repoPath := cctx.String(FlagStorageRepo)
-	repo, err := repo.NewRepo(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	ok, err := repo.Exists()
-	if err != nil {
-		return nil, err
-	}
-	if !ok {
-		return nil, xerrors.Errorf("repo at '%s' is not initialized, run 'saonode init' to set it up", repoPath)
-	}
-	return repo, nil
+	return repo.PrepareRepo(cctx.String(cliutil.FlagStorageRepo))
 }

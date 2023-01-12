@@ -2,12 +2,13 @@ package client
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"sao-node/api"
 	"sao-node/chain"
 	"sao-node/utils"
+
+	"golang.org/x/xerrors"
 
 	apiclient "sao-node/api/client"
 
@@ -57,7 +58,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 				return nil, nil, err
 			}
 
-			config := defaultSaoClientConfig()
+			config := DefaultSaoClientConfig()
 			if opt.Gateway != "" && opt.Gateway != "none" {
 				config.Gateway = opt.Gateway
 			}
@@ -82,7 +83,8 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 			}
 		}
 	}
-	c, err := utils.FromFile(configPath, defaultSaoClientConfig())
+
+	c, err := utils.FromFile(configPath, DefaultSaoClientConfig())
 	if err != nil {
 		return nil, nil, err
 	}
@@ -133,7 +135,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 	}, closer, nil
 }
 
-func defaultSaoClientConfig() *SaoClientConfig {
+func DefaultSaoClientConfig() *SaoClientConfig {
 	return &SaoClientConfig{
 		GroupId:      utils.GenerateGroupId(),
 		KeyName:      "",
