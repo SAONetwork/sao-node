@@ -9,6 +9,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/labstack/gommon/log"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
 	"golang.org/x/xerrors"
@@ -35,7 +36,7 @@ var listCmd = &cli.Command{
 		repoPath := cctx.String("repo")
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
@@ -153,7 +154,7 @@ var sendCmd = &cli.Command{
 		repoPath := cctx.String("repo")
 		chainAddress, err := cliutil.GetChainAddress(cctx)
 		if err != nil {
-			return err
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
