@@ -37,11 +37,16 @@ import (
 
 var log = logging.Logger("node")
 
+const (
+	FlagStorageRepo        = "repo"
+	FlagStorageDefaultRepo = "~/.sao-node"
+)
+
 var FlagRepo = &cli.StringFlag{
-	Name:    cliutil.FlagStorageRepo,
+	Name:    FlagStorageRepo,
 	Usage:   "repo directory for sao storage node",
 	EnvVars: []string{"SAO_NODE_PATH"},
-	Value:   cliutil.FlagStorageDefaultRepo,
+	Value:   FlagStorageDefaultRepo,
 }
 
 func before(_ *cli.Context) error {
@@ -124,7 +129,7 @@ var initCmd = &cli.Command{
 
 		chainAddress := cliutil.ChainAddress
 
-		repoPath := cctx.String(cliutil.FlagStorageRepo)
+		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
 
 		r, err := initRepo(repoPath, chainAddress)
@@ -195,7 +200,7 @@ var joinCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		chainAddress, err := cliutil.GetChainAddress(cctx, "")
 		if err != nil {
 			log.Warn(err)
 		}
@@ -275,7 +280,7 @@ var updateCmd = &cli.Command{
 			return xerrors.Errorf("invalid config for repo, got: %T", c)
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		chainAddress, err := cliutil.GetChainAddress(cctx, "")
 		if err != nil {
 			log.Warn(err)
 		}
@@ -323,7 +328,7 @@ var quitCmd = &cli.Command{
 		// TODO: validate input
 		creator := cctx.String("creator")
 
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		chainAddress, err := cliutil.GetChainAddress(cctx, "")
 		if err != nil {
 			log.Warn(err)
 		}
@@ -474,7 +479,7 @@ var infoCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		chainAddress, err := cliutil.GetChainAddress(cctx, "")
 		if err != nil {
 			log.Warn(err)
 		}
@@ -611,7 +616,7 @@ var claimCmd = &cli.Command{
 			}
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx)
+		chainAddress, err := cliutil.GetChainAddress(cctx, "")
 		if err != nil {
 			log.Warn(err)
 		}
@@ -673,5 +678,5 @@ var authCmd = &cli.Command{
 }
 
 func prepareRepo(cctx *cli.Context) (*repo.Repo, error) {
-	return repo.PrepareRepo(cctx.String(cliutil.FlagStorageRepo))
+	return repo.PrepareRepo(cctx.String(FlagStorageRepo))
 }

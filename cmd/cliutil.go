@@ -24,11 +24,6 @@ import (
 
 const FlagKeyName = "key-name"
 
-const (
-	FlagStorageRepo        = "repo"
-	FlagStorageDefaultRepo = "~/.sao-node"
-)
-
 var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
 	Name:        "chain-address",
@@ -135,9 +130,12 @@ var GenerateDocCmd = &cli.Command{
 	},
 }
 
-func GetChainAddress(cctx *cli.Context) (string, error) {
+func GetChainAddress(cctx *cli.Context, repoPath string) (string, error) {
+	if cctx.String("chain-address") != "" {
+		return cctx.String("chain-address"), nil
+	}
+
 	chainAddress := ChainAddress
-	repoPath := cctx.String(FlagStorageRepo)
 	configPath := filepath.Join(repoPath, "config.toml")
 	if strings.Contains(repoPath, "-node") {
 		r, err := repo.PrepareRepo(repoPath)
@@ -148,7 +146,7 @@ func GetChainAddress(cctx *cli.Context) (string, error) {
 
 		c, err := r.Config()
 		if err != nil {
-			return chainAddress, xerrors.Errorf("invalid config for repo, got: %T", c)
+			return chainAddress, err
 		}
 
 		cfg, ok := c.(*config.Node)

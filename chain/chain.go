@@ -84,10 +84,14 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 	if err != nil {
 		return nil, err
 	}
-	err = http.Start()
-	if err != nil {
-		return nil, err
-	}
+	// log.Debug("initialize chain listener2", chainAddress)
+
+	// err = http.Reset()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// log.Debugf("initialize chain listener3")
+
 	return &ChainSvc{
 		cosmos:      cosmos,
 		bankClient:  bankClient,
