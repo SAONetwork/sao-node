@@ -3,12 +3,18 @@ package cliutil
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sao-node/chain"
 	saoclient "sao-node/client"
 	gen "sao-node/gen/clidoc"
+	"sao-node/node/config"
+	"sao-node/node/repo"
+	"sao-node/utils"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
+	"golang.org/x/xerrors"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -16,6 +22,11 @@ import (
 )
 
 const FlagKeyName = "key-name"
+
+const (
+	FlagStorageRepo        = "repo"
+	FlagStorageDefaultRepo = "~/.sao-node"
+)
 
 var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
@@ -48,11 +59,8 @@ func AskForPassphrase() (string, error) {
 	return string(passphrase), nil
 }
 
-func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
-	var keyName string
-	if !cctx.IsSet(FlagKeyName) {
-		keyName = cfg.KeyName
-	} else {
+func GetDidManager(cctx *cli.Context, keyName string) (*saodid.DidManager, string, error) {
+	if cctx.IsSet(FlagKeyName) {
 		keyName = cctx.String(FlagKeyName)
 	}
 
@@ -81,7 +89,6 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 		return nil, "", err
 	}
 
-	cfg.KeyName = keyName
 	return &didManager, address, nil
 }
 
@@ -125,4 +132,44 @@ var GenerateDocCmd = &cli.Command{
 		fmt.Println()
 		return nil
 	},
+}
+
+func GetChainAddress(cctx *cli.Context) (string, error) {
+	chainAddress := ChainAddress
+	repoPath := cctx.String(FlagStorageRepo)
+	configPath := filepath.Join(repoPath, "config.toml")
+	if strings.Contains(repoPath, "-node") {
+		r, err := repo.PrepareRepo(repoPath)
+		if err != nil {
+			return chainAddress, err
+		}
+
+		c, err := r.Config()
+		if err != nil {
+			return chainAddress, xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return chainAddress, xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		chainAddress = cfg.Chain.Remote
+	} else if strings.Contains(repoPath, "-cli") {
+		c, err := utils.FromFile(configPath, saoclient.DefaultSaoClientConfig())
+		if err != nil {
+			return chainAddress, err
+		}
+		cfg, ok := c.(*saoclient.SaoClientConfig)
+		if !ok {
+			return chainAddress, xerrors.Errorf("invalid config: %v", c)
+		}
+		chainAddress = cfg.ChainAddress
+	}
+
+	if chainAddress == "" {
+		return chainAddress, xerrors.Errorf("no chain address specified")
+	}
+
+	return chainAddress, nil
 }

@@ -150,7 +150,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -274,7 +274,7 @@ var loadCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -429,7 +429,7 @@ var renewCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -525,7 +525,7 @@ var statusCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -609,7 +609,7 @@ var deleteCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -675,7 +675,7 @@ var commitsCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -854,7 +854,7 @@ var updateCmd = &cli.Command{
 		}
 		commitId := cctx.String("commit-id")
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -969,7 +969,7 @@ var updatePermissionCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}

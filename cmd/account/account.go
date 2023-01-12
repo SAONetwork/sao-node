@@ -33,9 +33,9 @@ var listCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			return xerrors.Errorf("no chain address specified")
+		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if err != nil {
+			return err
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
@@ -151,9 +151,9 @@ var sendCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			return xerrors.Errorf("no chain address specified")
+		chainAddress, err := cliutil.GetChainAddress(cctx)
+		if err != nil {
+			return err
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")

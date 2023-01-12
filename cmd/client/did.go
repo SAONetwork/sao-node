@@ -47,7 +47,7 @@ var didCreateCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
+		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -58,6 +58,10 @@ var didCreateCmd = &cli.Command{
 		}
 
 		if cctx.Bool("override") {
+			if cctx.IsSet(cliutil.FlagKeyName) {
+				saoclient.Cfg.KeyName = cctx.String(cliutil.FlagKeyName)
+			}
+
 			err = saoclient.SaveConfig(saoclient.Cfg)
 			if err != nil {
 				return fmt.Errorf("save local config failed: %v", err)
@@ -119,7 +123,7 @@ var didSignCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, saoclient.Cfg.KeyName)
 		if err != nil {
 			return err
 		}

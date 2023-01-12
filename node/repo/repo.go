@@ -4,16 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"sao-node/node/config"
 	"sao-node/utils"
 	"sync"
+
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("repo")
@@ -40,6 +41,22 @@ type Repo struct {
 	ds     map[string]datastore.Batching
 	dsErr  error
 	dsOnce sync.Once
+}
+
+func PrepareRepo(repoPath string) (*Repo, error) {
+	repo, err := NewRepo(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := repo.Exists()
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, xerrors.Errorf("repo at '%s' is not initialized, run 'saonode init' to set it up", repoPath)
+	}
+	return repo, nil
 }
 
 func NewRepo(path string) (*Repo, error) {

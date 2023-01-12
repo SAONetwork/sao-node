@@ -163,7 +163,7 @@ var initCmd = &cli.Command{
 			}
 		}
 
-		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
+		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
