@@ -6,9 +6,8 @@ import (
 	"path/filepath"
 	"sao-node/api"
 	"sao-node/chain"
+	"sao-node/types"
 	"sao-node/utils"
-
-	"golang.org/x/xerrors"
 
 	apiclient "sao-node/api/client"
 
@@ -40,7 +39,7 @@ type SaoClientOptions struct {
 func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func(), error) {
 	cliPath, err := homedir.Expand(opt.Repo)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
 	}
 
 	// prepare config file
@@ -50,12 +49,12 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		if os.IsNotExist(err) {
 			err = os.MkdirAll(cliPath, 0755) //nolint: gosec
 			if err != nil && !os.IsExist(err) {
-				return nil, nil, err
+				return nil, nil, types.Wrap(types.ErrCreateDirFailed, err)
 			}
 
 			c, err := os.Create(configPath)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, types.Wrap(types.ErrCreateFileFailed, err)
 			}
 
 			config := DefaultSaoClientConfig()
@@ -71,26 +70,26 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 
 			dc, err := utils.NodeBytes(config)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, types.Wrap(types.ErrEncodeConfigFailed, err)
 			}
 			_, err = c.Write(dc)
 			if err != nil {
-				return nil, nil, err
+				return nil, nil, types.Wrap(types.ErrWriteConfigFailed, err)
 			}
 
 			if err := c.Close(); err != nil {
-				return nil, nil, err
+				return nil, nil, types.Wrap(types.ErrCloseFileFailed, err)
 			}
 		}
 	}
 
 	c, err := utils.FromFile(configPath, DefaultSaoClientConfig())
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, types.Wrap(types.ErrDecodeConfigFailed, err)
 	}
 	cfg, ok := c.(*SaoClientConfig)
 	if !ok {
-		return nil, nil, xerrors.Errorf("invalid config: %v", c)
+		return nil, nil, types.Wrapf(types.ErrReadConfigFailed, "invalid config: %v", c)
 	}
 
 	// prepare Gateway api
@@ -101,16 +100,16 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 			opt.Gateway = cfg.Gateway
 		}
 		if opt.Gateway == "" {
-			return nil, nil, xerrors.Errorf("invalid Gateway")
+			return nil, nil, types.Wrap(types.ErrInvalidGateway, err)
 		}
 
 		if len(cfg.Token) == 0 {
-			return nil, nil, xerrors.New("invalid token")
+			return nil, nil, types.Wrap(types.ErrInvalidToken, err)
 		}
 
 		gatewayApi, closer, err = apiclient.NewGatewayApi(ctx, opt.Gateway, cfg.Token)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, types.Wrap(types.ErrCreateApiServiceFailed, err)
 		}
 	}
 
@@ -122,7 +121,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		}
 		chainSvc, err := chain.NewChainSvc(ctx, opt.Repo, "cosmos", opt.ChainAddr, "/websocket")
 		if err != nil {
-			return nil, nil, xerrors.Errorf("new cosmos chain: %w", err)
+			return nil, nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 		}
 		chainApi = chainSvc
 	}
@@ -148,26 +147,26 @@ func DefaultSaoClientConfig() *SaoClientConfig {
 func (sc SaoClient) SaveConfig(cfg *SaoClientConfig) error {
 	cliPath, err := homedir.Expand(sc.repo)
 	if err != nil {
-		return err
+		return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
 	}
 
 	configPath := filepath.Join(cliPath, "config.toml")
 	c, err := os.OpenFile(configPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0777)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrOpenFileFailed, err)
 	}
 
 	dc, err := utils.NodeBytes(cfg)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrEncodeConfigFailed, err)
 	}
 	_, err = c.Write(dc)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrWriteConfigFailed, err)
 	}
 
 	if err := c.Close(); err != nil {
-		return err
+		return types.Wrap(types.ErrCloseFileFailed, err)
 	}
 	return nil
 }

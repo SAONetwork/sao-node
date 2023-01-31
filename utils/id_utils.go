@@ -9,7 +9,6 @@ import (
 	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
-	"golang.org/x/xerrors"
 )
 
 const NS_URL = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
@@ -57,7 +56,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 	b, err := jsoniter.Marshal(obj)
 
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	return b, nil

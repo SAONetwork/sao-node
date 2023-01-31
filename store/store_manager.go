@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 	"io"
+	"sao-node/types"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("store")
@@ -95,9 +95,9 @@ func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.Reader, error)
 			log.Errorf("%s get cid=%v error: %v", back.Id(), cid, err)
 			continue
 		}
-		return reader, err
+		return reader, nil
 	}
-	return nil, xerrors.Errorf("failed to get cid %v", cid)
+	return nil, types.Wrapf(types.ErrGetFailed, "failed to get cid %s", cid)
 }
 
 func (ss *StoreManager) IsExist(ctx context.Context, cid cid.Cid) bool {

@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
-	"golang.org/x/xerrors"
 )
 
 // FromFile loads config from a specified file overriding defaults specified in
@@ -39,7 +38,7 @@ func NodeBytes(cfg interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	e := toml.NewEncoder(buf)
 	if err := e.Encode(cfg); err != nil {
-		return nil, xerrors.Errorf("encoding node config: %w", err)
+		return nil, err
 	}
 
 	return buf.Bytes(), nil
