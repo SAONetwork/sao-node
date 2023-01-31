@@ -5,7 +5,6 @@ import (
 	"sao-node/types"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"golang.org/x/xerrors"
 )
 
 func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error) {
@@ -19,7 +18,7 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 		JwsSignature: req.JwsSignature,
 	})
 	if err != nil {
-		return nil, xerrors.Errorf("QueryMetadata failed, " + err.Error())
+		return nil, types.Wrap(types.ErrQueryMetadataFailed, err)
 	}
 	return resp, nil
 }
@@ -27,7 +26,7 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
-		return "", xerrors.Errorf("%w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	// TODO: Cid
@@ -42,11 +41,11 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	// log.Debug("MsgStore result: ", txResp)
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdataPermission tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 
 	return txResp.TxResponse.TxHash, nil

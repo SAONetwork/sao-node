@@ -71,7 +71,7 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 		cosmosclient.WithGas("auto"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
 
 	bankClient := banktypes.NewQueryClient(cosmos.Context())
@@ -82,7 +82,7 @@ func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAd
 	log.Debugf("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
 	// log.Debug("initialize chain listener2", chainAddress)
 
@@ -107,7 +107,7 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 		log.Infof("Stop chain listener.")
 		err := c.listener.Stop()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrStopChainServiceFailed, err)
 		}
 	}
 	return nil
@@ -125,7 +125,7 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 	for {
 		curHeight, err := c.GetLastHeight(ctx)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrap(types.ErrTxQueryFailed, err)
 		}
 		if curHeight > height {
 			break
@@ -134,7 +134,7 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 	}
 	hashBytes, err := hex.DecodeString(hash)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrTxQueryFailed, err)
 	}
 	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
 }
