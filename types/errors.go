@@ -4,11 +4,13 @@ import "github.com/cosmos/cosmos-sdk/types/errors"
 
 var (
 	ModuleCommon        = "common"
-	ErrInvalidRepoPath  = errors.Register(ModuleClient, 10000, "invalid repo path")
-	ErrCreateDirFailed  = errors.Register(ModuleClient, 10001, "failed to create the directory")
-	ErrCreateFileFailed = errors.Register(ModuleClient, 10002, "failed to create the file")
-	ErrOpenFileFailed   = errors.Register(ModuleClient, 10003, "failed to create the file")
-	ErrCloseFileFailed  = errors.Register(ModuleClient, 10004, "failed to close the file")
+	ErrInvalidRepoPath  = errors.Register(ModuleCommon, 10000, "invalid repo path")
+	ErrCreateDirFailed  = errors.Register(ModuleCommon, 10001, "failed to create the directory")
+	ErrCreateFileFailed = errors.Register(ModuleCommon, 10002, "failed to create the file")
+	ErrOpenFileFailed   = errors.Register(ModuleCommon, 10003, "failed to create the file")
+	ErrCloseFileFailed  = errors.Register(ModuleCommon, 10004, "failed to close the file")
+
+	ErrInvalidBinaryName = errors.Register(ModuleCommon, 10005, "invalid binary name")
 )
 
 var (
@@ -37,6 +39,9 @@ var (
 	ErrQueryMetadataFailed  = errors.Register(ModuleChain, 11015, "failed to query the meta data")
 	ErrQueryNodeFailed      = errors.Register(ModuleChain, 11016, "failed to query the node information")
 	ErrQueryOrderFailed     = errors.Register(ModuleChain, 11017, "failed to query the order information")
+
+	ErrInvalidSecrect    = errors.Register(ModuleChain, 11018, "invalid secrect")
+	ErrInvalidPassphrase = errors.Register(ModuleChain, 11019, "invalid passphrase")
 )
 
 var (
