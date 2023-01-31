@@ -3,20 +3,20 @@ package chain
 import (
 	"context"
 	"fmt"
+	"sao-node/types"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/parser"
 	"github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
-	"golang.org/x/xerrors"
 
-	"github.com/SaoNetwork/sao/x/did/types"
+	sidtypes "github.com/SaoNetwork/sao/x/did/types"
 )
 
 func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error) {
-	resp, err := c.didClient.SidDocument(ctx, &types.QueryGetSidDocumentRequest{VersionId: versionId})
+	resp, err := c.didClient.SidDocument(ctx, &sidtypes.QueryGetSidDocumentRequest{VersionId: versionId})
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrGetSidDocumentFailed, err)
 	}
 	if resp.SidDocument.VersionId == "" {
 		return nil, nil
@@ -38,26 +38,26 @@ func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*sid.S
 func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
-	msg := &types.MsgUpdatePaymentAddress{
+	msg := &sidtypes.MsgUpdatePaymentAddress{
 		Creator:   creator,
 		Did:       did,
 		AccountId: accountId,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgComplete tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdatePaymentAddress tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
-	_, err := c.didClient.ValidateDid(ctx, &types.QueryValidateDidRequest{
+	_, err := c.didClient.ValidateDid(ctx, &sidtypes.QueryValidateDidRequest{
 		Did: did,
 	})
 	if err != nil {
@@ -66,7 +66,7 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 	}
 	fmt.Println("Did: ", did)
 
-	paymentAddressResp, err := c.didClient.PaymentAddress(ctx, &types.QueryGetPaymentAddressRequest{
+	paymentAddressResp, err := c.didClient.PaymentAddress(ctx, &sidtypes.QueryGetPaymentAddressRequest{
 		Did: did,
 	})
 	if err != nil {
@@ -96,7 +96,7 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 
 	if pd.Method == "sid" {
 
-		accountAuthsResp, err := c.didClient.GetAllAccountAuths(ctx, &types.QueryGetAllAccountAuthsRequest{
+		accountAuthsResp, err := c.didClient.GetAllAccountAuths(ctx, &sidtypes.QueryGetAllAccountAuthsRequest{
 			Did: did,
 		})
 		if err != nil {
@@ -111,7 +111,7 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 		}
 		fmt.Println()
 
-		pastSeedsResp, err := c.didClient.PastSeeds(ctx, &types.QueryGetPastSeedsRequest{
+		pastSeedsResp, err := c.didClient.PastSeeds(ctx, &sidtypes.QueryGetPastSeedsRequest{
 			Did: did,
 		})
 		if err == nil {
@@ -119,7 +119,7 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 			fmt.Println()
 		}
 
-		versionsResp, err := c.didClient.SidDocumentVersion(ctx, &types.QueryGetSidDocumentVersionRequest{
+		versionsResp, err := c.didClient.SidDocumentVersion(ctx, &sidtypes.QueryGetSidDocumentVersionRequest{
 			DocId: pd.ID,
 		})
 		if err != nil {

@@ -8,7 +8,6 @@ import (
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -32,7 +31,7 @@ type OrderCompleteResult struct {
 func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error) {
 	signerAcc, err := c.cosmos.Account(provider)
 	if err != nil {
-		return saotypes.MsgReadyResponse{}, "", -1, xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgReady{
@@ -41,15 +40,15 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return saotypes.MsgReadyResponse{}, "", -1, err
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return saotypes.MsgReadyResponse{}, "", -1, xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgReady tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	var readyResp saotypes.MsgReadyResponse
 	err = txResp.Decode(&readyResp)
 	if err != nil {
-		return saotypes.MsgReadyResponse{}, "", -1, err
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgReadyResponse, due to %w", err)
 	}
 
 	return readyResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
@@ -61,7 +60,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	//}
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
-		return saotypes.MsgStoreResponse{}, "", -1, xerrors.Errorf("%w, check the keyring please", err)
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	// TODO: Cid
@@ -76,16 +75,16 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return saotypes.MsgStoreResponse{}, "", -1, err
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	// log.Debug("MsgStore result: ", txResp)
 	if txResp.TxResponse.Code != 0 {
-		return saotypes.MsgStoreResponse{}, "", -1, xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgStore tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	var storeResp saotypes.MsgStoreResponse
 	err = txResp.Decode(&storeResp)
 	if err != nil {
-		return saotypes.MsgStoreResponse{}, "", -1, err
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgStoreResponse, due to %w", err)
 	}
 	return storeResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }
@@ -93,7 +92,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, int64, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", -1, xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgComplete{
@@ -104,10 +103,10 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", -1, err
+		return "", -1, types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", -1, xerrors.Errorf("MsgComplete tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgComplete tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }
@@ -115,7 +114,7 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", nil, xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", nil, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgRenew{
@@ -125,10 +124,10 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", nil, err
+		return "", nil, types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", nil, xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", nil, types.Wrapf(types.ErrTxProcessFailed, "MsgRenew tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	var renewResp saotypes.MsgRenewResponse
 	err = txResp.Decode(&renewResp)
@@ -141,7 +140,7 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgTerminate{
@@ -151,10 +150,10 @@ func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminate
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgTerminate tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgTerminate tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
@@ -164,7 +163,7 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Or
 		Id: orderId,
 	})
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrQueryOrderFailed, err)
 	}
 	return &queryResp.Order, nil
 }

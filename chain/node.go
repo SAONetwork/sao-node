@@ -3,17 +3,17 @@ package chain
 import (
 	"context"
 	"fmt"
+	"sao-node/types"
 	"strings"
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
-	"golang.org/x/xerrors"
 )
 
 func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &nodetypes.MsgLogin{
@@ -22,10 +22,10 @@ func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgLogin tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgLogin tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
@@ -33,7 +33,7 @@ func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
 func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &nodetypes.MsgLogout{
@@ -41,11 +41,11 @@ func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgLogout tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgLogout tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
@@ -53,7 +53,7 @@ func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
 func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &nodetypes.MsgReset{
@@ -63,10 +63,10 @@ func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, s
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgReset tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgReset tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
@@ -74,7 +74,7 @@ func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, s
 func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
-		return "", xerrors.Errorf("chain get account: %w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &nodetypes.MsgClaimReward{
@@ -82,10 +82,10 @@ func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, err
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgReset tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgClaimReward tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
@@ -95,7 +95,7 @@ func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, err
 		Creator: creator,
 	})
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrQueryNodeFailed, err)
 	}
 	return resp.Node.Peer, nil
 }
@@ -105,7 +105,7 @@ func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, e
 		Creator: creator,
 	})
 	if err != nil {
-		return 0, err
+		return 0, types.Wrap(types.ErrQueryNodeFailed, err)
 	}
 	return resp.Node.Status, nil
 }

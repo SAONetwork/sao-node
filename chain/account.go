@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sao-node/types"
 
-	"github.com/cosmos/cosmos-sdk/types"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
@@ -29,16 +30,16 @@ func newAccountRegistry(_ context.Context, repo string) (cosmosaccount.Registry,
 func GetAddress(ctx context.Context, repo string, name string) (string, error) {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrGetAddressFailed, err)
 	}
 
 	account, err := accountRegistry.GetByName(name)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrGetAddressFailed, err)
 	}
 	address, err := account.Address("cosmos")
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrGetAddressFailed, err)
 	}
 	return address, nil
 }
@@ -46,26 +47,26 @@ func GetAddress(ctx context.Context, repo string, name string) (string, error) {
 func SignByAccount(ctx context.Context, repo string, name string, payload []byte) ([]byte, error) {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrSignedFailed, err)
 	}
 
 	sig, _, err := accountRegistry.Keyring.Sign(name, payload)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrSignedFailed, err)
 	}
 
-	return sig, err
+	return sig, nil
 }
 
 func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrListAccountsFailed, err)
 	}
 
 	accounts, err := accountRegistry.List()
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrListAccountsFailed, err)
 	}
 
 	if len(accounts) > 0 {
@@ -75,7 +76,8 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	for _, account := range accounts {
 		address, err := account.Address("cosmos")
 		if err != nil {
-			return err
+			log.Error(err.Error())
+			continue
 		}
 
 		fmt.Println("Account:", account.Name)
@@ -86,7 +88,7 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 			Denom:   DENOM,
 		})
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrGetBalanceFailed, err)
 		}
 		fmt.Println("Balance:", resp.Balance.Amount.Uint64(), DENOM)
 		fmt.Println("======================================================")
@@ -112,23 +114,23 @@ func (c *ChainSvc) ShowBalance(ctx context.Context, address string) {
 func (c *ChainSvc) Send(ctx context.Context, from string, to string, amount int64) (string, error) {
 	signerAcc, err := c.cosmos.Account(from)
 	if err != nil {
-		return "", fmt.Errorf("%w, check the keyring please", err)
+		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
-	tx, err := c.cosmos.BankSendTx(ctx, signerAcc, to, append(make(types.Coins, 0), types.Coin{
+	tx, err := c.cosmos.BankSendTx(ctx, signerAcc, to, append(make(sdktypes.Coins, 0), sdktypes.Coin{
 		Denom:  DENOM,
-		Amount: types.NewIntFromBigInt(big.NewInt(amount)),
+		Amount: sdktypes.NewIntFromBigInt(big.NewInt(amount)),
 	}))
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxCreateFailed, err)
 	}
 
 	txResp, err := tx.Broadcast(ctx)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", fmt.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgStore tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 
 	return txResp.TxResponse.TxHash, nil
@@ -137,17 +139,17 @@ func (c *ChainSvc) Send(ctx context.Context, from string, to string, amount int6
 func Create(ctx context.Context, repo string, name string) (string, string, string, error) {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", types.Wrap(types.ErrCreateAccountFailed, err)
 	}
 
 	account, mnemonic, err := accountRegistry.Create(name)
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", types.Wrap(types.ErrCreateAccountFailed, err)
 	}
 
 	address, err := account.Address("cosmos")
 	if err != nil {
-		return "", "", "", err
+		return "", "", "", types.Wrap(types.ErrCreateAccountFailed, err)
 	}
 
 	return account.Name, address, mnemonic, nil
@@ -156,17 +158,17 @@ func Create(ctx context.Context, repo string, name string) (string, string, stri
 func Import(ctx context.Context, repo string, name string, secret string, passphrase string) error {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrImportAccountFailed, err)
 	}
 
 	account, err := accountRegistry.Import(name, secret, passphrase)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrImportAccountFailed, err)
 	}
 
 	address, err := account.Address("cosmos")
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrImportAccountFailed, err)
 	}
 	fmt.Println("Account:", account.Name)
 	fmt.Println("Address:", address)
@@ -177,21 +179,21 @@ func Import(ctx context.Context, repo string, name string, secret string, passph
 func Export(ctx context.Context, repo string, name string, passphrase string) error {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrExportAccountFailed, err)
 	}
 
 	account, err := accountRegistry.GetByName(name)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrExportAccountFailed, err)
 	}
 	address, err := account.Address("cosmos")
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrExportAccountFailed, err)
 	}
 
 	key, err := accountRegistry.Export(name, passphrase)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrExportAccountFailed, err)
 	}
 
 	fmt.Println("Account:", name)
