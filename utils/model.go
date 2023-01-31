@@ -6,8 +6,6 @@ import (
 
 	applier "github.com/evanphx/json-patch"
 	creator "github.com/mattbaird/jsonpatch"
-
-	"golang.org/x/xerrors"
 )
 
 func GeneratePatch(contentOrigin string, contentTarget string) (string, error) {
@@ -20,12 +18,12 @@ func GeneratePatch(contentOrigin string, contentTarget string) (string, error) {
 	var model interface{}
 	err := json.Unmarshal([]byte(contentOrigin), &model)
 	if err != nil {
-		return "", xerrors.Errorf(err.Error())
+		return "", err
 	}
 
 	patchs, err := creator.CreatePatch([]byte(contentOrigin), []byte(contentTarget))
 	if err != nil {
-		return "", xerrors.Errorf(err.Error())
+		return "", err
 	}
 
 	removeOperations := make([]string, 0)
@@ -67,12 +65,12 @@ func ApplyPatch(jsonDataOrg []byte, patch []byte) ([]byte, error) {
 
 	patcher, err := applier.DecodePatch(patch)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	target, err := patcher.Apply(jsonDataOrg)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	return target, nil
