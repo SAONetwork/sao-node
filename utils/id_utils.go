@@ -2,6 +2,7 @@ package utils
 
 import (
 	"regexp"
+	"sao-node/types"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -56,7 +57,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 	b, err := jsoniter.Marshal(obj)
 
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	return b, nil
@@ -72,7 +73,7 @@ func CalculateCid(content []byte) (cid.Cid, error) {
 
 	contentCid, err := pref.Sum(content)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, types.Wrap(types.ErrCalculateCidFailed, err)
 	}
 
 	return contentCid, nil

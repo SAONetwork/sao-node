@@ -4,6 +4,7 @@ import (
 	"fmt"
 	saoclient "sao-node/client"
 	cliutil "sao-node/cmd"
+	"sao-node/types"
 
 	"github.com/tendermint/tendermint/libs/json"
 	"github.com/urfave/cli/v2"
@@ -64,7 +65,7 @@ var didCreateCmd = &cli.Command{
 
 			err = saoclient.SaveConfig(saoclient.Cfg)
 			if err != nil {
-				return fmt.Errorf("save local config failed: %v", err)
+				return types.Wrap(types.ErrWriteConfigFailed, err)
 			}
 		}
 
@@ -130,12 +131,12 @@ var didSignCmd = &cli.Command{
 
 		jws, err := didManager.CreateJWS([]byte(cctx.Args().First()))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 
 		j, err := json.MarshalIndent(jws, "", "    ")
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalJwsFailed, err)
 		}
 		fmt.Println(string(j))
 		return nil

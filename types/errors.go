@@ -11,6 +11,9 @@ var (
 	ErrCloseFileFailed  = errors.Register(ModuleCommon, 10004, "failed to close the file")
 
 	ErrInvalidBinaryName = errors.Register(ModuleCommon, 10005, "invalid binary name")
+
+	ErrMarshalFailed   = errors.Register(ModuleChain, 10006, "failed to marshal payload")
+	ErrUnMarshalFailed = errors.Register(ModuleChain, 10007, "failed to unmarshal JpayloadS")
 )
 
 var (
@@ -40,8 +43,13 @@ var (
 	ErrQueryNodeFailed      = errors.Register(ModuleChain, 11016, "failed to query the node information")
 	ErrQueryOrderFailed     = errors.Register(ModuleChain, 11017, "failed to query the order information")
 
-	ErrInvalidSecrect    = errors.Register(ModuleChain, 11018, "invalid secrect")
-	ErrInvalidPassphrase = errors.Register(ModuleChain, 11019, "invalid passphrase")
+	ErrInvalidSecrect       = errors.Register(ModuleChain, 11018, "invalid secrect")
+	ErrInvalidPassphrase    = errors.Register(ModuleChain, 11019, "invalid passphrase")
+	ErrCreateProviderFailed = errors.Register(ModuleChain, 11020, "failed to create the provider")
+	ErrAuthenticateFailed   = errors.Register(ModuleChain, 11021, "failed to authenticate")
+	ErrInvalidChainAddress  = errors.Register(ModuleChain, 11022, "invalid chain address")
+	ErrCreateJwsFailed      = errors.Register(ModuleChain, 11023, "failed to create JWS")
+	ErrMarshalJwsFailed     = errors.Register(ModuleChain, 11024, "failed to marshal JWS")
 )
 
 var (
@@ -54,6 +62,7 @@ var (
 	ErrInvalidGateway         = errors.Register(ModuleClient, 12009, "invalid gateway")
 	ErrInvalidToken           = errors.Register(ModuleClient, 12010, "invalid token")
 	ErrCreateApiServiceFailed = errors.Register(ModuleClient, 12011, "failed to create API service")
+	ErrGenerateDocFailed      = errors.Register(ModuleClient, 12012, "failed to generate the documents")
 )
 
 var (
@@ -72,6 +81,16 @@ var (
 	ErrInitIpfsRepoFailed         = errors.Register(ModuleClient, 13010, "failed to initializ IPFS repo")
 	ErrOpenRepoFailed             = errors.Register(ModuleClient, 13011, "failed to open IPFS repo")
 	ErrUnSupportProtocol          = errors.Register(ModuleStore, 13012, "unsupported ipfs connection protocol")
+)
+
+var (
+	ModuleModel = "model"
+
+	ErrCreatePatchFailed = errors.Register(ModuleChain, 14000, "failed to create the patch")
+	ErrDecodePatchFailed = errors.Register(ModuleChain, 14001, "failed to decode the patch")
+	ErrApplyPatchFailed  = errors.Register(ModuleChain, 14002, "failed to apply the patch")
+
+	ErrCalculateCidFailed = errors.Register(ModuleChain, 14003, "failed to calculate cid")
 )
 
 func Wrap(err0 error, err1 error) error {

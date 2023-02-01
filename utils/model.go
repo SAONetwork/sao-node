@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"sao-node/types"
 
 	applier "github.com/evanphx/json-patch"
 	creator "github.com/mattbaird/jsonpatch"
@@ -18,12 +19,12 @@ func GeneratePatch(contentOrigin string, contentTarget string) (string, error) {
 	var model interface{}
 	err := json.Unmarshal([]byte(contentOrigin), &model)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrUnMarshalFailed, err)
 	}
 
 	patchs, err := creator.CreatePatch([]byte(contentOrigin), []byte(contentTarget))
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrCreatePatchFailed, err)
 	}
 
 	removeOperations := make([]string, 0)
@@ -65,12 +66,12 @@ func ApplyPatch(jsonDataOrg []byte, patch []byte) ([]byte, error) {
 
 	patcher, err := applier.DecodePatch(patch)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreatePatchFailed, err)
 	}
 
 	target, err := patcher.Apply(jsonDataOrg)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreatePatchFailed, err)
 	}
 
 	return target, nil

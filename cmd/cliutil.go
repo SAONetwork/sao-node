@@ -9,12 +9,12 @@ import (
 	gen "sao-node/gen/clidoc"
 	"sao-node/node/config"
 	"sao-node/node/repo"
+	"sao-node/types"
 	"sao-node/utils"
 	"strings"
 	"syscall"
 
 	"golang.org/x/term"
-	"golang.org/x/xerrors"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -50,7 +50,7 @@ func AskForPassphrase() (string, error) {
 	fmt.Print("Enter passphrase:")
 	passphrase, err := term.ReadPassword(syscall.Stdin)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrInvalidPassphrase, err)
 	}
 	return string(passphrase), nil
 }
@@ -70,19 +70,19 @@ func GetDidManager(cctx *cli.Context, keyName string) (*saodid.DidManager, strin
 	payload := fmt.Sprintf("cosmos %s allows to generate did", address)
 	secret, err := chain.SignByAccount(cctx.Context, repo, keyName, []byte(payload))
 	if err != nil {
-		return nil, "", err
+		return nil, "", types.Wrap(types.ErrSignedFailed, err)
 	}
 
 	provider, err := saokey.NewSecp256k1Provider(secret)
 	if err != nil {
-		return nil, "", err
+		return nil, "", types.Wrap(types.ErrCreateProviderFailed, err)
 	}
 	resolver := saokey.NewKeyResolver()
 
 	didManager := saodid.NewDidManager(provider, resolver)
 	_, err = didManager.Authenticate([]string{}, "")
 	if err != nil {
-		return nil, "", err
+		return nil, "", types.Wrap(types.ErrAuthenticateFailed, err)
 	}
 
 	return &didManager, address, nil
@@ -114,7 +114,7 @@ var GenerateDocCmd = &cli.Command{
 			output, err = cctx.App.ToMan()
 		}
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrGenerateDocFailed, err)
 		}
 		outputFile := cctx.String("output")
 		if outputFile == "" {
@@ -122,7 +122,7 @@ var GenerateDocCmd = &cli.Command{
 		}
 		err = os.WriteFile(outputFile, []byte(output), 0644)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrGenerateDocFailed, err)
 		}
 		fmt.Printf("markdown clidoc is exported to %s", outputFile)
 		fmt.Println()
@@ -146,29 +146,29 @@ func GetChainAddress(cctx *cli.Context, repoPath string) (string, error) {
 
 		c, err := r.Config()
 		if err != nil {
-			return chainAddress, err
+			return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
 		}
 
 		cfg, ok := c.(*config.Node)
 		if !ok {
-			return chainAddress, xerrors.Errorf("invalid config for repo, got: %T", c)
+			return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
 		}
 
 		chainAddress = cfg.Chain.Remote
 	} else if strings.Contains(repoPath, "-cli") {
 		c, err := utils.FromFile(configPath, saoclient.DefaultSaoClientConfig())
 		if err != nil {
-			return chainAddress, err
+			return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
 		}
 		cfg, ok := c.(*saoclient.SaoClientConfig)
 		if !ok {
-			return chainAddress, xerrors.Errorf("invalid config: %v", c)
+			return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
 		}
 		chainAddress = cfg.ChainAddress
 	}
 
 	if chainAddress == "" {
-		return chainAddress, xerrors.Errorf("no chain address specified")
+		return chainAddress, types.Wrap(types.ErrInvalidChainAddress, nil)
 	}
 
 	return chainAddress, nil
