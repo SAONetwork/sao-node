@@ -72,9 +72,11 @@ func (ss *StoreManager) Store(ctx context.Context, cid cid.Cid, reader io.Reader
 		_, err = back.Store(ctx, reader)
 		if err != nil {
 			log.Errorf("%s store error: %v", back.Id(), err)
+		} else {
+			err = nil
 		}
 	}
-	return nil, nil
+	return nil, err
 }
 
 func (ss *StoreManager) Remove(ctx context.Context, cid cid.Cid) error {
@@ -83,9 +85,11 @@ func (ss *StoreManager) Remove(ctx context.Context, cid cid.Cid) error {
 		err = back.Remove(ctx, cid)
 		if err != nil {
 			log.Errorf("%s remove cid=%v error: %v", back.Id(), cid, err)
+		} else {
+			err = nil
 		}
 	}
-	return nil
+	return err
 }
 
 func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.Reader, error) {

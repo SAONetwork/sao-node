@@ -23,7 +23,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -211,7 +210,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 	commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
 	commitInfo := strings.Split(commit, "\032")
 	if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
-		return nil, xerrors.Errorf("invalid commit information: %s", commit)
+		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 	}
 
 	return &types.Model{
@@ -239,14 +238,14 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 		shardCid, err := cid.Decode(shard.Cid)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrapf(types.ErrInvalidCid, "%s", shard.Cid)
 		}
 
 		var shardContent []byte
 		if key == gs.nodeAddress {
 			// local shard
 			if gs.storeManager == nil {
-				return nil, xerrors.Errorf("local store manager not found")
+				return nil, types.Wrapf(types.ErrNotFound, "local store manager not found")
 			}
 			reader, err := gs.storeManager.Get(ctx, shardCid)
 			if err != nil {
@@ -254,7 +253,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			}
 			shardContent, err = io.ReadAll(reader)
 			if err != nil {
-				return nil, err
+				return nil, types.Wrap(types.ErrReadFileFailed, err)
 			}
 		} else {
 			// remote shard
@@ -263,7 +262,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 				_, err := multiaddr.NewMultiaddr(peerInfo)
 
 				if err != nil {
-					return nil, err
+					return nil, types.Wrap(types.ErrInvalidServerAddress, err)
 				}
 
 				if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
@@ -295,7 +294,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 	match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(meta.Alias))
 	if err != nil {
-		return nil, err
+		return nil, types.Wrapf(types.ErrInvalidAlias, "%s", meta.Alias)
 	}
 
 	if len(content) > gs.cfg.Cache.ContentLimit || match {
@@ -303,23 +302,23 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrapf(types.ErrInvalidPath, "%s", gs.cfg.SaoHttpFileServer.HttpFileServerPath)
 		}
 
 		file, err := os.Create(filepath.Join(path, meta.DataId))
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, types.Wrap(types.ErrInvalidPath, err)
 		}
 
 		_, err = file.Write([]byte(content))
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, types.Wrap(types.ErrWriteFileFailed, err)
 		}
 
 		if gs.cfg.SaoIpfs.Enable {
 			_, err = gs.storeManager.Store(ctx, contentCid, bytes.NewReader(content))
 			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
+				return nil, types.Wrap(types.ErrStoreFailed, err)
 			}
 		}
 

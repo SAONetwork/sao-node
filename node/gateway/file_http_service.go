@@ -12,6 +12,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 
 	"sao-node/node/config"
+	"sao-node/types"
 )
 
 var secret = []byte("SAO Network")
@@ -42,7 +43,7 @@ func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error)
 
 	path, err := homedir.Expand(cfg.HttpFileServerPath)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrInvalidPath, err)
 	}
 
 	handler := http.FileServer(http.Dir(path))

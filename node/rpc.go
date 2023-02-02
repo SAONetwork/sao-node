@@ -12,7 +12,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/rs/cors"
-	"golang.org/x/xerrors"
 )
 
 var rpclog = logging.Logger("rpc")
@@ -21,7 +20,7 @@ func ServeRPC(h http.Handler, addr multiaddr.Multiaddr) (*http.Server, error) {
 	// Start listening to the addr; if invalid or occupied, we will fail early.
 	lst, err := manet.Listen(addr)
 	if err != nil {
-		return nil, xerrors.Errorf("could not listen: %w", err)
+		return nil, err
 	}
 
 	// Instantiate the server and start listening.

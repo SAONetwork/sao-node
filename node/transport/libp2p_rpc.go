@@ -41,19 +41,16 @@ type Libp2pRpcServer struct {
 func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*Libp2pRpcServer, error) {
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
-		log.Error(err.Error())
 		return nil, err
 	}
 
 	h, err := libp2p.New(libp2p.Transport(tr), libp2p.Identity(serverKey))
 	if err != nil {
-		log.Error(err.Error())
 		return nil, err
 	}
 
 	err = h.Network().Listen(ma.StringCast(address + "/quic/webtransport"))
 	if err != nil {
-		log.Error(err.Error())
 		return nil, err
 	}
 

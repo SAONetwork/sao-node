@@ -21,7 +21,6 @@ import (
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 
 	sid "github.com/SaoNetwork/sao-did/sid"
 	logging "github.com/ipfs/go-log/v2"
@@ -241,20 +240,20 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 			cid, _ := utils.CalculateCid(shard)
 			log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
 			if cid.String() != task.Cid.String() {
-				return xerrors.Errorf("ipfs cid %v != task cid %v", cid, task.Cid)
+				return types.Wrapf(types.ErrInvalidCid, "ipfs cid %v != task cid %v", cid, task.Cid)
 			}
 		}
 
 		// store to backends
 		_, err := ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrStoreFailed, err)
 		}
 	} else {
 		// make sure the data is still there
 		isExist := ss.storeManager.IsExist(ctx, task.Cid)
 		if !isExist {
-			return xerrors.Errorf("shard with cid %s not found", task.Cid)
+			return types.Wrapf(types.ErrDataMissing, "shard with cid %s not found", task.Cid)
 		}
 	}
 
@@ -290,13 +289,13 @@ func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
 func (ss *StoreSvc) getShardFromLocal(creator string, cid cid.Cid) ([]byte, error) {
 	path, err := homedir.Expand(ss.stagingPath)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrapf(types.ErrInvalidPath, "path=%s", ss.stagingPath)
 	}
 
 	filename := fmt.Sprintf("%v", cid)
 	bytes, err := os.ReadFile(filepath.Join(path, creator, filename))
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrReadFileFailed, err)
 	} else {
 		return bytes, nil
 	}

@@ -57,12 +57,12 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 	respond := func(resp types.ShardCompleteResp) {
 		err := resp.Marshal(s, "json")
 		if err != nil {
-			log.Error(err.Error())
+			log.Error(types.Wrap(types.ErrMarshalFailed, err))
 			return
 		}
 
 		if err = s.CloseWrite(); err != nil {
-			log.Error(err.Error())
+			log.Error(types.Wrap(types.ErrCloseFileFailed, err))
 			return
 		}
 	}
@@ -74,7 +74,7 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 	var req types.ShardCompleteReq
 	err := req.Unmarshal(s, "json")
 	if err != nil {
-		log.Error(err)
+		log.Error(types.Wrap(types.ErrUnMarshalFailed, err))
 		respond(types.ShardCompleteResp{
 			Code:    types.ErrorCodeInvalidRequest,
 			Message: fmt.Sprintf("failed to unmarshal request: %v", err),
@@ -184,7 +184,7 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	var req types.ShardReq
 	err := req.Unmarshal(s, "json")
 	if err != nil {
-		log.Error(err)
+		log.Error(types.Wrap(types.ErrUnMarshalFailed, err))
 		// TODO: respond error
 		return
 	}
@@ -207,12 +207,12 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 
 	err = resp.Marshal(s, "json")
 	if err != nil {
-		log.Error(err.Error())
+		log.Error(types.Wrap(types.ErrMarshalFailed, err))
 		return
 	}
 
 	if err := s.CloseWrite(); err != nil {
-		log.Error(err.Error())
+		log.Error(types.Wrap(types.ErrCloseFileFailed, err))
 		return
 	}
 }
@@ -220,19 +220,19 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, orderId uint64, shardCid cid.Cid) ([]byte, error) {
 	a, err := multiaddr.NewMultiaddr(addr)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrInvalidServerAddress, err)
 	}
 	pi, err := peer.AddrInfoFromP2pAddr(a)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrInvalidServerAddress, err)
 	}
 	err = ssh.host.Connect(ssh.ctx, *pi)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrConnectFailed, err)
 	}
 	stream, err := ssh.host.NewStream(ssh.ctx, pi.ID, types.ShardLoadProtocol)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateStreamFailed, err)
 	}
 	defer stream.Close()
 	log.Infof("open stream(%s) to storage node %s", types.ShardLoadProtocol, addr)
