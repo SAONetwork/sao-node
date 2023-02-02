@@ -7,13 +7,16 @@ var (
 	ErrInvalidRepoPath  = errors.Register(ModuleCommon, 10000, "invalid repo path")
 	ErrCreateDirFailed  = errors.Register(ModuleCommon, 10001, "failed to create the directory")
 	ErrCreateFileFailed = errors.Register(ModuleCommon, 10002, "failed to create the file")
-	ErrOpenFileFailed   = errors.Register(ModuleCommon, 10003, "failed to create the file")
-	ErrCloseFileFailed  = errors.Register(ModuleCommon, 10004, "failed to close the file")
+	ErrOpenFileFailed   = errors.Register(ModuleCommon, 10003, "failed to open the file")
+	ErrReadFileFailed   = errors.Register(ModuleCommon, 10004, "failed to read the file")
+	ErrWriteFileFailed  = errors.Register(ModuleCommon, 10005, "failed to write the file")
+	ErrCloseFileFailed  = errors.Register(ModuleCommon, 10006, "failed to close the file")
+	ErrInitRepoFailed   = errors.Register(ModuleCommon, 10007, "failed to initialize the repo")
 
-	ErrInvalidBinaryName = errors.Register(ModuleCommon, 10005, "invalid binary name")
+	ErrInvalidBinaryName = errors.Register(ModuleCommon, 10008, "invalid binary name")
 
-	ErrMarshalFailed   = errors.Register(ModuleChain, 10006, "failed to marshal payload")
-	ErrUnMarshalFailed = errors.Register(ModuleChain, 10007, "failed to unmarshal JpayloadS")
+	ErrMarshalFailed   = errors.Register(ModuleChain, 10009, "failed to marshal payload")
+	ErrUnMarshalFailed = errors.Register(ModuleChain, 10010, "failed to unmarshal JpayloadS")
 )
 
 var (
@@ -55,6 +58,7 @@ var (
 var (
 	ModuleClient = "client"
 
+	ErrInvalidConfig          = errors.Register(ModuleClient, 12004, "invalid configurations")
 	ErrEncodeConfigFailed     = errors.Register(ModuleClient, 12005, "failed to encode the configurations")
 	ErrDecodeConfigFailed     = errors.Register(ModuleClient, 12006, "failed to decode the configurations")
 	ErrWriteConfigFailed      = errors.Register(ModuleClient, 12007, "failed to write the configurations into file")
@@ -63,34 +67,80 @@ var (
 	ErrInvalidToken           = errors.Register(ModuleClient, 12010, "invalid token")
 	ErrCreateApiServiceFailed = errors.Register(ModuleClient, 12011, "failed to create API service")
 	ErrGenerateDocFailed      = errors.Register(ModuleClient, 12012, "failed to generate the documents")
+	ErrOpenDataStoreFailed    = errors.Register(ModuleClient, 12012, "failed to open the data store")
 )
 
 var (
 	ModuleStore = "store"
 
-	ErrOpenIpfsBackendFailed      = errors.Register(ModuleClient, 13000, "failed to open IPFS backend")
-	ErrCreateIpfsApiServiceFailed = errors.Register(ModuleClient, 13001, "failed to create IPFS API service backend")
-	ErrStoreFailed                = errors.Register(ModuleClient, 13002, "store data failed")
-	ErrStatFailed                 = errors.Register(ModuleClient, 13003, "stat data failed")
-	ErrGetFailed                  = errors.Register(ModuleClient, 13004, "get data failed")
-	ErrInvalidPath                = errors.Register(ModuleClient, 13005, "invalid path")
-	ErrLoadPluginsFailed          = errors.Register(ModuleClient, 13006, "failed to load plugins")
-	ErrInitPluginsFailed          = errors.Register(ModuleClient, 13007, "failed to initializ plugins")
-	ErrInjectPluginsFailed        = errors.Register(ModuleClient, 13008, "failed to inject plugins")
-	ErrInitIpfsDaemonFailed       = errors.Register(ModuleClient, 13009, "failed to initializ IPFS daemon")
-	ErrInitIpfsRepoFailed         = errors.Register(ModuleClient, 13010, "failed to initializ IPFS repo")
-	ErrOpenRepoFailed             = errors.Register(ModuleClient, 13011, "failed to open IPFS repo")
+	ErrOpenIpfsBackendFailed      = errors.Register(ModuleStore, 13000, "failed to open IPFS backend")
+	ErrCreateIpfsApiServiceFailed = errors.Register(ModuleStore, 13001, "failed to create IPFS API service backend")
+	ErrStoreFailed                = errors.Register(ModuleStore, 13002, "store data failed")
+	ErrStatFailed                 = errors.Register(ModuleStore, 13003, "stat data failed")
+	ErrGetFailed                  = errors.Register(ModuleStore, 13004, "get data failed")
+	ErrInvalidPath                = errors.Register(ModuleStore, 13005, "invalid path")
+	ErrLoadPluginsFailed          = errors.Register(ModuleStore, 13006, "failed to load plugins")
+	ErrInitPluginsFailed          = errors.Register(ModuleStore, 13007, "failed to initializ plugins")
+	ErrInjectPluginsFailed        = errors.Register(ModuleStore, 13008, "failed to inject plugins")
+	ErrInitIpfsDaemonFailed       = errors.Register(ModuleStore, 13009, "failed to initializ IPFS daemon")
+	ErrInitIpfsRepoFailed         = errors.Register(ModuleStore, 13010, "failed to initializ IPFS repo")
+	ErrOpenRepoFailed             = errors.Register(ModuleStore, 13011, "failed to open IPFS repo")
 	ErrUnSupportProtocol          = errors.Register(ModuleStore, 13012, "unsupported ipfs connection protocol")
+	ErrRemoveFailed               = errors.Register(ModuleStore, 13013, "remove data failed")
+	ErrDataMissing                = errors.Register(ModuleStore, 13014, "cannot found the data")
 )
 
 var (
 	ModuleModel = "model"
 
-	ErrCreatePatchFailed = errors.Register(ModuleChain, 14000, "failed to create the patch")
-	ErrDecodePatchFailed = errors.Register(ModuleChain, 14001, "failed to decode the patch")
-	ErrApplyPatchFailed  = errors.Register(ModuleChain, 14002, "failed to apply the patch")
+	ErrCreatePatchFailed = errors.Register(ModuleModel, 14000, "failed to create the patch")
+	ErrDecodePatchFailed = errors.Register(ModuleModel, 14001, "failed to decode the patch")
+	ErrApplyPatchFailed  = errors.Register(ModuleModel, 14002, "failed to apply the patch")
 
-	ErrCalculateCidFailed = errors.Register(ModuleChain, 14003, "failed to calculate cid")
+	ErrCalculateCidFailed = errors.Register(ModuleModel, 14003, "failed to calculate cid")
+
+	ErrConflictName   = errors.Register(ModuleModel, 14004, "conflict name")
+	ErrNotFound       = errors.Register(ModuleModel, 14005, "not found")
+	ErrCacheGetFailed = errors.Register(ModuleModel, 14006, "failed to get value from cache")
+
+	ErrInvalidDid       = errors.Register(ModuleModel, 14007, "invalid did")
+	ErrInvalidSignature = errors.Register(ModuleModel, 14008, "invalid signature")
+
+	ErrGenerateTokenFaild = errors.Register(ModuleModel, 14009, "failed to genrate the token")
+	ErrGetHttpUrlFaild    = errors.Register(ModuleModel, 14010, "failed to get the HTTP URL")
+	ErrGetIpfsUrlFaild    = errors.Register(ModuleModel, 14011, "failed to get the IPFS URL")
+
+	ErrInvalidCommitInfo = errors.Register(ModuleModel, 14012, "invalid commit information")
+	ErrInvalidCid        = errors.Register(ModuleModel, 14013, "invalid cid")
+	ErrInvalidAlias      = errors.Register(ModuleModel, 14014, "invalid alias")
+
+	ErrAddResourceFaild = errors.Register(ModuleModel, 14015, "failed to add the resource")
+	ErrCompileFaild     = errors.Register(ModuleModel, 14016, "failed to compile")
+	ErrAddRuleFaild     = errors.Register(ModuleModel, 14017, "failed to add the rule")
+	ErrAddFactFaild     = errors.Register(ModuleModel, 14018, "failed to add the fact")
+	ErrRuleExcuteFaild  = errors.Register(ModuleModel, 14019, "failed to excute the rule")
+	ErrRuleCheckFaild   = errors.Register(ModuleModel, 14020, "failed to pass the rule check")
+	ErrSchemaCheckFaild = errors.Register(ModuleModel, 14021, "failed to pass the schema check")
+
+	ErrInvalidVersion = errors.Register(ModuleModel, 14022, "invalid version")
+	ErrInvalidDataId  = errors.Register(ModuleModel, 14023, "invalid dataId")
+	ErrConflictId     = errors.Register(ModuleModel, 14024, "conflict dataId or alias")
+	ErrInvalidContent = errors.Register(ModuleModel, 14025, "invalid content")
+	ErrInvalidSchema  = errors.Register(ModuleModel, 14026, "invalid schema")
+)
+
+var (
+	ModuleNetwork = "network"
+
+	ErrCreateP2PServiceFaild      = errors.Register(ModuleChain, 15000, "failed to create the P2P service")
+	ErrStartLibP2PRPCServerFailed = errors.Register(ModuleNetwork, 15001, "failed to start libp2p RPC server")
+	ErrInvalidServerAddress       = errors.Register(ModuleNetwork, 15002, "invalid transport server address")
+	ErrStartPRPCServerFailed      = errors.Register(ModuleNetwork, 15003, "failed to start RPC server")
+	ErrConnectFailed              = errors.Register(ModuleNetwork, 15004, "failed to connect")
+	ErrCreateStreamFailed         = errors.Register(ModuleNetwork, 15005, "failed to create the stream")
+	ErrCloseStreamFailed          = errors.Register(ModuleNetwork, 15006, "failed to close the stream")
+	ErrSendRequestFailed          = errors.Register(ModuleNetwork, 15007, "failed to send the request")
+	ErrReadResponseFailed         = errors.Register(ModuleNetwork, 15008, "failed to read the response")
 )
 
 func Wrap(err0 error, err1 error) error {

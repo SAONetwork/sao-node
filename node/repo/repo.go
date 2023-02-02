@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sao-node/node/config"
+	"sao-node/types"
 	"sao-node/utils"
 	"sync"
 
@@ -54,7 +55,7 @@ func PrepareRepo(repoPath string) (*Repo, error) {
 		return nil, err
 	}
 	if !ok {
-		return nil, xerrors.Errorf("repo at '%s' is not initialized, run 'saonode init' to set it up", repoPath)
+		return nil, types.Wrapf(types.ErrInvalidRepoPath, "repo at '%s' is not initialized, run 'saonode init' to set it up", repoPath)
 	}
 	return repo, nil
 }
@@ -62,7 +63,7 @@ func PrepareRepo(repoPath string) (*Repo, error) {
 func NewRepo(path string) (*Repo, error) {
 	path, err := homedir.Expand(path)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrInvalidRepoPath, err)
 	}
 
 	return &Repo{
@@ -78,7 +79,7 @@ func (r *Repo) Exists() (bool, error) {
 	if notexist {
 		err = nil
 	}
-	return !notexist, err
+	return !notexist, types.Wrap(types.ErrOpenFileFailed, err)
 }
 
 func (r *Repo) Init(chainAddress string) error {
@@ -93,20 +94,20 @@ func (r *Repo) Init(chainAddress string) error {
 	log.Infof("Initializing repo at '%s'", r.Path)
 	err = os.MkdirAll(r.Path, 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
-		return err
+		return types.Wrap(types.ErrOpenFileFailed, err)
 	}
 
 	if err := r.initConfig(chainAddress); err != nil {
-		return xerrors.Errorf("init config: %w", err)
+		return types.Wrapf(types.ErrInitRepoFailed, "init config: %w", err)
 	}
 	err = r.initKeystore()
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrInitRepoFailed, err)
 	}
 
 	_, err = r.GeneratePeerId()
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrInitRepoFailed, err)
 	}
 
 	return nil
@@ -135,7 +136,7 @@ func (r *Repo) GetKeyBytes() ([]byte, error) {
 	libp2pPath := filepath.Join(r.Path, fsKeystore, fsLibp2pKey)
 	key, err := os.ReadFile(libp2pPath)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrReadConfigFailed, err)
 	}
 	return key, nil
 }
@@ -144,7 +145,7 @@ func (r *Repo) PeerId() (crypto.PrivKey, error) {
 	libp2pPath := filepath.Join(r.Path, fsKeystore, fsLibp2pKey)
 	key, err := os.ReadFile(libp2pPath)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrReadConfigFailed, err)
 	}
 	return crypto.UnmarshalPrivateKey(key)
 }
@@ -168,13 +169,13 @@ func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, er
 	})
 
 	if r.dsErr != nil {
-		return nil, r.dsErr
+		return nil, types.Wrap(types.ErrOpenDataStoreFailed, r.dsErr)
 	}
 	ds, ok := r.ds[ns]
 	if ok {
 		return ds, nil
 	}
-	return nil, xerrors.Errorf("no such datastore: %s", ns)
+	return nil, types.Wrapf(types.ErrOpenDataStoreFailed, "no such datastore: %s", ns)
 }
 
 func (r *Repo) initConfig(chainAddress string) error {

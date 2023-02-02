@@ -3,14 +3,15 @@ package config
 import (
 	"bytes"
 	"fmt"
-	"github.com/BurntSushi/toml"
-	"github.com/kelseyhightower/envconfig"
-	"golang.org/x/xerrors"
 	"io"
 	"reflect"
 	"regexp"
+	"sao-node/types"
 	"strings"
 	"unicode"
+
+	"github.com/BurntSushi/toml"
+	"github.com/kelseyhightower/envconfig"
 )
 
 func ConfigComment(t interface{}) ([]byte, error) {
@@ -22,7 +23,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 		buf := new(bytes.Buffer)
 		e := toml.NewEncoder(buf)
 		if err := e.Encode(cfgDef); err != nil {
-			return nil, xerrors.Errorf("encoding default config: %w", err)
+			return nil, types.Wrap(types.ErrEncodeConfigFailed, err)
 		}
 
 		defStr = buf.String()
@@ -32,7 +33,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 		buf := new(bytes.Buffer)
 		e := toml.NewEncoder(buf)
 		if err := e.Encode(cfgCur); err != nil {
-			return nil, xerrors.Errorf("encoding node config: %w", err)
+			return nil, types.Wrap(types.ErrEncodeConfigFailed, err)
 		}
 
 		nodeStr = buf.String()
@@ -66,7 +67,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 				if trimmed[0] == '[' {
 					m := sectionRx.FindSubmatch([]byte(trimmed))
 					if len(m) != 2 {
-						return nil, xerrors.Errorf("section didn't match (line %d)", i)
+						return nil, types.Wrapf(types.ErrInvalidConfig, "section didn't match (line %d)", i)
 					}
 					section = string(m[1])
 
@@ -117,11 +118,11 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 	if cfgDef != nil {
 		cfgUpdated, err := FromReader(strings.NewReader(nodeStr), cfgDef)
 		if err != nil {
-			return nil, xerrors.Errorf("parsing updated config: %w", err)
+			return nil, types.Wrap(types.ErrDecodeConfigFailed, err)
 		}
 
 		if !reflect.DeepEqual(cfgCur, cfgUpdated) {
-			return nil, xerrors.Errorf("updated config didn't match current config")
+			return nil, types.Wrapf(types.ErrInvalidConfig, "updated config didn't match current config")
 		}
 	}
 
@@ -175,7 +176,7 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 
 	err = envconfig.Process("SAO", cfg)
 	if err != nil {
-		return nil, fmt.Errorf("processing env vars overrides: %s", err)
+		return nil, types.Wrapf(types.ErrInvalidConfig, "processing env vars overrides: %w", err)
 	}
 
 	return cfg, nil

@@ -1,7 +1,7 @@
 package cache
 
 import (
-	"golang.org/x/xerrors"
+	"sao-node/types"
 )
 
 type LruCacheSvc struct {
@@ -23,7 +23,7 @@ func NewLruCacheSvc() *LruCacheSvc {
 
 func (svc *LruCacheSvc) CreateCache(name string, capacity int) error {
 	if svc.Caches[name] != nil {
-		return xerrors.Errorf("the cache [%s] is existing already", name)
+		return types.Wrapf(types.ErrConflictName, "the cache [%s] is existing already", name)
 	}
 
 	svc.Caches[name] = CreateLruCache(capacity)
@@ -34,7 +34,7 @@ func (svc *LruCacheSvc) CreateCache(name string, capacity int) error {
 func (svc *LruCacheSvc) Get(name string, key string) (interface{}, error) {
 	cache := svc.Caches[name]
 	if cache == nil {
-		return nil, xerrors.Errorf("the cache [%s] not found", name)
+		return nil, types.Wrapf(types.ErrNotFound, "the cache [%s] not found", name)
 	}
 
 	return cache.get(key), nil
@@ -81,7 +81,7 @@ func (svc *LruCacheSvc) GetSize(name string) int {
 func (svc *LruCacheSvc) ReSize(name string, capacity int) error {
 	cache := svc.Caches[name]
 	if cache == nil {
-		return xerrors.Errorf("the cache [%s] not found", name)
+		return types.Wrapf(types.ErrNotFound, "the cache [%s] not found", name)
 	}
 
 	if capacity == -1 || cache.Capacity <= capacity {

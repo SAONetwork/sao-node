@@ -2,9 +2,9 @@ package cache
 
 import (
 	"encoding/json"
+	"sao-node/types"
 
 	"github.com/bradfitz/gomemcache/memcache"
-	"golang.org/x/xerrors"
 )
 
 type MemcachedCacheSvc struct {
@@ -37,7 +37,7 @@ func (svc *MemcachedCacheSvc) CreateCache(name string, capacity int) error {
 func (svc *MemcachedCacheSvc) Get(name string, key string) (interface{}, error) {
 	item, err := svc.Client.Get(name + "_" + key)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCacheGetFailed, err)
 	}
 
 	if item.Value != nil {
@@ -49,7 +49,7 @@ func (svc *MemcachedCacheSvc) Get(name string, key string) (interface{}, error) 
 		}
 	}
 
-	return nil, xerrors.Errorf("not found")
+	return nil, types.Wrapf(types.ErrNotFound, "the key [%s] not found", name)
 }
 
 func (svc *MemcachedCacheSvc) Put(name string, key string, value interface{}) {
