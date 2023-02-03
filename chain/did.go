@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"fmt"
+
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/parser"
 	"github.com/SaoNetwork/sao-did/sid"
@@ -50,7 +51,7 @@ func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did str
 		return "", err
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgComplete tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", xerrors.Errorf("MsgUpdatePaymentAddress tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }

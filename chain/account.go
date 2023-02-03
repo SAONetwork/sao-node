@@ -84,7 +84,7 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Println("Balance:", resp.Balance.Amount.Uint64(), DENOM)
+		fmt.Println("Balance:", resp.Balance.Amount, DENOM)
 	}
 
 	return nil

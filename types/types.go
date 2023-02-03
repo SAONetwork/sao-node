@@ -56,6 +56,26 @@ type MetadataProposal struct {
 	JwsSignature saotypes.JwsSignature
 }
 
+type MetadataProposalCbor struct {
+	Proposal     QueryProposal
+	JwsSignature JwsSignature
+}
+
+type JwsSignature struct {
+	Protected string
+	Signature string
+}
+type QueryProposal struct {
+	Owner           string
+	Keyword         string
+	GroupId         string
+	KeywordType     uint64
+	LastValidHeight uint64
+	Gateway         string
+	CommitId        string
+	Version         string
+}
+
 type PermissionProposal struct {
 	Proposal     saotypes.PermissionProposal
 	JwsSignature saotypes.JwsSignature
@@ -91,3 +111,58 @@ const (
 type ConsensusProposal interface {
 	Marshal() ([]byte, error)
 }
+
+type OrderStats struct {
+	All []uint64
+}
+type OrderInfo struct {
+	// Staged
+	StagePath string
+
+	// proto marshal
+	OrderStoreProposal []byte
+	OrderId            uint64
+	State              OrderState
+	LastErr            string
+
+	// order/ready
+	OrderHash string
+	ReadyHash string
+	Shards    map[string]ShardInfo
+}
+
+type ShardInfo struct {
+	ShardId      uint64
+	Peer         string
+	Cid          string
+	Provider     string
+	State        ShardState
+	CompleteHash string
+}
+
+type OrderState uint64
+
+const (
+	OrderStateStaged OrderState = iota
+	OrderStateReady
+	OrderStateComplete
+)
+
+var orderStateString = map[OrderState]string{
+	OrderStateStaged:   "Staged",
+	OrderStateReady:    "Ready",
+	OrderStateComplete: "Complete",
+}
+
+func (s OrderState) String() string {
+	return orderStateString[s]
+}
+
+type ShardState string
+
+const (
+	ShardStateAssigned  ShardState = "assigned"
+	ShardStateNotified  ShardState = "notified"
+	ShardStateCompleted ShardState = "completed"
+	ShardStateError     ShardState = "error"
+)

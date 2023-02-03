@@ -50,12 +50,13 @@ const NODE_STATUS_SERVE_STORAGE uint32 = 1 << 2
 const NODE_STATUS_ACCEPT_ORDER uint32 = 1 << 3
 
 type Node struct {
-	ctx       context.Context
-	cfg       *config.Node
-	host      host.Host
-	repo      *repo.Repo
-	address   string
-	stopFuncs []StopFunc
+	ctx        context.Context
+	cfg        *config.Node
+	host       host.Host
+	repo       *repo.Repo
+	address    string
+	stopFuncs  []StopFunc
+	gatewaySvc gateway.GatewaySvcApi
 	// used by store module
 	storeSvc  *storage.StoreSvc
 	chainSvc  *chain.ChainSvc
@@ -69,7 +70,7 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
+func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, error) {
 	c, err := repo.Config()
 	if err != nil {
 		return nil, err
@@ -113,8 +114,9 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 		peerInfos = peerInfos + withP2p.String()
 	}
 
+	fmt.Println("cfg.Chain.Remote: ", cfg.Chain.Remote)
 	// chain
-	chainSvc, err := chain.NewChainSvc(ctx, repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
+	chainSvc, err := chain.NewChainSvc(ctx, repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +129,11 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
 	tds.Put(ctx, key, []byte(peerInfos))
+
+	ods, err := repo.Datastore(ctx, "/order")
+	if err != nil {
+		return nil, err
+	}
 
 	sn := Node{
 		ctx:       ctx,
@@ -225,8 +232,9 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 
 	if cfg.Module.GatewayEnable {
 		status = status | NODE_STATUS_SERVE_GATEWAY
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
+		sn.gatewaySvc = gatewaySvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
 
 		// http file server
@@ -312,10 +320,6 @@ func (n *Node) Stop(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func (n *Node) Test(ctx context.Context, msg string) (string, error) {
-	return "world", nil
 }
 
 func (n *Node) AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
@@ -632,4 +636,16 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 	}
 
 	return nil
+}
+
+func (n *Node) OrderStatus(ctx context.Context, orderId uint64) (types.OrderInfo, error) {
+	return n.gatewaySvc.OrderStatus(ctx, orderId)
+}
+
+func (n *Node) OrderList(ctx context.Context) ([]types.OrderInfo, error) {
+	return n.gatewaySvc.OrderList(ctx)
+}
+
+func (n *Node) OrderFix(ctx context.Context, orderId uint64) (types.OrderInfo, error) {
+	return n.gatewaySvc.OrderFix(ctx, orderId)
 }

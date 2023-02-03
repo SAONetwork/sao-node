@@ -19,6 +19,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-multiaddr"
 
@@ -54,6 +55,8 @@ type GatewaySvcApi interface {
 	RenewOrder(ctx context.Context, req *types.OrderRenewProposal) (map[string]string, error)
 	UpdateModelPermission(ctx context.Context, req *types.PermissionProposal) error
 	Stop(ctx context.Context) error
+	OrderStatus(ctx context.Context, orderId uint64) (types.OrderInfo, error)
+	OrderList(ctx context.Context) ([]types.OrderInfo, error)
 }
 
 type GatewaySvc struct {
@@ -66,6 +69,7 @@ type GatewaySvc struct {
 	cfg                *config.Node
 	notifyChan         map[string]chan interface{}
 	completeChan       map[uint64]chan struct{}
+	orderDs            datastore.Batching
 }
 
 func NewGatewaySvc(
@@ -76,6 +80,7 @@ func NewGatewaySvc(
 	cfg *config.Node,
 	storeManager *store.StoreManager,
 	notifyChan map[string]chan interface{},
+	orderDs datastore.Batching,
 ) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:          ctx,
@@ -86,6 +91,7 @@ func NewGatewaySvc(
 		cfg:          cfg,
 		notifyChan:   notifyChan,
 		completeChan: make(map[uint64]chan struct{}),
+		orderDs:      orderDs,
 	}
 	cs.shardStreamHandler = NewShardStreamHandler(ctx, host, cfg.Transport.StagingPath, chainSvc, nodeAddress, cs.completeChan)
 
@@ -184,6 +190,18 @@ func (ss *GatewaySvc) handleShardComplete(req types.ShardCompleteReq) types.Shar
 					Message: fmt.Sprintf("%v is not in the given order %d", cid.String(), m.OrderId),
 				}
 			}
+		}
+
+		orderInfo, err := utils.GetOrder(ss.ctx, ss.orderDs, order.Id)
+		if err != nil {
+			log.Warnf("get order %d error: %v", err)
+		}
+		shardInfo := orderInfo.Shards[m.Creator]
+		shardInfo.State = types.ShardStateCompleted
+		shardInfo.CompleteHash = req.TxHash
+		err = utils.PutOrder(ss.ctx, ss.orderDs, orderInfo)
+		if err != nil {
+			log.Warn("put order %d error: %v", orderInfo.OrderId, err)
 		}
 
 		if order.Status == saotypes.OrderCompleted {
@@ -334,109 +352,192 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 	}, nil
 }
 
-func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error) {
-	// TODO: consider store node may ask earlier than file split
-	// TODO: if big data, consider store to staging dir.
-	// TODO: support split file.
-	// TODO: support marshal any content
-	orderProposal := clientProposal.Proposal
-	err := StageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid, content)
-	if err != nil {
-		return nil, err
-	}
+func (gs *GatewaySvc) execOrder(ctx context.Context, clientProposal *types.OrderStoreProposal, orderInfo types.OrderInfo) error {
+	var err error
 
+	// send tx
 	var txHash string
 	var shards map[string]*saotypes.ShardMeta
 	var txType types.AssignTxType
 	var height int64
-	if orderId == 0 {
-		resp, txId, h, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
-		if err != nil {
-			return nil, err
-		}
-		orderId = resp.OrderId
-		shards = resp.Shards
-		txHash = txId
-		txType = types.AssignTxTypeStore
-		height = h
-		log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", orderId, txId)
-		log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
-	} else {
-		log.Debugf("Sending OrderReady... orderId=%d", orderId)
-		resp, txId, h, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderId)
-		if err != nil {
-			return nil, err
-		}
-		orderId = resp.OrderId
-		shards = resp.Shards
-		txHash = txId
-		height = h
-		txType = types.AssignTxTypeReady
-		log.Infof("OrderReady tx succeed. orderId=%d tx=%s", orderId, txId)
-		log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
-	}
-
-	log.Infof("assigning shards to nodes...")
-	// assign shards to storage nodes
-
-	for node, shard := range shards {
-		var shardAssignReq = types.ShardAssignReq{
-			OrderId:      orderId,
-			TxHash:       txHash,
-			Assignee:     node,
-			Height:       height,
-			AssignTxType: txType,
-		}
-		if node == gs.nodeAddress {
-			if c, exists := gs.notifyChan[types.ShardAssignProtocol]; exists {
-				c <- shardAssignReq
-			} else {
-				log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, "no channel defined")
-				continue
-			}
-		} else {
-			resp := types.ShardAssignResp{}
-			err = transport.HandleRequest(
-				ctx,
-				shard.Peer,
-				gs.shardStreamHandler.host,
-				types.ShardAssignProtocol,
-				&shardAssignReq,
-				&resp,
-			)
+	if orderInfo.State < types.OrderStateReady {
+		if orderInfo.OrderId == 0 {
+			resp, txId, h, err := gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, clientProposal)
 			if err != nil {
-				log.Errorf("assign order %d shards to node %s failed: %v", orderId, node, err)
-				continue
+				orderInfo.LastErr = err.Error()
+				e := utils.PutOrder(ctx, gs.orderDs, orderInfo)
+				if e != nil {
+					log.Warn("put order %d error: %v", orderInfo.OrderId, e)
+				}
+				return err
 			}
-			if resp.Code == 0 {
-				log.Infof("assigned order %d shard to node %s.", orderId, node)
-			} else {
-				log.Errorf("assigned order %d shards to node %s failed: %v", orderId, node, resp.Message)
+			shards = resp.Shards
+			txHash = txId
+			txType = types.AssignTxTypeStore
+			height = h
+			log.Infof("StoreOrder tx succeed. orderId=%d tx=%s", resp.OrderId, txId)
+			log.Infof("StoreOrder tx succeed. shards=%v", resp.Shards)
+
+			orderInfo.OrderHash = txId
+			orderInfo.OrderId = resp.OrderId
+		} else {
+			log.Debugf("Sending OrderReady... orderId=%d", orderInfo.OrderId)
+			resp, txId, h, err := gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderInfo.OrderId)
+			if err != nil {
+				return err
 			}
+			shards = resp.Shards
+			txHash = txId
+			height = h
+			txType = types.AssignTxTypeReady
+			log.Infof("OrderReady tx succeed. orderId=%d tx=%s", resp.OrderId, txId)
+			log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
+
+			orderInfo.ReadyHash = txId
+		}
+		orderInfo.State = types.OrderStateReady
+		orderInfo.Shards = make(map[string]types.ShardInfo)
+		for node, s := range shards {
+			orderInfo.Shards[node] = types.ShardInfo{
+				ShardId:  s.ShardId,
+				Peer:     s.Peer,
+				Cid:      s.Cid,
+				Provider: s.Provider,
+				State:    types.ShardStateAssigned,
+			}
+		}
+		err = utils.PutOrder(ctx, gs.orderDs, orderInfo)
+		if err != nil {
+			return err
 		}
 	}
 
-	// TODO: wsevent
-	//doneChan := make(chan chain.OrderCompleteResult)
-	//err = gs.chainSvc.SubscribeOrderComplete(ctx, orderId, doneChan)
-	//if err != nil {
-	//	return nil, err
-	//}
+	if orderInfo.State < types.OrderStateComplete {
+		log.Infof("assigning shards to nodes...")
+		// assign shards to storage nodes
 
-	log.Infof("waiting for all nodes order %d shard completion.", orderId)
-	gs.completeChan[orderId] = make(chan struct{})
+		for node, shard := range orderInfo.Shards {
+			if shard.State != types.ShardStateCompleted {
+				var shardAssignReq = types.ShardAssignReq{
+					OrderId:      orderInfo.OrderId,
+					TxHash:       txHash,
+					Assignee:     node,
+					Height:       height,
+					AssignTxType: txType,
+				}
+				if node == gs.nodeAddress {
+					if c, exists := gs.notifyChan[types.ShardAssignProtocol]; exists {
+						c <- shardAssignReq
+						shard.State = types.ShardStateNotified
+					} else {
+						log.Errorf("assign order %d shards to node %s failed: %v", orderInfo.OrderId, node, "no channel defined")
+						shard.State = types.ShardStateError
+						continue
+					}
+				} else {
+					resp := types.ShardAssignResp{}
+					err = transport.HandleRequest(
+						ctx,
+						shard.Peer,
+						gs.shardStreamHandler.host,
+						types.ShardAssignProtocol,
+						&shardAssignReq,
+						&resp,
+					)
+					if err != nil {
+						log.Errorf("assign order %d shards to node %s failed: %v", orderInfo.OrderId, node, err)
+						shard.State = types.ShardStateNotified
+						continue
+					}
+					if resp.Code == 0 {
+						shard.State = types.ShardStateNotified
+						log.Infof("assigned order %d shard to node %s.", orderInfo.OrderId, node)
+					} else {
+						log.Errorf("assigned order %d shards to node %s failed: %v", orderInfo.OrderId, node, resp.Message)
+						shard.State = types.ShardStateError
+					}
+				}
+			}
+		}
+		err = utils.PutOrder(ctx, gs.orderDs, orderInfo)
+		if err != nil {
+			return err
+		}
+
+		log.Infof("waiting for all nodes order %d shard completion.", orderInfo.OrderId)
+		if _, exists := gs.completeChan[orderInfo.OrderId]; !exists {
+			gs.completeChan[orderInfo.OrderId] = make(chan struct{})
+		}
+
+		<-gs.completeChan[orderInfo.OrderId]
+		log.Debugf("complete channel done. order %d completes", orderInfo.OrderId)
+		orderInfo.State = types.OrderStateComplete
+		err = utils.PutOrder(ctx, gs.orderDs, orderInfo)
+		if err != nil {
+			log.Warn("put order %d error: %v", orderInfo.OrderId, err)
+		}
+		close(gs.completeChan[orderInfo.OrderId])
+		delete(gs.completeChan, orderInfo.OrderId)
+
+		log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, clientProposal.Proposal.Owner, clientProposal.Proposal.Cid)
+		err = UnstageShard(gs.stagingPath, clientProposal.Proposal.Owner, clientProposal.Proposal.Cid)
+		if err != nil {
+			log.Warn("unstage shard error: %v", err)
+		}
+	}
+	return nil
+}
+
+func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error) {
+	orderProposal := clientProposal.Proposal
+	stagePath, err := StageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid, content)
+	if err != nil {
+		return nil, err
+	}
+
+	orderInfo, err := utils.GetOrder(ctx, gs.orderDs, orderId)
+	if err != nil {
+		return nil, err
+	}
+	if orderInfo.OrderId == 0 {
+		orderInfo = types.OrderInfo{
+			State:     types.OrderStateStaged,
+			StagePath: stagePath,
+		}
+		err = utils.PutOrder(ctx, gs.orderDs, orderInfo)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		orderInfo.StagePath = stagePath
+		orderInfo.State = types.OrderStateStaged
+		err = utils.PutOrder(ctx, gs.orderDs, orderInfo)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
+	ch := make(chan string, 1)
+	go func() {
+		err = gs.execOrder(ctx, clientProposal, orderInfo)
+		if err != nil {
+			ch <- err.Error()
+		} else {
+			ch <- "ok"
+		}
+	}()
 
 	timeout := false
 	select {
-	case <-gs.completeChan[orderId]:
-		log.Debugf("complete channel done. order %d completes", orderId)
+	case s := <-ch:
+		if s != "ok" {
+			return nil, xerrors.Errorf(s)
+		}
+		break
 	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
 		timeout = true
-	case <-ctx.Done():
-		timeout = true
 	}
-	close(gs.completeChan[orderId])
-	delete(gs.completeChan, orderId)
 
 	// TODO: wsevent
 	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
@@ -445,12 +546,6 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	//} else {
 	//	log.Debugf("UnsubscribeOrderComplete")
 	//}
-
-	log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, orderProposal.Owner, orderProposal.Cid)
-	err = UnstageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid)
-	if err != nil {
-		return nil, err
-	}
 
 	if timeout {
 		// TODO: timeout handling
@@ -516,4 +611,43 @@ func (gs *GatewaySvc) Stop(ctx context.Context) error {
 	gs.shardStreamHandler.Stop(ctx)
 
 	return nil
+}
+
+func (gs *GatewaySvc) OrderStatus(ctx context.Context, orderId uint64) (types.OrderInfo, error) {
+	return utils.GetOrder(ctx, gs.orderDs, orderId)
+}
+
+func (gs *GatewaySvc) OrderList(ctx context.Context) ([]types.OrderInfo, error) {
+	key := datastore.NewKey("order_stats")
+	exists, err := gs.orderDs.Has(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return []types.OrderInfo{}, nil
+	}
+	data, err := gs.orderDs.Get(ctx, key)
+	if err != nil {
+		return nil, err
+	}
+
+	var orderStats types.OrderStats
+	err = orderStats.UnmarshalCBOR(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+
+	var orderInfos []types.OrderInfo
+	for _, orderId := range orderStats.All {
+		orderInfo, err := utils.GetOrder(ctx, gs.orderDs, orderId)
+		if err != nil {
+			return nil, err
+		}
+		orderInfos = append(orderInfos, orderInfo)
+	}
+	return orderInfos, nil
+}
+
+func (gs *GatewaySvc) OrderFix(ctx context.Context, orderId uint64) (types.OrderInfo, error) {
+
 }

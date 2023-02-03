@@ -16,7 +16,6 @@ import (
 	"sync"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
 	"golang.org/x/xerrors"

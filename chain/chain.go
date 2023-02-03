@@ -60,13 +60,21 @@ type ChainSvcApi interface {
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
 }
 
-func NewChainSvc(ctx context.Context, repo string, addressPrefix string, chainAddress string, wsEndpoint string) (*ChainSvc, error) {
+func NewChainSvc(
+	ctx context.Context,
+	repo string,
+	addressPrefix string,
+	chainAddress string,
+	wsEndpoint string,
+	keyringHome string,
+) (*ChainSvc, error) {
 	log.Debugf("initialize chain client")
 
 	cosmos, err := cosmosclient.New(ctx,
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(chainAddress),
 		cosmosclient.WithHome(repo),
+		cosmosclient.WithKeyringDir(keyringHome),
 		cosmosclient.WithGas("auto"),
 	)
 	if err != nil {

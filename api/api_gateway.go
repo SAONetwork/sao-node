@@ -14,6 +14,11 @@ type SaoApi interface {
 	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:none
 	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)    //perm:admin
 
+	// MethodGroup: Order
+	OrderStatus(ctx context.Context, orderId uint64) (types.OrderInfo, error) //perm:read
+	OrderList(ctx context.Context) ([]types.OrderInfo, error)                 //perm:read
+	OrderFix(ctx context.Context) (types.OrderInfo, error)                    //perm:write
+
 	// MethodGroup: Model
 	// The Model method group contains methods for manipulating data models.
 

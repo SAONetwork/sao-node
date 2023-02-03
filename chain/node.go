@@ -84,7 +84,7 @@ func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, err
 		return "", err
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgReset tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", xerrors.Errorf("MsgClaimReward tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }

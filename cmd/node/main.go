@@ -85,6 +85,8 @@ func main() {
 			FlagRepo,
 			cliutil.FlagChainAddress,
 			cliutil.FlagVeryVerbose,
+			cliutil.FlagKeyringHome,
+			cliutil.FlagGateway,
 		},
 		Commands: []*cli.Command{
 			initCmd,
@@ -96,6 +98,7 @@ func main() {
 			authCmd,
 			infoCmd,
 			claimCmd,
+			ordersCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -148,7 +151,7 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -203,7 +206,7 @@ var joinCmd = &cli.Command{
 		chainAddress := cliutil.ChainAddress
 		creator := cctx.String("creator")
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -282,7 +285,7 @@ var updateCmd = &cli.Command{
 			chainAddress = cfg.Chain.Remote
 		}
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -345,7 +348,7 @@ var quitCmd = &cli.Command{
 			chainAddress = cfg.Chain.Remote
 		}
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -463,7 +466,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		snode, err := node.NewNode(ctx, repo)
+		snode, err := node.NewNode(ctx, repo, cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -512,7 +515,7 @@ var infoCmd = &cli.Command{
 			chainAddress = cfg.Chain.Remote
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return fmt.Errorf("new cosmos chain: %w", err)
 		}
@@ -593,7 +596,7 @@ var claimCmd = &cli.Command{
 		chainAddress := cliutil.ChainAddress
 		creator := cctx.String("creator")
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}

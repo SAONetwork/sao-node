@@ -38,11 +38,11 @@ var listCmd = &cli.Command{
 			return xerrors.Errorf("no chain address specified")
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
-		err = chain.List(ctx, repoPath)
+		err = chain.List(ctx, cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ var createCmd = &cli.Command{
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
-		accountName, address, mnemonic, err := chain.Create(ctx, cctx.String("repo"), name)
+		accountName, address, mnemonic, err := chain.Create(ctx, cliutil.KeyringHome, name)
 		if err != nil {
 			return err
 		}
@@ -118,7 +118,7 @@ var exportCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Export(ctx, cctx.String("repo"), name, string(passphrase))
+		err = chain.Export(ctx, cliutil.KeyringHome, name, string(passphrase))
 		if err != nil {
 			return err
 		}
@@ -156,7 +156,7 @@ var sendCmd = &cli.Command{
 			return xerrors.Errorf("no chain address specified")
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return xerrors.Errorf("new cosmos chain: %w", err)
 		}
@@ -219,7 +219,7 @@ var importCmd = &cli.Command{
 			return err
 		}
 
-		err = chain.Import(ctx, cctx.String("repo"), name, secret, string(passphrase))
+		err = chain.Import(ctx, cliutil.KeyringHome, name, secret, string(passphrase))
 		if err != nil {
 			return err
 		}

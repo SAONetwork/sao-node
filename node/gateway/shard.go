@@ -9,33 +9,34 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-func StageShard(basedir string, creator string, cid string, content []byte) error {
+func StageShard(basedir string, creator string, cid string, content []byte) (string, error) {
 	// TODO: check enough space
 	// TODO: check existence
 	path, err := homedir.Expand(basedir)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = os.MkdirAll(filepath.Join(path, creator), 0755)
 	if err != nil && !os.IsExist(err) {
-		return err
+		return "", err
 	}
 
 	//filename := fmt.Sprintf("%d-%v", orderId, cid)
 	filename := fmt.Sprintf("%v", cid)
 	log.Debugf("staging file: %s/%s/%s", path, creator, filename)
-	file, err := os.Create(filepath.Join(path, creator, filename))
+	filepath := filepath.Join(path, creator, filename)
+	file, err := os.Create(filepath)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer file.Close()
 
 	_, err = file.Write(content)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return filepath, nil
 }
 
 func GetStagedShard(basedir string, creator string, cid cid.Cid) ([]byte, error) {

@@ -17,6 +17,24 @@ import (
 
 const FlagKeyName = "key-name"
 
+var Gateway string
+var FlagGateway = &cli.StringFlag{
+	Name:        "gateway",
+	Usage:       "gateway connection",
+	EnvVars:     []string{"SAO_GATEWAY_API"},
+	Required:    false,
+	Destination: &Gateway,
+}
+
+var KeyringHome string
+var FlagKeyringHome = &cli.StringFlag{
+	Name:        "keyring",
+	Usage:       "account keyring home directory",
+	EnvVars:     []string{"SAO_KEYRING_HOME"},
+	Value:       "~/.sao/",
+	Destination: &KeyringHome,
+}
+
 var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
 	Name:    "chain-address",
@@ -56,15 +74,15 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 		keyName = cctx.String(FlagKeyName)
 	}
 
-	repo := cctx.String("repo")
+	// repo := cctx.String("repo")
 
-	address, err := chain.GetAddress(cctx.Context, repo, keyName)
+	address, err := chain.GetAddress(cctx.Context, KeyringHome, keyName)
 	if err != nil {
 		return nil, "", err
 	}
 
 	payload := fmt.Sprintf("cosmos %s allows to generate did", address)
-	secret, err := chain.SignByAccount(cctx.Context, repo, keyName, []byte(payload))
+	secret, err := chain.SignByAccount(cctx.Context, KeyringHome, keyName, []byte(payload))
 	if err != nil {
 		return nil, "", err
 	}

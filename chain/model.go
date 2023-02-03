@@ -15,8 +15,20 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 	}
 	saoClient := saotypes.NewQueryClient(clientctx)
 	resp, err := saoClient.Metadata(ctx, &saotypes.QueryMetadataRequest{
-		Proposal:     req.Proposal,
-		JwsSignature: req.JwsSignature,
+		Proposal: saotypes.QueryProposal{
+			Owner:           req.Proposal.Owner,
+			Keyword:         req.Proposal.Keyword,
+			GroupId:         req.Proposal.GroupId,
+			KeywordType:     uint32(req.Proposal.KeywordType),
+			LastValidHeight: req.Proposal.LastValidHeight,
+			Gateway:         req.Proposal.Gateway,
+			CommitId:        req.Proposal.CommitId,
+			Version:         req.Proposal.Version,
+		},
+		JwsSignature: saotypes.JwsSignature{
+			Protected: req.JwsSignature.Protected,
+			Signature: req.JwsSignature.Signature,
+		},
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("QueryMetadata failed, " + err.Error())
@@ -46,7 +58,7 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 	}
 	// log.Debug("MsgStore result: ", txResp)
 	if txResp.TxResponse.Code != 0 {
-		return "", xerrors.Errorf("MsgStore tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", xerrors.Errorf("MsgUpdataPermission tx %v failed: code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 
 	return txResp.TxResponse.TxHash, nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sao-node/types"
 	"strings"
 	"time"
 
@@ -62,7 +63,7 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
 	defer stream.SetReadDeadline(time.Time{}) // nolint
 
-	if err = DoRequest(ctx, stream, req, resp, "json"); err != nil {
+	if err = DoRequest(ctx, stream, req, resp, types.FormatCbor); err != nil {
 		// TODO: handle error
 		log.Error(err)
 		return err

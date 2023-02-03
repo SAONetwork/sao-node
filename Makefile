@@ -15,6 +15,10 @@ saoclient:
 .PHONY: saoclient
 BINS+=saoclient
 
+cbor-gen:
+	$(GOCC) run ./gen/cbor/cbor_gen.go
+.PHONY: cbor-gen
+
 api-gen:
 	$(GOCC) run ./gen/api
 	goimports -w api

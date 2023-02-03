@@ -38,9 +38,10 @@ var didCreateCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		opt := saoclient.SaoClientOptions{
-			Repo:      cctx.String(FlagClientRepo),
-			Gateway:   "none",
-			ChainAddr: cliutil.ChainAddress,
+			Repo:        cctx.String(FlagClientRepo),
+			Gateway:     "none",
+			ChainAddr:   cliutil.ChainAddress,
+			KeyringHome: cliutil.KeyringHome,
 		}
 		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {
@@ -90,7 +91,7 @@ var didShowInfoCmd = &cli.Command{
 			return fmt.Errorf("no chain address specified")
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
+		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return fmt.Errorf("new cosmos chain: %w", err)
 		}
@@ -112,9 +113,10 @@ var didSignCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		opt := saoclient.SaoClientOptions{
-			Repo:      cctx.String(FlagClientRepo),
-			Gateway:   "none",
-			ChainAddr: "none",
+			Repo:        cctx.String(FlagClientRepo),
+			Gateway:     "none",
+			ChainAddr:   "none",
+			KeyringHome: cliutil.KeyringHome,
 		}
 		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {

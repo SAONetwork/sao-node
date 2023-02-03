@@ -46,6 +46,10 @@ type SaoApiStruct struct {
 		ModelUpdate func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.UpdateResp, error) `perm:"write"`
 
 		ModelUpdatePermission func(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) `perm:"write"`
+
+		OrderList func(p0 context.Context) ([]types.OrderInfo, error) `perm:"read"`
+
+		OrderStatus func(p0 context.Context, p1 uint64) (types.OrderInfo, error) `perm:"read"`
 	}
 }
 
@@ -226,6 +230,28 @@ func (s *SaoApiStruct) ModelUpdatePermission(p0 context.Context, p1 *types.Permi
 
 func (s *SaoApiStub) ModelUpdatePermission(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) {
 	return *new(apitypes.UpdatePermissionResp), ErrNotSupported
+}
+
+func (s *SaoApiStruct) OrderList(p0 context.Context) ([]types.OrderInfo, error) {
+	if s.Internal.OrderList == nil {
+		return *new([]types.OrderInfo), ErrNotSupported
+	}
+	return s.Internal.OrderList(p0)
+}
+
+func (s *SaoApiStub) OrderList(p0 context.Context) ([]types.OrderInfo, error) {
+	return *new([]types.OrderInfo), ErrNotSupported
+}
+
+func (s *SaoApiStruct) OrderStatus(p0 context.Context, p1 uint64) (types.OrderInfo, error) {
+	if s.Internal.OrderStatus == nil {
+		return *new(types.OrderInfo), ErrNotSupported
+	}
+	return s.Internal.OrderStatus(p0, p1)
+}
+
+func (s *SaoApiStub) OrderStatus(p0 context.Context, p1 uint64) (types.OrderInfo, error) {
+	return *new(types.OrderInfo), ErrNotSupported
 }
 
 var _ SaoApi = new(SaoApiStruct)

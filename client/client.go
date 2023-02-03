@@ -2,12 +2,13 @@ package client
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"sao-node/api"
 	"sao-node/chain"
 	"sao-node/utils"
+
+	"golang.org/x/xerrors"
 
 	apiclient "sao-node/api/client"
 
@@ -30,10 +31,11 @@ type SaoClient struct {
 }
 
 type SaoClientOptions struct {
-	Repo      string
-	Gateway   string
-	ChainAddr string
-	KeyName   string
+	Repo        string
+	Gateway     string
+	ChainAddr   string
+	KeyName     string
+	KeyringHome string
 }
 
 func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func(), error) {
@@ -118,7 +120,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		if opt.ChainAddr == "" {
 			opt.ChainAddr = cfg.ChainAddress
 		}
-		chainSvc, err := chain.NewChainSvc(ctx, opt.Repo, "cosmos", opt.ChainAddr, "/websocket")
+		chainSvc, err := chain.NewChainSvc(ctx, opt.Repo, "cosmos", opt.ChainAddr, "/websocket", opt.KeyringHome)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("new cosmos chain: %w", err)
 		}

@@ -55,7 +55,7 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 	defer s.Close()
 
 	respond := func(resp types.ShardCompleteResp) {
-		err := resp.Marshal(s, "json")
+		err := resp.Marshal(s, types.FormatCbor)
 		if err != nil {
 			log.Error(err.Error())
 			return
@@ -72,7 +72,7 @@ func (ssh *ShardStreamHandler) HandleShardCompleteStream(s network.Stream) {
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
 	var req types.ShardCompleteReq
-	err := req.Unmarshal(s, "json")
+	err := req.Unmarshal(s, types.FormatCbor)
 	if err != nil {
 		log.Error(err)
 		respond(types.ShardCompleteResp{
@@ -181,14 +181,14 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
-	var req types.ShardReq
-	err := req.Unmarshal(s, "json")
+	var req types.ShardLoadReq
+	err := req.Unmarshal(s, types.FormatCbor)
 	if err != nil {
 		log.Error(err)
 		// TODO: respond error
 		return
 	}
-	log.Debugf("receive ShardReq: orderId=%d cid=%v", req.OrderId, req.Cid, req.RequestId)
+	log.Debugf("receive ShardLoadReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
 
 	contentBytes, err := GetStagedShard(ssh.stagingPath, req.Owner, req.Cid)
 	if err != nil {
@@ -196,16 +196,16 @@ func (ssh *ShardStreamHandler) HandleShardStream(s network.Stream) {
 		// TODO: respond error
 		return
 	}
-	var resp = &types.ShardResp{
+	var resp = &types.ShardLoadResp{
 		OrderId:    req.OrderId,
 		Cid:        req.Cid,
 		Content:    contentBytes,
 		RequestId:  req.RequestId,
 		ResponseId: time.Now().UnixMilli(),
 	}
-	log.Debugf("send ShardResp(requestId=%d,responseId=%d): len(Content)=%d", req.RequestId, resp.ResponseId, len(contentBytes))
+	log.Debugf("send ShardLoadResp(requestId=%d,responseId=%d): len(Content)=%d", req.RequestId, resp.ResponseId, len(contentBytes))
 
-	err = resp.Marshal(s, "json")
+	err = resp.Marshal(s, types.FormatCbor)
 	if err != nil {
 		log.Error(err.Error())
 		return
@@ -241,20 +241,35 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, o
 	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
 	defer stream.SetReadDeadline(time.Time{}) // nolint
 
-	request := types.ShardReq{
-		Cid:       shardCid,
-		OrderId:   orderId,
-		Proposal:  req,
+	request := types.ShardLoadReq{
+		Cid:     shardCid,
+		OrderId: orderId,
+		Proposal: types.MetadataProposalCbor{
+			Proposal: types.QueryProposal{
+				Owner:           req.Proposal.Owner,
+				Keyword:         req.Proposal.Keyword,
+				GroupId:         req.Proposal.GroupId,
+				KeywordType:     uint64(req.Proposal.KeywordType),
+				LastValidHeight: req.Proposal.LastValidHeight,
+				Gateway:         req.Proposal.Gateway,
+				CommitId:        req.Proposal.CommitId,
+				Version:         req.Proposal.Version,
+			},
+			JwsSignature: types.JwsSignature{
+				Protected: req.JwsSignature.Protected,
+				Signature: req.JwsSignature.Signature,
+			},
+		},
 		RequestId: time.Now().UnixMilli(),
 	}
-	log.Infof("send ShardReq with cid:%v, to the storage node %s", request.Cid, addr)
+	log.Infof("send ShardLoadReq with cid:%v, to the storage node %s", request.Cid, addr)
 
-	var resp types.ShardResp
-	if err = transport.DoRequest(ssh.ctx, stream, &request, &resp, "json"); err != nil {
+	var resp types.ShardLoadResp
+	if err = transport.DoRequest(ssh.ctx, stream, &request, &resp, types.FormatCbor); err != nil {
 		return nil, err
 	}
 
-	log.Debugf("receive ShardResp(requestId=%d,responseId=%d) with content length:%d, from the storage node %s", resp.RequestId, resp.ResponseId, len(resp.Content), addr)
+	log.Debugf("receive ShardLoadResp(requestId=%d,responseId=%d) with content length:%d, from the storage node %s", resp.RequestId, resp.ResponseId, len(resp.Content), addr)
 
 	return resp.Content, nil
 }

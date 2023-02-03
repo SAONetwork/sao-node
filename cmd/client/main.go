@@ -5,17 +5,13 @@ package main
 // * guic transfer data
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"sao-node/build"
-	"sao-node/chain"
 	"sao-node/client"
 	cliutil "sao-node/cmd"
 	"sao-node/cmd/account"
-	"strings"
 
-	"cosmossdk.io/math"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 )
@@ -25,7 +21,6 @@ const (
 	DEFAULT_REPLICA  = 1
 
 	FlagClientRepo = "repo"
-	FlagGateway    = "gateway"
 )
 
 var flagRepo = &cli.StringFlag{
@@ -36,13 +31,6 @@ var flagRepo = &cli.StringFlag{
 	Value:    "~/.sao-cli",
 }
 
-var flagGateway = &cli.StringFlag{
-	Name:     FlagGateway,
-	Usage:    "gateway connection",
-	EnvVars:  []string{"SAO_GATEWAY_API"},
-	Required: false,
-}
-
 var flagPlatform = &cli.StringFlag{
 	Name:     "platform",
 	Usage:    "platform to manage the data model",
@@ -51,10 +39,11 @@ var flagPlatform = &cli.StringFlag{
 
 func getSaoClient(cctx *cli.Context) (*client.SaoClient, func(), error) {
 	opt := client.SaoClientOptions{
-		Repo:      cctx.String(FlagClientRepo),
-		Gateway:   cctx.String(FlagGateway),
-		ChainAddr: cliutil.ChainAddress,
-		KeyName:   cctx.String(cliutil.FlagKeyName),
+		Repo:        cctx.String(FlagClientRepo),
+		Gateway:     cliutil.Gateway,
+		ChainAddr:   cliutil.ChainAddress,
+		KeyName:     cctx.String(cliutil.FlagKeyName),
+		KeyringHome: cliutil.KeyringHome,
 	}
 	return client.NewSaoClient(cctx.Context, opt)
 }
@@ -84,9 +73,10 @@ func main() {
 		Flags: []cli.Flag{
 			cliutil.FlagChainAddress,
 			flagRepo,
-			flagGateway,
+			cliutil.FlagGateway,
 			flagPlatform,
 			cliutil.FlagVeryVerbose,
+			cliutil.FlagKeyringHome,
 		},
 		Commands: []*cli.Command{
 			initCmd,
@@ -130,38 +120,38 @@ var initCmd = &cli.Command{
 		fmt.Printf("repo %s is initialized.", repo)
 		fmt.Println()
 
-		accountName, address, mnemonic, err := chain.Create(cctx.Context, repo, saoclient.Cfg.KeyName)
-		if err != nil {
-			return err
-		}
-		fmt.Println("account created: ")
-		fmt.Println("Account:", accountName)
-		fmt.Println("Address:", address)
-		fmt.Println("Mnemonic:", mnemonic)
+		// accountName, address, mnemonic, err := chain.Create(cctx.Context, repo, saoclient.Cfg.KeyName)
+		// if err != nil {
+		// 	return err
+		// }
+		// fmt.Println("account created: ")
+		// fmt.Println("Account:", accountName)
+		// fmt.Println("Address:", address)
+		// fmt.Println("Mnemonic:", mnemonic)
 
-		for {
-			coins, err := saoclient.GetBalance(cctx.Context, address)
-			askFor := false
-			if err != nil {
-				fmt.Printf("%v", err)
-				askFor = true
-			} else {
-				if coins.AmountOf("stake").LT(math.NewInt(1000)) {
-					askFor = true
-				}
-			}
-			if askFor {
-				fmt.Print("Please deposit enough coins to pay gas. Confirm with 'yes' :")
-				reader := bufio.NewReader(os.Stdin)
-				indata, err := reader.ReadBytes('\n')
-				if err != nil {
-					return err
-				}
-				_ = strings.Replace(string(indata), "\n", "", -1)
-			} else {
-				break
-			}
-		}
+		// for {
+		// 	coins, err := saoclient.GetBalance(cctx.Context, address)
+		// 	askFor := false
+		// 	if err != nil {
+		// 		fmt.Printf("%v", err)
+		// 		askFor = true
+		// 	} else {
+		// 		if coins.AmountOf("stake").LT(math.NewInt(1000)) {
+		// 			askFor = true
+		// 		}
+		// 	}
+		// 	if askFor {
+		// 		fmt.Print("Please deposit enough coins to pay gas. Confirm with 'yes' :")
+		// 		reader := bufio.NewReader(os.Stdin)
+		// 		indata, err := reader.ReadBytes('\n')
+		// 		if err != nil {
+		// 			return err
+		// 		}
+		// 		_ = strings.Replace(string(indata), "\n", "", -1)
+		// 	} else {
+		// 		break
+		// 	}
+		// }
 
 		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
 		if err != nil {

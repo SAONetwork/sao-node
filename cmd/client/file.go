@@ -364,7 +364,6 @@ var peerInfoCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String(FlagGateway)
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
@@ -379,7 +378,7 @@ var peerInfoCmd = &cli.Command{
 		console := color.New(color.FgMagenta, color.Bold)
 
 		fmt.Print("  GateWay   : ")
-		console.Println(gateway)
+		console.Println(cliutil.Gateway)
 
 		fmt.Print("  Peer Info : ")
 		console.Println(resp.PeerInfo)
@@ -394,7 +393,6 @@ var tokenGenCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		gateway := cctx.String(FlagGateway)
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
@@ -417,7 +415,7 @@ var tokenGenCmd = &cli.Command{
 		console.Println(didManager.Id)
 
 		fmt.Print("  GateWay : ")
-		console.Println(gateway)
+		console.Println(cliutil.Gateway)
 
 		fmt.Print("  Server  : ")
 		console.Println(resp.Server)

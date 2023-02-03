@@ -307,8 +307,8 @@ func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gatew
 	if err != nil {
 		return nil, err
 	}
-	resp := types.ShardResp{}
-	err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardStoreProtocol, &types.ShardReq{
+	resp := types.ShardLoadResp{}
+	err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardStoreProtocol, &types.ShardLoadReq{
 		Owner:   owner,
 		OrderId: orderId,
 		Cid:     cid,
@@ -343,7 +343,7 @@ func (ss *StoreSvc) HandleShardAssignStream(s network.Stream) {
 	defer s.Close()
 
 	respond := func(resp types.ShardAssignResp) {
-		err := resp.Marshal(s, "json")
+		err := resp.Marshal(s, types.FormatCbor)
 		if err != nil {
 			log.Error(err.Error())
 			return
@@ -360,7 +360,7 @@ func (ss *StoreSvc) HandleShardAssignStream(s network.Stream) {
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
 	var req types.ShardAssignReq
-	err := req.Unmarshal(s, "json")
+	err := req.Unmarshal(s, types.FormatCbor)
 	if err != nil {
 		respond(types.ShardAssignResp{
 			Code:    types.ErrorCodeInvalidRequest,
@@ -379,13 +379,13 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
 	defer s.SetReadDeadline(time.Time{}) // nolint
 
-	var req types.ShardReq
-	err := req.Unmarshal(s, "json")
+	var req types.ShardLoadReq
+	err := req.Unmarshal(s, types.FormatCbor)
 	if err != nil {
 		log.Error(err)
 		return
 	}
-	log.Debugf("receive ShardReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
+	log.Debugf("receive ShardLoadReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
 
 	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
 	if err != nil {
@@ -393,7 +393,18 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 		return
 	}
 
-	proposalBytes, err := req.Proposal.Proposal.Marshal()
+	p := saotypes.QueryProposal{
+		Owner:           req.Proposal.Proposal.Owner,
+		Keyword:         req.Proposal.Proposal.Keyword,
+		GroupId:         req.Proposal.Proposal.GroupId,
+		KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
+		LastValidHeight: req.Proposal.Proposal.LastValidHeight,
+		Gateway:         req.Proposal.Proposal.Gateway,
+		CommitId:        req.Proposal.Proposal.CommitId,
+		Version:         req.Proposal.Proposal.Version,
+	}
+
+	proposalBytes, err := p.Marshal()
 	if err != nil {
 		log.Error(err)
 		return
@@ -438,16 +449,16 @@ func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
 		return
 	}
 
-	var resp = &types.ShardResp{
+	var resp = &types.ShardLoadResp{
 		OrderId:    req.OrderId,
 		Cid:        req.Cid,
 		Content:    shardContent,
 		RequestId:  req.RequestId,
 		ResponseId: time.Now().UnixMilli(),
 	}
-	log.Debugf("send ShardResp(requestId=%d,responseId=%d): Content len %d", resp.RequestId, resp.ResponseId, len(shardContent))
+	log.Debugf("send ShardLoadResp(requestId=%d,responseId=%d): Content len %d", resp.RequestId, resp.ResponseId, len(shardContent))
 
-	err = resp.Marshal(s, "json")
+	err = resp.Marshal(s, types.FormatCbor)
 	if err != nil {
 		log.Error(err.Error())
 		return

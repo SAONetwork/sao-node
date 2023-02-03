@@ -4,16 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 	"os"
 	"path/filepath"
 	"sao-node/node/config"
 	"sao-node/utils"
 	"sync"
+
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("repo")
@@ -142,7 +143,7 @@ func (r *Repo) setPeerId(data []byte) error {
 }
 
 func (r *Repo) Config() (interface{}, error) {
-	return utils.FromFile(r.configPath, r.defaultConfig(""))
+	return utils.FromFile(r.configPath, r.defaultConfig())
 }
 
 func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, error) {
@@ -174,7 +175,9 @@ func (r *Repo) initConfig(chainAddress string) error {
 		return err
 	}
 
-	comm, err := config.ConfigComment(r.defaultConfig(chainAddress))
+	defaultConfig := r.defaultConfig()
+	defaultConfig.Chain.Remote = chainAddress
+	comm, err := config.ConfigComment(defaultConfig)
 	//comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
 	if err != nil {
 		return xerrors.Errorf("load default: %w", err)
@@ -190,9 +193,8 @@ func (r *Repo) initConfig(chainAddress string) error {
 	return nil
 }
 
-func (r *Repo) defaultConfig(chainAddress string) interface{} {
+func (r *Repo) defaultConfig() *config.Node {
 	repo := config.DefaultSaoNode()
-	repo.Chain.Remote = chainAddress
 	return repo
 }
 

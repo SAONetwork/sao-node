@@ -6,12 +6,15 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
+type AssignTxType string
+
 const (
-	ShardLoadProtocol  = "/sao/load/shard/1.0"
-	ShardStoreProtocol = "/sao/store/shard/1.0"
+	ShardLoadProtocol     = "/sao/shard/load/1.0"
+	ShardStoreProtocol    = "/sao/shard/store/1.0"
+	ShardAssignProtocol   = "/sao/shard/assign/1.0"
+	ShardCompleteProtocol = "/sao/shard/complete/1.0"
 
 	ErrorCodeInvalidRequest       = 1
 	ErrorCodeInvalidTx            = 2
@@ -20,6 +23,12 @@ const (
 	ErrorCodeInvalidShardCid      = 5
 	ErrorCodeInvalidOrderProvider = 6
 	ErrorCodeInvalidShardAssignee = 7
+
+	AssignTxTypeStore AssignTxType = "MsgStore"
+	AssignTxTypeReady AssignTxType = "MsgReady"
+
+	FormatJson string = "json"
+	FormatCbor string = "cbor"
 )
 
 type ShardStaging struct {
@@ -27,15 +36,15 @@ type ShardStaging struct {
 }
 
 // TODO: store node should sign the request.
-type ShardReq struct {
+type ShardLoadReq struct {
 	Owner     string
 	OrderId   uint64
 	Cid       cid.Cid
-	Proposal  *MetadataProposal
+	Proposal  MetadataProposalCbor
 	RequestId int64
 }
 
-type ShardResp struct {
+type ShardLoadResp struct {
 	OrderId    uint64
 	Cid        cid.Cid
 	Content    []byte
@@ -43,8 +52,75 @@ type ShardResp struct {
 	ResponseId int64
 }
 
-func (f *ShardReq) Unmarshal(r io.Reader, format string) (err error) {
-	if format == "json" {
+type ShardAssignReq struct {
+	OrderId      uint64
+	Assignee     string
+	TxHash       string
+	Height       int64
+	AssignTxType AssignTxType
+}
+
+type ShardAssignResp struct {
+	Code    uint64
+	Message string
+}
+
+type ShardCompleteReq struct {
+	OrderId uint64
+	Cids    []cid.Cid
+	TxHash  string
+	Height  int64
+	Code    uint64
+	Message string
+}
+
+type ShardCompleteResp struct {
+	Code    uint64
+	Message string
+}
+
+func (f *ShardLoadReq) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+		err = json.Unmarshal(buf.Bytes(), f)
+	} else {
+		err = f.UnmarshalCBOR(r)
+	}
+	return err
+}
+
+func (f *ShardLoadReq) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
+		bytes, err := json.Marshal(f)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(bytes)
+	} else {
+		err = f.MarshalCBOR(w)
+	}
+	return err
+}
+func (f *ShardLoadResp) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
+		bytes, err := json.Marshal(f)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(bytes)
+	} else {
+		err = f.MarshalCBOR(w)
+	}
+	return err
+}
+
+func (f *ShardLoadResp) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
 		buf := &bytes.Buffer{}
 		buf.ReadFrom(r)
 		err = json.Unmarshal(buf.Bytes(), f)
@@ -52,14 +128,82 @@ func (f *ShardReq) Unmarshal(r io.Reader, format string) (err error) {
 			return err
 		}
 	} else {
-		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		err = f.UnmarshalCBOR(r)
 	}
-	return nil
+	return err
+}
+func (f *ShardAssignReq) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+		err = json.Unmarshal(buf.Bytes(), f)
+	} else {
+		err = f.UnmarshalCBOR(r)
+	}
+	return err
 }
 
-func (f *ShardReq) Marshal(w io.Writer, format string) error {
-	if format == "json" {
+func (f *ShardAssignReq) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
+		bytes, err := json.Marshal(f)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(bytes)
+	} else {
+		err = f.MarshalCBOR(w)
+	}
+	return err
+}
+
+func (f *ShardAssignResp) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+		err = json.Unmarshal(buf.Bytes(), f)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = f.UnmarshalCBOR(r)
+	}
+	return err
+}
+
+func (f *ShardAssignResp) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
+		bytes, err := json.Marshal(f)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(bytes)
+	} else {
+		err = f.MarshalCBOR(w)
+	}
+	return err
+}
+func (f *ShardCompleteReq) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+		err = json.Unmarshal(buf.Bytes(), f)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = f.UnmarshalCBOR(r)
+	}
+	return err
+}
+
+func (f *ShardCompleteReq) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
 		bytes, err := json.Marshal(f)
 		if err != nil {
 			return err
@@ -69,14 +213,29 @@ func (f *ShardReq) Marshal(w io.Writer, format string) error {
 			return err
 		}
 	} else {
-		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		err = f.MarshalCBOR(w)
 	}
-	return nil
+	return err
 }
 
-func (f *ShardResp) Marshal(w io.Writer, format string) error {
-	if format == "json" {
+func (f *ShardCompleteResp) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+		err = json.Unmarshal(buf.Bytes(), f)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = f.UnmarshalCBOR(r)
+	}
+	return err
+}
+
+func (f *ShardCompleteResp) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
 		bytes, err := json.Marshal(f)
 		if err != nil {
 			return err
@@ -86,23 +245,7 @@ func (f *ShardResp) Marshal(w io.Writer, format string) error {
 			return err
 		}
 	} else {
-		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		err = f.MarshalCBOR(w)
 	}
-	return nil
-}
-
-func (f *ShardResp) Unmarshal(r io.Reader, format string) (err error) {
-	if format == "json" {
-		buf := &bytes.Buffer{}
-		buf.ReadFrom(r)
-		err = json.Unmarshal(buf.Bytes(), f)
-		if err != nil {
-			return err
-		}
-	} else {
-		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
-	}
-	return nil
+	return err
 }
