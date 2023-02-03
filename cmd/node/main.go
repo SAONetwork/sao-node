@@ -15,6 +15,7 @@ import (
 	"sao-node/node"
 	"sao-node/node/config"
 	"sao-node/node/repo"
+	"sao-node/types"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
@@ -32,7 +33,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node")
@@ -134,23 +134,23 @@ var initCmd = &cli.Command{
 
 		r, err := initRepo(repoPath, chainAddress)
 		if err != nil {
-			return xerrors.Errorf("init repo: %w", err)
+			return err
 		}
 
 		// init metadata datastore
 		mds, err := r.Datastore(ctx, "/metadata")
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrOpenDataStoreFailed, err)
 		}
 		if err := mds.Put(ctx, datastore.NewKey("node-address"), []byte(creator)); err != nil {
-			return err
+			return types.Wrap(types.ErrGetFailed, err)
 		}
 
 		log.Info("initialize libp2p identity")
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return types.Wrapf(types.ErrCreateChainServiceFailed, "new cosmos chain: %w", err)
 		}
 
 		if tx, err := chain.Login(ctx, creator); err != nil {
@@ -173,11 +173,11 @@ func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 
 	ok, err := r.Exists()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrOpenRepoFailed, err)
 	}
 
 	if ok {
-		return nil, xerrors.Errorf("repo at '%s' is already initialized", repoPath)
+		return nil, types.Wrapf(types.ErrInitRepoFailed, "repo at '%s' is already initialized", repoPath)
 	}
 
 	log.Info("Initializing repo")
@@ -208,7 +208,7 @@ var joinCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return err
 		}
 
 		if tx, err := chain.Login(ctx, creator); err != nil {
@@ -250,13 +250,13 @@ var updateCmd = &cli.Command{
 		if cctx.IsSet("multiaddrs") {
 			multiaddrs := cctx.StringSlice("multiaddrs")
 			if len(multiaddrs) < 1 {
-				return xerrors.Errorf("invalid --multiaddrs: cannot be empty")
+				return types.Wrapf(types.ErrInvalidParameters, "invalid --multiaddrs: cannot be empty")
 			}
 
 			for _, maddr := range multiaddrs {
 				ma, err := multiaddr.NewMultiaddr(maddr)
 				if err != nil {
-					return xerrors.Errorf("invalid --multiaddrs: %w", err)
+					return types.Wrapf(types.ErrInvalidParameters, "invalid --multiaddrs: %w", err)
 				}
 				if len(peerInfo) > 0 {
 					peerInfo = peerInfo + ","
@@ -272,12 +272,12 @@ var updateCmd = &cli.Command{
 
 		c, err := r.Config()
 		if err != nil {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
+			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
 		cfg, ok := c.(*config.Node)
 		if !ok {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
+			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
 		chainAddress, err := cliutil.GetChainAddress(cctx, "")
@@ -287,7 +287,7 @@ var updateCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return err
 		}
 
 		var status = node.NODE_STATUS_ONLINE
@@ -335,7 +335,7 @@ var quitCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return err
 		}
 		if tx, err := chain.Logout(ctx, creator); err != nil {
 			return err
@@ -362,12 +362,12 @@ var peersCmd = &cli.Command{
 
 		c, err := repo.Config()
 		if err != nil {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
+			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
 		cfg, ok := c.(*config.Node)
 		if !ok {
-			return xerrors.Errorf("invalid config for repo, got: %T", c)
+			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
 		key, err := repo.GetKeyBytes()
@@ -377,7 +377,7 @@ var peersCmd = &cli.Command{
 
 		token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrSignedFailed, err)
 		}
 
 		headers := http.Header{}
@@ -385,7 +385,7 @@ var peersCmd = &cli.Command{
 
 		ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInvalidServerAddress, err)
 		}
 		_, addr, err := manet.DialArgs(ma)
 		if err != nil {
@@ -395,7 +395,7 @@ var peersCmd = &cli.Command{
 		apiAddress := "http://" + addr + "/rpc/v0"
 		closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateClientFailed, err)
 		}
 		defer closer()
 
@@ -486,7 +486,7 @@ var infoCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket")
 		if err != nil {
-			return fmt.Errorf("new cosmos chain: %w", err)
+			return err
 		}
 
 		creator := cctx.String("creator")
@@ -500,12 +500,12 @@ var infoCmd = &cli.Command{
 
 			c, err := repo.Config()
 			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
+				return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 			}
 
 			cfg, ok := c.(*config.Node)
 			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
+				return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 			}
 
 			key, err := repo.GetKeyBytes()
@@ -515,7 +515,7 @@ var infoCmd = &cli.Command{
 
 			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrSignedFailed, err)
 			}
 
 			headers := http.Header{}
@@ -523,17 +523,17 @@ var infoCmd = &cli.Command{
 
 			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrInvalidServerAddress, err)
 			}
 			_, addr, err := manet.DialArgs(ma)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrConnectFailed, err)
 			}
 
 			apiAddress := "http://" + addr + "/rpc/v0"
 			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrCreateClientFailed, err)
 			}
 			defer closer()
 
@@ -573,12 +573,12 @@ var claimCmd = &cli.Command{
 
 			c, err := repo.Config()
 			if err != nil {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
+				return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 			}
 
 			cfg, ok := c.(*config.Node)
 			if !ok {
-				return xerrors.Errorf("invalid config for repo, got: %T", c)
+				return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 			}
 
 			key, err := repo.GetKeyBytes()
@@ -588,7 +588,7 @@ var claimCmd = &cli.Command{
 
 			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrSignedFailed, err)
 			}
 
 			headers := http.Header{}
@@ -600,13 +600,13 @@ var claimCmd = &cli.Command{
 			}
 			_, addr, err := manet.DialArgs(ma)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrConnectFailed, err)
 			}
 
 			apiAddress := "http://" + addr + "/rpc/v0"
 			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrCreateClientFailed, err)
 			}
 			defer closer()
 
@@ -623,7 +623,7 @@ var claimCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket")
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return err
 		}
 
 		if tx, err := chain.ClaimReward(ctx, creator); err != nil {
@@ -654,21 +654,21 @@ var authCmd = &cli.Command{
 
 		rb, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrSignedFailed, err)
 		}
 		fmt.Print(" Read permission token   : ")
 		console.Println(string(rb))
 
 		wb, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:3]}, jwt.NewHS256(key))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrSignedFailed, err)
 		}
 		fmt.Print(" Write permission token  : ")
 		console.Println(string(wb))
 
 		ab, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:4]}, jwt.NewHS256(key))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrSignedFailed, err)
 		}
 		fmt.Print(" Admin permission token  : ")
 		console.Println(string(ab))
