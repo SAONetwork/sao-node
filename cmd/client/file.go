@@ -16,7 +16,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var fileCmd = &cli.Command{
@@ -94,7 +93,7 @@ var createFileCmd = &cli.Command{
 		// }
 
 		if !cctx.IsSet("file-name") {
-			return xerrors.Errorf("must provide --file-name")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --file-name")
 		}
 		fileName := types.Type_Prefix_File + cctx.String("file-name")
 
@@ -107,7 +106,7 @@ var createFileCmd = &cli.Command{
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
-			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+			return types.Wrapf(types.ErrInvalidParameters, "extend-info should no longer than 1024 characters")
 		}
 
 		client, closer, err := getSaoClient(cctx)
@@ -123,7 +122,7 @@ var createFileCmd = &cli.Command{
 
 		contentCid, err := cid.Decode(cctx.String("cid"))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInvalidCid, err)
 		}
 
 		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
@@ -208,7 +207,7 @@ var uploadCmd = &cli.Command{
 		fpath := cctx.String("filepath")
 		multiaddr := cctx.String("multiaddr")
 		if !strings.Contains(multiaddr, "/p2p/") {
-			return fmt.Errorf("invalid multiaddr: %s", multiaddr)
+			return types.Wrapf(types.ErrInvalidParameters, "invalid multiaddr: %s", multiaddr)
 		}
 		peerId := strings.Split(multiaddr, "/p2p/")[1]
 
@@ -228,7 +227,7 @@ var uploadCmd = &cli.Command{
 		})
 
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInvalidParameters, err)
 		}
 
 		repo := cctx.String(FlagClientRepo)
@@ -269,7 +268,7 @@ var downloadCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("keywords") {
-			return xerrors.Errorf("must provide --keywords")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --keywords")
 		}
 		keywords := cctx.StringSlice("keywords")
 
