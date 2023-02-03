@@ -127,7 +127,7 @@ var createCmd = &cli.Command{
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
-			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+			return types.Wrapf(types.ErrInvalidParameters, "extend-info should no longer than 1024 characters")
 		}
 
 		client, closer, err := getSaoClient(cctx)
@@ -137,7 +137,7 @@ var createCmd = &cli.Command{
 		defer closer()
 
 		if client == nil {
-			return xerrors.Errorf("failed to create client")
+			return types.Wrap(types.ErrCreateClientFailed, nil)
 		}
 
 		groupId := cctx.String("platform")
@@ -325,7 +325,7 @@ var loadCmd = &cli.Command{
 
 		match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(resp.Alias))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInvalidAlias, err)
 		}
 
 		if len(resp.Content) == 0 || match {
@@ -355,12 +355,12 @@ var loadCmd = &cli.Command{
 			path := filepath.Join("./", resp.DataId+".json")
 			file, err := os.Create(path)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrCreateDirFailed, err)
 			}
 
 			_, err = file.Write([]byte(resp.Content))
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrWriteFileFailed, err)
 			}
 			fmt.Printf("data model dumped to %s.\r\n", path)
 		}
@@ -380,6 +380,7 @@ var listCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		fmt.Printf("TODO...")
 		return nil
 	},
 }
@@ -443,12 +444,12 @@ var renewCmd = &cli.Command{
 
 		proposalBytes, err := proposal.Marshal()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 		clientProposal := types.OrderRenewProposal{
 			Proposal:     proposal,
@@ -473,7 +474,7 @@ var renewCmd = &cli.Command{
 		var renewedOrders = make(map[string]string, 0)
 		var failedOrders = make(map[string]string, 0)
 		for dataId, result := range results {
-			if strings.Contains(result, "New order=") {
+			if strings.Contains(result, "SUCCESS") {
 				orderId, err := strconv.ParseUint(strings.Split(result, "=")[1], 10, 64)
 				if err != nil {
 					failedOrders[dataId] = result + ", " + err.Error()
@@ -621,12 +622,12 @@ var deleteCmd = &cli.Command{
 
 		proposalBytes, err := proposal.Marshal()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 		request := types.OrderTerminateProposal{
 			Proposal:     proposal,
@@ -815,25 +816,25 @@ var updateCmd = &cli.Command{
 
 		// ---- check parameters ----
 		if !cctx.IsSet("keyword") {
-			return xerrors.Errorf("must provide --keyword")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
 		size := cctx.Int("size")
 		if size <= 0 {
-			return xerrors.Errorf("invalid size")
+			return types.Wrapf(types.ErrInvalidParameters, "invalid size")
 		}
 
 		patch := []byte(cctx.String("patch"))
 		contentCid := cctx.String("cid")
 		newCid, err := cid.Decode(contentCid)
 		if err != nil {
-			return err
+			return types.Wrapf(types.ErrInvalidCid, "cid=%s", contentCid)
 		}
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
-			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+			return types.Wrapf(types.ErrInvalidParameters, "extend-info should no longer than 1024 characters")
 		}
 
 		clientPublish := cctx.Bool("client-publish")
@@ -958,7 +959,7 @@ var updatePermissionCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("data-id") {
-			return xerrors.Errorf("must provide --data-id")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --data-id")
 		}
 		dataId := cctx.String("data-id")
 		clientPublish := cctx.Bool("client-publish")
@@ -983,12 +984,12 @@ var updatePermissionCmd = &cli.Command{
 
 		proposalBytes, err := proposal.Marshal()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 
 		request := &types.PermissionProposal{
@@ -1034,7 +1035,7 @@ var patchGenCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.IsSet("origin") || !cctx.IsSet("target") {
-			return xerrors.Errorf("please provide both --origin and --target")
+			return types.Wrapf(types.ErrInvalidParameters, "please provide both --origin and --target")
 		}
 
 		origin := cctx.String("origin")
@@ -1052,27 +1053,27 @@ var patchGenCmd = &cli.Command{
 		var newModel interface{}
 		err = json.Unmarshal(content, &newModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrUnMarshalFailed, err)
 		}
 
 		var targetModel interface{}
 		err = json.Unmarshal([]byte(target), &targetModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrUnMarshalFailed, err)
 		}
 
 		valueStrNew, err := json.Marshal(newModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		valueStrTarget, err := json.Marshal(targetModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		if string(valueStrNew) != string(valueStrTarget) {
-			return xerrors.Errorf("failed to generate the patch")
+			return types.Wrapf(types.ErrCreatePatchFailed, "failed to generate the patch")
 		}
 
 		targetCid, err := utils.CalculateCid(content)
@@ -1104,12 +1105,12 @@ func buildClientProposal(_ context.Context, didManager *did.DidManager, proposal
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateJwsFailed, err)
 	}
 	return &types.OrderStoreProposal{
 		Proposal: proposal,
@@ -1123,7 +1124,7 @@ func buildClientProposal(_ context.Context, didManager *did.DidManager, proposal
 func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal saotypes.QueryProposal, chain chain.ChainSvcApi, gatewayAddress string) (*types.MetadataProposal, error) {
 	lastHeight, err := chain.GetLastHeight(ctx)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrQueryHeightFailed, err)
 	}
 
 	peerInfo, err := chain.GetNodePeer(ctx, gatewayAddress)
@@ -1142,12 +1143,12 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateJwsFailed, err)
 	}
 
 	return &types.MetadataProposal{

@@ -15,8 +15,8 @@ var (
 
 	ErrInvalidBinaryName = errors.Register(ModuleCommon, 10008, "invalid binary name")
 
-	ErrMarshalFailed   = errors.Register(ModuleChain, 10009, "failed to marshal payload")
-	ErrUnMarshalFailed = errors.Register(ModuleChain, 10010, "failed to unmarshal JpayloadS")
+	ErrMarshalFailed   = errors.Register(ModuleCommon, 10009, "failed to marshal payload")
+	ErrUnMarshalFailed = errors.Register(ModuleCommon, 10010, "failed to unmarshal JpayloadS")
 )
 
 var (
@@ -53,6 +53,8 @@ var (
 	ErrInvalidChainAddress  = errors.Register(ModuleChain, 11022, "invalid chain address")
 	ErrCreateJwsFailed      = errors.Register(ModuleChain, 11023, "failed to create JWS")
 	ErrMarshalJwsFailed     = errors.Register(ModuleChain, 11024, "failed to marshal JWS")
+
+	ErrQueryHeightFailed = errors.Register(ModuleChain, 11025, "failed to query the latest height")
 )
 
 var (
@@ -67,7 +69,9 @@ var (
 	ErrInvalidToken           = errors.Register(ModuleClient, 12010, "invalid token")
 	ErrCreateApiServiceFailed = errors.Register(ModuleClient, 12011, "failed to create API service")
 	ErrGenerateDocFailed      = errors.Register(ModuleClient, 12012, "failed to generate the documents")
-	ErrOpenDataStoreFailed    = errors.Register(ModuleClient, 12012, "failed to open the data store")
+	ErrOpenDataStoreFailed    = errors.Register(ModuleClient, 12013, "failed to open the data store")
+	ErrInvalidParameters      = errors.Register(ModuleClient, 12014, "invalid parameters")
+	ErrCreateClientFailed     = errors.Register(ModuleClient, 12015, "failed to create client")
 )
 
 var (
