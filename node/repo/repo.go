@@ -85,7 +85,7 @@ func (r *Repo) Exists() (bool, error) {
 func (r *Repo) Init(chainAddress string) error {
 	exist, err := r.Exists()
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrOpenRepoFailed, err)
 	}
 	if exist {
 		return nil
