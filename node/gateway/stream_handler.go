@@ -250,8 +250,17 @@ func (ssh *ShardStreamHandler) Fetch(req *types.MetadataProposal, addr string, o
 	log.Infof("send ShardReq with cid:%v, to the storage node %s", request.Cid, addr)
 
 	var resp types.ShardResp
-	if err = transport.DoRequest(ssh.ctx, stream, &request, &resp, "json"); err != nil {
-		return nil, err
+	for retryTimes := 0; ; retryTimes++ {
+		if err = transport.DoRequest(ssh.ctx, stream, &request, &resp, "json"); err != nil {
+			if retryTimes > 2 {
+				return nil, err
+			} else {
+				log.Error(err)
+			}
+			time.Sleep(time.Second * 10)
+		} else {
+			break
+		}
 	}
 
 	log.Debugf("receive ShardResp(requestId=%d,responseId=%d) with content length:%d, from the storage node %s", resp.RequestId, resp.ResponseId, len(resp.Content), addr)
