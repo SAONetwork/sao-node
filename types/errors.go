@@ -148,7 +148,7 @@ var (
 )
 
 func Wrap(err0 error, err1 error) error {
-	return errors.Wrapf(err0, "due to %w", err1)
+	return errors.Wrapf(err0, "%w", err1)
 }
 
 func Wrapf(err error, format string, args ...interface{}) error {
