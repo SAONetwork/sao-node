@@ -131,16 +131,17 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		Creator: creator,
 	})
 	if err != nil {
-		log.Error(err.Error())
+		fmt.Println("No Pledge Info")
 		return
+	} else {
+		fmt.Println("Node Pledge")
+		fmt.Println("Reward:", pledgeResp.Pledge.Reward)
+		fmt.Println("Reward Debt:", pledgeResp.Pledge.RewardDebt)
+		fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
+		fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
+		fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
+		fmt.Println("LastRewardAt:", pledgeResp.Pledge.LastRewardAt)
 	}
-	fmt.Println("Node Pledge")
-	fmt.Println("Reward:", pledgeResp.Pledge.Reward)
-	fmt.Println("Reward Debt:", pledgeResp.Pledge.RewardDebt)
-	fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
-	fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
-	fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
-	fmt.Println("LastRewardAt:", pledgeResp.Pledge.LastRewardAt)
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
