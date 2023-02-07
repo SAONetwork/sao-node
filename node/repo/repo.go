@@ -78,7 +78,11 @@ func (r *Repo) Exists() (bool, error) {
 	if notexist {
 		err = nil
 	}
-	return !notexist, types.Wrap(types.ErrOpenFileFailed, err)
+	if err != nil {
+		return !notexist, types.Wrap(types.ErrOpenFileFailed, err)
+	} else {
+		return !notexist, nil
+	}
 }
 
 func (r *Repo) Init(chainAddress string) error {
