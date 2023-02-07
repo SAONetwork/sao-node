@@ -596,7 +596,7 @@ var claimCmd = &cli.Command{
 
 			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
 			if err != nil {
-				return err
+				return types.Wrapf(types.ErrInvalidServerAddress, "ListenAddress=%s", cfg.Api.ListenAddress)
 			}
 			_, addr, err := manet.DialArgs(ma)
 			if err != nil {
