@@ -3,9 +3,9 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 	"io"
+
+	"github.com/ipfs/go-cid"
 )
 
 type AssignTxType string
@@ -36,7 +36,7 @@ func (f *ShardAssignReq) Unmarshal(r io.Reader, format string) (err error) {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -53,7 +53,7 @@ func (f *ShardAssignReq) Marshal(w io.Writer, format string) error {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -73,7 +73,7 @@ func (f *ShardAssignResp) Unmarshal(r io.Reader, format string) (err error) {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -90,7 +90,7 @@ func (f *ShardAssignResp) Marshal(w io.Writer, format string) error {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (f *ShardCompleteReq) Unmarshal(r io.Reader, format string) (err error) {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -131,7 +131,7 @@ func (f *ShardCompleteReq) Marshal(w io.Writer, format string) error {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func (f *ShardCompleteResp) Unmarshal(r io.Reader, format string) (err error) {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -168,7 +168,7 @@ func (f *ShardCompleteResp) Marshal(w io.Writer, format string) error {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }

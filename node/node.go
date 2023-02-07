@@ -38,7 +38,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node")
@@ -326,7 +325,7 @@ func (n *Node) AuthVerify(ctx context.Context, token string) ([]auth.Permission,
 	}
 
 	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(key), &payload); err != nil {
-		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+		return nil, types.Wrapf(types.ErrInvalidJwt, "JWT Verification failed: %w", err)
 	}
 
 	log.Info("Permissions: ", payload)
@@ -420,7 +419,7 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 		}, nil
 	} else {
 		log.Error(err.Error())
-		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", cidStr)
+		return apitypes.CreateResp{}, types.Wrapf(types.ErrInvalidCid, "invliad CID: %s", cidStr)
 	}
 }
 
