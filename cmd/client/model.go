@@ -250,7 +250,7 @@ var loadCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("keyword") {
-			return types.Wrap(types.ErrInvalidParameters, nil)
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
