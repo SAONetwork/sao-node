@@ -15,12 +15,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("repo")
 
-var ErrRepoExists = xerrors.New("repo exists")
+var ErrRepoExists = types.Wrapf(types.ErrStatFailed, "repo exists")
 
 const (
 	fsConfig    = "config.toml"
@@ -195,15 +194,15 @@ func (r *Repo) initConfig(chainAddress string) error {
 	comm, err := config.ConfigComment(r.defaultConfig(chainAddress))
 	//comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
 	if err != nil {
-		return xerrors.Errorf("load default: %w", err)
+		return types.Wrapf(types.ErrReadConfigFailed, "load default: %w", err)
 	}
 	_, err = c.Write(comm)
 	if err != nil {
-		return xerrors.Errorf("write config: %w", err)
+		return types.Wrapf(types.ErrWriteConfigFailed, "write config: %w", err)
 	}
 
 	if err := c.Close(); err != nil {
-		return xerrors.Errorf("close config: %w", err)
+		return types.Wrapf(types.ErrCloseFileFailed, "close config: %w", err)
 	}
 	return nil
 }

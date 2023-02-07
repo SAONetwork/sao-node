@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -53,7 +52,7 @@ func (f *ShardReq) Unmarshal(r io.Reader, format string) (err error) {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrapf(ErrUnSupportProtocol, "not implemented yet")
 	}
 	return nil
 }
@@ -70,7 +69,7 @@ func (f *ShardReq) Marshal(w io.Writer, format string) error {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -87,7 +86,7 @@ func (f *ShardResp) Marshal(w io.Writer, format string) error {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }
@@ -102,7 +101,7 @@ func (f *ShardResp) Unmarshal(r io.Reader, format string) (err error) {
 		}
 	} else {
 		// TODO: CBOR marshal
-		return xerrors.Errorf("not implemented yet")
+		return Wrap(ErrUnSupport, nil)
 	}
 	return nil
 }

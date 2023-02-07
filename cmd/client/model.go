@@ -20,8 +20,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-
-	"golang.org/x/xerrors"
 )
 
 var modelCmd = &cli.Command{
@@ -113,7 +111,7 @@ var createCmd = &cli.Command{
 
 		// ---- check parameters ----
 		if !cctx.IsSet("content") || cctx.String("content") == "" {
-			return xerrors.Errorf("must provide non-empty --content.")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide non-empty --content.")
 		}
 		content := []byte(cctx.String("content"))
 
@@ -229,7 +227,7 @@ var loadCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:     "keyword",
 			Usage:    "data model's alias, dataId or tag",
-			Required: true,
+			Required: false,
 		},
 		&cli.StringFlag{
 			Name:     "version",
@@ -252,7 +250,7 @@ var loadCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("keyword") {
-			return xerrors.Errorf("must provide --keyword")
+			return types.Wrap(types.ErrInvalidParameters, nil)
 		}
 		keyword := cctx.String("keyword")
 
@@ -417,7 +415,7 @@ var renewCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("data-ids") {
-			return xerrors.Errorf("must provide --data-ids")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --data-ids")
 		}
 		dataIds := cctx.StringSlice("data-ids")
 		duration := cctx.Int("duration")
@@ -516,7 +514,7 @@ var statusCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("data-ids") {
-			return xerrors.Errorf("must provide --data-ids")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --data-ids")
 		}
 		dataIds := cctx.StringSlice("data-ids")
 
@@ -599,7 +597,7 @@ var deleteCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("data-id") {
-			return xerrors.Errorf("must provide --data-id")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --data-id")
 		}
 		dataId := cctx.String("data-id")
 		clientPublish := cctx.Bool("client-publish")
@@ -666,7 +664,7 @@ var commitsCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("keyword") {
-			return xerrors.Errorf("must provide --keyword")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
@@ -725,7 +723,7 @@ var commitsCmd = &cli.Command{
 		for i, commit := range resp.Commits {
 			commitInfo := strings.Split(commit, "\032")
 			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
-				return xerrors.Errorf("invalid commit information: %s", commit)
+				return types.Wrapf(types.ErrInvalidParameters, "invalid commit information: %s", commit)
 			}
 
 			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo[0], commitInfo[1])
