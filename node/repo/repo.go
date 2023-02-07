@@ -76,12 +76,9 @@ func (r *Repo) Exists() (bool, error) {
 	_, err := os.Stat(filepath.Join(r.Path, fsKeystore))
 	notexist := os.IsNotExist(err)
 	if notexist {
-		err = nil
-	}
-	if err != nil {
-		return !notexist, types.Wrap(types.ErrOpenFileFailed, err)
+		return false, nil
 	} else {
-		return !notexist, nil
+		return true, types.Wrap(types.ErrOpenFileFailed, err)
 	}
 }
 
