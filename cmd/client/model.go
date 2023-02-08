@@ -37,6 +37,8 @@ var modelCmd = &cli.Command{
 		listCmd,
 		renewCmd,
 		statusCmd,
+		metaCmd,
+		orderCmd,
 	},
 }
 
@@ -578,6 +580,165 @@ var statusCmd = &cli.Command{
 		}
 
 		fmt.Println(states)
+
+		return nil
+	},
+}
+
+var metaCmd = &cli.Command{
+	Name:  "meta",
+	Usage: "check models' meta information",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "data-id",
+			Usage: "data model's dataId",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		if !cctx.IsSet("data-id") {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --data-id")
+		}
+		dataId := cctx.String("data-id")
+
+		client, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
+		if err != nil {
+			return err
+		}
+
+		gatewayAddress, err := client.GetNodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		proposal := saotypes.QueryProposal{
+			Owner:   didManager.Id,
+			Keyword: dataId,
+		}
+
+		request, err := buildQueryRequest(ctx, didManager, proposal, client, gatewayAddress)
+		if err != nil {
+			return err
+		}
+
+		res, err := client.QueryMetadata(ctx, request, 0)
+		if err != nil {
+			return types.Wrap(types.ErrQueryMetadataFailed, err)
+		} else {
+			fmt.Printf("DataId: %s\n", res.Metadata.DataId)
+			fmt.Printf("Owner: %s\n", res.Metadata.Owner)
+			fmt.Printf("Alias: %s\n", res.Metadata.Alias)
+			fmt.Printf("GroupId: %s\n", res.Metadata.GroupId)
+			fmt.Printf("GroupId: %s\n", res.Metadata.GroupId)
+			fmt.Printf("GroupId: %s\n", res.Metadata.GroupId)
+			fmt.Printf("OrderId: %d\n", res.Metadata.OrderId)
+			fmt.Println("Tags: ")
+			for index, tag := range res.Metadata.Tags {
+				fmt.Printf("%s", tag)
+				if index < len(res.Metadata.Tags)-1 {
+					fmt.Print(", ")
+				} else {
+					fmt.Println()
+				}
+			}
+			fmt.Printf("Cid: %s\n", res.Metadata.Cid)
+			fmt.Println("Commits: ")
+			for index, commit := range res.Metadata.Commits {
+				fmt.Printf("%s", commit)
+				if index < len(res.Metadata.Commits)-1 {
+					fmt.Print(", ")
+				} else {
+					fmt.Println()
+				}
+			}
+			fmt.Printf("ExtendInfo: %s\n", res.Metadata.ExtendInfo)
+			fmt.Printf("IsUpdate: %v\n", res.Metadata.Update)
+			fmt.Printf("Commit: %s\n", res.Metadata.Commit)
+			fmt.Printf("Rule: %s\n", res.Metadata.Rule)
+			fmt.Printf("Duration: %d\n", res.Metadata.Duration)
+			fmt.Printf("CreatedAt: %d\n", res.Metadata.CreatedAt)
+			fmt.Printf("Provider: %s\n", res.Metadata.Provider)
+			fmt.Printf("Expire: %d\n", res.Metadata.Expire)
+			fmt.Printf("Status: %d\n", res.Metadata.Status)
+			fmt.Printf("Replica: %d\n", res.Metadata.Replica)
+			fmt.Printf("Amount: %v\n", res.Metadata.Amount)
+			fmt.Printf("Size: %d\n", res.Metadata.Size_)
+			fmt.Printf("Operation: %d\n", res.Metadata.Operation)
+
+			fmt.Println("Shards: ")
+			for _, shard := range res.Shards {
+				fmt.Printf("ShardId: %d\n", shard.ShardId)
+				fmt.Printf("Cid: %s\n", shard.Cid)
+				fmt.Printf("Peer: %s\n", shard.Peer)
+				fmt.Printf("Provider: %s\n", shard.Provider)
+			}
+
+		}
+
+		return nil
+	},
+}
+
+var orderCmd = &cli.Command{
+	Name:  "order",
+	Usage: "check models' order information",
+	Flags: []cli.Flag{
+		&cli.UintFlag{
+			Name:  "order-id",
+			Usage: "data model's orderId",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		if !cctx.IsSet("order-id") {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --order-id")
+		}
+		orderId := cctx.Uint("order-id")
+
+		client, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		res, err := client.GetOrder(ctx, uint64(orderId))
+		if err != nil {
+			return types.Wrap(types.ErrQueryMetadataFailed, err)
+		} else {
+			fmt.Printf("Id: %d\n", res.Id)
+			fmt.Printf("Owner: %s\n", res.Owner)
+			fmt.Printf("Creator: %s\n", res.Creator)
+			fmt.Printf("Provider: %s\n", res.Provider)
+			fmt.Printf("Cid: %s\n", res.Cid)
+			fmt.Printf("Duration: %d\n", res.Duration)
+			fmt.Printf("CreatedAt: %d\n", res.CreatedAt)
+			fmt.Printf("Provider: %s\n", res.Provider)
+			fmt.Printf("Expire: %d\n", res.Expire)
+			fmt.Printf("Status: %d\n", res.Status)
+			fmt.Printf("Replica: %d\n", res.Replica)
+			fmt.Printf("Amount: %v\n", res.Amount)
+			fmt.Printf("Size: %d\n", res.Size_)
+			fmt.Printf("Operation: %d\n", res.Operation)
+
+			fmt.Println("Shards: ")
+			for _, shard := range res.Shards {
+				fmt.Printf("Id: %d\n", shard.Id)
+				fmt.Printf("OrderId: %d\n", shard.OrderId)
+				fmt.Printf("Status: %d\n", shard.Status)
+				fmt.Printf("Size: %d\n", shard.Size_)
+				fmt.Printf("Cid: %s\n", shard.Cid)
+				fmt.Printf("Pledge: %v\n", shard.Pledge)
+			}
+
+		}
 
 		return nil
 	},
