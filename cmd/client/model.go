@@ -636,8 +636,6 @@ var metaCmd = &cli.Command{
 			fmt.Printf("Owner: %s\n", res.Metadata.Owner)
 			fmt.Printf("Alias: %s\n", res.Metadata.Alias)
 			fmt.Printf("GroupId: %s\n", res.Metadata.GroupId)
-			fmt.Printf("GroupId: %s\n", res.Metadata.GroupId)
-			fmt.Printf("GroupId: %s\n", res.Metadata.GroupId)
 			fmt.Printf("OrderId: %d\n", res.Metadata.OrderId)
 			fmt.Println("Tags: ")
 			for index, tag := range res.Metadata.Tags {
