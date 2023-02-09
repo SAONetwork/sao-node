@@ -267,6 +267,7 @@ func NewNode(ctx context.Context, repo *repo.Repo) (*Node, error) {
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
 
 	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status)
+	log.Infof("repo: %s, AddressPrefix: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	log.Infof("node[%s] is joining SAO network...", sn.address)
 	if err != nil {
 		return nil, err
