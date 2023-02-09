@@ -78,7 +78,11 @@ func (r *Repo) Exists() (bool, error) {
 	if notexist {
 		return false, nil
 	} else {
-		return true, types.Wrap(types.ErrOpenFileFailed, err)
+		if err != nil {
+			return true, types.Wrap(types.ErrOpenFileFailed, err)
+		} else {
+			return true, nil
+		}
 	}
 }
 
