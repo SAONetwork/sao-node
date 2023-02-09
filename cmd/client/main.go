@@ -90,6 +90,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
+			netCmd,
 			modelCmd,
 			fileCmd,
 			didCmd,

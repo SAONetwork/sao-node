@@ -572,9 +572,9 @@ var statusCmd = &cli.Command{
 					leftDays = used - duration
 				}
 				if leftDays > 5 {
-					states = fmt.Sprintf("%s[%s]: expired in %s days", states, dataId, consoleOK.Sprintf("%d", leftDays/(60*60*24*365)))
+					states = fmt.Sprintf("%s[%s]: expired in %s days", states, dataId, consoleOK.Sprintf("%d", leftDays/(60*60*24*1000000000)))
 				} else {
-					states = fmt.Sprintf("%s[%s]: expired %s days ago", states, dataId, consoleWarn.Sprintf("%d", leftDays/(60*60*24*365)))
+					states = fmt.Sprintf("%s[%s]: expired %s days ago", states, dataId, consoleWarn.Sprintf("%d", leftDays/(60*60*24*1000000000)))
 				}
 			}
 		}
