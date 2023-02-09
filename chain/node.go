@@ -144,6 +144,14 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 	}
 }
 
+func (c *ChainSvc) ListNodes(ctx context.Context) ([]nodetypes.Node, error) {
+	resp, err := c.nodeClient.NodeAll(ctx, &nodetypes.QueryAllNodeRequest{Status: 0})
+	if err != nil {
+		return make([]nodetypes.Node, 0), types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	return resp.Node, nil
+}
+
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {
 	go func() {
 		ticker := time.NewTicker(15 * time.Minute)
