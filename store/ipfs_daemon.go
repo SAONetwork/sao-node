@@ -54,8 +54,11 @@ func (d IpfsDaemon) Start(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, e
 	}
 
 	api, err := coreapi.NewCoreAPI(node)
-
-	return api, node, types.Wrap(types.ErrCreateIpfsApiServiceFailed, err)
+	if err != nil {
+		return api, node, types.Wrap(types.ErrCreateIpfsApiServiceFailed, err)
+	} else {
+		return api, node, nil
+	}
 }
 
 var loadPluginsOnce sync.Once
