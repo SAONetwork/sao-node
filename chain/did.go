@@ -105,7 +105,16 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 		}
 		fmt.Println("Accounts:")
 		for index, accAuth := range accountAuthsResp.AccountAuths {
-			fmt.Println("  AccountDid", index, ": ", accAuth.AccountDid)
+			accountIdResp, err := c.didClient.AccountId(ctx, &sidtypes.QueryGetAccountIdRequest{
+				AccountDid: accAuth.AccountDid,
+			})
+			if err != nil {
+				log.Error(err.Error())
+				return
+			}
+
+			fmt.Println("  Account", index, " id: ", accountIdResp.AccountId.AccountId)
+			fmt.Println("    AccountDid: ", accAuth.AccountDid)
 			fmt.Println("    AccountEncryptedSeed: ", accAuth.AccountEncryptedSeed)
 			fmt.Println("    SidEncryptedAccount:  ", accAuth.SidEncryptedAccount)
 		}

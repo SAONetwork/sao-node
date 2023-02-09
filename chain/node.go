@@ -122,7 +122,7 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 	fmt.Println("Creator:", resp.Node.Creator)
 	fmt.Printf("Status:%b\n", resp.Node.Status)
 	fmt.Println("Reputation:", resp.Node.Reputation)
-	fmt.Println("LastAliveHeigh:", resp.Node.LastAliveHeigh)
+	fmt.Println("LastAliveHeight:", resp.Node.LastAliveHeight)
 	for _, peer := range strings.Split(resp.Node.Peer, ",") {
 		fmt.Println("P2P Peer Info:", peer)
 	}
