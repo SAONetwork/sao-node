@@ -131,7 +131,7 @@ var nodesCmd = &cli.Command{
 			fmt.Print("  Status         : ")
 			console.Println(node.Status)
 			fmt.Print("  LastAliveHeigh : ")
-			console.Println(node.LastAliveHeigh)
+			console.Println(node.LastAliveHeight)
 		}
 
 		return nil
