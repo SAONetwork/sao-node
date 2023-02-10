@@ -48,7 +48,7 @@ var listCmd = &cli.Command{
 				return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
 			}
 		}
-		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath, cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -198,7 +198,7 @@ var sendCmd = &cli.Command{
 			}
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath, cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}

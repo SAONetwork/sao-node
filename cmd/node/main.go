@@ -200,7 +200,7 @@ var joinCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -280,7 +280,7 @@ var updateCmd = &cli.Command{
 			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -328,7 +328,7 @@ var quitCmd = &cli.Command{
 		// TODO: validate input
 		creator := cctx.String("creator")
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -479,7 +479,7 @@ var infoCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
@@ -616,7 +616,7 @@ var claimCmd = &cli.Command{
 			}
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}

@@ -214,7 +214,9 @@ func (r *Repo) initConfig(chainAddress string) error {
 
 func (r *Repo) defaultConfig(chainAddress string) interface{} {
 	repo := config.DefaultSaoNode()
-	repo.Chain.Remote = chainAddress
+	if chainAddress != "" {
+		repo.Chain.Remote = chainAddress
+	}
 	return repo
 }
 
