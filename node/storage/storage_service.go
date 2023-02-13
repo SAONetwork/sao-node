@@ -13,7 +13,6 @@ import (
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
-	"golang.org/x/xerrors"
 
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/ipfs/go-cid"
@@ -330,8 +329,8 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 				Cid:     task.Cid,
 			}, peerInfo)
 			if resp.Code != 0 {
-				ss.updateShardError(task, xerrors.Errorf(resp.Message))
-				return xerrors.Errorf(resp.Message)
+				ss.updateShardError(task, types.Wrapf(types.ErrFailuresResponsed, resp.Message))
+				return types.Wrapf(types.ErrFailuresResponsed, resp.Message)
 			} else {
 				cid, _ := utils.CalculateCid(resp.Content)
 				log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
@@ -388,8 +387,8 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 		TxHash:  task.CompleteHash,
 	}, peerInfo)
 	if resp.Code != 0 {
-		ss.updateShardError(task, xerrors.Errorf(resp.Message))
-		// return xerrors.Errorf(resp.Message)
+		ss.updateShardError(task, types.Wrapf(types.ErrFailuresResponsed, resp.Message))
+		// return types.Wrapf(types.ErrFailuresResponsed, resp.Message)
 	}
 	if task.State < types.ShardStateComplete {
 		task.State = types.ShardStateComplete

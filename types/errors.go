@@ -133,11 +133,11 @@ var (
 	ErrInvalidRule      = errors.Register(ModuleModel, 14021, "invlaid rule")
 	ErrSchemaCheckFaild = errors.Register(ModuleModel, 14022, "failed to pass the schema check")
 
-	ErrInvalidVersion = errors.Register(ModuleModel, 14023, "invalid version")
-	ErrInvalidDataId  = errors.Register(ModuleModel, 14024, "invalid dataId")
-	ErrConflictId     = errors.Register(ModuleModel, 14025, "conflict dataId or alias")
-	ErrInvalidContent = errors.Register(ModuleModel, 14026, "invalid content")
-	ErrInvalidSchema  = errors.Register(ModuleModel, 14027, "invalid schema")
+	ErrInvalidVersion     = errors.Register(ModuleModel, 14023, "invalid version")
+	ErrInvalidDataId      = errors.Register(ModuleModel, 14024, "invalid dataId")
+	ErrConflictId         = errors.Register(ModuleModel, 14025, "conflict dataId or alias")
+	ErrInvalidContent     = errors.Register(ModuleModel, 14026, "invalid content")
+	ErrProcessOrderFailed = errors.Register(ModuleModel, 14027, "failed to process the order")
 )
 
 var (
@@ -152,6 +152,7 @@ var (
 	ErrCloseStreamFailed          = errors.Register(ModuleNetwork, 15006, "failed to close the stream")
 	ErrSendRequestFailed          = errors.Register(ModuleNetwork, 15007, "failed to send the request")
 	ErrReadResponseFailed         = errors.Register(ModuleNetwork, 15008, "failed to read the response")
+	ErrFailuresResponsed          = errors.Register(ModuleNetwork, 15009, "received failed response")
 )
 
 func Wrap(err0 error, err1 error) error {

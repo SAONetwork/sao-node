@@ -20,13 +20,11 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/pkg/errors"
 )
 
 var log = logging.Logger("gateway")
@@ -363,7 +361,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 	commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
 	commitInfo, err := types.ParseMetaCommit(commit)
 	if err != nil {
-		return nil, xerrors.Errorf("invalid commit information: %s", commit)
+		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 	}
 
 	return &types.Model{
@@ -425,7 +423,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		if resp.Code == 0 {
 			contentList[shard.ShardId] = resp.Content
 		} else {
-			return nil, xerrors.Errorf(resp.Message)
+			return nil, types.Wrapf(types.ErrFailuresResponsed, resp.Message)
 		}
 	}
 
@@ -672,7 +670,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 	if timeout {
 		// TODO: timeout handling
-		return nil, errors.Errorf("process order %d timeout.", orderId)
+		return nil, types.Wrapf(types.ErrProcessOrderFailed, "process order %d timeout.", orderId)
 	} else {
 		order, err := gs.chainSvc.GetOrder(ctx, orderId)
 		if err != nil {

@@ -5,10 +5,10 @@ import (
 	"os"
 	apiclient "sao-node/api/client"
 	cliutil "sao-node/cmd"
+	"sao-node/types"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var ordersCmd = &cli.Command{
@@ -65,7 +65,7 @@ var orderStatusCmd = &cli.Command{
 		defer closer()
 
 		if cctx.Args().Len() <= 0 {
-			return xerrors.Errorf("missing proposal id parameter.")
+			return types.Wrapf(types.ErrInvalidParameters, "missing proposal id parameter.")
 		}
 		dataId := cctx.Args().Get(0)
 		orderInfo, err := gatewayApi.OrderStatus(ctx, dataId)
@@ -91,7 +91,7 @@ var orderFixCmd = &cli.Command{
 		defer closer()
 
 		if cctx.Args().Len() <= 0 {
-			return xerrors.Errorf("missing proposal id parameter.")
+			return types.Wrapf(types.ErrInvalidParameters, "missing proposal id parameter.")
 		}
 		dataId := cctx.Args().Get(0)
 

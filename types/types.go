@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 )
@@ -126,12 +125,12 @@ type MetaCommit struct {
 func ParseMetaCommit(mc string) (MetaCommit, error) {
 	s := strings.Split(mc, "\032")
 	if len(s) != 2 {
-		return MetaCommit{}, xerrors.Errorf("invalid metadata commit: %s", mc)
+		return MetaCommit{}, Wrapf(ErrInvalidCommitInfo, "invalid metadata commit: %s", mc)
 	}
 	// TODO: validate commit id format.
 	height, err := strconv.ParseUint(s[1], 10, 64)
 	if err != nil {
-		return MetaCommit{}, xerrors.Errorf("can't parse height in metadata commit: %s: %v", mc, err)
+		return MetaCommit{}, Wrapf(ErrInvalidCommitInfo, "can't parse height in metadata commit: %s: %v", mc, err)
 	}
 	return MetaCommit{
 		CommitId: s[0],
