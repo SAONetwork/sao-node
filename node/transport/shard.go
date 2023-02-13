@@ -2,7 +2,6 @@ package transport
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"sao-node/types"
 	"strings"
@@ -12,7 +11,6 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/core/protocol"
 	ma "github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
@@ -37,24 +35,24 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 
 		a, err := ma.NewMultiaddr(peerInfo)
 		if err != nil {
-			return err
+			return types.Wrapf(types.ErrInvalidServerAddress, "peerInfo=%s", peerInfo)
 		}
 		pi, err = peer.AddrInfoFromP2pAddr(a)
 		if err != nil {
-			return err
+			return types.Wrapf(types.ErrInvalidServerAddress, "a=%v", a)
 		}
 	}
 	if pi == nil {
-		return xerrors.Errorf("failed to get peer info")
+		return types.Wrap(types.ErrInvalidServerAddress, nil)
 	}
 
 	err := host.Connect(ctx, *pi)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrConnectFailed, err)
 	}
 	stream, err := host.NewStream(ctx, pi.ID, protocol)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrCreateStreamFailed, err)
 	}
 	defer stream.Close()
 	log.Debugf("open stream to %s protocol %s.", pi.ID, protocol)
@@ -64,8 +62,6 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 	defer stream.SetReadDeadline(time.Time{}) // nolint
 
 	if err = DoRequest(ctx, stream, req, resp, types.FormatCbor); err != nil {
-		// TODO: handle error
-		log.Error(err)
 		return err
 	}
 	return nil
@@ -76,25 +72,26 @@ func DoRequest(ctx context.Context, s network.Stream, req interface{}, resp inte
 	go func() {
 		if m, ok := req.(CommonMarshaler); ok {
 			if err := m.Marshal(s, format); err != nil {
-				errc <- fmt.Errorf("failed to send request: %v", err)
+				errc <- types.Wrap(types.ErrSendRequestFailed, err)
 				return
 			}
 			err := s.CloseWrite()
 			if err != nil {
-				log.Error(err.Error())
+				log.Error(types.Wrap(types.ErrCloseStreamFailed, err))
+				// return
 			}
 		} else {
-			errc <- fmt.Errorf("failed to send request")
+			errc <- types.Wrap(types.ErrSendRequestFailed, nil)
 			return
 		}
 
 		if m, ok := resp.(CommonUnmarshaler); ok {
 			if err := m.Unmarshal(s, format); err != nil {
-				errc <- fmt.Errorf("failed to read response: %v", err)
+				errc <- types.Wrap(types.ErrReadResponseFailed, err)
 				return
 			}
 		} else {
-			errc <- fmt.Errorf("failed to read response")
+			errc <- types.Wrap(types.ErrReadResponseFailed, nil)
 			return
 		}
 

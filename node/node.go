@@ -32,6 +32,7 @@ import (
 	"sao-node/types"
 	"strings"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -78,7 +79,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	cfg, ok := c.(*config.Node)
 	if !ok {
-		return nil, xerrors.Errorf("invalid config for repo, got: %T", c)
+		return nil, types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 	}
 
 	// get node address
@@ -88,7 +89,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 	abytes, err := mds.Get(ctx, datastore.NewKey("node-address"))
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrGetFailed, err)
 	}
 	nodeAddr := string(abytes)
 
@@ -101,7 +102,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	listenAddrsOption := libp2p.ListenAddrStrings(cfg.Libp2p.ListenAddress...)
 	host, err := libp2p.New(listenAddrsOption, libp2p.Identity(peerKey))
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateP2PServiceFaild, err)
 	}
 
 	peerInfos := ""
@@ -150,23 +151,23 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		if strings.Contains(address, "udp") {
 			_, err := transport.StartLibp2pRpcServer(ctx, &sn, address, peerKey, tds, cfg)
 			if err != nil {
-				return nil, err
+				return nil, types.Wrap(types.ErrStartLibP2PRPCServerFailed, err)
 			}
 		} else {
-			return nil, fmt.Errorf("invalid transport server address %s", address)
+			return nil, types.Wrapf(types.ErrInvalidServerAddress, "invalid transport server address %s", address)
 		}
 	}
 
 	peerInfosBytes, err := tds.Get(ctx, key)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrGetFailed, err)
 	}
 	log.Info("Node Peer Information: ", string(peerInfosBytes))
 
 	for _, ma := range strings.Split(string(peerInfosBytes), ",") {
 		_, err := multiaddr.NewMultiaddr(ma)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrap(types.ErrInvalidServerAddress, err)
 		}
 	}
 
@@ -221,7 +222,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		storageManager = store.NewStoreManager(backends)
 		log.Info("store manager daemon initialized")
 
-		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager, notifyChan)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager, notifyChan, ods)
 		if err != nil {
 			return nil, err
 		}
@@ -249,28 +250,28 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 			sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 		}
 
-		// api server
-		rpcServer, err := newRpcServer(&sn, &cfg.Api)
-		if err != nil {
-			return nil, err
-		}
-		sn.rpcServer = rpcServer
-		sn.stopFuncs = append(sn.stopFuncs, rpcServer.Shutdown)
-
-		tokenRead, err := sn.AuthNew(ctx, api.AllPermissions[:2])
-		if err != nil {
-			return nil, err
-		}
-		log.Info("Read token: ", string(tokenRead))
-
-		tokenWrite, err := sn.AuthNew(ctx, api.AllPermissions[:3])
-		if err != nil {
-			return nil, err
-		}
-		log.Info("Write token: ", string(tokenWrite))
-
 		log.Info("gateway node initialized")
 	}
+
+	// api server
+	rpcServer, err := newRpcServer(&sn, &cfg.Api)
+	if err != nil {
+		return nil, err
+	}
+	sn.rpcServer = rpcServer
+	sn.stopFuncs = append(sn.stopFuncs, rpcServer.Shutdown)
+
+	tokenRead, err := sn.AuthNew(ctx, api.AllPermissions[:2])
+	if err != nil {
+		return nil, err
+	}
+	log.Info("Read token: ", string(tokenRead))
+
+	tokenWrite, err := sn.AuthNew(ctx, api.AllPermissions[:3])
+	if err != nil {
+		return nil, err
+	}
+	log.Info("Write token: ", string(tokenWrite))
 
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
@@ -297,17 +298,17 @@ func newRpcServer(ga api.SaoApi, cfg *config.API) (*http.Server, error) {
 
 	handler, err := GatewayRpcHandler(ga, cfg.EnablePermission)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to instantiate rpc handler: %w", err)
+		return nil, types.Wrapf(types.ErrStartPRPCServerFailed, "failed to instantiate rpc handler: %w", err)
 	}
 
 	strma := strings.TrimSpace(cfg.ListenAddress)
 	endpoint, err := multiaddr.NewMultiaddr(strma)
 	if err != nil {
-		return nil, fmt.Errorf("invalid endpoint: %s, %s", strma, err)
+		return nil, types.Wrapf(types.ErrInvalidServerAddress, "invalid endpoint: %s, %s", strma, err)
 	}
 	rpcServer, err := ServeRPC(handler, endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to start json-rpc endpoint: %s", err)
+		return nil, types.Wrapf(types.ErrStartPRPCServerFailed, "failed to start json-rpc endpoint: %s", err)
 	}
 	return rpcServer, nil
 }
@@ -326,7 +327,7 @@ func (n *Node) AuthVerify(ctx context.Context, token string) ([]auth.Permission,
 	var payload JwtPayload
 	key, err := n.repo.GetKeyBytes()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrDecodeConfigFailed, err)
 	}
 
 	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(key), &payload); err != nil {
@@ -345,7 +346,7 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 
 	key, err := n.repo.GetKeyBytes()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrDecodeConfigFailed, err)
 	}
 	return jwt.Sign(&p, jwt.NewHS256(key))
 }
@@ -383,23 +384,23 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 		var fileInfo *types.ReceivedFileInfo
 		err := json.Unmarshal(info, &fileInfo)
 		if err != nil {
-			return apitypes.CreateResp{}, err
+			return apitypes.CreateResp{}, types.Wrap(types.ErrUnMarshalFailed, err)
 		}
 
 		basePath, err := homedir.Expand(fileInfo.Path)
 		if err != nil {
-			return apitypes.CreateResp{}, err
+			return apitypes.CreateResp{}, types.Wrap(types.ErrInvalidPath, err)
 		}
 
 		var path = filepath.Join(basePath, cidStr)
 		file, err := os.Open(path)
 		if err != nil {
-			return apitypes.CreateResp{}, err
+			return apitypes.CreateResp{}, types.Wrap(types.ErrOpenFileFailed, err)
 		}
 
 		content, err := io.ReadAll(file)
 		if err != nil {
-			return apitypes.CreateResp{}, err
+			return apitypes.CreateResp{}, types.Wrap(types.ErrReadFileFailed, err)
 		}
 
 		// verify signature
@@ -555,7 +556,7 @@ func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.Genera
 			Token:  token,
 		}, nil
 	} else {
-		return apitypes.GenerateTokenResp{}, xerrors.Errorf("failed to generate http file sever token")
+		return apitypes.GenerateTokenResp{}, types.Wrapf(types.ErrGenerateTokenFaild, "failed to generate http file sever token")
 	}
 }
 
@@ -565,7 +566,7 @@ func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlRe
 			Url: "http://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/saonetwork/" + dataId,
 		}, nil
 	} else {
-		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get http url")
+		return apitypes.GetUrlResp{}, types.Wrapf(types.ErrGetHttpUrlFaild, "failed to get http url")
 	}
 }
 
@@ -575,7 +576,7 @@ func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp,
 			Url: "ipfs+https://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/ipfs/" + cid,
 		}, nil
 	} else {
-		return apitypes.GetUrlResp{}, xerrors.Errorf("failed to get ipfs url")
+		return apitypes.GetUrlResp{}, types.Wrapf(types.ErrGetIpfsUrlFaild, "failed to get ipfs url")
 	}
 }
 
@@ -616,12 +617,12 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 
 	didManager, err := saodid.NewDidManagerWithDid(owner, n.getSidDocFunc())
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrInvalidDid, err)
 	}
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	// log.Debug("base64url.Encode(proposalBytes): ", base64url.Encode(proposalBytes))
@@ -632,20 +633,32 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 		},
 	})
 	if err != nil {
-		return xerrors.Errorf("verify client proposal(%T) signature failed: %v", proposal, err)
+		return types.Wrap(types.ErrInvalidSignature, err)
 	}
 
 	return nil
 }
 
-func (n *Node) OrderStatus(ctx context.Context, orderId uint64) (types.OrderInfo, error) {
-	return n.gatewaySvc.OrderStatus(ctx, orderId)
+func (n *Node) OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) {
+	return n.gatewaySvc.OrderStatus(ctx, id)
 }
 
 func (n *Node) OrderList(ctx context.Context) ([]types.OrderInfo, error) {
 	return n.gatewaySvc.OrderList(ctx)
 }
 
-func (n *Node) OrderFix(ctx context.Context, orderId uint64) (types.OrderInfo, error) {
-	return n.gatewaySvc.OrderFix(ctx, orderId)
+func (n *Node) OrderFix(ctx context.Context, id string) error {
+	return n.gatewaySvc.OrderFix(ctx, id)
+}
+
+func (n *Node) ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) {
+	return n.storeSvc.ShardStatus(ctx, orderId, cid)
+}
+
+func (n *Node) ShardList(ctx context.Context) ([]types.ShardInfo, error) {
+	return n.storeSvc.ShardList(ctx)
+}
+
+func (n *Node) ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error {
+	return n.storeSvc.ShardFix(ctx, orderId, cid)
 }

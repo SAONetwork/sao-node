@@ -10,9 +10,15 @@ import (
 
 func main() {
 	err := gen.WriteMapEncodersToFile("./types/cbor_gen.go", "types",
-		types.OrderStats{},
-		types.ShardInfo{},
+		// order state
+		types.OrderIndex{},
+		types.OrderShardInfo{},
 		types.OrderInfo{},
+		// shard state
+		types.ShardKey{},
+		types.ShardInfo{},
+		types.ShardIndex{},
+
 		types.QueryProposal{},
 		types.JwsSignature{},
 		types.MetadataProposalCbor{},

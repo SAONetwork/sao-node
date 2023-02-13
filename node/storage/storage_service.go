@@ -5,23 +5,19 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sao-node/chain"
-	"sao-node/node/transport"
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
-	"strings"
 	"time"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+	"golang.org/x/xerrors"
 
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/ipfs/go-cid"
-	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
+	"github.com/ipfs/go-datastore"
 
 	sid "github.com/SaoNetwork/sao-did/sid"
 	logging "github.com/ipfs/go-log/v2"
@@ -30,20 +26,20 @@ import (
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
 
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/network"
 )
 
 var log = logging.Logger("storage")
 
 type StoreSvc struct {
-	nodeAddress  string
-	chainSvc     *chain.ChainSvc
-	taskChan     chan *chain.ShardTask
-	host         host.Host
-	stagingPath  string
-	storeManager *store.StoreManager
-	ctx          context.Context
-	completeChan chan interface{}
+	nodeAddress        string
+	chainSvc           *chain.ChainSvc
+	taskChan           chan types.ShardInfo
+	host               host.Host
+	stagingPath        string
+	storeManager       *store.StoreManager
+	ctx                context.Context
+	orderDs            datastore.Batching
+	storageProtocolMap map[string]StorageProtocol
 }
 
 func NewStoreService(
@@ -54,82 +50,172 @@ func NewStoreService(
 	stagingPath string,
 	storeManager *store.StoreManager,
 	notifyChan map[string]chan interface{},
+	orderDs datastore.Batching,
 ) (*StoreSvc, error) {
-	ss := StoreSvc{
+	ss := &StoreSvc{
 		nodeAddress:  nodeAddress,
 		chainSvc:     chainSvc,
-		taskChan:     make(chan *chain.ShardTask),
+		taskChan:     make(chan types.ShardInfo),
 		host:         host,
 		stagingPath:  stagingPath,
 		storeManager: storeManager,
 		ctx:          ctx,
+		orderDs:      orderDs,
 	}
 
-	host.SetStreamHandler(types.ShardLoadProtocol, ss.HandleShardLoadStream)
-
-	if c, exists := notifyChan[types.ShardAssignProtocol]; exists {
-		// inprocess channel way to receive shard assign
-		go ss.subscribeShardAssign(ctx, c)
-	}
-
-	if c, exists := notifyChan[types.ShardCompleteProtocol]; exists {
-		ss.completeChan = c
-	}
-
-	// p2p way to receive shard assign
-	host.SetStreamHandler(types.ShardAssignProtocol, ss.HandleShardAssignStream)
+	ss.storageProtocolMap = make(map[string]StorageProtocol)
+	ss.storageProtocolMap["local"] = NewLocalStorageProtocol(
+		ctx,
+		notifyChan,
+		stagingPath,
+		ss,
+	)
+	ss.storageProtocolMap["stream"] = NewStreamStorageProtocol(host, ss)
 
 	// wsevent way to receive shard assign
 	//if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
 	//	return nil, err
 	//}
 
-	return &ss, nil
+	// restart previous pending shards
+	go func() {
+		log.Info("processing pending shards...")
+		pendings, err := ss.getPendingShardList(ctx)
+		if err != nil {
+			log.Errorf("process pending shards error: %w", err)
+		}
+		for _, p := range pendings {
+			ss.taskChan <- p
+		}
+	}()
+
+	return ss, nil
 }
 
-func (ss *StoreSvc) subscribeShardAssign(ctx context.Context, shardChan chan interface{}) {
-	for {
-		select {
-		case t, ok := <-shardChan:
-			if !ok {
-				return
-			}
-			// process
-			resp := ss.handleShardAssign(t.(types.ShardAssignReq))
-			if resp.Code != 0 {
-				log.Errorf(resp.Message)
-			}
-		case <-ctx.Done():
-			return
+func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq) types.ShardLoadResp {
+	logAndRespond := func(code uint64, errMsg string) types.ShardLoadResp {
+		log.Error(errMsg)
+		return types.ShardLoadResp{
+			Code:       code,
+			Message:    errMsg,
+			OrderId:    req.OrderId,
+			Cid:        req.Cid,
+			RequestId:  req.RequestId,
+			ResponseId: time.Now().UnixMilli(),
 		}
+	}
+
+	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
+	if err != nil {
+		return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("invalid did: %v", err))
+	}
+
+	p := saotypes.QueryProposal{
+		Owner:           req.Proposal.Proposal.Owner,
+		Keyword:         req.Proposal.Proposal.Keyword,
+		GroupId:         req.Proposal.Proposal.GroupId,
+		KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
+		LastValidHeight: req.Proposal.Proposal.LastValidHeight,
+		Gateway:         req.Proposal.Proposal.Gateway,
+		CommitId:        req.Proposal.Proposal.CommitId,
+		Version:         req.Proposal.Proposal.Version,
+	}
+
+	proposalBytes, err := p.Marshal()
+	if err != nil {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("marshal error: %v", err),
+		)
+	}
+
+	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
+		Payload: base64url.Encode(proposalBytes),
+		Signatures: []saodidtypes.JwsSignature{
+			saodidtypes.JwsSignature(req.Proposal.JwsSignature),
+		},
+	})
+
+	if err != nil {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("verify client order proposal signature failed: %v", err),
+		)
+	}
+
+	lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
+	if err != nil {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("get chain height error: %v", err),
+		)
+	}
+
+	if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight),
+		)
+	}
+
+	log.Debugf("Get %v", req.Cid)
+	reader, err := ss.storeManager.Get(ss.ctx, req.Cid)
+	if err != nil {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("get %v from store error: %v", req.Cid, err),
+		)
+	}
+	shardContent, err := io.ReadAll(reader)
+	if err != nil {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("get %v from store error: %v", req.Cid, err),
+		)
+	}
+
+	return types.ShardLoadResp{
+		OrderId:    req.OrderId,
+		Cid:        req.Cid,
+		Content:    shardContent,
+		RequestId:  req.RequestId,
+		ResponseId: time.Now().UnixMilli(),
 	}
 }
 
-func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssignResp {
+func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssignResp {
+	logAndRespond := func(code uint64, errMsg string) types.ShardAssignResp {
+		log.Error(errMsg)
+		return types.ShardAssignResp{
+			Code:    code,
+			Message: errMsg,
+		}
+	}
+
 	// validate request
 	if req.Assignee != ss.nodeAddress {
-		return types.ShardAssignResp{
-			Code:    types.ErrorCodeInvalidShardAssignee,
-			Message: fmt.Sprintf("shard assignee is %s, but current node is %s", req.Assignee, ss.nodeAddress),
-		}
+		return logAndRespond(
+			types.ErrorCodeInvalidShardAssignee,
+			fmt.Sprintf("shard assignee is %s, but current node is %s", req.Assignee, ss.nodeAddress),
+		)
 	}
 
 	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash, req.Height)
 	if err != nil {
-		return types.ShardAssignResp{
-			Code:    types.ErrorCodeInternalErr,
-			Message: fmt.Sprintf("internal error: %v", err),
-		}
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("internal error: %v", err),
+		)
 	}
 
 	if resultTx.TxResult.Code == 0 {
 		txb := tx.Tx{}
 		err = txb.Unmarshal(resultTx.Tx)
 		if err != nil {
-			return types.ShardAssignResp{
-				Code:    types.ErrorCodeInvalidTx,
-				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
-			}
+			return logAndRespond(
+				types.ErrorCodeInvalidTx,
+				fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			)
 		}
 
 		// validate tx
@@ -141,18 +227,18 @@ func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssig
 			err = m.Unmarshal(txb.Body.Messages[0].Value)
 		}
 		if err != nil {
-			return types.ShardAssignResp{
-				Code:    types.ErrorCodeInvalidTx,
-				Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
-			}
+			return logAndRespond(
+				types.ErrorCodeInvalidTx,
+				fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+			)
 		}
 
 		order, err := ss.chainSvc.GetOrder(ss.ctx, req.OrderId)
 		if err != nil {
-			return types.ShardAssignResp{
-				Code:    types.ErrorCodeInternalErr,
-				Message: fmt.Sprintf("internal error: %v", err),
-			}
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("internal error: %v", err),
+			)
 		}
 
 		var shardCids []string
@@ -162,39 +248,46 @@ func (ss *StoreSvc) handleShardAssign(req types.ShardAssignReq) types.ShardAssig
 			}
 		}
 		if len(shardCids) <= 0 {
-			return types.ShardAssignResp{
-				Code:    types.ErrorCodeInvalidProvider,
-				Message: fmt.Sprintf("order %d doesn't have shard provider %s", req.OrderId, ss.nodeAddress),
-			}
+			return logAndRespond(
+				types.ErrorCodeInvalidProvider,
+				fmt.Sprintf("order %d doesn't have shard provider %s", req.OrderId, ss.nodeAddress),
+			)
 		}
-		var shardTasks []*chain.ShardTask
 		for _, shardCid := range shardCids {
 			cid, err := cid.Decode(shardCid)
 			if err != nil {
-				return types.ShardAssignResp{
-					Code:    types.ErrorCodeInvalidShardCid,
-					Message: fmt.Sprintf("invalid cid %s", shardCid),
-				}
+				return logAndRespond(
+					types.ErrorCodeInvalidShardCid,
+					fmt.Sprintf("invalid cid %s", shardCid),
+				)
 			}
 
-			shardTasks = append(shardTasks, &chain.ShardTask{
-				Owner:          order.Owner,
-				OrderId:        req.OrderId,
-				Gateway:        order.Provider,
-				Cid:            cid,
-				OrderOperation: fmt.Sprintf("%d", order.Operation),
-				ShardOperation: fmt.Sprintf("%d", order.Operation),
-			})
-		}
-		for _, task := range shardTasks {
-			ss.taskChan <- task
+			shardInfo, _ := utils.GetShard(ss.ctx, ss.orderDs, req.OrderId, cid)
+			if (types.ShardInfo{} == shardInfo) {
+				shardInfo = types.ShardInfo{
+					Owner:          order.Owner,
+					OrderId:        req.OrderId,
+					Gateway:        order.Provider,
+					Cid:            cid,
+					DataId:         req.DataId,
+					OrderOperation: fmt.Sprintf("%d", order.Operation),
+					ShardOperation: fmt.Sprintf("%d", order.Operation),
+					State:          types.ShardStateValidated,
+				}
+				err = utils.SaveShard(ss.ctx, ss.orderDs, shardInfo)
+				if err != nil {
+					// do not throw error, the best case is storage node handle shard again.
+					log.Warn("put shard order=%d cid=%v error: %v", shardInfo.OrderId, shardInfo.Cid, err)
+				}
+			}
+			ss.taskChan <- shardInfo
 		}
 		return types.ShardAssignResp{Code: 0}
 	} else {
-		return types.ShardAssignResp{
-			Code:    types.ErrorCodeInvalidTx,
-			Message: fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
-		}
+		return logAndRespond(
+			types.ErrorCodeInvalidTx,
+			fmt.Sprintf("tx %s body is invalid.", resultTx.Tx),
+		)
 	}
 }
 
@@ -216,108 +309,100 @@ func (ss *StoreSvc) Start(ctx context.Context) error {
 	}
 }
 
-func (ss *StoreSvc) process(ctx context.Context, task *chain.ShardTask) error {
-	log.Debugf("processing task: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
-	log.Debugf("processing task: order operation=%s shard operation=%s", task.OrderOperation, task.ShardOperation)
+func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
+	log.Infof("start processing: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
 
-	var shard []byte
 	var err error
 
-	// check if it's a renew order(Operation is 3)
-	if task.OrderOperation != "3" || task.ShardOperation != "3" {
-		// check if gateway is node itself
-		if task.Gateway == ss.nodeAddress {
-			shard, err = ss.getShardFromLocal(task.Owner, task.Cid)
-			if err != nil {
-				log.Warn("skip the known error: ", err.Error())
-				return err
-			}
-		} else {
-			shard, err = ss.getShardFromGateway(ctx, task.Owner, task.Gateway, task.OrderId, task.Cid)
-			if err != nil {
-				return err
-			}
-
-			cid, _ := utils.CalculateCid(shard)
-			log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
-			if cid.String() != task.Cid.String() {
-				return xerrors.Errorf("ipfs cid %v != task cid %v", cid, task.Cid)
-			}
-		}
-
-		// store to backends
-		_, err := ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(shard))
-		if err != nil {
-			return err
-		}
-	} else {
-		// make sure the data is still there
-		isExist := ss.storeManager.IsExist(ctx, task.Cid)
-		if !isExist {
-			return xerrors.Errorf("shard with cid %s not found", task.Cid)
-		}
-	}
-
-	log.Info("Complete order")
-	txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(len(shard)))
+	sp, peerInfo, err := ss.getStorageProtocolAndPeer(ctx, task.Gateway)
 	if err != nil {
+		ss.updateShardError(task, err)
 		return err
 	}
-	log.Infof("Complete order succeed: txHash: %s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
-	completeReq := types.ShardCompleteReq{
-		OrderId: task.OrderId,
-		Cids:    []cid.Cid{task.Cid},
-		Height:  height,
-		TxHash:  txHash,
-		Code:    0,
-	}
-	if task.Gateway == ss.nodeAddress {
-		ss.completeChan <- completeReq
-	} else {
-		peerInfos, err := ss.chainSvc.GetNodePeer(ctx, task.Gateway)
+
+	if task.State < types.ShardStateStored {
+		// i := rand.Intn(3)
+		// if i != 0 {
+		// 	return xerrors.Errorf("rand fail")
+		// }
+
+		// check if it's a renew order(Operation is 3)
+		if task.OrderOperation != "3" || task.ShardOperation != "3" {
+			resp := sp.RequestShardStore(ctx, types.ShardLoadReq{
+				Owner:   task.Owner,
+				OrderId: task.OrderId,
+				Cid:     task.Cid,
+			}, peerInfo)
+			if resp.Code != 0 {
+				ss.updateShardError(task, xerrors.Errorf(resp.Message))
+				return xerrors.Errorf(resp.Message)
+			} else {
+				cid, _ := utils.CalculateCid(resp.Content)
+				log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
+				if cid.String() != task.Cid.String() {
+					ss.updateShardError(task, err)
+					return types.Wrapf(types.ErrInvalidCid, "ipfs cid %v != task cid %v", cid, task.Cid)
+				}
+			}
+
+			// store to backends
+			_, err = ss.storeManager.Store(ctx, task.Cid, bytes.NewReader(resp.Content))
+			if err != nil {
+				ss.updateShardError(task, err)
+				return types.Wrap(types.ErrStoreFailed, err)
+			}
+			task.Size = uint64(len(resp.Content))
+		} else {
+			// make sure the data is still there
+			isExist := ss.storeManager.IsExist(ctx, task.Cid)
+			if !isExist {
+				ss.updateShardError(task, err)
+				return types.Wrapf(types.ErrDataMissing, "shard with cid %s not found", task.Cid)
+			}
+		}
+		task.State = types.ShardStateStored
+		err = utils.SaveShard(ctx, ss.orderDs, task)
 		if err != nil {
+			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
+		}
+	}
+
+	if task.State < types.ShardStateTxSent {
+		txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(task.Size))
+		if err != nil {
+			ss.updateShardError(task, err)
 			return err
 		}
-		resp := types.ShardCompleteResp{}
-		err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardCompleteProtocol, &completeReq, &resp)
+		log.Infof("Complete order succeed: txHash: %s, OrderId: %d, cid: %s", txHash, task.OrderId, task.Cid)
+
+		task.State = types.ShardStateComplete
+		task.CompleteHash = txHash
+		task.CompleteHeight = height
+		err = utils.SaveShard(ss.ctx, ss.orderDs, task)
 		if err != nil {
-			return err
+			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
+		}
+	}
+
+	resp := sp.RequestShardComplete(ctx, types.ShardCompleteReq{
+		OrderId: task.OrderId,
+		DataId:  task.DataId,
+		Cids:    []cid.Cid{task.Cid},
+		Height:  task.CompleteHeight,
+		TxHash:  task.CompleteHash,
+	}, peerInfo)
+	if resp.Code != 0 {
+		ss.updateShardError(task, xerrors.Errorf(resp.Message))
+		// return xerrors.Errorf(resp.Message)
+	}
+	if task.State < types.ShardStateComplete {
+		task.State = types.ShardStateComplete
+		err = utils.SaveShard(ss.ctx, ss.orderDs, task)
+		if err != nil {
+			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
 		}
 	}
 	return nil
-}
-
-func (ss *StoreSvc) getShardFromLocal(creator string, cid cid.Cid) ([]byte, error) {
-	path, err := homedir.Expand(ss.stagingPath)
-	if err != nil {
-		return nil, err
-	}
-
-	filename := fmt.Sprintf("%v", cid)
-	bytes, err := os.ReadFile(filepath.Join(path, creator, filename))
-	if err != nil {
-		return nil, err
-	} else {
-		return bytes, nil
-	}
-}
-
-func (ss *StoreSvc) getShardFromGateway(ctx context.Context, owner string, gateway string, orderId uint64, cid cid.Cid) ([]byte, error) {
-	peerInfos, err := ss.chainSvc.GetNodePeer(ctx, gateway)
-	if err != nil {
-		return nil, err
-	}
-	resp := types.ShardLoadResp{}
-	err = transport.HandleRequest(ctx, peerInfos, ss.host, types.ShardStoreProtocol, &types.ShardLoadReq{
-		Owner:   owner,
-		OrderId: orderId,
-		Cid:     cid,
-	}, &resp)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Content, nil
-
 }
 
 func (ss *StoreSvc) Stop(ctx context.Context) error {
@@ -325,10 +410,18 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 	//if err := ss.chainSvc.UnsubscribeShardTask(ctx, ss.nodeAddress); err != nil {
 	//	return err
 	//}
+	log.Info("stopping storage service...")
 	close(ss.taskChan)
 
-	ss.host.RemoveStreamHandler(types.ShardAssignProtocol)
-	ss.host.RemoveStreamHandler(types.ShardLoadProtocol)
+	var err error
+	for k, p := range ss.storageProtocolMap {
+		err = p.Stop(ctx)
+		if err != nil {
+			log.Error("stopping %s storage protocol failed: %v", k, err)
+		} else {
+			log.Info("%s storage protocol stopped.", k)
+		}
+	}
 
 	return nil
 }
@@ -339,133 +432,85 @@ func (ss *StoreSvc) getSidDocFunc() func(versionId string) (*sid.SidDocument, er
 	}
 }
 
-func (ss *StoreSvc) HandleShardAssignStream(s network.Stream) {
-	defer s.Close()
-
-	respond := func(resp types.ShardAssignResp) {
-		err := resp.Marshal(s, types.FormatCbor)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
-
-		if err = s.CloseWrite(); err != nil {
-			log.Error(err.Error())
-			return
-		}
-	}
-
-	// Set a deadline on reading from the stream so it doesn't hang
-	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
-	defer s.SetReadDeadline(time.Time{}) // nolint
-
-	var req types.ShardAssignReq
-	err := req.Unmarshal(s, types.FormatCbor)
-	if err != nil {
-		respond(types.ShardAssignResp{
-			Code:    types.ErrorCodeInvalidRequest,
-			Message: fmt.Sprintf("failed to unmarshal request: %v", err),
-		})
+func (ss *StoreSvc) getStorageProtocolAndPeer(
+	ctx context.Context,
+	targetAddress string,
+) (StorageProtocol, string, error) {
+	var sp StorageProtocol
+	var err error
+	peer := ""
+	if targetAddress == ss.nodeAddress {
+		sp = ss.storageProtocolMap["local"]
 	} else {
-		respond(ss.handleShardAssign(req))
+		sp = ss.storageProtocolMap["stream"]
+		peer, err = ss.chainSvc.GetNodePeer(ctx, targetAddress)
+	}
+	return sp, peer, err
+}
+
+func (ss *StoreSvc) updateShardError(shard types.ShardInfo, err error) {
+	shard.LastErr = err.Error()
+	err = utils.SaveShard(ss.ctx, ss.orderDs, shard)
+	if err != nil {
+		log.Warnf("put shard order=%d cid=%v error: %v", shard.OrderId, shard.Cid, err)
 	}
 
 }
 
-func (ss *StoreSvc) HandleShardLoadStream(s network.Stream) {
-	defer s.Close()
+func (ss *StoreSvc) ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) {
+	return utils.GetShard(ctx, ss.orderDs, orderId, cid)
+}
 
-	// Set a deadline on reading from the stream so it doesn't hang
-	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
-	defer s.SetReadDeadline(time.Time{}) // nolint
-
-	var req types.ShardLoadReq
-	err := req.Unmarshal(s, types.FormatCbor)
+func (ss *StoreSvc) getPendingShardList(ctx context.Context) ([]types.ShardInfo, error) {
+	shardKeys, err := ss.getShardKeyList(ctx)
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
-	log.Debugf("receive ShardLoadReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
+	// TODO: optimize add a pending list in OrderShards
+	var pending []types.ShardInfo
+	for _, shardKey := range shardKeys {
+		shard, err := utils.GetShard(ctx, ss.orderDs, shardKey.OrderId, shardKey.Cid)
+		if err != nil {
+			return nil, err
+		}
+		if shard.State != types.ShardStateComplete {
+			pending = append(pending, shard)
+		}
+	}
+	return pending, nil
+}
 
-	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
+func (ss *StoreSvc) getShardKeyList(ctx context.Context) ([]types.ShardKey, error) {
+	index, err := utils.GetShardIndex(ctx, ss.orderDs)
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
+	return index.All, nil
+}
 
-	p := saotypes.QueryProposal{
-		Owner:           req.Proposal.Proposal.Owner,
-		Keyword:         req.Proposal.Proposal.Keyword,
-		GroupId:         req.Proposal.Proposal.GroupId,
-		KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
-		LastValidHeight: req.Proposal.Proposal.LastValidHeight,
-		Gateway:         req.Proposal.Proposal.Gateway,
-		CommitId:        req.Proposal.Proposal.CommitId,
-		Version:         req.Proposal.Proposal.Version,
-	}
-
-	proposalBytes, err := p.Marshal()
+func (ss *StoreSvc) ShardList(ctx context.Context) ([]types.ShardInfo, error) {
+	shardKeys, err := ss.getShardKeyList(ctx)
 	if err != nil {
-		log.Error(err)
-		return
+		return nil, err
 	}
 
-	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
-		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saodidtypes.JwsSignature{
-			saodidtypes.JwsSignature(req.Proposal.JwsSignature),
-		},
-	})
+	var shardInfos []types.ShardInfo
+	for _, shardKey := range shardKeys {
+		shard, err := utils.GetShard(ctx, ss.orderDs, shardKey.OrderId, shardKey.Cid)
+		if err != nil {
+			return nil, err
+		}
+		shardInfos = append(shardInfos, shard)
+	}
+	return shardInfos, nil
+}
 
+func (ss *StoreSvc) ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error {
+	shardInfo, err := utils.GetShard(ctx, ss.orderDs, orderId, cid)
 	if err != nil {
-		log.Errorf("verify client order proposal signature failed: %v", err)
-		return
+		return nil
 	}
 
-	lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	peerInfo := string(s.Conn().RemotePeer())
-	if strings.Contains(req.Proposal.Proposal.Gateway, peerInfo) {
-		log.Errorf("invalid query, unexpect gateway:%s, should be %s", peerInfo, req.Proposal.Proposal.Gateway)
-		return
-	}
-	if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
-		log.Errorf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight)
-		return
-	}
-
-	log.Debugf("Get %v", req.Cid)
-	reader, err := ss.storeManager.Get(ss.ctx, req.Cid)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-	shardContent, err := io.ReadAll(reader)
-	if err != nil {
-		log.Error(err)
-		return
-	}
-
-	var resp = &types.ShardLoadResp{
-		OrderId:    req.OrderId,
-		Cid:        req.Cid,
-		Content:    shardContent,
-		RequestId:  req.RequestId,
-		ResponseId: time.Now().UnixMilli(),
-	}
-	log.Debugf("send ShardLoadResp(requestId=%d,responseId=%d): Content len %d", resp.RequestId, resp.ResponseId, len(shardContent))
-
-	err = resp.Marshal(s, types.FormatCbor)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	if err := s.CloseWrite(); err != nil {
-		log.Error(err.Error())
-		return
-	}
+	ss.taskChan <- shardInfo
+	return nil
 }

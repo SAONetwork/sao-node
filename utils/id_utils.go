@@ -1,21 +1,18 @@
 package utils
 
 import (
-	"bytes"
-	"context"
-	"fmt"
 	"regexp"
 	"sao-node/types"
 	"strings"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/multiformats/go-multicodec"
 	"github.com/multiformats/go-multihash"
 	uuid "github.com/satori/go.uuid"
-	"golang.org/x/xerrors"
 )
+
+const NS_URL = "6ba7b811-9dad-11d1-80b4-00c04fd430c8"
 
 func IsContent(content string) bool {
 	r, _ := regexp.Compile(`^\\{.*?\\}$`)
@@ -36,12 +33,15 @@ func GenerateAlias(content []byte) string {
 	return uuid.FromBytesOrNil(content).String()
 }
 
-func GenerateDataId() string {
-	return uuid.NewV4().String()
+func GenerateDataId(seed string) string {
+	return GenerateCommitId(seed)
 }
 
-func GenerateCommitId() string {
-	return uuid.NewV4().String()
+func GenerateCommitId(seed string) string {
+	idv1 := uuid.NewV1().String()
+	idv5 := uuid.NewV5(uuid.FromStringOrNil(NS_URL), seed).String()
+
+	return idv1[0:18] + idv5[18:]
 }
 
 func GenerateGroupId() string {
@@ -57,7 +57,7 @@ func Marshal(obj interface{}) ([]byte, error) {
 	b, err := jsoniter.Marshal(obj)
 
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	return b, nil
@@ -73,89 +73,8 @@ func CalculateCid(content []byte) (cid.Cid, error) {
 
 	contentCid, err := pref.Sum(content)
 	if err != nil {
-		return cid.Undef, err
+		return cid.Undef, types.Wrap(types.ErrCalculateCidFailed, err)
 	}
 
 	return contentCid, nil
-}
-
-func PutOrderStat(ctx context.Context, ds datastore.Batching, orderId uint64) error {
-	key := datastore.NewKey("order_stats")
-	exists, err := ds.Has(ctx, key)
-	if err != nil {
-		return err
-	}
-	var orderStats types.OrderStats
-	if exists {
-		data, err := ds.Get(ctx, key)
-		if err != nil {
-			return err
-		}
-		err = orderStats.UnmarshalCBOR(bytes.NewReader(data))
-		if err != nil {
-			return err
-		}
-	}
-	orderStats.All = append(orderStats.All, orderId)
-	buf := new(bytes.Buffer)
-	err = orderStats.MarshalCBOR(buf)
-	if err != nil {
-		return err
-	}
-	err = ds.Put(ctx, key, buf.Bytes())
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func PutOrder(ctx context.Context, ds datastore.Batching, order types.OrderInfo) error {
-	keyName := fmt.Sprintf("orderinfo-%d", order.OrderId)
-	key := datastore.NewKey(keyName)
-
-	exists, err := ds.Has(ctx, key)
-	if err != nil {
-		return err
-	}
-
-	buf := new(bytes.Buffer)
-	err = order.MarshalCBOR(buf)
-	if err != nil {
-		return err
-	}
-	err = ds.Put(ctx, key, buf.Bytes())
-	if err != nil {
-		return err
-	}
-
-	if !exists {
-		err = PutOrderStat(ctx, ds, order.OrderId)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func GetOrder(ctx context.Context, ds datastore.Batching, orderId uint64) (types.OrderInfo, error) {
-	keyName := fmt.Sprintf("orderinfo-%d", orderId)
-	key := datastore.NewKey(keyName)
-	exists, err := ds.Has(ctx, key)
-	if err != nil {
-		return types.OrderInfo{}, err
-	}
-	if !exists {
-		return types.OrderInfo{}, nil
-	}
-
-	bs, err := ds.Get(ctx, key)
-	if err != nil {
-		return types.OrderInfo{}, err
-	}
-	var orderInfo types.OrderInfo
-	err = orderInfo.UnmarshalCBOR(bytes.NewReader(bs))
-	if err != nil {
-		return types.OrderInfo{}, err
-	}
-	return orderInfo, nil
 }

@@ -36,6 +36,7 @@ var modelCmd = &cli.Command{
 		loadCmd,
 		deleteCmd,
 		commitsCmd,
+		listCmd,
 		renewCmd,
 		statusCmd,
 	},
@@ -126,7 +127,7 @@ var createCmd = &cli.Command{
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
-			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+			return types.Wrapf(types.ErrInvalidParameters, "extend-info should no longer than 1024 characters")
 		}
 
 		client, closer, err := getSaoClient(cctx)
@@ -136,7 +137,7 @@ var createCmd = &cli.Command{
 		defer closer()
 
 		if client == nil {
-			return xerrors.Errorf("failed to create client")
+			return types.Wrap(types.ErrCreateClientFailed, nil)
 		}
 
 		groupId := cctx.String("platform")
@@ -149,7 +150,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -159,7 +160,7 @@ var createCmd = &cli.Command{
 			return err
 		}
 
-		dataId := utils.GenerateDataId()
+		dataId := utils.GenerateDataId(didManager.Id + groupId)
 		proposal := saotypes.Proposal{
 			DataId:   dataId,
 			Owner:    didManager.Id,
@@ -273,7 +274,7 @@ var loadCmd = &cli.Command{
 			groupId = client.Cfg.GroupId
 		}
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -324,7 +325,7 @@ var loadCmd = &cli.Command{
 
 		match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(resp.Alias))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInvalidAlias, err)
 		}
 
 		if len(resp.Content) == 0 || match {
@@ -354,16 +355,32 @@ var loadCmd = &cli.Command{
 			path := filepath.Join("./", resp.DataId+".json")
 			file, err := os.Create(path)
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrCreateDirFailed, err)
 			}
 
 			_, err = file.Write([]byte(resp.Content))
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrWriteFileFailed, err)
 			}
 			fmt.Printf("data model dumped to %s.\r\n", path)
 		}
 
+		return nil
+	},
+}
+
+var listCmd = &cli.Command{
+	Name:  "list",
+	Usage: "check models' status",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:     "date",
+			Usage:    "updated date of data model's to be list",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		fmt.Printf("TODO...")
 		return nil
 	},
 }
@@ -413,7 +430,7 @@ var renewCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -427,12 +444,12 @@ var renewCmd = &cli.Command{
 
 		proposalBytes, err := proposal.Marshal()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 		clientProposal := types.OrderRenewProposal{
 			Proposal:     proposal,
@@ -457,7 +474,7 @@ var renewCmd = &cli.Command{
 		var renewedOrders = make(map[string]string, 0)
 		var failedOrders = make(map[string]string, 0)
 		for dataId, result := range results {
-			if strings.Contains(result, "New order=") {
+			if strings.Contains(result, "SUCCESS") {
 				orderId, err := strconv.ParseUint(strings.Split(result, "=")[1], 10, 64)
 				if err != nil {
 					failedOrders[dataId] = result + ", " + err.Error()
@@ -509,7 +526,7 @@ var statusCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -593,7 +610,7 @@ var deleteCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -605,12 +622,12 @@ var deleteCmd = &cli.Command{
 
 		proposalBytes, err := proposal.Marshal()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 		request := types.OrderTerminateProposal{
 			Proposal:     proposal,
@@ -659,7 +676,7 @@ var commitsCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -706,12 +723,12 @@ var commitsCmd = &cli.Command{
 		fmt.Println("  Version |Commit                              |Height")
 		fmt.Println("  -----------------------------------------------------------")
 		for i, commit := range resp.Commits {
-			commitInfo := strings.Split(commit, "\032")
-			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
+			commitInfo, err := types.ParseMetaCommit(commit)
+			if err != nil {
 				return xerrors.Errorf("invalid commit information: %s", commit)
 			}
 
-			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo[0], commitInfo[1])
+			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo.CommitId, commitInfo.Height)
 		}
 		fmt.Println("  -----------------------------------------------------------")
 
@@ -768,6 +785,11 @@ var updateCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
+			Name:     "commit-id",
+			Usage:    "data model's last commit id",
+			Required: true,
+		},
+		&cli.StringFlag{
 			Name:     "cid",
 			Usage:    "target content cid",
 			Required: true,
@@ -794,25 +816,25 @@ var updateCmd = &cli.Command{
 
 		// ---- check parameters ----
 		if !cctx.IsSet("keyword") {
-			return xerrors.Errorf("must provide --keyword")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --keyword")
 		}
 		keyword := cctx.String("keyword")
 
 		size := cctx.Int("size")
 		if size <= 0 {
-			return xerrors.Errorf("invalid size")
+			return types.Wrapf(types.ErrInvalidParameters, "invalid size")
 		}
 
 		patch := []byte(cctx.String("patch"))
 		contentCid := cctx.String("cid")
 		newCid, err := cid.Decode(contentCid)
 		if err != nil {
-			return err
+			return types.Wrapf(types.ErrInvalidCid, "cid=%s", contentCid)
 		}
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
-			return xerrors.Errorf("extend-info should no longer than 1024 characters")
+			return types.Wrapf(types.ErrInvalidParameters, "extend-info should no longer than 1024 characters")
 		}
 
 		clientPublish := cctx.Bool("client-publish")
@@ -831,8 +853,9 @@ var updateCmd = &cli.Command{
 		if groupId == "" {
 			groupId = client.Cfg.GroupId
 		}
+		commitId := cctx.String("commit-id")
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -881,7 +904,7 @@ var updateCmd = &cli.Command{
 			Alias:      res.Metadata.Alias,
 			Tags:       cctx.StringSlice("tags"),
 			Cid:        newCid.String(),
-			CommitId:   utils.GenerateCommitId(),
+			CommitId:   commitId + "|" + utils.GenerateCommitId(didManager.Id+groupId),
 			Rule:       cctx.String("rule"),
 			Operation:  operation,
 			Size_:      uint64(size),
@@ -936,7 +959,7 @@ var updatePermissionCmd = &cli.Command{
 		ctx := cctx.Context
 
 		if !cctx.IsSet("data-id") {
-			return xerrors.Errorf("must provide --data-id")
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --data-id")
 		}
 		dataId := cctx.String("data-id")
 		clientPublish := cctx.Bool("client-publish")
@@ -947,7 +970,7 @@ var updatePermissionCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg)
+		didManager, signer, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -961,12 +984,12 @@ var updatePermissionCmd = &cli.Command{
 
 		proposalBytes, err := proposal.Marshal()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		jws, err := didManager.CreateJWS(proposalBytes)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 
 		request := &types.PermissionProposal{
@@ -1012,7 +1035,7 @@ var patchGenCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.IsSet("origin") || !cctx.IsSet("target") {
-			return xerrors.Errorf("please provide both --origin and --target")
+			return types.Wrapf(types.ErrInvalidParameters, "please provide both --origin and --target")
 		}
 
 		origin := cctx.String("origin")
@@ -1030,27 +1053,27 @@ var patchGenCmd = &cli.Command{
 		var newModel interface{}
 		err = json.Unmarshal(content, &newModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrUnMarshalFailed, err)
 		}
 
 		var targetModel interface{}
 		err = json.Unmarshal([]byte(target), &targetModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrUnMarshalFailed, err)
 		}
 
 		valueStrNew, err := json.Marshal(newModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		valueStrTarget, err := json.Marshal(targetModel)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalFailed, err)
 		}
 
 		if string(valueStrNew) != string(valueStrTarget) {
-			return xerrors.Errorf("failed to generate the patch")
+			return types.Wrapf(types.ErrCreatePatchFailed, "failed to generate the patch")
 		}
 
 		targetCid, err := utils.CalculateCid(content)
@@ -1082,12 +1105,12 @@ func buildClientProposal(_ context.Context, didManager *did.DidManager, proposal
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateJwsFailed, err)
 	}
 	return &types.OrderStoreProposal{
 		Proposal: proposal,
@@ -1101,7 +1124,7 @@ func buildClientProposal(_ context.Context, didManager *did.DidManager, proposal
 func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal saotypes.QueryProposal, chain chain.ChainSvcApi, gatewayAddress string) (*types.MetadataProposal, error) {
 	lastHeight, err := chain.GetLastHeight(ctx)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrQueryHeightFailed, err)
 	}
 
 	peerInfo, err := chain.GetNodePeer(ctx, gatewayAddress)
@@ -1120,12 +1143,12 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 
 	proposalBytes, err := proposal.Marshal()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
 	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateJwsFailed, err)
 	}
 
 	return &types.MetadataProposal{

@@ -6,12 +6,14 @@ import (
 	"os"
 	"sao-node/chain"
 	cliutil "sao-node/cmd"
+	"sao-node/types"
 	"strings"
 	"syscall"
 
+	"github.com/labstack/gommon/log"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/term"
-	"golang.org/x/xerrors"
 )
 
 var AccountCmd = &cli.Command{
@@ -33,14 +35,27 @@ var listCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			return xerrors.Errorf("no chain address specified")
+		if repoPath == "" {
+			var err error
+			if cctx.App.Name == "saoclient" {
+				repoPath, err = homedir.Expand("~/.sao-cli")
+			} else if cctx.App.Name == "saonode" {
+				repoPath, err = homedir.Expand("~/.sao-node")
+			} else {
+				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
+			}
+			if err != nil {
+				return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
+			}
+		}
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
+		if err != nil {
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return types.Wrap(types.ErrCreateChainServiceFailed, err)
 		}
 		err = chain.List(ctx, cliutil.KeyringHome)
 		if err != nil {
@@ -70,9 +85,20 @@ var createCmd = &cli.Command{
 			fmt.Print("Enter account name:")
 			indata, err := reader.ReadBytes('\n')
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrAccountNotFound, err)
 			}
 			name = strings.Replace(string(indata), "\n", "", -1)
+		}
+
+		repoPath := cctx.String("repo")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
+			}
 		}
 
 		accountName, address, mnemonic, err := chain.Create(ctx, cliutil.KeyringHome, name)
@@ -107,7 +133,7 @@ var exportCmd = &cli.Command{
 			fmt.Print("Enter account name:")
 			indata, err := reader.ReadBytes('\n')
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrAccountNotFound, err)
 			}
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
@@ -116,6 +142,17 @@ var exportCmd = &cli.Command{
 		passphrase, err := term.ReadPassword(syscall.Stdin)
 		if err != nil {
 			return err
+		}
+
+		repoPath := cctx.String("repo")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
+			}
 		}
 
 		err = chain.Export(ctx, cliutil.KeyringHome, name, string(passphrase))
@@ -151,14 +188,24 @@ var sendCmd = &cli.Command{
 		ctx := cctx.Context
 
 		repoPath := cctx.String("repo")
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			return xerrors.Errorf("no chain address specified")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
+			}
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
+		if err != nil {
+			log.Warn(err)
 		}
 
 		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
-			return xerrors.Errorf("new cosmos chain: %w", err)
+			return types.Wrap(types.ErrCreateChainServiceFailed, err)
 		}
 		from := cctx.String("from")
 		to := cctx.String("to")
@@ -191,7 +238,7 @@ var importCmd = &cli.Command{
 			fmt.Print("Enter account name:")
 			indata, err := reader.ReadBytes('\n')
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrAccountNotFound, err)
 			}
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
@@ -203,7 +250,7 @@ var importCmd = &cli.Command{
 			// read line from stdin using newline as separator
 			line, err := reader.ReadString('\n')
 			if err != nil {
-				return err
+				return types.Wrap(types.ErrInvalidSecrect, err)
 			}
 
 			secret = secret + line
@@ -216,9 +263,19 @@ var importCmd = &cli.Command{
 		fmt.Print("Enter passphrase:")
 		passphrase, err := term.ReadPassword(syscall.Stdin)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInvalidPassphrase, err)
 		}
 
+		repoPath := cctx.String("repo")
+		if repoPath == "" {
+			if cctx.App.Name == "saoclient" {
+				repoPath = "~/.sao-cli"
+			} else if cctx.App.Name == "saonode" {
+				repoPath = "~/.sao-node"
+			} else {
+				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
+			}
+		}
 		err = chain.Import(ctx, cliutil.KeyringHome, name, secret, string(passphrase))
 		if err != nil {
 			return err

@@ -1,7 +1,13 @@
 package types
 
+// TODO: optimizae: OrderStats and OrderShards use comma split string
+
 import (
+	"strconv"
+	"strings"
+
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
 )
@@ -112,57 +118,23 @@ type ConsensusProposal interface {
 	Marshal() ([]byte, error)
 }
 
-type OrderStats struct {
-	All []uint64
-}
-type OrderInfo struct {
-	// Staged
-	StagePath string
-
-	// proto marshal
-	OrderStoreProposal []byte
-	OrderId            uint64
-	State              OrderState
-	LastErr            string
-
-	// order/ready
-	OrderHash string
-	ReadyHash string
-	Shards    map[string]ShardInfo
+type MetaCommit struct {
+	CommitId string
+	Height   uint64
 }
 
-type ShardInfo struct {
-	ShardId      uint64
-	Peer         string
-	Cid          string
-	Provider     string
-	State        ShardState
-	CompleteHash string
+func ParseMetaCommit(mc string) (MetaCommit, error) {
+	s := strings.Split(mc, "\032")
+	if len(s) != 2 {
+		return MetaCommit{}, xerrors.Errorf("invalid metadata commit: %s", mc)
+	}
+	// TODO: validate commit id format.
+	height, err := strconv.ParseUint(s[1], 10, 64)
+	if err != nil {
+		return MetaCommit{}, xerrors.Errorf("can't parse height in metadata commit: %s: %v", mc, err)
+	}
+	return MetaCommit{
+		CommitId: s[0],
+		Height:   height,
+	}, nil
 }
-
-type OrderState uint64
-
-const (
-	OrderStateStaged OrderState = iota
-	OrderStateReady
-	OrderStateComplete
-)
-
-var orderStateString = map[OrderState]string{
-	OrderStateStaged:   "Staged",
-	OrderStateReady:    "Ready",
-	OrderStateComplete: "Complete",
-}
-
-func (s OrderState) String() string {
-	return orderStateString[s]
-}
-
-type ShardState string
-
-const (
-	ShardStateAssigned  ShardState = "assigned"
-	ShardStateNotified  ShardState = "notified"
-	ShardStateCompleted ShardState = "completed"
-	ShardStateError     ShardState = "error"
-)

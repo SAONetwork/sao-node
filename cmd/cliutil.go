@@ -3,15 +3,22 @@ package cliutil
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sao-node/chain"
 	saoclient "sao-node/client"
 	gen "sao-node/gen/clidoc"
+	"sao-node/node/config"
+	"sao-node/node/repo"
+	"sao-node/types"
+	"sao-node/utils"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
+	"github.com/opentracing/opentracing-go/log"
 	"github.com/urfave/cli/v2"
 )
 
@@ -37,10 +44,10 @@ var FlagKeyringHome = &cli.StringFlag{
 
 var ChainAddress string
 var FlagChainAddress = &cli.StringFlag{
-	Name:    "chain-address",
-	Usage:   "sao chain api",
-	EnvVars: []string{"SAO_CHAIN_API"},
-	//Value:       "http://localhost:26657",
+	Name:        "chain-address",
+	Usage:       "sao chain api",
+	EnvVars:     []string{"SAO_CHAIN_API"},
+	Value:       "http://192.168.50.66:26657",
 	Destination: &ChainAddress,
 }
 
@@ -61,16 +68,13 @@ func AskForPassphrase() (string, error) {
 	fmt.Print("Enter passphrase:")
 	passphrase, err := term.ReadPassword(syscall.Stdin)
 	if err != nil {
-		return "", err
+		return "", types.Wrap(types.ErrInvalidPassphrase, err)
 	}
 	return string(passphrase), nil
 }
 
-func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.DidManager, string, error) {
-	var keyName string
-	if !cctx.IsSet(FlagKeyName) {
-		keyName = cfg.KeyName
-	} else {
+func GetDidManager(cctx *cli.Context, keyName string) (*saodid.DidManager, string, error) {
+	if cctx.IsSet(FlagKeyName) {
 		keyName = cctx.String(FlagKeyName)
 	}
 
@@ -84,22 +88,21 @@ func GetDidManager(cctx *cli.Context, cfg *saoclient.SaoClientConfig) (*saodid.D
 	payload := fmt.Sprintf("cosmos %s allows to generate did", address)
 	secret, err := chain.SignByAccount(cctx.Context, KeyringHome, keyName, []byte(payload))
 	if err != nil {
-		return nil, "", err
+		return nil, "", types.Wrap(types.ErrSignedFailed, err)
 	}
 
 	provider, err := saokey.NewSecp256k1Provider(secret)
 	if err != nil {
-		return nil, "", err
+		return nil, "", types.Wrap(types.ErrCreateProviderFailed, err)
 	}
 	resolver := saokey.NewKeyResolver()
 
 	didManager := saodid.NewDidManager(provider, resolver)
 	_, err = didManager.Authenticate([]string{}, "")
 	if err != nil {
-		return nil, "", err
+		return nil, "", types.Wrap(types.ErrAuthenticateFailed, err)
 	}
 
-	cfg.KeyName = keyName
 	return &didManager, address, nil
 }
 
@@ -129,7 +132,7 @@ var GenerateDocCmd = &cli.Command{
 			output, err = cctx.App.ToMan()
 		}
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrGenerateDocFailed, err)
 		}
 		outputFile := cctx.String("output")
 		if outputFile == "" {
@@ -137,10 +140,54 @@ var GenerateDocCmd = &cli.Command{
 		}
 		err = os.WriteFile(outputFile, []byte(output), 0644)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrGenerateDocFailed, err)
 		}
 		fmt.Printf("markdown clidoc is exported to %s", outputFile)
 		fmt.Println()
 		return nil
 	},
+}
+
+func GetChainAddress(cctx *cli.Context, repoPath string) (string, error) {
+	if cctx.String("chain-address") != "" {
+		return cctx.String("chain-address"), nil
+	}
+
+	chainAddress := ChainAddress
+	configPath := filepath.Join(repoPath, "config.toml")
+	if strings.Contains(repoPath, "-node") {
+		r, err := repo.PrepareRepo(repoPath)
+		if err != nil {
+			log.Error(err)
+			return chainAddress, nil
+		}
+
+		c, err := r.Config()
+		if err != nil {
+			return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
+		}
+
+		chainAddress = cfg.Chain.Remote
+	} else if strings.Contains(repoPath, "-cli") {
+		c, err := utils.FromFile(configPath, saoclient.DefaultSaoClientConfig())
+		if err != nil {
+			return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
+		}
+		cfg, ok := c.(*saoclient.SaoClientConfig)
+		if !ok {
+			return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
+		}
+		chainAddress = cfg.ChainAddress
+	}
+
+	if chainAddress == "" {
+		return chainAddress, types.Wrap(types.ErrInvalidChainAddress, nil)
+	}
+
+	return chainAddress, nil
 }

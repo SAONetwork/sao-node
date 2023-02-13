@@ -2,10 +2,10 @@ package store
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sao-node/types"
 	"sync"
 
 	icore "github.com/ipfs/interface-go-ipfs-core"
@@ -25,7 +25,7 @@ type IpfsDaemon struct {
 func NewIpfsDaemon(repoPath string) (*IpfsDaemon, error) {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrapf(types.ErrInvalidRepoPath, "%w", repoPath)
 	}
 
 	return &IpfsDaemon{
@@ -63,22 +63,22 @@ var loadPluginsOnce sync.Once
 func prepareRepo(repoPath string) error {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
-		return err
+		return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
 	}
 
 	_, err = os.Stat(filepath.Join(repoPath, "config"))
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(repoPath, 0700)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateDirFailed, err)
 		}
 		cfg, err := config.Init(io.Discard, 2048)
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrInitIpfsDaemonFailed, err)
 		}
 		err = fsrepo.Init(repoPath, cfg)
 		if err != nil {
-			return fmt.Errorf("failed to init ipfs repo: %s", err)
+			return types.Wrap(types.ErrInitIpfsRepoFailed, err)
 		}
 	}
 
@@ -88,14 +88,14 @@ func prepareRepo(repoPath string) error {
 func setupPlugins(externalPluginsPath string) error {
 	plugins, err := loader.NewPluginLoader(filepath.Join(externalPluginsPath, "plugins"))
 	if err != nil {
-		return fmt.Errorf("error loading plugins: %s", err)
+		return types.Wrap(types.ErrLoadPluginsFailed, err)
 	}
 
 	if err := plugins.Initialize(); err != nil {
-		return fmt.Errorf("error initializing plugins: %s", err)
+		return types.Wrap(types.ErrInitPluginsFailed, err)
 	}
 	if err := plugins.Inject(); err != nil {
-		return fmt.Errorf("error initializing plugins: %s", err)
+		return types.Wrap(types.ErrInjectPluginsFailed, err)
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func setupPlugins(externalPluginsPath string) error {
 func createNode(ctx context.Context, repoPath string) (*core.IpfsNode, error) {
 	repo, err := fsrepo.Open(repoPath)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrOpenRepoFailed, err)
 	}
 
 	nodeOptions := &core.BuildCfg{

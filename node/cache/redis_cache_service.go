@@ -3,11 +3,10 @@ package cache
 import (
 	"context"
 	"runtime"
+	"sao-node/types"
 	"strings"
 
 	"github.com/go-redis/redis/v8"
-
-	"golang.org/x/xerrors"
 )
 
 type RedisCacheSvc struct {
@@ -58,7 +57,7 @@ func (svc *RedisCacheSvc) CreateCache(name string, capacity int) error {
 func (svc *RedisCacheSvc) Get(name string, key string) (interface{}, error) {
 	exists, err := svc.Client.Exists(svc.Ctx, name+"_"+key).Result()
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCacheGetFailed, err)
 	}
 	if exists == 1 {
 		value, err := svc.Client.Get(svc.Ctx, name+"_"+key).Result()
@@ -68,7 +67,7 @@ func (svc *RedisCacheSvc) Get(name string, key string) (interface{}, error) {
 		return value, nil
 	}
 
-	return nil, xerrors.Errorf("not found")
+	return nil, types.Wrapf(types.ErrNotFound, "the key [%s] not found", name)
 }
 
 func (svc *RedisCacheSvc) Put(name string, key string, value interface{}) {

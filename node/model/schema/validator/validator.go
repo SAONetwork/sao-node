@@ -2,6 +2,7 @@ package validator
 
 import (
 	"sao-node/node/model/rule_engine"
+	"sao-node/types"
 	"strings"
 
 	jsoniter "github.com/json-iterator/go"
@@ -33,7 +34,7 @@ func NewDataModelValidator(dmName string, dmSchema string, dmRule string) (*Vali
 
 	if dmSchema != "" {
 		if err := compiler.AddResource(url, strings.NewReader(dmSchema)); err != nil {
-			return nil, err
+			return nil, types.Wrap(types.ErrAddResourceFaild, err)
 		}
 	} else {
 		url = Draft7_Url
@@ -41,14 +42,14 @@ func NewDataModelValidator(dmName string, dmSchema string, dmRule string) (*Vali
 
 	schema, err := compiler.Compile(url)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCompileFaild, err)
 	}
 
 	if dmRule != "" {
 		ruleEngineSvc := rule_engine.NewRuleEngineSvc()
 		err = ruleEngineSvc.AddRule(Prefix_Rule+dmName, []byte(dmRule))
 		if err != nil {
-			return nil, err
+			return nil, types.Wrap(types.ErrAddRuleFaild, err)
 		}
 
 		return &Validator{
@@ -81,13 +82,13 @@ func (v *Validator) ValidateWithRef(dmContent interface{}, refContents map[strin
 
 			err = v.svc.AddFact(Prefix_Context+v.name, v.name, dmContent)
 			if err != nil {
-				return xerrors.Errorf(err.Error())
+				return types.Wrap(types.ErrAddFactFaild, err)
 			}
 
 			for name, refModel := range refContents {
 				err = v.svc.AddFact(Prefix_Context+v.name, name, refModel)
 				if err != nil {
-					return xerrors.Errorf(err.Error())
+					return types.Wrap(types.ErrAddFactFaild, err)
 				}
 			}
 
@@ -98,7 +99,7 @@ func (v *Validator) ValidateWithRef(dmContent interface{}, refContents map[strin
 
 			err = v.svc.AddFact(Prefix_Context+v.name, "Result", result)
 			if err != nil {
-				return xerrors.Errorf(err.Error())
+				return types.Wrap(types.ErrAddFactFaild, err)
 			}
 
 			err = v.svc.Execute(Prefix_Rule+v.name, Prefix_Context+v.name)
@@ -106,10 +107,10 @@ func (v *Validator) ValidateWithRef(dmContent interface{}, refContents map[strin
 				if result.IsValid {
 					return nil
 				} else {
-					return xerrors.Errorf("failed to pass the rule check due to " + result.Reason)
+					return types.Wrapf(types.ErrRuleCheckFaild, "failed to pass the rule check due to "+result.Reason)
 				}
 			} else {
-				return xerrors.Errorf(err.Error())
+				return types.Wrap(types.ErrRuleExcuteFaild, err)
 			}
 		}
 	}
@@ -121,11 +122,11 @@ func (v *Validator) ValidateWithRef(dmContent interface{}, refContents map[strin
 				field = field[1:]
 			}
 
-			return xerrors.Errorf("validation failed, invalid field '%s' due to '%s'", field, ve.Causes[0].Message)
+			return types.Wrapf(types.ErrSchemaCheckFaild, "validation failed, invalid field '%s' due to '%s'", field, ve.Causes[0].Message)
 		}
 	}
 
-	return xerrors.Errorf(err.Error())
+	return types.Wrap(types.ErrSchemaCheckFaild, err)
 }
 
 func (v *Validator) Validate(dmContent interface{}) error {

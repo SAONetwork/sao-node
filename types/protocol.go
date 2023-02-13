@@ -45,6 +45,8 @@ type ShardLoadReq struct {
 }
 
 type ShardLoadResp struct {
+	Code       uint64
+	Message    string
 	OrderId    uint64
 	Cid        cid.Cid
 	Content    []byte
@@ -54,6 +56,7 @@ type ShardLoadResp struct {
 
 type ShardAssignReq struct {
 	OrderId      uint64
+	DataId       string
 	Assignee     string
 	TxHash       string
 	Height       int64
@@ -67,16 +70,16 @@ type ShardAssignResp struct {
 
 type ShardCompleteReq struct {
 	OrderId uint64
+	DataId  string
 	Cids    []cid.Cid
 	TxHash  string
 	Height  int64
-	Code    uint64
-	Message string
 }
 
 type ShardCompleteResp struct {
-	Code    uint64
-	Message string
+	Code        uint64
+	Message     string
+	Recoverable bool // if can handle this shard after retry
 }
 
 func (f *ShardLoadReq) Unmarshal(r io.Reader, format string) error {

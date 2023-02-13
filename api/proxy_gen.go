@@ -8,6 +8,7 @@ import (
 	"sao-node/types"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 
@@ -47,9 +48,17 @@ type SaoApiStruct struct {
 
 		ModelUpdatePermission func(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) `perm:"write"`
 
+		OrderFix func(p0 context.Context, p1 string) error `perm:"write"`
+
 		OrderList func(p0 context.Context) ([]types.OrderInfo, error) `perm:"read"`
 
-		OrderStatus func(p0 context.Context, p1 uint64) (types.OrderInfo, error) `perm:"read"`
+		OrderStatus func(p0 context.Context, p1 string) (types.OrderInfo, error) `perm:"read"`
+
+		ShardFix func(p0 context.Context, p1 uint64, p2 cid.Cid) error ``
+
+		ShardList func(p0 context.Context) ([]types.ShardInfo, error) `perm:"read"`
+
+		ShardStatus func(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) `perm:"read"`
 	}
 }
 
@@ -232,6 +241,17 @@ func (s *SaoApiStub) ModelUpdatePermission(p0 context.Context, p1 *types.Permiss
 	return *new(apitypes.UpdatePermissionResp), ErrNotSupported
 }
 
+func (s *SaoApiStruct) OrderFix(p0 context.Context, p1 string) error {
+	if s.Internal.OrderFix == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.OrderFix(p0, p1)
+}
+
+func (s *SaoApiStub) OrderFix(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
 func (s *SaoApiStruct) OrderList(p0 context.Context) ([]types.OrderInfo, error) {
 	if s.Internal.OrderList == nil {
 		return *new([]types.OrderInfo), ErrNotSupported
@@ -243,15 +263,48 @@ func (s *SaoApiStub) OrderList(p0 context.Context) ([]types.OrderInfo, error) {
 	return *new([]types.OrderInfo), ErrNotSupported
 }
 
-func (s *SaoApiStruct) OrderStatus(p0 context.Context, p1 uint64) (types.OrderInfo, error) {
+func (s *SaoApiStruct) OrderStatus(p0 context.Context, p1 string) (types.OrderInfo, error) {
 	if s.Internal.OrderStatus == nil {
 		return *new(types.OrderInfo), ErrNotSupported
 	}
 	return s.Internal.OrderStatus(p0, p1)
 }
 
-func (s *SaoApiStub) OrderStatus(p0 context.Context, p1 uint64) (types.OrderInfo, error) {
+func (s *SaoApiStub) OrderStatus(p0 context.Context, p1 string) (types.OrderInfo, error) {
 	return *new(types.OrderInfo), ErrNotSupported
+}
+
+func (s *SaoApiStruct) ShardFix(p0 context.Context, p1 uint64, p2 cid.Cid) error {
+	if s.Internal.ShardFix == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ShardFix(p0, p1, p2)
+}
+
+func (s *SaoApiStub) ShardFix(p0 context.Context, p1 uint64, p2 cid.Cid) error {
+	return ErrNotSupported
+}
+
+func (s *SaoApiStruct) ShardList(p0 context.Context) ([]types.ShardInfo, error) {
+	if s.Internal.ShardList == nil {
+		return *new([]types.ShardInfo), ErrNotSupported
+	}
+	return s.Internal.ShardList(p0)
+}
+
+func (s *SaoApiStub) ShardList(p0 context.Context) ([]types.ShardInfo, error) {
+	return *new([]types.ShardInfo), ErrNotSupported
+}
+
+func (s *SaoApiStruct) ShardStatus(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) {
+	if s.Internal.ShardStatus == nil {
+		return *new(types.ShardInfo), ErrNotSupported
+	}
+	return s.Internal.ShardStatus(p0, p1, p2)
+}
+
+func (s *SaoApiStub) ShardStatus(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) {
+	return *new(types.ShardInfo), ErrNotSupported
 }
 
 var _ SaoApi = new(SaoApiStruct)

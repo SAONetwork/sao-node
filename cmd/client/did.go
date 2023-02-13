@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"sao-node/chain"
 	saoclient "sao-node/client"
 	cliutil "sao-node/cmd"
+	"sao-node/types"
 
 	"github.com/tendermint/tendermint/libs/json"
 	"github.com/urfave/cli/v2"
@@ -49,7 +49,7 @@ var didCreateCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
+		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
@@ -60,9 +60,13 @@ var didCreateCmd = &cli.Command{
 		}
 
 		if cctx.Bool("override") {
+			if cctx.IsSet(cliutil.FlagKeyName) {
+				saoclient.Cfg.KeyName = cctx.String(cliutil.FlagKeyName)
+			}
+
 			err = saoclient.SaveConfig(saoclient.Cfg)
 			if err != nil {
-				return fmt.Errorf("save local config failed: %v", err)
+				return types.Wrap(types.ErrWriteConfigFailed, err)
 			}
 		}
 
@@ -84,18 +88,17 @@ var didShowInfoCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-
-		repoPath := cctx.String("repo")
-		chainAddress := cliutil.ChainAddress
-		if chainAddress == "" {
-			return fmt.Errorf("no chain address specified")
+		opt := saoclient.SaoClientOptions{
+			Repo:        cctx.String(FlagClientRepo),
+			KeyringHome: cliutil.KeyringHome,
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
 		if err != nil {
-			return fmt.Errorf("new cosmos chain: %w", err)
+			return err
 		}
-		chain.ShowDidInfo(ctx, cctx.String("did-url"))
+		defer closer()
+		saoclient.ShowDidInfo(ctx, cctx.String("did-url"))
 
 		return nil
 	},
@@ -115,7 +118,7 @@ var didSignCmd = &cli.Command{
 		opt := saoclient.SaoClientOptions{
 			Repo:        cctx.String(FlagClientRepo),
 			Gateway:     "none",
-			ChainAddr:   "none",
+			ChainAddr:   cliutil.ChainAddress,
 			KeyringHome: cliutil.KeyringHome,
 		}
 		saoclient, closer, err := saoclient.NewSaoClient(cctx.Context, opt)
@@ -124,19 +127,19 @@ var didSignCmd = &cli.Command{
 		}
 		defer closer()
 
-		didManager, _, err := cliutil.GetDidManager(cctx, saoclient.Cfg)
+		didManager, _, err := cliutil.GetDidManager(cctx, saoclient.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
 
 		jws, err := didManager.CreateJWS([]byte(cctx.Args().First()))
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrCreateJwsFailed, err)
 		}
 
 		j, err := json.MarshalIndent(jws, "", "    ")
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrMarshalJwsFailed, err)
 		}
 		fmt.Println(string(j))
 		return nil

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sao-node/types"
 	"strings"
 
 	"github.com/ipfs/go-cid"
@@ -13,7 +14,6 @@ import (
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	icorepath "github.com/ipfs/interface-go-ipfs-core/path"
 	ma "github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 )
 
 type IpfsBackend struct {
@@ -37,7 +37,7 @@ func NewIpfsBackend(connectionString string, api icore.CoreAPI) (*IpfsBackend, e
 		// else if strings.HasPrefix(connectionString, "ipfs+https") {
 		// 	conn = strings.Replace(connectionString, "ipfs+https", "https", 1)
 	} else {
-		return nil, xerrors.Errorf("unsupported ipfs connection protocol")
+		return nil, types.Wrap(types.ErrUnSupportProtocol, nil)
 	}
 
 	b := IpfsBackend{
@@ -62,15 +62,15 @@ func (b *IpfsBackend) Open() error {
 
 	addr, err := ma.NewMultiaddr(b.ipfsAddress)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrOpenIpfsBackendFailed, err)
 	}
 	api, err := httpapi.NewApi(addr)
 	if err != nil {
-		return err
+		return types.Wrap(types.ErrCreateIpfsApiServiceFailed, err)
 	}
 
 	b.api = api
-	return err
+	return nil
 }
 
 func (b *IpfsBackend) Close() error {
@@ -84,7 +84,7 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrStoreFailed, err)
 	}
 
 	//hash, err := b.ipfsApi.Add(reader, shell.Pin(true), shell.CidVersion(1))
@@ -92,7 +92,7 @@ func (b *IpfsBackend) Store(ctx context.Context, reader io.Reader) (any, error) 
 	// log.Debugf("codec:%v", r.Cid().Type())
 	log.Debugf("%s store hash: %v %v", b.Id(), blkSt.Path().Cid().Version(), blkSt.Path().Cid().Type())
 	fmt.Printf("%s store hash: %v %v", b.Id(), blkSt.Path().Cid().Version(), blkSt.Path().Cid().Type())
-	return blkSt.Path().Cid().String(), err
+	return blkSt.Path().Cid().String(), nil
 }
 
 func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
@@ -100,11 +100,11 @@ func (b *IpfsBackend) IsExist(ctx context.Context, cid cid.Cid) (bool, error) {
 	s, err := b.api.Block().Stat(ctx, path)
 	// r, err := b.api.Unixfs().Get(ctx, path)
 	if err != nil {
-		return false, err
+		return false, types.Wrap(types.ErrStatFailed, err)
 	}
 	err = s.Path().IsValid()
 	if err != nil {
-		return false, err
+		return false, types.Wrap(types.ErrInvalidPath, err)
 	}
 	// return r != nil, nil
 	return true, nil
@@ -115,7 +115,7 @@ func (b *IpfsBackend) Get(ctx context.Context, cid cid.Cid) (io.Reader, error) {
 	// r, err := b.api.Unixfs().Get(ctx, path)
 	r, err := b.api.Block().Get(ctx, path)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrGetFailed, err)
 	}
 	//return b.ipfsApi.Cat(cid.String())
 	return r, nil

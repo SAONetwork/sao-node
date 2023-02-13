@@ -37,6 +37,7 @@ type ChainSvcApi interface {
 	Stop(ctx context.Context) error
 	GetLastHeight(ctx context.Context) (int64, error)
 	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
+	ShowDidInfo(ctx context.Context, did string)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
@@ -78,7 +79,7 @@ func NewChainSvc(
 		cosmosclient.WithGas("auto"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
 
 	bankClient := banktypes.NewQueryClient(cosmos.Context())
@@ -89,12 +90,16 @@ func NewChainSvc(
 	log.Debugf("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
-	err = http.Start()
-	if err != nil {
-		return nil, err
-	}
+	// log.Debug("initialize chain listener2", chainAddress)
+
+	// err = http.Reset()
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// log.Debugf("initialize chain listener3")
+
 	return &ChainSvc{
 		cosmos:      cosmos,
 		bankClient:  bankClient,
@@ -110,7 +115,7 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 		log.Infof("Stop chain listener.")
 		err := c.listener.Stop()
 		if err != nil {
-			return err
+			return types.Wrap(types.ErrStopChainServiceFailed, err)
 		}
 	}
 	return nil
@@ -128,7 +133,7 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 	for {
 		curHeight, err := c.GetLastHeight(ctx)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrap(types.ErrTxQueryFailed, err)
 		}
 		if curHeight > height {
 			break
@@ -137,7 +142,7 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 	}
 	hashBytes, err := hex.DecodeString(hash)
 	if err != nil {
-		return nil, err
+		return nil, types.Wrap(types.ErrTxQueryFailed, err)
 	}
 	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
 }

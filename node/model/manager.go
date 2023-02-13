@@ -18,7 +18,6 @@ import (
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	logging "github.com/ipfs/go-log/v2"
 	jsoniter "github.com/json-iterator/go"
-	"golang.org/x/xerrors"
 )
 
 const PROPERTY_CONTEXT = "@context"
@@ -72,37 +71,33 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	log.Info("KeyWord:", req.Proposal.Keyword)
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	version := req.Proposal.Version
 	if req.Proposal.Version != "" {
 		match, err := regexp.Match(`^v\d+$`, []byte(req.Proposal.Version))
 		if err != nil || !match {
-			return nil, xerrors.Errorf("invalid Version: %s", req.Proposal.Version)
+			return nil, types.Wrapf(types.ErrInvalidVersion, "invalid Version: %s", req.Proposal.Version)
 		}
 
 		index, err := strconv.Atoi(strings.ReplaceAll(req.Proposal.Version, "v", ""))
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, types.Wrap(types.ErrInvalidVersion, err)
 		}
 
 		if len(meta.Commits) > index {
 			commit := meta.Commits[index]
-			commitInfo := strings.Split(meta.Commits[index], "\032")
-			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
-				return nil, xerrors.Errorf("invalid commit information: %s", commit)
-			}
-			height, err := strconv.ParseInt(commitInfo[1], 10, 64)
+			commitInfo, err := types.ParseMetaCommit(commit)
 			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
+				return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 			}
-			meta, err = mm.GatewaySvc.QueryMeta(ctx, req, height)
+			meta, err = mm.GatewaySvc.QueryMeta(ctx, req, int64(commitInfo.Height))
 			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
+				return nil, err
 			}
 		} else {
-			return nil, xerrors.Errorf("invalid Version: %s", req.Proposal.Version)
+			return nil, types.Wrapf(types.ErrInvalidVersion, "invalid Version: %s", req.Proposal.Version)
 		}
 	} else {
 		version = fmt.Sprintf("v%d", len(meta.Commits)-1)
@@ -111,19 +106,15 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	if req.Proposal.CommitId != "" {
 		isFound := false
 		for i, commit := range meta.Commits {
-			commitInfo := strings.Split(commit, "\032")
-			if len(commitInfo) != 2 || len(commitInfo[1]) == 0 {
-				return nil, xerrors.Errorf("invalid commit information: %s", commit)
+			commitInfo, err := types.ParseMetaCommit(commit)
+			if err != nil {
+				return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 			}
 
-			if commitInfo[0] == req.Proposal.CommitId {
-				height, err := strconv.ParseInt(commitInfo[1], 10, 64)
+			if commitInfo.CommitId == req.Proposal.CommitId {
+				meta, err = mm.GatewaySvc.QueryMeta(ctx, req, int64(commitInfo.Height))
 				if err != nil {
-					return nil, xerrors.Errorf(err.Error())
-				}
-				meta, err = mm.GatewaySvc.QueryMeta(ctx, req, height)
-				if err != nil {
-					return nil, xerrors.Errorf(err.Error())
+					return nil, err
 				}
 
 				version = fmt.Sprintf("v%d", i)
@@ -133,7 +124,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 
 		if !isFound {
-			return nil, xerrors.Errorf("invalid CommitId: %s", req.Proposal.CommitId)
+			return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid CommitId: %s", req.Proposal.CommitId)
 		}
 	}
 
@@ -174,7 +165,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	} else {
 		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, err
 		}
 		model.Cid = result.Cid
 		model.Content = result.Content
@@ -194,29 +185,28 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 
 	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId)
 	if oldModel != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
 	oldModel = mm.loadModel(orderProposal.Owner, orderProposal.Alias)
 	if oldModel != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
+		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err == nil && meta != nil {
-		return nil, xerrors.Errorf("the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
+		return nil, types.Wrapf(types.ErrConflictId, "the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
 	}
 
 	err = mm.validateModel(ctx, orderProposal.Owner, orderProposal.Alias, content, orderProposal.Rule)
 	if err != nil {
-		log.Error(err.Error())
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	// Commit
 	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderId, content)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	model := &types.Model{
@@ -243,13 +233,18 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal, clientProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
+	}
+	commitIds := strings.Split(clientProposal.Proposal.CommitId, "|")
+	if len(commitIds) != 2 || commitIds[0] != meta.CommitId {
+		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commitId:%s", clientProposal.Proposal.CommitId)
 	}
 
+	commitId := commitIds[0]
 	var isFetch = true
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
 	if orgModel != nil {
-		if orgModel.CommitId == meta.CommitId && len(orgModel.Content) > 0 {
+		if commitId == meta.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
 			log.Debugf("load the model[%s]-%s from cache", meta.DataId, meta.Alias)
 			log.Debug("model: ", string(orgModel.Content))
@@ -275,7 +270,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	if isFetch {
 		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, err
 		}
 		log.Info("result: ", result)
 		log.Info("orgModel: ", orgModel)
@@ -286,15 +281,15 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	log.Debug("patch: ", string(patch))
 	newContent, err := utils.ApplyPatch(orgModel.Content, []byte(patch))
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 	log.Debug("newContent: ", string(newContent))
 	if bytes.Equal(orgModel.Content, newContent) {
-		return nil, xerrors.Errorf("no content updated.")
+		return nil, types.Wrapf(types.ErrInvalidContent, "no content updated.")
 	}
 
 	if len(newContent) != int(clientProposal.Proposal.Size_) {
-		return nil, xerrors.Errorf("given size(%d) doesn't match target content size(%d)", int(clientProposal.Proposal.Size_), len(newContent))
+		return nil, types.Wrapf(types.ErrInvalidContent, "given size(%d) doesn't match target content size(%d)", int(clientProposal.Proposal.Size_), len(newContent))
 	}
 
 	newContentCid, err := utils.CalculateCid(newContent)
@@ -302,19 +297,18 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, err
 	}
 	if newContentCid.String() != clientProposal.Proposal.Cid {
-		return nil, xerrors.Errorf("cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)
+		return nil, types.Wrapf(types.ErrInvalidCid, "cid mismatch, expected %s, but got %s", clientProposal.Proposal.Cid, newContentCid)
 	}
 
 	err = mm.validateModel(ctx, clientProposal.Proposal.Owner, clientProposal.Proposal.Alias, newContent, clientProposal.Proposal.Rule)
 	if err != nil {
-		log.Error(err.Error())
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	// Commit
 	result, err := mm.GatewaySvc.CommitModel(ctx, clientProposal, orderId, newContent)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	model := &types.Model{
@@ -366,7 +360,7 @@ func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminatePro
 func (mm *ModelManager) ShowCommits(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
-		return nil, xerrors.Errorf(err.Error())
+		return nil, err
 	}
 
 	return &types.Model{
@@ -409,7 +403,7 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 
 	match, err := regexp.Match(`^\[.*\]$`, []byte(schemaStr))
 	if err != nil {
-		return xerrors.Errorf(err.Error())
+		return types.Wrap(types.ErrInvalidSchema, err)
 	}
 
 	if match {
@@ -428,7 +422,7 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 				if utils.IsDataId(sch) {
 					model, err := mm.CacheSvc.Get(account, sch)
 					if err != nil {
-						return xerrors.Errorf(err.Error())
+						return err
 					}
 
 					if model == nil {
@@ -442,27 +436,27 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 
 						model, err = mm.Load(ctx, req)
 						if err != nil {
-							return xerrors.Errorf(err.Error())
+							return err
 						}
 					}
 					m, ok := model.(*types.Model)
 					if ok {
 						sch = string(m.Content)
 					} else {
-						return xerrors.Errorf("invalid schema: %v", m)
+						return types.Wrapf(types.ErrInvalidSchema, "invalid schema: %v", m)
 					}
 				}
 
 				validator, err := validator.NewDataModelValidator(alias, sch, rule)
 				if err != nil {
-					return xerrors.Errorf(err.Error())
+					return err
 				}
 				err = validator.Validate(jsoniter.Get(contentBytes))
 				if err != nil {
-					return xerrors.Errorf(err.Error())
+					return err
 				}
 			} else {
-				return xerrors.Errorf("invalid schema: %v", schema)
+				return types.Wrapf(types.ErrInvalidSchema, "invalid schema: %v", schema)
 			}
 		}
 	} else {
@@ -472,7 +466,7 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 		if utils.IsDataId(dataId) {
 			model, err := mm.CacheSvc.Get(account, dataId)
 			if err != nil {
-				return xerrors.Errorf(err.Error())
+				return err
 			}
 
 			if model == nil {
@@ -486,7 +480,7 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 
 				model, err = mm.Load(ctx, req)
 				if err != nil {
-					return xerrors.Errorf(err.Error())
+					return err
 				}
 			}
 
@@ -494,7 +488,7 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 			if ok {
 				schema = string(m.Content)
 			} else {
-				return xerrors.Errorf("invalid schema: %v", m)
+				return types.Wrapf(types.ErrInvalidSchema, "invalid schema: %v", m)
 			}
 		} else {
 			schema = iter.ReadObject()
@@ -502,11 +496,11 @@ func (mm *ModelManager) validateModel(ctx context.Context, account string, alias
 
 		validator, err := validator.NewDataModelValidator(alias, schema, rule)
 		if err != nil {
-			return xerrors.Errorf(err.Error())
+			return err
 		}
 		err = validator.Validate(jsoniter.Get(contentBytes))
 		if err != nil {
-			return xerrors.Errorf(err.Error())
+			return err
 		}
 	}
 

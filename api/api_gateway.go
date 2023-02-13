@@ -6,6 +6,7 @@ import (
 	"sao-node/types"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/ipfs/go-cid"
 )
 
 type SaoApi interface {
@@ -15,9 +16,14 @@ type SaoApi interface {
 	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)    //perm:admin
 
 	// MethodGroup: Order
-	OrderStatus(ctx context.Context, orderId uint64) (types.OrderInfo, error) //perm:read
-	OrderList(ctx context.Context) ([]types.OrderInfo, error)                 //perm:read
-	OrderFix(ctx context.Context) (types.OrderInfo, error)                    //perm:write
+	OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) //perm:read
+	OrderList(ctx context.Context) ([]types.OrderInfo, error)            //perm:read
+	OrderFix(ctx context.Context, id string) error                       //perm:write
+
+	// MethodGroup: Shard
+	ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) //perm:read
+	ShardList(ctx context.Context) ([]types.ShardInfo, error)                              //perm:read
+	ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
 
 	// MethodGroup: Model
 	// The Model method group contains methods for manipulating data models.

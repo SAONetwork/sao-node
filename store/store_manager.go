@@ -3,10 +3,10 @@ package store
 import (
 	"context"
 	"io"
+	"sao-node/types"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("store")
@@ -72,9 +72,11 @@ func (ss *StoreManager) Store(ctx context.Context, cid cid.Cid, reader io.Reader
 		_, err = back.Store(ctx, reader)
 		if err != nil {
 			log.Errorf("%s store error: %v", back.Id(), err)
+		} else {
+			err = nil
 		}
 	}
-	return nil, nil
+	return nil, err
 }
 
 func (ss *StoreManager) Remove(ctx context.Context, cid cid.Cid) error {
@@ -83,9 +85,11 @@ func (ss *StoreManager) Remove(ctx context.Context, cid cid.Cid) error {
 		err = back.Remove(ctx, cid)
 		if err != nil {
 			log.Errorf("%s remove cid=%v error: %v", back.Id(), cid, err)
+		} else {
+			err = nil
 		}
 	}
-	return nil
+	return err
 }
 
 func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.Reader, error) {
@@ -95,9 +99,9 @@ func (ss *StoreManager) Get(ctx context.Context, cid cid.Cid) (io.Reader, error)
 			log.Errorf("%s get cid=%v error: %v", back.Id(), cid, err)
 			continue
 		}
-		return reader, err
+		return reader, nil
 	}
-	return nil, xerrors.Errorf("failed to get cid %v", cid)
+	return nil, types.Wrapf(types.ErrGetFailed, "failed to get cid %s", cid)
 }
 
 func (ss *StoreManager) IsExist(ctx context.Context, cid cid.Cid) bool {
