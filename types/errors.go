@@ -137,7 +137,8 @@ var (
 	ErrInvalidDataId      = errors.Register(ModuleModel, 14024, "invalid dataId")
 	ErrConflictId         = errors.Register(ModuleModel, 14025, "conflict dataId or alias")
 	ErrInvalidContent     = errors.Register(ModuleModel, 14026, "invalid content")
-	ErrProcessOrderFailed = errors.Register(ModuleModel, 14027, "failed to process the order")
+	ErrInvalidSchema      = errors.Register(ModuleModel, 14027, "invalid schema")
+	ErrProcessOrderFailed = errors.Register(ModuleModel, 14028, "failed to process the order")
 )
 
 var (
