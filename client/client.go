@@ -40,7 +40,7 @@ type SaoClientOptions struct {
 func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func(), error) {
 	cliPath, err := homedir.Expand(opt.Repo)
 	if err != nil {
-		return nil, nil, types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
+		return nil, nil, types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %v", err)
 	}
 
 	// prepare config file
@@ -120,7 +120,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		if opt.ChainAddr == "" {
 			opt.ChainAddr = cfg.ChainAddress
 		}
-		chainSvc, err := chain.NewChainSvc(ctx, opt.Repo, "cosmos", opt.ChainAddr, "/websocket", opt.KeyringHome)
+		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", opt.ChainAddr, "/websocket", opt.KeyringHome)
 		if err != nil {
 			return nil, nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 		}
@@ -139,8 +139,8 @@ func DefaultSaoClientConfig() *SaoClientConfig {
 	return &SaoClientConfig{
 		GroupId:      utils.GenerateGroupId(),
 		KeyName:      "",
-		ChainAddress: "http://localhost:26657",
-		Gateway:      "http://127.0.0.1:5151/rpc/v0",
+		ChainAddress: "http://192.168.50.66:26657",
+		Gateway:      "http://192.168.50.66:5151/rpc/v0",
 		Token:        "DEFAULT_TOKEN",
 	}
 }
@@ -148,7 +148,7 @@ func DefaultSaoClientConfig() *SaoClientConfig {
 func (sc SaoClient) SaveConfig(cfg *SaoClientConfig) error {
 	cliPath, err := homedir.Expand(sc.repo)
 	if err != nil {
-		return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
+		return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %v", cliPath, err)
 	}
 
 	configPath := filepath.Join(cliPath, "config.toml")

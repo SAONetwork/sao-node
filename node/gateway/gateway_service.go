@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -159,7 +158,7 @@ func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
 
 	pendings, err := gs.getPendingOrders(ctx)
 	if err != nil {
-		log.Error("process pending orders error: %w", err)
+		log.Error("process pending orders error: %v", err)
 	} else {
 		for _, p := range pendings {
 			gs.schedule <- &WorkRequest{
@@ -505,10 +504,6 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	var txType types.AssignTxType
 	var height int64
 	if orderInfo.State < types.OrderStateReady {
-		i := rand.Intn(3)
-		if i != 0 {
-			return xerrors.Errorf("rand fail")
-		}
 		if orderInfo.OrderId == 0 {
 			var signature saotypes.JwsSignature
 			err := signature.Unmarshal(orderInfo.JwsSignature)

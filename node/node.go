@@ -39,7 +39,6 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("node")
@@ -117,7 +116,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	fmt.Println("cfg.Chain.Remote: ", cfg.Chain.Remote)
 	// chain
-	chainSvc, err := chain.NewChainSvc(ctx, repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
+	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
 	if err != nil {
 		return nil, err
 	}
@@ -277,6 +276,8 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
 
 	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status)
+	log.Infof("repo: %s, AddressPrefix: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
+	log.Infof("node[%s] is joining SAO network...", sn.address)
 	if err != nil {
 		return nil, err
 	}
@@ -298,7 +299,7 @@ func newRpcServer(ga api.SaoApi, cfg *config.API) (*http.Server, error) {
 
 	handler, err := GatewayRpcHandler(ga, cfg.EnablePermission)
 	if err != nil {
-		return nil, types.Wrapf(types.ErrStartPRPCServerFailed, "failed to instantiate rpc handler: %w", err)
+		return nil, types.Wrapf(types.ErrStartPRPCServerFailed, "failed to instantiate rpc handler: %v", err)
 	}
 
 	strma := strings.TrimSpace(cfg.ListenAddress)
@@ -331,7 +332,7 @@ func (n *Node) AuthVerify(ctx context.Context, token string) ([]auth.Permission,
 	}
 
 	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(key), &payload); err != nil {
-		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+		return nil, types.Wrapf(types.ErrInvalidJwt, "JWT Verification failed: %v", err)
 	}
 
 	log.Info("Permissions: ", payload)
@@ -425,7 +426,7 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 		}, nil
 	} else {
 		log.Error(err.Error())
-		return apitypes.CreateResp{}, xerrors.Errorf("invliad CID: %s", cidStr)
+		return apitypes.CreateResp{}, types.Wrapf(types.ErrInvalidCid, "invliad CID: %s", cidStr)
 	}
 }
 

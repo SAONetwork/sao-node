@@ -82,7 +82,7 @@ func NewStoreService(
 		log.Info("processing pending shards...")
 		pendings, err := ss.getPendingShardList(ctx)
 		if err != nil {
-			log.Errorf("process pending shards error: %w", err)
+			log.Errorf("process pending shards error: %v", err)
 		}
 		for _, p := range pendings {
 			ss.taskChan <- p
@@ -321,11 +321,6 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	}
 
 	if task.State < types.ShardStateStored {
-		// i := rand.Intn(3)
-		// if i != 0 {
-		// 	return xerrors.Errorf("rand fail")
-		// }
-
 		// check if it's a renew order(Operation is 3)
 		if task.OrderOperation != "3" || task.ShardOperation != "3" {
 			resp := sp.RequestShardStore(ctx, types.ShardLoadReq{

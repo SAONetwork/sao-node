@@ -25,7 +25,7 @@ type IpfsDaemon struct {
 func NewIpfsDaemon(repoPath string) (*IpfsDaemon, error) {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
-		return nil, types.Wrapf(types.ErrInvalidRepoPath, "%w", repoPath)
+		return nil, types.Wrapf(types.ErrInvalidRepoPath, "%v", repoPath)
 	}
 
 	return &IpfsDaemon{
@@ -54,8 +54,11 @@ func (d IpfsDaemon) Start(ctx context.Context) (icore.CoreAPI, *core.IpfsNode, e
 	}
 
 	api, err := coreapi.NewCoreAPI(node)
-
-	return api, node, err
+	if err != nil {
+		return api, node, types.Wrap(types.ErrCreateIpfsApiServiceFailed, err)
+	} else {
+		return api, node, nil
+	}
 }
 
 var loadPluginsOnce sync.Once
@@ -63,7 +66,7 @@ var loadPluginsOnce sync.Once
 func prepareRepo(repoPath string) error {
 	repoPath, err := homedir.Expand(repoPath)
 	if err != nil {
-		return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
+		return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %v", err)
 	}
 
 	_, err = os.Stat(filepath.Join(repoPath, "config"))

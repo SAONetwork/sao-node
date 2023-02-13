@@ -45,15 +45,15 @@ var listCmd = &cli.Command{
 				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
 			}
 			if err != nil {
-				return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %w", err)
+				return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %v", err)
 			}
 		}
-		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath, cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return types.Wrap(types.ErrCreateChainServiceFailed, err)
 		}
@@ -198,12 +198,12 @@ var sendCmd = &cli.Command{
 			}
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath)
+		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath, cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return types.Wrap(types.ErrCreateChainServiceFailed, err)
 		}

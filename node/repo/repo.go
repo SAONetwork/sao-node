@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sao-node/node/config"
@@ -15,12 +16,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("repo")
 
-var ErrRepoExists = xerrors.New("repo exists")
+var ErrRepoExists = types.Wrapf(types.ErrStatFailed, "repo exists")
 
 const (
 	fsConfig    = "config.toml"
@@ -76,9 +76,14 @@ func (r *Repo) Exists() (bool, error) {
 	_, err := os.Stat(filepath.Join(r.Path, fsKeystore))
 	notexist := os.IsNotExist(err)
 	if notexist {
-		err = nil
+		return false, nil
+	} else {
+		if err != nil {
+			return true, types.Wrap(types.ErrOpenFileFailed, err)
+		} else {
+			return true, nil
+		}
 	}
-	return !notexist, err
 }
 
 func (r *Repo) Init(chainAddress string) error {
@@ -97,7 +102,7 @@ func (r *Repo) Init(chainAddress string) error {
 	}
 
 	if err := r.initConfig(chainAddress); err != nil {
-		return types.Wrapf(types.ErrInitRepoFailed, "init config: %w", err)
+		return types.Wrapf(types.ErrInitRepoFailed, "init config: %v", err)
 	}
 	err = r.initKeystore()
 	if err != nil {
@@ -192,19 +197,22 @@ func (r *Repo) initConfig(chainAddress string) error {
 	}
 
 	defaultConfig := r.defaultConfig()
-	defaultConfig.Chain.Remote = chainAddress
+	if chainAddress != "" {
+		defaultConfig.Chain.Remote = chainAddress
+	}
+	fmt.Print("remote: ", defaultConfig.Chain.Remote)
 	comm, err := config.ConfigComment(defaultConfig)
 	//comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
 	if err != nil {
-		return xerrors.Errorf("load default: %w", err)
+		return types.Wrapf(types.ErrReadConfigFailed, "load default: %v", err)
 	}
 	_, err = c.Write(comm)
 	if err != nil {
-		return xerrors.Errorf("write config: %w", err)
+		return types.Wrapf(types.ErrWriteConfigFailed, "write config: %v", err)
 	}
 
 	if err := c.Close(); err != nil {
-		return xerrors.Errorf("close config: %w", err)
+		return types.Wrapf(types.ErrCloseFileFailed, "close config: %v", err)
 	}
 	return nil
 }

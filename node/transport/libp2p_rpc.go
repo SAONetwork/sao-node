@@ -22,7 +22,6 @@ import (
 	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
 	"github.com/mitchellh/go-homedir"
 	ma "github.com/multiformats/go-multiaddr"
-	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -205,7 +204,7 @@ func (rs *Libp2pRpcServer) handleChunkInfo(req *types.FileChunkReq, path string)
 
 func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
 	if len(params) != 2 {
-		return "", xerrors.Errorf("invalid params length")
+		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
 
 	var req types.FileChunkReq
@@ -231,7 +230,7 @@ func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
 			return "", nil
 		} else {
 			if info.Size()+int64(len(req.Content)) > rs.StagingSapceSize {
-				return "", xerrors.Errorf("not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSapceSize-info.Size())
+				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSapceSize-info.Size())
 			}
 		}
 
@@ -328,7 +327,7 @@ func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
 
 func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 	if len(params) != 3 {
-		return "", xerrors.Errorf("invalid params length")
+		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
 
 	var req types.MetadataProposal
@@ -347,7 +346,7 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 
 	orderId, err := strconv.ParseInt(params[2], 10, 64)
 	if err != nil {
-		return "", xerrors.Errorf(err.Error())
+		return "", types.Wrap(types.ErrInvalidParameters, err)
 	}
 
 	resp, err := rs.GatewayApi.ModelCreate(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
@@ -365,7 +364,7 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 
 func (rs *Libp2pRpcServer) load(params []string) (string, error) {
 	if len(params) != 1 {
-		return "", xerrors.Errorf("invalid params length")
+		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
 
 	var req types.MetadataProposal
@@ -389,7 +388,7 @@ func (rs *Libp2pRpcServer) load(params []string) (string, error) {
 
 func (rs *Libp2pRpcServer) update(params []string) (string, error) {
 	if len(params) != 3 {
-		return "", xerrors.Errorf("invalid params length")
+		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
 
 	var req types.MetadataProposal
@@ -408,7 +407,7 @@ func (rs *Libp2pRpcServer) update(params []string) (string, error) {
 
 	orderId, err := strconv.ParseInt(params[2], 10, 64)
 	if err != nil {
-		return "", xerrors.Errorf(err.Error())
+		return "", types.Wrap(types.ErrInvalidParameters, err)
 	}
 
 	resp, err := rs.GatewayApi.ModelUpdate(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))

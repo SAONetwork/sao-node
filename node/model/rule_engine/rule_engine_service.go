@@ -1,13 +1,13 @@
 package rule_engine
 
 import (
+	"sao-node/types"
 	"sync"
 
 	"github.com/hyperjumptech/grule-rule-engine/ast"
 	"github.com/hyperjumptech/grule-rule-engine/builder"
 	"github.com/hyperjumptech/grule-rule-engine/engine"
 	"github.com/hyperjumptech/grule-rule-engine/pkg"
-	"golang.org/x/xerrors"
 )
 
 type RuleEngineSvc struct {
@@ -83,12 +83,12 @@ func (svc *RuleEngineSvc) Clear(dataCtxName string) {
 func (svc *RuleEngineSvc) Execute(ruleName string, dataCtxName string) error {
 	knowledgeBase := svc.rulesMap[ruleName]
 	if knowledgeBase == nil {
-		return xerrors.Errorf("the rule [%s] not found", ruleName)
+		return types.Wrapf(types.ErrRuleExcuteFaild, "the rule [%s] not found", ruleName)
 	}
 
 	dataCtx := svc.dataCtxMap[dataCtxName]
 	if dataCtx == nil {
-		return xerrors.Errorf("the datacontext [%s] not found", dataCtxName)
+		return types.Wrapf(types.ErrRuleExcuteFaild, "the datacontext [%s] not found", dataCtxName)
 	}
 
 	ruleEngine := engine.NewGruleEngine()

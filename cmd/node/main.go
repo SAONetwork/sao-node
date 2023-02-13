@@ -141,6 +141,16 @@ var initCmd = &cli.Command{
 			return err
 		}
 
+		c, err := r.Config()
+		if err != nil {
+			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
+		}
+
 		// init metadata datastore
 		mds, err := r.Datastore(ctx, "/metadata")
 		if err != nil {
@@ -152,9 +162,9 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", cfg.Chain.Remote, "/websocket", cliutil.KeyringHome)
 		if err != nil {
-			return types.Wrapf(types.ErrCreateChainServiceFailed, "new cosmos chain: %w", err)
+			return err
 		}
 
 		if tx, err := chain.Login(ctx, creator); err != nil {
@@ -204,13 +214,13 @@ var joinCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 		creator := cctx.String("creator")
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -260,7 +270,7 @@ var updateCmd = &cli.Command{
 			for _, maddr := range multiaddrs {
 				ma, err := multiaddr.NewMultiaddr(maddr)
 				if err != nil {
-					return types.Wrapf(types.ErrInvalidParameters, "invalid --multiaddrs: %w", err)
+					return types.Wrapf(types.ErrInvalidParameters, "invalid --multiaddrs: %v", err)
 				}
 				if len(peerInfo) > 0 {
 					peerInfo = peerInfo + ","
@@ -284,12 +294,12 @@ var updateCmd = &cli.Command{
 			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -332,12 +342,12 @@ var quitCmd = &cli.Command{
 		// TODO: validate input
 		creator := cctx.String("creator")
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -482,13 +492,12 @@ var infoCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		repoPath := cctx.String("repo")
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, repoPath, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -600,7 +609,7 @@ var claimCmd = &cli.Command{
 
 			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
 			if err != nil {
-				return err
+				return types.Wrapf(types.ErrInvalidServerAddress, "ListenAddress=%s", cfg.Api.ListenAddress)
 			}
 			_, addr, err := manet.DialArgs(ma)
 			if err != nil {
@@ -620,12 +629,12 @@ var claimCmd = &cli.Command{
 			}
 		}
 
-		chainAddress, err := cliutil.GetChainAddress(cctx, "")
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
 		if err != nil {
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, cctx.String("repo"), "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}

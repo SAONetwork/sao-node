@@ -61,9 +61,19 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
 	defer stream.SetReadDeadline(time.Time{}) // nolint
 
-	if err = DoRequest(ctx, stream, req, resp, types.FormatCbor); err != nil {
-		return err
+	for retryTimes := 0; ; retryTimes++ {
+		if err = DoRequest(ctx, stream, req, resp, types.FormatCbor); err != nil {
+			if retryTimes > 2 {
+				return err
+			} else {
+				log.Error(err)
+			}
+			time.Sleep(time.Second * 10)
+		} else {
+			break
+		}
 	}
+
 	return nil
 }
 

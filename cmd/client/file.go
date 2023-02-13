@@ -23,8 +23,6 @@ var fileCmd = &cli.Command{
 	Usage: "file management",
 	Subcommands: []*cli.Command{
 		createFileCmd,
-		peerInfoCmd,
-		tokenGenCmd,
 		uploadCmd,
 		downloadCmd,
 	},
@@ -352,75 +350,6 @@ var downloadCmd = &cli.Command{
 			}
 			fmt.Printf("file downloaded to %s\r\n", path)
 		}
-
-		return nil
-	},
-}
-
-var peerInfoCmd = &cli.Command{
-	Name:  "peer-info",
-	Usage: "get peer info of the gateway",
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-
-		client, closer, err := getSaoClient(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		resp, err := client.GetPeerInfo(ctx)
-		if err != nil {
-			return err
-		}
-
-		console := color.New(color.FgMagenta, color.Bold)
-
-		fmt.Print("  GateWay   : ")
-		console.Println(cliutil.Gateway)
-
-		fmt.Print("  Peer Info : ")
-		console.Println(resp.PeerInfo)
-
-		return nil
-	},
-}
-
-var tokenGenCmd = &cli.Command{
-	Name:  "token-gen",
-	Usage: "generate token to access http file server",
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-
-		client, closer, err := getSaoClient(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
-		if err != nil {
-			return err
-		}
-
-		resp, err := client.GenerateToken(ctx, didManager.Id)
-		if err != nil {
-			return err
-		}
-
-		console := color.New(color.FgMagenta, color.Bold)
-
-		fmt.Print("  DID     : ")
-		console.Println(didManager.Id)
-
-		fmt.Print("  GateWay : ")
-		console.Println(cliutil.Gateway)
-
-		fmt.Print("  Server  : ")
-		console.Println(resp.Server)
-
-		fmt.Print("  Token   : ")
-		console.Println(resp.Token)
 
 		return nil
 	},

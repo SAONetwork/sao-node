@@ -124,7 +124,7 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 	fmt.Println("Creator:", resp.Node.Creator)
 	fmt.Printf("Status:%b\n", resp.Node.Status)
 	fmt.Println("Reputation:", resp.Node.Reputation)
-	fmt.Println("LastAliveHeigh:", resp.Node.LastAliveHeigh)
+	fmt.Println("LastAliveHeight:", resp.Node.LastAliveHeight)
 	for _, peer := range strings.Split(resp.Node.Peer, ",") {
 		fmt.Println("P2P Peer Info:", peer)
 	}
@@ -133,16 +133,25 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		Creator: creator,
 	})
 	if err != nil {
-		log.Error(err.Error())
+		fmt.Println("No Pledge Info")
 		return
+	} else {
+		fmt.Println("Node Pledge")
+		fmt.Println("Reward:", pledgeResp.Pledge.Reward)
+		fmt.Println("Reward Debt:", pledgeResp.Pledge.RewardDebt)
+		fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
+		fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
+		fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
+		fmt.Println("LastRewardAt:", pledgeResp.Pledge.LastRewardAt)
 	}
-	fmt.Println("Node Pledge")
-	fmt.Println("Reward:", pledgeResp.Pledge.Reward)
-	fmt.Println("Reward Debt:", pledgeResp.Pledge.RewardDebt)
-	fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
-	fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
-	fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
-	fmt.Println("LastRewardAt:", pledgeResp.Pledge.LastRewardAt)
+}
+
+func (c *ChainSvc) ListNodes(ctx context.Context) ([]nodetypes.Node, error) {
+	resp, err := c.nodeClient.NodeAll(ctx, &nodetypes.QueryAllNodeRequest{Status: 0})
+	if err != nil {
+		return make([]nodetypes.Node, 0), types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	return resp.Node, nil
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {

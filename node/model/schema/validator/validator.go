@@ -7,7 +7,6 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v5"
-	"golang.org/x/xerrors"
 )
 
 const Draft7_Url = "https://json-schema.org/draft-07/schema"
@@ -69,7 +68,7 @@ func NewDataModelValidator(dmName string, dmSchema string, dmRule string) (*Vali
 func (v *Validator) ValidateWithRef(dmContent interface{}, refContents map[string]interface{}) error {
 	model, err := jsoniter.Marshal(dmContent)
 	if err != nil {
-		return xerrors.Errorf(err.Error())
+		return types.Wrap(types.ErrMarshalFailed, err)
 	}
 	doc := jsoniter.Get(model).GetInterface()
 

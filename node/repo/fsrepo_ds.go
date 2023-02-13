@@ -48,7 +48,7 @@ func badgerDs(path string, readonly bool) (datastore.Batching, error) {
 
 func (fsr *Repo) openDatastores(readonly bool) (map[string]datastore.Batching, error) {
 	if err := os.MkdirAll(fsr.join(fsDatastore), 0755); err != nil {
-		return nil, types.Wrapf(types.ErrCreateDirFailed, "mkdir %s: %w", fsr.join(fsDatastore), err)
+		return nil, types.Wrapf(types.ErrCreateDirFailed, "mkdir %s: %v", fsr.join(fsDatastore), err)
 	}
 
 	out := map[string]datastore.Batching{}

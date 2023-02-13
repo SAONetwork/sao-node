@@ -47,6 +47,7 @@ type ChainSvcApi interface {
 	Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error)
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
+	ListNodes(ctx context.Context) ([]nodetypes.Node, error)
 	StartStatusReporter(ctx context.Context, creator string, status uint32)
 	OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error)
 	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error)
@@ -63,7 +64,6 @@ type ChainSvcApi interface {
 
 func NewChainSvc(
 	ctx context.Context,
-	repo string,
 	addressPrefix string,
 	chainAddress string,
 	wsEndpoint string,
@@ -74,7 +74,6 @@ func NewChainSvc(
 	cosmos, err := cosmosclient.New(ctx,
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(chainAddress),
-		cosmosclient.WithHome(repo),
 		cosmosclient.WithKeyringDir(keyringHome),
 		cosmosclient.WithGas("auto"),
 	)

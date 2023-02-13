@@ -176,7 +176,7 @@ func FromReader(reader io.Reader, def interface{}) (interface{}, error) {
 
 	err = envconfig.Process("SAO", cfg)
 	if err != nil {
-		return nil, types.Wrapf(types.ErrInvalidConfig, "processing env vars overrides: %w", err)
+		return nil, types.Wrapf(types.ErrInvalidConfig, "processing env vars overrides: %v", err)
 	}
 
 	return cfg, nil

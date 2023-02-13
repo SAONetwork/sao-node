@@ -39,7 +39,7 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	var readyResp saotypes.MsgReadyResponse
 	err = txResp.Decode(&readyResp)
 	if err != nil {
-		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgReadyResponse, due to %w", err)
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgReadyResponse, due to %v", err)
 	}
 
 	return readyResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
@@ -75,7 +75,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	var storeResp saotypes.MsgStoreResponse
 	err = txResp.Decode(&storeResp)
 	if err != nil {
-		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgStoreResponse, due to %w", err)
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgStoreResponse, due to %v", err)
 	}
 	return storeResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }

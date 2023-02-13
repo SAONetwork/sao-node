@@ -11,14 +11,12 @@ import (
 	"sao-node/node/repo"
 	"sao-node/types"
 	"sao-node/utils"
-	"strings"
 	"syscall"
 
 	"golang.org/x/term"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
-	"github.com/opentracing/opentracing-go/log"
 	"github.com/urfave/cli/v2"
 )
 
@@ -47,7 +45,6 @@ var FlagChainAddress = &cli.StringFlag{
 	Name:        "chain-address",
 	Usage:       "sao chain api",
 	EnvVars:     []string{"SAO_CHAIN_API"},
-	Value:       "http://192.168.50.66:26657",
 	Destination: &ChainAddress,
 }
 
@@ -148,45 +145,49 @@ var GenerateDocCmd = &cli.Command{
 	},
 }
 
-func GetChainAddress(cctx *cli.Context, repoPath string) (string, error) {
+func GetChainAddress(cctx *cli.Context, repoPath string, binaryName string) (string, error) {
 	if cctx.String("chain-address") != "" {
 		return cctx.String("chain-address"), nil
 	}
 
 	chainAddress := ChainAddress
-	configPath := filepath.Join(repoPath, "config.toml")
-	if strings.Contains(repoPath, "-node") {
-		r, err := repo.PrepareRepo(repoPath)
-		if err != nil {
-			log.Error(err)
-			return chainAddress, nil
-		}
 
-		c, err := r.Config()
-		if err != nil {
-			return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
-		}
+	if chainAddress == "" {
+		configPath := filepath.Join(repoPath, "config.toml")
+		if binaryName == "saonode" {
+			r, err := repo.PrepareRepo(repoPath)
+			if err != nil {
+				return chainAddress, types.Wrap(types.ErrInvalidRepoPath, err)
+			}
 
-		cfg, ok := c.(*config.Node)
-		if !ok {
-			return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
-		}
+			c, err := r.Config()
+			if err != nil {
+				return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
+			}
 
-		chainAddress = cfg.Chain.Remote
-	} else if strings.Contains(repoPath, "-cli") {
-		c, err := utils.FromFile(configPath, saoclient.DefaultSaoClientConfig())
-		if err != nil {
-			return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
+			cfg, ok := c.(*config.Node)
+			if !ok {
+				return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
+			}
+
+			chainAddress = cfg.Chain.Remote
+		} else if binaryName == "saoclient" {
+			c, err := utils.FromFile(configPath, saoclient.DefaultSaoClientConfig())
+			if err != nil {
+				return chainAddress, types.Wrap(types.ErrReadConfigFailed, err)
+			}
+			cfg, ok := c.(*saoclient.SaoClientConfig)
+			if !ok {
+				return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
+			}
+			chainAddress = cfg.ChainAddress
+		} else {
+			return chainAddress, types.Wrapf(types.ErrInvalidParameters, "invalid binary name %s", binaryName)
 		}
-		cfg, ok := c.(*saoclient.SaoClientConfig)
-		if !ok {
-			return chainAddress, types.Wrap(types.ErrDecodeConfigFailed, err)
-		}
-		chainAddress = cfg.ChainAddress
 	}
 
 	if chainAddress == "" {
-		return chainAddress, types.Wrap(types.ErrInvalidChainAddress, nil)
+		return chainAddress, types.Wrapf(types.ErrInvalidChainAddress, "no chain address specified")
 	}
 
 	return chainAddress, nil

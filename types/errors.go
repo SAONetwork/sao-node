@@ -1,6 +1,10 @@
 package types
 
-import "github.com/cosmos/cosmos-sdk/types/errors"
+import (
+	"fmt"
+
+	"github.com/cosmos/cosmos-sdk/types/errors"
+)
 
 var (
 	ModuleCommon        = "common"
@@ -16,7 +20,8 @@ var (
 	ErrInvalidBinaryName = errors.Register(ModuleCommon, 10008, "invalid binary name")
 
 	ErrMarshalFailed   = errors.Register(ModuleCommon, 10009, "failed to marshal payload")
-	ErrUnMarshalFailed = errors.Register(ModuleCommon, 10010, "failed to unmarshal JpayloadS")
+	ErrUnMarshalFailed = errors.Register(ModuleCommon, 10010, "failed to unmarshal payload")
+	ErrUnSupport       = errors.Register(ModuleCommon, 10011, "not implemented yet")
 )
 
 var (
@@ -53,8 +58,9 @@ var (
 	ErrInvalidChainAddress  = errors.Register(ModuleChain, 11022, "invalid chain address")
 	ErrCreateJwsFailed      = errors.Register(ModuleChain, 11023, "failed to create JWS")
 	ErrMarshalJwsFailed     = errors.Register(ModuleChain, 11024, "failed to marshal JWS")
+	ErrInvalidJwt           = errors.Register(ModuleChain, 11025, "invalid JWT")
 
-	ErrQueryHeightFailed = errors.Register(ModuleChain, 11025, "failed to query the latest height")
+	ErrQueryHeightFailed = errors.Register(ModuleChain, 11026, "failed to query the latest height")
 )
 
 var (
@@ -124,13 +130,14 @@ var (
 	ErrAddFactFaild     = errors.Register(ModuleModel, 14018, "failed to add the fact")
 	ErrRuleExcuteFaild  = errors.Register(ModuleModel, 14019, "failed to excute the rule")
 	ErrRuleCheckFaild   = errors.Register(ModuleModel, 14020, "failed to pass the rule check")
-	ErrSchemaCheckFaild = errors.Register(ModuleModel, 14021, "failed to pass the schema check")
+	ErrInvalidRule      = errors.Register(ModuleModel, 14021, "invlaid rule")
+	ErrSchemaCheckFaild = errors.Register(ModuleModel, 14022, "failed to pass the schema check")
 
-	ErrInvalidVersion = errors.Register(ModuleModel, 14022, "invalid version")
-	ErrInvalidDataId  = errors.Register(ModuleModel, 14023, "invalid dataId")
-	ErrConflictId     = errors.Register(ModuleModel, 14024, "conflict dataId or alias")
-	ErrInvalidContent = errors.Register(ModuleModel, 14025, "invalid content")
-	ErrInvalidSchema  = errors.Register(ModuleModel, 14026, "invalid schema")
+	ErrInvalidVersion = errors.Register(ModuleModel, 14023, "invalid version")
+	ErrInvalidDataId  = errors.Register(ModuleModel, 14024, "invalid dataId")
+	ErrConflictId     = errors.Register(ModuleModel, 14025, "conflict dataId or alias")
+	ErrInvalidContent = errors.Register(ModuleModel, 14026, "invalid content")
+	ErrInvalidSchema  = errors.Register(ModuleModel, 14027, "invalid schema")
 )
 
 var (
@@ -148,9 +155,16 @@ var (
 )
 
 func Wrap(err0 error, err1 error) error {
-	return errors.Wrapf(err0, "due to %v", err1)
+	module, code, _ := errors.ABCIInfo(err0, false)
+	if err1 == nil {
+		return errors.Wrapf(err0, "%s error: code: Code(%d) desc", module, code)
+	} else {
+		return errors.Wrapf(err0, "%s: %s error: code: Code(%d) desc", err1, module, code)
+	}
 }
 
 func Wrapf(err error, format string, args ...interface{}) error {
-	return errors.Wrapf(err, format, args...)
+	module, code, _ := errors.ABCIInfo(err, false)
+	info := fmt.Sprintf(": %s error: code: Code(%d) desc", module, code)
+	return errors.Wrapf(err, format+info, args...)
 }
