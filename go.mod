@@ -57,6 +57,7 @@ require (
 require (
 	github.com/cosmos/cosmos-sdk v0.46.6
 	github.com/filecoin-project/lotus v1.19.0
+	github.com/gwaylib/log v0.0.0-20220419074212-f1aa63899ff1
 	github.com/labstack/gommon v0.4.0
 	github.com/libp2p/go-libp2p v0.23.2
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c

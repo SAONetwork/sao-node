@@ -24,7 +24,6 @@ type SaoApi interface {
 	ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) //perm:read
 	ShardList(ctx context.Context) ([]types.ShardInfo, error)                              //perm:read
 	ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
-
 	// MethodGroup: Model
 	// The Model method group contains methods for manipulating data models.
 

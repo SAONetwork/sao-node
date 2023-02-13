@@ -20,9 +20,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -391,7 +391,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 		shardCid, err := cid.Decode(shard.Cid)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrapf(types.ErrInvalidCid, "%s", shard.Cid)
 		}
 
 		var gp GatewayProtocol
@@ -444,7 +444,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 	match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(meta.Alias))
 	if err != nil {
-		return nil, err
+		return nil, types.Wrapf(types.ErrInvalidAlias, "%s", meta.Alias)
 	}
 
 	if len(content) > gs.cfg.Cache.ContentLimit || match {
@@ -452,23 +452,23 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
 		if err != nil {
-			return nil, err
+			return nil, types.Wrapf(types.ErrInvalidPath, "%s", gs.cfg.SaoHttpFileServer.HttpFileServerPath)
 		}
 
 		file, err := os.Create(filepath.Join(path, meta.DataId))
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, types.Wrap(types.ErrInvalidPath, err)
 		}
 
 		_, err = file.Write([]byte(content))
 		if err != nil {
-			return nil, xerrors.Errorf(err.Error())
+			return nil, types.Wrap(types.ErrWriteFileFailed, err)
 		}
 
 		if gs.cfg.SaoIpfs.Enable {
 			_, err = gs.storeManager.Store(ctx, contentCid, bytes.NewReader(content))
 			if err != nil {
-				return nil, xerrors.Errorf(err.Error())
+				return nil, types.Wrap(types.ErrStoreFailed, err)
 			}
 		}
 
@@ -498,7 +498,6 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		return err
 	}
 
-	// send tx
 	var txHash string
 	var shards map[string]*saotypes.ShardMeta
 	var txType types.AssignTxType

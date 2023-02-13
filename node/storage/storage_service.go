@@ -77,19 +77,20 @@ func NewStoreService(
 	//	return nil, err
 	//}
 
-	// restart previous pending shards
-	go func() {
-		log.Info("processing pending shards...")
-		pendings, err := ss.getPendingShardList(ctx)
-		if err != nil {
-			log.Errorf("process pending shards error: %v", err)
-		}
-		for _, p := range pendings {
-			ss.taskChan <- p
-		}
-	}()
+	go ss.processIncompleteShards(ctx)
 
 	return ss, nil
+}
+
+func (ss *StoreSvc) processIncompleteShards(ctx context.Context) {
+	log.Info("processing pending shards...")
+	pendings, err := ss.getPendingShardList(ctx)
+	if err != nil {
+		log.Errorf("process pending shards error: %v", err)
+	}
+	for _, p := range pendings {
+		ss.taskChan <- p
+	}
 }
 
 func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq) types.ShardLoadResp {
