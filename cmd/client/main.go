@@ -126,7 +126,7 @@ var initCmd = &cli.Command{
 		fmt.Printf("repo %s is initialized.", repo)
 		fmt.Println()
 
-		accountName, address, mnemonic, err := chain.Create(cctx.Context, repo, saoclient.Cfg.KeyName)
+		accountName, address, mnemonic, err := chain.Create(cctx.Context, cliutil.KeyringHome, saoclient.Cfg.KeyName)
 		if err != nil {
 			return err
 		}
