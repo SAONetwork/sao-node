@@ -10,6 +10,7 @@ import (
 
 	sid "github.com/SaoNetwork/sao-did/sid"
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
@@ -30,6 +31,7 @@ type ChainSvc struct {
 	orderClient ordertypes.QueryClient
 	nodeClient  nodetypes.QueryClient
 	didClient   didtypes.QueryClient
+	modelClient modeltypes.QueryClient
 	listener    *http.HTTP
 }
 
@@ -41,6 +43,7 @@ type ChainSvcApi interface {
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
+	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
 	Login(ctx context.Context, creator string) (string, error)
 	Logout(ctx context.Context, creator string) (string, error)
@@ -53,6 +56,7 @@ type ChainSvcApi interface {
 	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error)
 	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, int64, error)
 	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
+	MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error)
 	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error)
 	//SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
 	//UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
@@ -85,6 +89,7 @@ func NewChainSvc(
 	orderClient := ordertypes.NewQueryClient(cosmos.Context())
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	didClient := didtypes.NewQueryClient(cosmos.Context())
+	modelClient := modeltypes.NewQueryClient(cosmos.Context())
 
 	log.Debugf("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
@@ -105,6 +110,7 @@ func NewChainSvc(
 		orderClient: orderClient,
 		nodeClient:  nodeClient,
 		didClient:   didClient,
+		modelClient: modelClient,
 		listener:    http,
 	}, nil
 }

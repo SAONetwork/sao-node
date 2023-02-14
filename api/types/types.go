@@ -46,6 +46,11 @@ type RenewResp struct {
 	Results map[string]string
 }
 
+type MigrateResp struct {
+	TxHash  string
+	Results map[string]string
+}
+
 type ShowCommitsResp struct {
 	DataId  string
 	Alias   string

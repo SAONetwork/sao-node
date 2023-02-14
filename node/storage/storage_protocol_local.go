@@ -89,3 +89,10 @@ func (l LocalStorageProtocol) RequestShardStore(ctx context.Context, req types.S
 		return resp
 	}
 }
+
+func (l LocalStorageProtocol) RequestShardMigrate(ctx context.Context, req types.ShardMigrateReq, _ string) types.ShardMigrateResp {
+	return types.ShardMigrateResp{
+		Code:    types.ErrorCodeInternalErr,
+		Message: "unsupported",
+	}
+}

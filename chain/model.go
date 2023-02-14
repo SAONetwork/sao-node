@@ -4,8 +4,20 @@ import (
 	"context"
 	"sao-node/types"
 
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 )
+
+func (c *ChainSvc) GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
+	resp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
+		DataId: dataId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
 
 func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error) {
 	clientctx := c.cosmos.Context()

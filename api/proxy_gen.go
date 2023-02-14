@@ -40,6 +40,8 @@ type SaoApiStruct struct {
 
 		ModelLoad func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) `perm:"read"`
 
+		ModelMigrate func(p0 context.Context, p1 []string) (apitypes.MigrateResp, error) `perm:"write"`
+
 		ModelRenewOrder func(p0 context.Context, p1 *types.OrderRenewProposal, p2 bool) (apitypes.RenewResp, error) `perm:"write"`
 
 		ModelShowCommits func(p0 context.Context, p1 *types.MetadataProposal) (apitypes.ShowCommitsResp, error) `perm:"read"`
@@ -195,6 +197,17 @@ func (s *SaoApiStruct) ModelLoad(p0 context.Context, p1 *types.MetadataProposal)
 
 func (s *SaoApiStub) ModelLoad(p0 context.Context, p1 *types.MetadataProposal) (apitypes.LoadResp, error) {
 	return *new(apitypes.LoadResp), ErrNotSupported
+}
+
+func (s *SaoApiStruct) ModelMigrate(p0 context.Context, p1 []string) (apitypes.MigrateResp, error) {
+	if s.Internal.ModelMigrate == nil {
+		return *new(apitypes.MigrateResp), ErrNotSupported
+	}
+	return s.Internal.ModelMigrate(p0, p1)
+}
+
+func (s *SaoApiStub) ModelMigrate(p0 context.Context, p1 []string) (apitypes.MigrateResp, error) {
+	return *new(apitypes.MigrateResp), ErrNotSupported
 }
 
 func (s *SaoApiStruct) ModelRenewOrder(p0 context.Context, p1 *types.OrderRenewProposal, p2 bool) (apitypes.RenewResp, error) {

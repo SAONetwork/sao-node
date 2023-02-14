@@ -43,6 +43,7 @@ type SaoApi interface {
 	ModelRenewOrder(ctx context.Context, req *types.OrderRenewProposal, isPublish bool) (apitypes.RenewResp, error) //perm:write
 	// ModelUpdatePermission update an existing model's read/write permission
 	ModelUpdatePermission(ctx context.Context, req *types.PermissionProposal, isPublish bool) (apitypes.UpdatePermissionResp, error) //perm:write
+	ModelMigrate(ctx context.Context, dataIds []string) (apitypes.MigrateResp, error)                                                // perm:write
 
 	// MethodGroup: Common
 

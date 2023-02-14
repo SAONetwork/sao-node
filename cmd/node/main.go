@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"sao-node/api"
+	apiclient "sao-node/api/client"
 	"sao-node/build"
 	cliutil "sao-node/cmd"
 	"sao-node/cmd/account"
@@ -16,11 +17,14 @@ import (
 	"sao-node/node/config"
 	"sao-node/node/repo"
 	"sao-node/types"
+	"strings"
 
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/gbrlsnchs/jwt/v3"
+	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/multiformats/go-multiaddr"
@@ -100,6 +104,7 @@ func main() {
 			claimCmd,
 			ordersCmd,
 			shardsCmd,
+			migrateCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -559,6 +564,41 @@ var infoCmd = &cli.Command{
 		chain.ShowNodeInfo(ctx, creator)
 
 		return nil
+	},
+}
+
+var migrateCmd = &cli.Command{
+	Name: "migrate",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("missing data ids parameter")
+		}
+		dataIds := strings.Split(cctx.Args().First(), ",")
+
+		resp, err := gatewayApi.ModelMigrate(ctx, dataIds)
+		if err != nil {
+			return err
+		}
+		fmt.Println(resp.TxHash)
+		tw := tablewriter.New(
+			tablewriter.Col("DataId"),
+			tablewriter.Col("Result"),
+		)
+		for k, v := range resp.Results {
+			tw.Write(map[string]interface{}{
+				"DataId": k,
+				"Result": v,
+			})
+
+		}
+		return tw.Flush(os.Stdout)
 	},
 }
 

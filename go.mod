@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	cosmossdk.io/math v1.0.0-beta.3 // indirect
+	cosmossdk.io/math v1.0.0-beta.3
 	github.com/SaoNetwork/sao v0.0.6
 	github.com/SaoNetwork/sao-did v0.0.12
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
@@ -57,7 +57,6 @@ require (
 require (
 	github.com/cosmos/cosmos-sdk v0.46.6
 	github.com/filecoin-project/lotus v1.19.0
-	github.com/gwaylib/log v0.0.0-20220419074212-f1aa63899ff1
 	github.com/labstack/gommon v0.4.0
 	github.com/libp2p/go-libp2p v0.23.2
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c
@@ -356,6 +355,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-//replace github.com/SaoNetwork/sao => ../sao-consensus
+replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1

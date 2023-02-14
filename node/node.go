@@ -663,3 +663,11 @@ func (n *Node) ShardList(ctx context.Context) ([]types.ShardInfo, error) {
 func (n *Node) ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error {
 	return n.storeSvc.ShardFix(ctx, orderId, cid)
 }
+
+func (n *Node) ModelMigrate(ctx context.Context, dataIds []string) (apitypes.MigrateResp, error) {
+	hash, results, err := n.storeSvc.Migrate(ctx, dataIds)
+	return apitypes.MigrateResp{
+		Results: results,
+		TxHash:  hash,
+	}, err
+}

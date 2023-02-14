@@ -27,6 +27,7 @@ func NewStreamStorageProtocol(
 	}
 	host.SetStreamHandler(types.ShardAssignProtocol, ssp.handleShardAssign)
 	host.SetStreamHandler(types.ShardLoadProtocol, ssp.handleShardLoad)
+	host.SetStreamHandler(types.ShardMigrateProtocol, ssp.handleShardMigrate)
 	return ssp
 }
 
@@ -34,7 +35,40 @@ func (l StreamStorageProtocol) Stop(ctx context.Context) error {
 	log.Info("stopping stream storage protocol")
 	l.host.RemoveStreamHandler(types.ShardAssignProtocol)
 	l.host.RemoveStreamHandler(types.ShardLoadProtocol)
+	l.host.RemoveStreamHandler(types.ShardMigrateProtocol)
 	return nil
+}
+
+func (l StreamStorageProtocol) handleShardMigrate(s network.Stream) {
+	defer s.Close()
+
+	respond := func(resp types.ShardMigrateResp) {
+		err := resp.Marshal(s, types.FormatCbor)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+
+		if err = s.CloseWrite(); err != nil {
+			log.Error(err.Error())
+			return
+		}
+	}
+
+	// Set a deadline on reading from the stream so it doesn't hang
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
+	defer s.SetReadDeadline(time.Time{}) // nolint
+
+	var req types.ShardMigrateReq
+	err := req.Unmarshal(s, types.FormatCbor)
+	if err != nil {
+		respond(types.ShardMigrateResp{
+			Code:    types.ErrorCodeInternalErr,
+			Message: fmt.Sprintf("failed to unmarshal request: %v", err),
+		})
+		return
+	}
+	respond(l.HandleShardMigrate(req))
 }
 
 func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
@@ -115,6 +149,22 @@ func (l StreamStorageProtocol) handleShardAssign(s network.Stream) {
 		})
 	}
 	respond(l.HandleShardAssign(req))
+}
+
+func (l StreamStorageProtocol) RequestShardMigrate(
+	ctx context.Context,
+	req types.ShardMigrateReq,
+	peer string,
+) types.ShardMigrateResp {
+	resp := types.ShardMigrateResp{}
+	err := transport.HandleRequest(ctx, peer, l.host, types.ShardMigrateProtocol, &req, &resp)
+	if err != nil {
+		resp = types.ShardMigrateResp{
+			Code:    types.ErrorCodeInternalErr,
+			Message: fmt.Sprint("transport migrate request error: %v", err),
+		}
+	}
+	return resp
 }
 
 func (l StreamStorageProtocol) RequestShardComplete(ctx context.Context, req types.ShardCompleteReq, peer string) types.ShardCompleteResp {

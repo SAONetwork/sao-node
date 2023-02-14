@@ -127,6 +127,30 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 	}
 	return txResp.TxResponse.TxHash, renewResp.Result, nil
 }
+func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error) {
+	signerAcc, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
+	}
+
+	msg := &saotypes.MsgMigrate{
+		Creator: creator,
+		Data:    dataIds,
+	}
+	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
+	if err != nil {
+		return "", nil, -1, types.Wrap(types.ErrTxProcessFailed, err)
+	}
+	if txResp.TxResponse.Code != 0 {
+		return "", nil, -1, types.Wrapf(types.ErrTxProcessFailed, "MsgMigrate tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	}
+	var migrateResp saotypes.MsgMigrateResponse
+	err = txResp.Decode(&migrateResp)
+	if err != nil {
+		return "", nil, -1, err
+	}
+	return txResp.TxResponse.TxHash, migrateResp.Result, txResp.TxResponse.Height, nil
+}
 
 func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
 	signerAcc, err := c.cosmos.Account(creator)

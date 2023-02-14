@@ -28,6 +28,8 @@ func main() {
 		types.ShardCompleteResp{},
 		types.ShardLoadReq{},
 		types.ShardLoadResp{},
+		types.ShardMigrateReq{},
+		types.ShardMigrateResp{},
 	)
 	if err != nil {
 		fmt.Println(err)
