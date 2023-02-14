@@ -672,7 +672,12 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		// TODO: timeout handling
 		return nil, types.Wrapf(types.ErrProcessOrderFailed, "process order %d timeout.", orderId)
 	} else {
-		order, err := gs.chainSvc.GetOrder(ctx, orderId)
+		oi, err := utils.GetOrder(ctx, gs.orderDs, orderInfo.DataId)
+		if err != nil {
+			return nil, err
+		}
+
+		order, err := gs.chainSvc.GetOrder(ctx, oi.OrderId)
 		if err != nil {
 			return nil, err
 		}
