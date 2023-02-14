@@ -70,7 +70,7 @@ func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
 		})
 		return
 	}
-	peerInfo := string(s.Conn().RemotePeer())
+	peerInfo := string(s.Conn().RemoteMultiaddr().String())
 	log.Debug("check peer: %v<->%v", req.Proposal.Proposal.Gateway, peerInfo)
 	if !strings.Contains(req.Proposal.Proposal.Gateway, peerInfo) {
 		respond(types.ShardLoadResp{
