@@ -205,7 +205,7 @@ func (gs *GatewaySvc) runSched(ctx context.Context) {
 		wg.Wait()
 
 		for i := 0; i < len; i++ {
-			gs.schedQueue.Remove(i)
+			gs.schedQueue.Remove(0)
 		}
 		for _, r := range reschedule {
 			gs.schedQueue.Push(&WorkRequest{Order: r})
