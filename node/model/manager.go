@@ -198,6 +198,10 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		return nil, types.Wrapf(types.ErrConflictId, "the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
 	}
 
+	if orderProposal.Size_ == 0 || len(content) == 0 {
+		return nil, types.Wrapf(types.ErrInvalidContent, "the content is empty")
+	}
+
 	err = mm.validateModel(ctx, orderProposal.Owner, orderProposal.Alias, content, orderProposal.Rule)
 	if err != nil {
 		return nil, err
