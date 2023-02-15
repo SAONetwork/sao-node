@@ -138,12 +138,15 @@ func (s ShardState) String() string {
 type MigrateInfo struct {
 	DataId       string
 	OrderId      uint64
-	Cid          cid.Cid
+	Cid          string
 	FromProvider string
 	ToProvider   string
 
 	MigrateTxHash   string
 	MigrateTxHeight int64
+
+	CompleteTxHash   string
+	CompleteTxHeight int64
 
 	State MigrateState
 }
@@ -154,3 +157,21 @@ const (
 	MigrateStateTxSent MigrateState = iota
 	MigrateStateComplete
 )
+
+var migrateStateString = map[MigrateState]string{
+	MigrateStateTxSent:   "txSent",
+	MigrateStateComplete: "complete",
+}
+
+func (m MigrateState) String() string {
+	return migrateStateString[m]
+}
+
+type MigrateKey struct {
+	DataId       string
+	FromProvider string
+}
+
+type MigrateIndex struct {
+	All []MigrateKey
+}

@@ -174,6 +174,19 @@ func (ss *StoreSvc) processMigrate(ctx context.Context, req MigrateRequest) erro
 	}
 	log.Info("migrate response validate pass.")
 
+	migrateInfo, err := utils.GetMigrate(ss.ctx, ss.orderDs, req.DataId, req.FromProvider)
+	if err != nil {
+		log.Error("get migrate error: ", err)
+	} else {
+		migrateInfo.State = types.MigrateStateComplete
+		migrateInfo.CompleteTxHash = resp.CompleteHash
+		migrateInfo.CompleteTxHeight = resp.CompleteHeight
+		err = utils.SaveMigrate(ss.ctx, ss.orderDs, migrateInfo)
+		if err != nil {
+			log.Error("save migrate error: ", err)
+		}
+	}
+
 	return nil
 }
 
@@ -287,7 +300,6 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 	if err != nil {
 		return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("store cid %s error: %v", cid, err))
 	}
-
 	// send tx
 	txHash, height, err := ss.chainSvc.CompleteOrder(ss.ctx, ss.nodeAddress, order.Id, cid, int32(len(req.Content)))
 	if err != nil {
@@ -727,6 +739,19 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 
 	for k, v := range results {
 		if strings.HasPrefix(v, "SUCCESS") {
+			// save migrate job
+			mi := types.MigrateInfo{
+				DataId:          k,
+				FromProvider:    ss.nodeAddress,
+				MigrateTxHash:   hash,
+				MigrateTxHeight: height,
+				State:           types.MigrateStateTxSent,
+			}
+			err := utils.SaveMigrate(ctx, ss.orderDs, mi)
+			if err != nil {
+				log.Errorf("save migrate error: %v", err)
+			}
+
 			resp, err := ss.chainSvc.GetMeta(ctx, k)
 			if err != nil {
 				log.Error(err)
@@ -735,12 +760,22 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 			if err != nil {
 				log.Error(err)
 			}
+
 			cid := order.Shards[ss.nodeAddress].Cid
 			for node, shard := range order.Shards {
 				if shard.Cid == cid &&
 					node != ss.nodeAddress &&
 					shard.Status == ordertypes.ShardWaiting &&
 					shard.From == ss.nodeAddress {
+
+					mi.OrderId = order.Id
+					mi.ToProvider = node
+					mi.Cid = shard.Cid
+					err = utils.SaveMigrate(ctx, ss.orderDs, mi)
+					if err != nil {
+						log.Error("save migrate error: ", err)
+					}
+
 					ss.migrateChan <- MigrateRequest{
 						OrderId:       order.Id,
 						FromProvider:  ss.nodeAddress,
@@ -750,6 +785,7 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 						MigrateTxHash: hash,
 						MigrateHeight: height,
 					}
+					break
 				}
 			}
 
@@ -759,5 +795,26 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 }
 
 func (ss *StoreSvc) MigrateList(ctx context.Context) ([]types.MigrateInfo, error) {
-	return nil, nil
+	migrateKeys, err := ss.getMigrateKeyList(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var migrateInfos []types.MigrateInfo
+	for _, migrateKey := range migrateKeys {
+		migrate, err := utils.GetMigrate(ctx, ss.orderDs, migrateKey.DataId, migrateKey.FromProvider)
+		if err != nil {
+			return nil, err
+		}
+		migrateInfos = append(migrateInfos, migrate)
+	}
+	return migrateInfos, nil
+}
+
+func (ss *StoreSvc) getMigrateKeyList(ctx context.Context) ([]types.MigrateKey, error) {
+	index, err := utils.GetMigrateIndex(ctx, ss.orderDs)
+	if err != nil {
+		return nil, err
+	}
+	return index.All, nil
 }

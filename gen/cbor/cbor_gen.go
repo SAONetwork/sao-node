@@ -19,7 +19,9 @@ func main() {
 		types.ShardInfo{},
 		types.ShardIndex{},
 		// migrate state
+		types.MigrateKey{},
 		types.MigrateInfo{},
+		types.MigrateIndex{},
 
 		types.QueryProposal{},
 		types.JwsSignature{},

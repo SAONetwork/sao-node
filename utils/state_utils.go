@@ -16,7 +16,7 @@ const (
 	SHARD_INDEX_KEY   = "shard-index"
 	SHARD_KEY         = "order-%d-shard-%v"
 	MIGRATE_INDEX_KEY = "migrate-index"
-	MIGRATE_KEY       = "migrate-%d-shard-%v"
+	MIGRATE_KEY       = "migrate-dataid-%s-from-%s"
 )
 
 // -----
@@ -149,12 +149,12 @@ func GetOrderIndex(ctx context.Context, ds datastore.Batching) (types.OrderIndex
 // -----
 // migrate
 // -----
-func migrateDatastoreKey(orderId uint64, cid cid.Cid) datastore.Key {
-	return datastore.NewKey(fmt.Sprintf(MIGRATE_KEY, orderId, cid))
+func migrateDatastoreKey(dataId string, from string) datastore.Key {
+	return datastore.NewKey(fmt.Sprintf(MIGRATE_KEY, dataId, from))
 }
 
 func SaveMigrate(ctx context.Context, ds datastore.Batching, migrate types.MigrateInfo) error {
-	key := migrateDatastoreKey(migrate.OrderId, migrate.Cid)
+	key := migrateDatastoreKey(migrate.DataId, migrate.FromProvider)
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
 		return err
@@ -170,7 +170,7 @@ func SaveMigrate(ctx context.Context, ds datastore.Batching, migrate types.Migra
 		return err
 	}
 	if !exists {
-		err = UpdateMigrateIndex(ctx, ds, migrate.OrderId, migrate.Cid)
+		err = UpdateMigrateIndex(ctx, ds, migrate.DataId, migrate.FromProvider)
 		if err != nil {
 			return err
 		}
@@ -178,8 +178,8 @@ func SaveMigrate(ctx context.Context, ds datastore.Batching, migrate types.Migra
 	return nil
 }
 
-func GetMigrate(ctx context.Context, ds datastore.Batching, orderId uint64, cid cid.Cid) (types.MigrateInfo, error) {
-	key := migrateDatastoreKey(orderId, cid)
+func GetMigrate(ctx context.Context, ds datastore.Batching, dataId string, from string) (types.MigrateInfo, error) {
+	key := migrateDatastoreKey(dataId, from)
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
 		return types.MigrateInfo{}, err
@@ -204,8 +204,8 @@ func GetMigrate(ctx context.Context, ds datastore.Batching, orderId uint64, cid 
 func UpdateMigrateIndex(
 	ctx context.Context,
 	ds datastore.Batching,
-	orderId uint64,
-	cid cid.Cid,
+	dataId string,
+	from string,
 ) error {
 	key := datastore.NewKey(MIGRATE_INDEX_KEY)
 	exists, err := ds.Has(ctx, key)
@@ -213,7 +213,7 @@ func UpdateMigrateIndex(
 		return err
 	}
 
-	var index types.ShardIndex
+	var index types.MigrateIndex
 	if exists {
 		data, err := ds.Get(ctx, key)
 		if err != nil {
@@ -224,9 +224,9 @@ func UpdateMigrateIndex(
 			return err
 		}
 	}
-	index.All = append(index.All, types.ShardKey{
-		OrderId: orderId,
-		Cid:     cid,
+	index.All = append(index.All, types.MigrateKey{
+		DataId:       dataId,
+		FromProvider: from,
 	})
 
 	buf := new(bytes.Buffer)
@@ -239,6 +239,26 @@ func UpdateMigrateIndex(
 		return err
 	}
 	return nil
+}
+
+func GetMigrateIndex(ctx context.Context, ds datastore.Batching) (types.MigrateIndex, error) {
+	key := datastore.NewKey(MIGRATE_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return types.MigrateIndex{}, err
+	}
+	if !exists {
+		return types.MigrateIndex{}, nil
+	}
+
+	data, err := ds.Get(ctx, key)
+	if err != nil {
+		return types.MigrateIndex{}, err
+	}
+
+	var index types.MigrateIndex
+	err = index.UnmarshalCBOR(bytes.NewReader(data))
+	return index, err
 }
 
 // -----

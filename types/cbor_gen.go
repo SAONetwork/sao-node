@@ -1666,6 +1666,135 @@ func (t *ShardIndex) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
+func (t *MigrateKey) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.DataId (string) (string)
+	if len("DataId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DataId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DataId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("DataId")); err != nil {
+		return err
+	}
+
+	if len(t.DataId) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.DataId was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.DataId))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.DataId)); err != nil {
+		return err
+	}
+
+	// t.FromProvider (string) (string)
+	if len("FromProvider") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"FromProvider\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("FromProvider"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("FromProvider")); err != nil {
+		return err
+	}
+
+	if len(t.FromProvider) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.FromProvider was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.FromProvider))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.FromProvider)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *MigrateKey) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = MigrateKey{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("MigrateKey: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.DataId (string) (string)
+		case "DataId":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.DataId = string(sval)
+			}
+			// t.FromProvider (string) (string)
+		case "FromProvider":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.FromProvider = string(sval)
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
 func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -1717,7 +1846,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Cid (cid.Cid) (struct)
+	// t.Cid (string) (string)
 	if len("Cid") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
@@ -1729,8 +1858,15 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if err := cbg.WriteCid(cw, t.Cid); err != nil {
-		return xerrors.Errorf("failed to write cid field t.Cid: %w", err)
+	if len(t.Cid) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Cid was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Cid))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Cid)); err != nil {
+		return err
 	}
 
 	// t.FromProvider (string) (string)
@@ -1907,18 +2043,16 @@ func (t *MigrateInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				t.OrderId = uint64(extra)
 
 			}
-			// t.Cid (cid.Cid) (struct)
+			// t.Cid (string) (string)
 		case "Cid":
 
 			{
-
-				c, err := cbg.ReadCid(cr)
+				sval, err := cbg.ReadString(cr)
 				if err != nil {
-					return xerrors.Errorf("failed to read cid field t.Cid: %w", err)
+					return err
 				}
 
-				t.Cid = c
-
+				t.Cid = string(sval)
 			}
 			// t.FromProvider (string) (string)
 		case "FromProvider":
@@ -1993,6 +2127,121 @@ func (t *MigrateInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 				t.State = MigrateState(extra)
 
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (t *MigrateIndex) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{161}); err != nil {
+		return err
+	}
+
+	// t.All ([]types.MigrateKey) (slice)
+	if len("All") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"All\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("All"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("All")); err != nil {
+		return err
+	}
+
+	if len(t.All) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.All was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.All))); err != nil {
+		return err
+	}
+	for _, v := range t.All {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *MigrateIndex) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = MigrateIndex{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("MigrateIndex: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.All ([]types.MigrateKey) (slice)
+		case "All":
+
+			maj, extra, err = cr.ReadHeader()
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.MaxLength {
+				return fmt.Errorf("t.All: array too large (%d)", extra)
+			}
+
+			if maj != cbg.MajArray {
+				return fmt.Errorf("expected cbor array")
+			}
+
+			if extra > 0 {
+				t.All = make([]MigrateKey, extra)
+			}
+
+			for i := 0; i < int(extra); i++ {
+
+				var v MigrateKey
+				if err := v.UnmarshalCBOR(cr); err != nil {
+					return err
+				}
+
+				t.All[i] = v
 			}
 
 		default:

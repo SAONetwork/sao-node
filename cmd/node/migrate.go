@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	apiclient "sao-node/api/client"
 	cliutil "sao-node/cmd"
@@ -33,22 +34,27 @@ var migrateListCmd = &cli.Command{
 			return err
 		}
 
-		tw := tablewriter.New(
-			tablewriter.Col("OrderId"),
-			tablewriter.Col("DataId"),
-			tablewriter.Col("Cid"),
-			tablewriter.Col("To"),
-			tablewriter.Col("State"),
-		)
-		for _, job := range jobs {
-			tw.Write(map[string]interface{}{
-				"OrderId": job.OrderId,
-				"DataId":  job.DataId,
-				"Cid":     job.Cid,
-				"To":      job.ToProvider,
-				"State":   job.State,
-			})
+		if len(jobs) > 0 {
+			tw := tablewriter.New(
+				tablewriter.Col("OrderId"),
+				tablewriter.Col("DataId"),
+				tablewriter.Col("Cid"),
+				tablewriter.Col("To"),
+				tablewriter.Col("State"),
+			)
+			for _, job := range jobs {
+				tw.Write(map[string]interface{}{
+					"OrderId": job.OrderId,
+					"DataId":  job.DataId,
+					"Cid":     job.Cid,
+					"To":      job.ToProvider,
+					"State":   job.State.String(),
+				})
+			}
+			return tw.Flush(os.Stdout)
+		} else {
+			fmt.Println("No migration jobs.")
+			return nil
 		}
-		return tw.Flush(os.Stdout)
 	},
 }
