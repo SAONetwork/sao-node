@@ -161,7 +161,7 @@ func Wrap(err0 error, err1 error) error {
 	if err1 == nil {
 		return errors.Wrapf(err0, "%s error: code: Code(%d) desc", module, code)
 	} else {
-		return errors.Wrapf(err0, "%s: %s error: code: Code(%d) desc", err1, module, code)
+		return errors.Wrapf(err0, "%s: %s error: code: (%d) desc", err1, module, code)
 	}
 }
 
