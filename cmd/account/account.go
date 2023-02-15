@@ -55,7 +55,7 @@ var listCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
-			return types.Wrap(types.ErrCreateChainServiceFailed, err)
+			return err
 		}
 		err = chain.List(ctx, cliutil.KeyringHome)
 		if err != nil {
@@ -205,7 +205,7 @@ var sendCmd = &cli.Command{
 
 		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
-			return types.Wrap(types.ErrCreateChainServiceFailed, err)
+			return err
 		}
 		from := cctx.String("from")
 		to := cctx.String("to")

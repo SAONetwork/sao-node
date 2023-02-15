@@ -86,10 +86,6 @@ var createFileCmd = &cli.Command{
 		ctx := cctx.Context
 
 		// ---- check parameters ----
-		// if !cctx.IsSet("content") || cctx.String("content") == "" {
-		// 	return xerrors.Errorf("must provide non-empty --content.")
-		// }
-
 		if !cctx.IsSet("file-name") {
 			return types.Wrapf(types.ErrInvalidParameters, "must provide --file-name")
 		}

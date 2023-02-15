@@ -12,11 +12,13 @@ import (
 	"strings"
 	"time"
 
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
+
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
+	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
-	"golang.org/x/xerrors"
 
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/ipfs/go-cid"
@@ -118,6 +120,9 @@ func (ss *StoreSvc) processMigrate(ctx context.Context, req MigrateRequest) erro
 		return err
 	}
 	reader, err := ss.storeManager.Get(ss.ctx, cid)
+	if err != nil {
+		return err
+	}
 	shardContent, err := io.ReadAll(reader)
 	if err != nil {
 		return err
@@ -127,7 +132,7 @@ func (ss *StoreSvc) processMigrate(ctx context.Context, req MigrateRequest) erro
 	if err != nil {
 		return err
 	}
-	p := ss.storageProtocolMap["remote"]
+	p := ss.storageProtocolMap["stream"]
 	resp := p.RequestShardMigrate(ctx, types.ShardMigrateReq{
 		MigrateFrom: req.FromProvider,
 		OrderId:     req.OrderId,
@@ -139,7 +144,36 @@ func (ss *StoreSvc) processMigrate(ctx context.Context, req MigrateRequest) erro
 	if resp.Code != 0 {
 		return xerrors.Errorf(resp.Message)
 	}
-	// check tx
+
+	// validate transaction
+	resultTx, err := ss.chainSvc.GetTx(ctx, resp.CompleteHash, resp.CompleteHeight)
+	if err != nil {
+		return err
+	}
+
+	if resultTx.TxResult.Code != 0 {
+		return xerrors.Errorf("complete tx %s failed: code=%d", resultTx.Hash, resultTx.TxResult.Code)
+	}
+
+	// validate order information after migration
+	order, err := ss.chainSvc.GetOrder(ctx, req.OrderId)
+	if err != nil {
+		return err
+	}
+	shard, exists := order.Shards[req.ToProvider]
+	if !exists {
+		return xerrors.Errorf("no shard assigned to new provider %s", req.ToProvider)
+	}
+
+	if shard.From != req.FromProvider {
+		return xerrors.Errorf("shard is migrated from old provider %s", req.FromProvider)
+	}
+
+	if shard.Status != ordertypes.ShardCompleted {
+		return xerrors.Errorf("shard status should be ShardCompleted, but is %d", shard.Status)
+	}
+	log.Info("migrate response validate pass.")
+
 	return nil
 }
 
@@ -165,7 +199,6 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 
 	resultTx, err := ss.chainSvc.GetTx(ss.ctx, req.TxHash, req.TxHeight)
 	if err != nil {
-		// TODO:
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("Get tx %s error: ", req.TxHash),
@@ -179,8 +212,17 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 		)
 	}
 
+	var txMsgData sdktypes.TxMsgData
+	err = txMsgData.Unmarshal(resultTx.TxResult.Data)
+	if err != nil {
+		return logAndRespond(
+			types.ErrorCodeInternalErr,
+			fmt.Sprintf("unmarshal tx error: %v", err),
+		)
+	}
+
 	mr := saotypes.MsgMigrateResponse{}
-	err = mr.Unmarshal(resultTx.TxResult.Data)
+	err = mr.Unmarshal(txMsgData.MsgResponses[0].Value)
 	if err != nil {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
@@ -211,7 +253,7 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 	if !exists {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
-			fmt.Sprint("no shard to current provider %s", ss.nodeAddress),
+			fmt.Sprintf("no shard to current provider %s", ss.nodeAddress),
 		)
 	}
 	if shard.From != req.MigrateFrom {
@@ -223,13 +265,13 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 	if shard.Cid != req.Cid {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
-			fmt.Sprint("unmatched cid: expected %s, actual %s", req.Cid, shard.Cid),
+			fmt.Sprintf("unmatched cid: expected %s, actual %s", req.Cid, shard.Cid),
 		)
 	}
-	if shard.Status != ordertypes.OrderInProgress {
+	if shard.Status != ordertypes.ShardWaiting {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
-			fmt.Sprintf("shard status is not invalid, expected OrderInProgress, actual %d", shard.Status),
+			fmt.Sprintf("shard status is not invalid, expected ShardWaiting, actual %d", shard.Status),
 		)
 	}
 
@@ -499,8 +541,8 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 				Cid:     task.Cid,
 			}, peerInfo)
 			if resp.Code != 0 {
-				ss.updateShardError(task, xerrors.Errorf(resp.Message))
-				return xerrors.Errorf(resp.Message)
+				ss.updateShardError(task, types.Wrapf(types.ErrFailuresResponsed, resp.Message))
+				return types.Wrapf(types.ErrFailuresResponsed, resp.Message)
 			} else {
 				cid, _ := utils.CalculateCid(resp.Content)
 				log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
@@ -557,8 +599,8 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 		TxHash:  task.CompleteHash,
 	}, peerInfo)
 	if resp.Code != 0 {
-		ss.updateShardError(task, xerrors.Errorf(resp.Message))
-		// return xerrors.Errorf(resp.Message)
+		ss.updateShardError(task, types.Wrapf(types.ErrFailuresResponsed, resp.Message))
+		// return types.Wrapf(types.ErrFailuresResponsed, resp.Message)
 	}
 	if task.State < types.ShardStateComplete {
 		task.State = types.ShardStateComplete
@@ -689,7 +731,6 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 			if err != nil {
 				log.Error(err)
 			}
-			log.Debug("resp.OrderId", resp)
 			order, err := ss.chainSvc.GetOrder(ctx, resp.OrderId)
 			if err != nil {
 				log.Error(err)
@@ -698,9 +739,10 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 			for node, shard := range order.Shards {
 				if shard.Cid == cid &&
 					node != ss.nodeAddress &&
-					shard.Status == ordertypes.OrderInProgress &&
+					shard.Status == ordertypes.ShardWaiting &&
 					shard.From == ss.nodeAddress {
 					ss.migrateChan <- MigrateRequest{
+						OrderId:       order.Id,
 						FromProvider:  ss.nodeAddress,
 						DataId:        k,
 						Cid:           shard.Cid,

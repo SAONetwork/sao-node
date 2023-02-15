@@ -13,6 +13,7 @@ import (
 	"sao-node/client"
 	cliutil "sao-node/cmd"
 	"sao-node/cmd/account"
+	"sao-node/types"
 	"strings"
 
 	"cosmossdk.io/math"
@@ -170,7 +171,7 @@ var initCmd = &cli.Command{
 
 		err = saoclient.SaveConfig(saoclient.Cfg)
 		if err != nil {
-			return fmt.Errorf("save local config failed: %v", err)
+			return types.Wrapf(types.ErrWriteConfigFailed, "save local config failed: %v", err)
 		}
 
 		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)

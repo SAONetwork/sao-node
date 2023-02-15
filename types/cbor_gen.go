@@ -3624,7 +3624,69 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{164}); err != nil {
+	if _, err := cw.Write([]byte{167}); err != nil {
+		return err
+	}
+
+	// t.MigrateFrom (string) (string)
+	if len("MigrateFrom") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"MigrateFrom\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("MigrateFrom"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("MigrateFrom")); err != nil {
+		return err
+	}
+
+	if len(t.MigrateFrom) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.MigrateFrom was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.MigrateFrom))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.MigrateFrom)); err != nil {
+		return err
+	}
+
+	// t.OrderId (uint64) (uint64)
+	if len("OrderId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"OrderId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("OrderId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("OrderId")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.OrderId)); err != nil {
+		return err
+	}
+
+	// t.DataId (string) (string)
+	if len("DataId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DataId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DataId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("DataId")); err != nil {
+		return err
+	}
+
+	if len(t.DataId) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.DataId was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.DataId))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.DataId)); err != nil {
 		return err
 	}
 
@@ -3760,7 +3822,44 @@ func (t *ShardMigrateReq) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.TxHash (string) (string)
+		// t.MigrateFrom (string) (string)
+		case "MigrateFrom":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.MigrateFrom = string(sval)
+			}
+			// t.OrderId (uint64) (uint64)
+		case "OrderId":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.OrderId = uint64(extra)
+
+			}
+			// t.DataId (string) (string)
+		case "DataId":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.DataId = string(sval)
+			}
+			// t.TxHash (string) (string)
 		case "TxHash":
 
 			{
@@ -3847,7 +3946,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{162}); err != nil {
+	if _, err := cw.Write([]byte{164}); err != nil {
 		return err
 	}
 
@@ -3888,6 +3987,51 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 	}
 	if _, err := io.WriteString(w, string(t.Message)); err != nil {
 		return err
+	}
+
+	// t.CompleteHash (string) (string)
+	if len("CompleteHash") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CompleteHash\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CompleteHash"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("CompleteHash")); err != nil {
+		return err
+	}
+
+	if len(t.CompleteHash) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.CompleteHash was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.CompleteHash))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.CompleteHash)); err != nil {
+		return err
+	}
+
+	// t.CompleteHeight (int64) (int64)
+	if len("CompleteHeight") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"CompleteHeight\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("CompleteHeight"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("CompleteHeight")); err != nil {
+		return err
+	}
+
+	if t.CompleteHeight >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.CompleteHeight)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.CompleteHeight-1)); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -3955,6 +4099,43 @@ func (t *ShardMigrateResp) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.Message = string(sval)
+			}
+			// t.CompleteHash (string) (string)
+		case "CompleteHash":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.CompleteHash = string(sval)
+			}
+			// t.CompleteHeight (int64) (int64)
+		case "CompleteHeight":
+			{
+				maj, extra, err := cr.ReadHeader()
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.CompleteHeight = int64(extraI)
 			}
 
 		default:

@@ -46,9 +46,6 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 }
 
 func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error) {
-	//if signer != owner && signer != provider {
-	//	return 0, "", xerrors.Errorf("Order tx signer must be owner or signer.")
-	//}
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
 		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)

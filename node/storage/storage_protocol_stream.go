@@ -104,7 +104,7 @@ func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
 		})
 		return
 	}
-	peerInfo := string(s.Conn().RemotePeer())
+	peerInfo := string(s.Conn().RemoteMultiaddr().String())
 	log.Debug("check peer: %v<->%v", req.Proposal.Proposal.Gateway, peerInfo)
 	if !strings.Contains(req.Proposal.Proposal.Gateway, peerInfo) {
 		respond(types.ShardLoadResp{
@@ -161,7 +161,7 @@ func (l StreamStorageProtocol) RequestShardMigrate(
 	if err != nil {
 		resp = types.ShardMigrateResp{
 			Code:    types.ErrorCodeInternalErr,
-			Message: fmt.Sprint("transport migrate request error: %v", err),
+			Message: fmt.Sprintf("transport migrate request error: %v", err),
 		}
 	}
 	return resp

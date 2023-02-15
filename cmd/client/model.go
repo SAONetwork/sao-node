@@ -20,7 +20,6 @@ import (
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var modelCmd = &cli.Command{
@@ -883,7 +882,7 @@ var commitsCmd = &cli.Command{
 		for i, commit := range resp.Commits {
 			commitInfo, err := types.ParseMetaCommit(commit)
 			if err != nil {
-				return xerrors.Errorf("invalid commit information: %s", commit)
+				return types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 			}
 
 			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo.CommitId, commitInfo.Height)
