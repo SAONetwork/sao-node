@@ -134,3 +134,23 @@ var shardStateString = map[ShardState]string{
 func (s ShardState) String() string {
 	return shardStateString[s]
 }
+
+type MigrateInfo struct {
+	DataId       string
+	OrderId      uint64
+	Cid          cid.Cid
+	FromProvider string
+	ToProvider   string
+
+	MigrateTxHash   string
+	MigrateTxHeight int64
+
+	State MigrateState
+}
+
+type MigrateState uint64
+
+const (
+	MigrateStateTxSent MigrateState = iota
+	MigrateStateComplete
+)

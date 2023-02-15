@@ -100,11 +100,10 @@ func main() {
 			quitCmd,
 			runCmd,
 			authCmd,
+			migrateCmd,
 			infoCmd,
 			claimCmd,
-			ordersCmd,
-			shardsCmd,
-			migrateCmd,
+			jobsCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -115,6 +114,15 @@ func main() {
 		os.Stderr.WriteString("Error: " + err.Error() + "\n")
 		os.Exit(1)
 	}
+}
+
+var jobsCmd = &cli.Command{
+	Name: "job",
+	Subcommands: []*cli.Command{
+		ordersCmd,
+		shardsCmd,
+		migrationsCmd,
+	},
 }
 
 var initCmd = &cli.Command{

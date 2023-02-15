@@ -1666,6 +1666,343 @@ func (t *ShardIndex) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
+func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{168}); err != nil {
+		return err
+	}
+
+	// t.DataId (string) (string)
+	if len("DataId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DataId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DataId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("DataId")); err != nil {
+		return err
+	}
+
+	if len(t.DataId) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.DataId was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.DataId))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.DataId)); err != nil {
+		return err
+	}
+
+	// t.OrderId (uint64) (uint64)
+	if len("OrderId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"OrderId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("OrderId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("OrderId")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.OrderId)); err != nil {
+		return err
+	}
+
+	// t.Cid (cid.Cid) (struct)
+	if len("Cid") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Cid\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Cid"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Cid")); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteCid(cw, t.Cid); err != nil {
+		return xerrors.Errorf("failed to write cid field t.Cid: %w", err)
+	}
+
+	// t.FromProvider (string) (string)
+	if len("FromProvider") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"FromProvider\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("FromProvider"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("FromProvider")); err != nil {
+		return err
+	}
+
+	if len(t.FromProvider) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.FromProvider was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.FromProvider))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.FromProvider)); err != nil {
+		return err
+	}
+
+	// t.ToProvider (string) (string)
+	if len("ToProvider") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"ToProvider\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ToProvider"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("ToProvider")); err != nil {
+		return err
+	}
+
+	if len(t.ToProvider) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.ToProvider was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.ToProvider))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.ToProvider)); err != nil {
+		return err
+	}
+
+	// t.MigrateTxHash (string) (string)
+	if len("MigrateTxHash") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"MigrateTxHash\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("MigrateTxHash"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("MigrateTxHash")); err != nil {
+		return err
+	}
+
+	if len(t.MigrateTxHash) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.MigrateTxHash was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.MigrateTxHash))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.MigrateTxHash)); err != nil {
+		return err
+	}
+
+	// t.MigrateTxHeight (int64) (int64)
+	if len("MigrateTxHeight") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"MigrateTxHeight\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("MigrateTxHeight"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("MigrateTxHeight")); err != nil {
+		return err
+	}
+
+	if t.MigrateTxHeight >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.MigrateTxHeight)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.MigrateTxHeight-1)); err != nil {
+			return err
+		}
+	}
+
+	// t.State (types.MigrateState) (uint64)
+	if len("State") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"State\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("State"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("State")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.State)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *MigrateInfo) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = MigrateInfo{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("MigrateInfo: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.DataId (string) (string)
+		case "DataId":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.DataId = string(sval)
+			}
+			// t.OrderId (uint64) (uint64)
+		case "OrderId":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.OrderId = uint64(extra)
+
+			}
+			// t.Cid (cid.Cid) (struct)
+		case "Cid":
+
+			{
+
+				c, err := cbg.ReadCid(cr)
+				if err != nil {
+					return xerrors.Errorf("failed to read cid field t.Cid: %w", err)
+				}
+
+				t.Cid = c
+
+			}
+			// t.FromProvider (string) (string)
+		case "FromProvider":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.FromProvider = string(sval)
+			}
+			// t.ToProvider (string) (string)
+		case "ToProvider":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.ToProvider = string(sval)
+			}
+			// t.MigrateTxHash (string) (string)
+		case "MigrateTxHash":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.MigrateTxHash = string(sval)
+			}
+			// t.MigrateTxHeight (int64) (int64)
+		case "MigrateTxHeight":
+			{
+				maj, extra, err := cr.ReadHeader()
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.MigrateTxHeight = int64(extraI)
+			}
+			// t.State (types.MigrateState) (uint64)
+		case "State":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.State = MigrateState(extra)
+
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
 func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)

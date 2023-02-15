@@ -757,3 +757,7 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 	}
 	return hash, results, err
 }
+
+func (ss *StoreSvc) MigrateList(ctx context.Context) ([]types.MigrateInfo, error) {
+	return nil, nil
+}

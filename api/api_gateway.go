@@ -15,15 +15,18 @@ type SaoApi interface {
 	AuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:none
 	AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, error)    //perm:admin
 
-	// MethodGroup: Order
+	// MethodGroup: Order Job
 	OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) //perm:read
 	OrderList(ctx context.Context) ([]types.OrderInfo, error)            //perm:read
 	OrderFix(ctx context.Context, id string) error                       //perm:write
 
-	// MethodGroup: Shard
+	// MethodGroup: Shard Job
 	ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) //perm:read
 	ShardList(ctx context.Context) ([]types.ShardInfo, error)                              //perm:read
 	ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
+	// MethodGroup: Migration Job
+	MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error)
+
 	// MethodGroup: Model
 	// The Model method group contains methods for manipulating data models.
 

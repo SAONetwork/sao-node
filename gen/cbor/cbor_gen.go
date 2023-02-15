@@ -18,6 +18,8 @@ func main() {
 		types.ShardKey{},
 		types.ShardInfo{},
 		types.ShardIndex{},
+		// migrate state
+		types.MigrateInfo{},
 
 		types.QueryProposal{},
 		types.JwsSignature{},

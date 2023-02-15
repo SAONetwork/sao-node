@@ -32,6 +32,8 @@ type SaoApiStruct struct {
 
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) `perm:"read"`
 
+		MigrateJobList func(p0 context.Context) ([]types.MigrateInfo, error) ``
+
 		ModelCreate func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) `perm:"write"`
 
 		ModelCreateFile func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64) (apitypes.CreateResp, error) `perm:"write"`
@@ -153,6 +155,17 @@ func (s *SaoApiStruct) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoResp
 
 func (s *SaoApiStub) GetPeerInfo(p0 context.Context) (apitypes.GetPeerInfoResp, error) {
 	return *new(apitypes.GetPeerInfoResp), ErrNotSupported
+}
+
+func (s *SaoApiStruct) MigrateJobList(p0 context.Context) ([]types.MigrateInfo, error) {
+	if s.Internal.MigrateJobList == nil {
+		return *new([]types.MigrateInfo), ErrNotSupported
+	}
+	return s.Internal.MigrateJobList(p0)
+}
+
+func (s *SaoApiStub) MigrateJobList(p0 context.Context) ([]types.MigrateInfo, error) {
+	return *new([]types.MigrateInfo), ErrNotSupported
 }
 
 func (s *SaoApiStruct) ModelCreate(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) {

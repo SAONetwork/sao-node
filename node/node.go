@@ -671,3 +671,7 @@ func (n *Node) ModelMigrate(ctx context.Context, dataIds []string) (apitypes.Mig
 		TxHash:  hash,
 	}, err
 }
+
+func (n *Node) MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) {
+	return n.storeSvc.MigrateList(ctx)
+}
