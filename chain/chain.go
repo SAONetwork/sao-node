@@ -46,7 +46,6 @@ type ChainSvcApi interface {
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
 	Login(ctx context.Context, creator string) (string, error)
-	Logout(ctx context.Context, creator string) (string, error)
 	Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error)
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)

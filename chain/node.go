@@ -30,26 +30,6 @@ func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) Logout(ctx context.Context, creator string) (string, error) {
-	account, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
-	}
-
-	msg := &nodetypes.MsgLogout{
-		Creator: creator,
-	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
-	}
-
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgLogout tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
-	}
-	return txResp.TxResponse.TxHash, nil
-}
-
 func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
