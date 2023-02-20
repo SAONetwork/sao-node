@@ -179,7 +179,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if tx, err := chain.Login(ctx, creator); err != nil {
+		if tx, err := chain.Create(ctx, creator); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
@@ -237,7 +237,7 @@ var joinCmd = &cli.Command{
 			return err
 		}
 
-		if tx, err := chain.Login(ctx, creator); err != nil {
+		if tx, err := chain.Create(ctx, creator); err != nil {
 			return err
 		} else {
 			fmt.Println(tx)

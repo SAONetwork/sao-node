@@ -11,7 +11,7 @@ require (
 
 require (
 	cosmossdk.io/math v1.0.0-beta.3
-	github.com/SaoNetwork/sao v0.0.7
+	github.com/SaoNetwork/sao v0.0.8
 	github.com/SaoNetwork/sao-did v0.0.12
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
@@ -42,7 +42,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.7.0
 	github.com/multiformats/go-multicodec v0.7.0
 	github.com/multiformats/go-multihash v0.2.1
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/raviqqe/hamt v0.0.0-20220630081707-76400bd6195c
 	github.com/rs/cors v1.8.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.1

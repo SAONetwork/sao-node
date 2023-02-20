@@ -10,13 +10,13 @@ import (
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 )
 
-func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
+func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
 	account, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
-	msg := &nodetypes.MsgLogin{
+	msg := &nodetypes.MsgCreate{
 		Creator: creator,
 	}
 
@@ -25,7 +25,7 @@ func (c *ChainSvc) Login(ctx context.Context, creator string) (string, error) {
 		return "", types.Wrap(types.ErrTxProcessFailed, err)
 	}
 	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgLogin tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgCreate tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
 	}
 	return txResp.TxResponse.TxHash, nil
 }
