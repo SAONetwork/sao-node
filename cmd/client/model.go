@@ -888,7 +888,7 @@ var commitsCmd = &cli.Command{
 				return types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 			}
 
-			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo.CommitId, commitInfo.Height)
+			console.Printf("  v%d\t  |%s|%d\r\n", i, commitInfo.CommitId, commitInfo.Height)
 		}
 		fmt.Println("  -----------------------------------------------------------")
 
