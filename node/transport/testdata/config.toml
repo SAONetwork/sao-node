@@ -5,7 +5,6 @@
 [Chain]
   Remote = "http://localhost:26657"
   WsEndpoint = "/websocket"
-  AddressPrefix = "cosmos"
 
 [Libp2p]
   ListenAddress = ["/ip4/0.0.0.0/udp/26658", "/ip4/0.0.0.0/tcp/26659", "/ip6/::/udp/26658", "/ip6/::/tcp/26659"]

@@ -21,6 +21,8 @@ import (
 )
 
 const FlagKeyName = "key-name"
+const APP_NAME_NODE = "saonode"
+const APP_NAME_CLIENT = "saoclient"
 
 var Gateway string
 var FlagGateway = &cli.StringFlag{

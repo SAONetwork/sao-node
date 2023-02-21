@@ -38,9 +38,8 @@ func DefaultSaoNode() *Node {
 func defCommon() Common {
 	return Common{
 		Chain: Chain{
-			Remote:        "http://localhost:26657",
-			WsEndpoint:    "/websocket",
-			AddressPrefix: "cosmos",
+			Remote:     "http://localhost:26657",
+			WsEndpoint: "/websocket",
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{

@@ -70,7 +70,7 @@ func before(_ *cli.Context) error {
 
 func main() {
 	app := &cli.App{
-		Name:                 "saoclient",
+		Name:                 cliutil.APP_NAME_CLIENT,
 		Usage:                "command line for sao network client",
 		EnableBashCompletion: true,
 		Version:              build.UserVersion(),

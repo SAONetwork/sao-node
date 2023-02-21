@@ -24,6 +24,8 @@ import (
 
 var log = logging.Logger("chain")
 
+const ADDRESS_PREFIX = "cosmos"
+
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
 	cosmos      cosmosclient.Client
@@ -68,7 +70,6 @@ type ChainSvcApi interface {
 
 func NewChainSvc(
 	ctx context.Context,
-	addressPrefix string,
 	chainAddress string,
 	wsEndpoint string,
 	keyringHome string,
@@ -76,7 +77,7 @@ func NewChainSvc(
 	log.Debugf("initialize chain client")
 
 	cosmos, err := cosmosclient.New(ctx,
-		cosmosclient.WithAddressPrefix(addressPrefix),
+		cosmosclient.WithAddressPrefix(ADDRESS_PREFIX),
 		cosmosclient.WithNodeAddress(chainAddress),
 		cosmosclient.WithKeyringDir(keyringHome),
 		cosmosclient.WithGas("auto"),

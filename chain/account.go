@@ -37,7 +37,7 @@ func GetAddress(ctx context.Context, repo string, name string) (string, error) {
 	if err != nil {
 		return "", types.Wrap(types.ErrGetAddressFailed, err)
 	}
-	address, err := account.Address("cosmos")
+	address, err := account.Address(ADDRESS_PREFIX)
 	if err != nil {
 		return "", types.Wrap(types.ErrGetAddressFailed, err)
 	}
@@ -74,7 +74,7 @@ func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	}
 
 	for _, account := range accounts {
-		address, err := account.Address("cosmos")
+		address, err := account.Address(ADDRESS_PREFIX)
 		if err != nil {
 			log.Error(err.Error())
 			continue
@@ -147,7 +147,7 @@ func Create(ctx context.Context, repo string, name string) (string, string, stri
 		return "", "", "", types.Wrap(types.ErrCreateAccountFailed, err)
 	}
 
-	address, err := account.Address("cosmos")
+	address, err := account.Address(ADDRESS_PREFIX)
 	if err != nil {
 		return "", "", "", types.Wrap(types.ErrCreateAccountFailed, err)
 	}
@@ -166,7 +166,7 @@ func Import(ctx context.Context, repo string, name string, secret string, passph
 		return types.Wrap(types.ErrImportAccountFailed, err)
 	}
 
-	address, err := account.Address("cosmos")
+	address, err := account.Address(ADDRESS_PREFIX)
 	if err != nil {
 		return types.Wrap(types.ErrImportAccountFailed, err)
 	}
@@ -186,7 +186,7 @@ func Export(ctx context.Context, repo string, name string, passphrase string) er
 	if err != nil {
 		return types.Wrap(types.ErrExportAccountFailed, err)
 	}
-	address, err := account.Address("cosmos")
+	address, err := account.Address(ADDRESS_PREFIX)
 	if err != nil {
 		return types.Wrap(types.ErrExportAccountFailed, err)
 	}

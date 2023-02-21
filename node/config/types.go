@@ -80,9 +80,6 @@ type Chain struct {
 
 	// websocket endpoint
 	WsEndpoint string
-
-	// sao chain account prefix
-	AddressPrefix string
 }
 
 // Libp2p contains configs for libp2p

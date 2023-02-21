@@ -53,7 +53,7 @@ var listCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -203,7 +203,7 @@ var sendCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}

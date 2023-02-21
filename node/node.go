@@ -116,7 +116,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	fmt.Println("cfg.Chain.Remote: ", cfg.Chain.Remote)
 	// chain
-	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
+	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
 
 	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status)
-	log.Infof("repo: %s, AddressPrefix: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.AddressPrefix, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
+	log.Infof("repo: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	log.Infof("node[%s] is joining SAO network...", sn.address)
 	if err != nil {
 		return nil, err

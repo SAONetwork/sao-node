@@ -120,7 +120,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		if opt.ChainAddr == "" {
 			opt.ChainAddr = cfg.ChainAddress
 		}
-		chainSvc, err := chain.NewChainSvc(ctx, "cosmos", opt.ChainAddr, "/websocket", opt.KeyringHome)
+		chainSvc, err := chain.NewChainSvc(ctx, opt.ChainAddr, "/websocket", opt.KeyringHome)
 		if err != nil {
 			return nil, nil, err
 		}

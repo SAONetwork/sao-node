@@ -80,7 +80,7 @@ func before(_ *cli.Context) error {
 
 func main() {
 	app := &cli.App{
-		Name:                 "saonode",
+		Name:                 cliutil.APP_NAME_NODE,
 		Usage:                "Command line for sao network node",
 		EnableBashCompletion: true,
 		Version:              build.UserVersion(),
@@ -175,7 +175,7 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", cfg.Chain.Remote, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -233,7 +233,7 @@ var joinCmd = &cli.Command{
 		}
 		creator := cctx.String("creator")
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -312,7 +312,7 @@ var updateCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -360,7 +360,7 @@ var quitCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -510,7 +510,7 @@ var infoCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -682,7 +682,7 @@ var claimCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, "cosmos", chainAddress, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}

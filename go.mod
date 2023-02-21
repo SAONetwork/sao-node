@@ -42,7 +42,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.7.0
 	github.com/multiformats/go-multicodec v0.7.0
 	github.com/multiformats/go-multihash v0.2.1
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/raviqqe/hamt v0.0.0-20220630081707-76400bd6195c
 	github.com/rs/cors v1.8.2
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.1
