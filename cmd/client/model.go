@@ -714,11 +714,10 @@ var orderCmd = &cli.Command{
 			fmt.Printf("Id: %d\n", res.Id)
 			fmt.Printf("Owner: %s\n", res.Owner)
 			fmt.Printf("Creator: %s\n", res.Creator)
-			fmt.Printf("Provider: %s\n", res.Provider)
+			fmt.Printf("Gateway: %s\n", res.Provider)
 			fmt.Printf("Cid: %s\n", res.Cid)
 			fmt.Printf("Duration: %d\n", res.Duration)
 			fmt.Printf("CreatedAt: %d\n", res.CreatedAt)
-			fmt.Printf("Provider: %s\n", res.Provider)
 			fmt.Printf("Expire: %d\n", res.Expire)
 			fmt.Printf("Status: %d\n", res.Status)
 			fmt.Printf("Replica: %d\n", res.Replica)
@@ -727,13 +726,17 @@ var orderCmd = &cli.Command{
 			fmt.Printf("Operation: %d\n", res.Operation)
 
 			fmt.Println("Shards: ")
-			for _, shard := range res.Shards {
+			for key, shard := range res.Shards {
 				fmt.Printf("Id: %d\n", shard.Id)
+				fmt.Printf("Provider: %s\n", key)
 				fmt.Printf("OrderId: %d\n", shard.OrderId)
 				fmt.Printf("Status: %d\n", shard.Status)
 				fmt.Printf("Size: %d\n", shard.Size_)
 				fmt.Printf("Cid: %s\n", shard.Cid)
 				fmt.Printf("Pledge: %v\n", shard.Pledge)
+				if shard.From != "" {
+					fmt.Printf("Previous Provider: %s\n", shard.From)
+				}
 			}
 
 		}
@@ -885,7 +888,7 @@ var commitsCmd = &cli.Command{
 				return types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 			}
 
-			console.Printf("  v%d\t  |%s|%s\r\n", i, commitInfo.CommitId, commitInfo.Height)
+			console.Printf("  v%d\t  |%s|%d\r\n", i, commitInfo.CommitId, commitInfo.Height)
 		}
 		fmt.Println("  -----------------------------------------------------------")
 

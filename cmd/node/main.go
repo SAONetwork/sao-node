@@ -97,7 +97,6 @@ func main() {
 			joinCmd,
 			updateCmd,
 			peersCmd,
-			quitCmd,
 			runCmd,
 			authCmd,
 			migrateCmd,
@@ -180,7 +179,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if tx, err := chain.Login(ctx, creator); err != nil {
+		if tx, err := chain.Create(ctx, creator); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
@@ -238,7 +237,7 @@ var joinCmd = &cli.Command{
 			return err
 		}
 
-		if tx, err := chain.Login(ctx, creator); err != nil {
+		if tx, err := chain.Create(ctx, creator); err != nil {
 			return err
 		} else {
 			fmt.Println(tx)
@@ -335,40 +334,6 @@ var updateCmd = &cli.Command{
 			return err
 		}
 		fmt.Println(tx)
-
-		return nil
-	},
-}
-
-var quitCmd = &cli.Command{
-	Name:      "quit",
-	Usage:     "quit sao network",
-	UsageText: "can re-join sao network by 'join' cmd. after quiting, no new shard will be assign to this node.",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "creator",
-			Usage: "node's account on chain",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-		// TODO: validate input
-		creator := cctx.String("creator")
-
-		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
-		if err != nil {
-			log.Warn(err)
-		}
-
-		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
-		if err != nil {
-			return err
-		}
-		if tx, err := chain.Logout(ctx, creator); err != nil {
-			return err
-		} else {
-			fmt.Println(tx)
-		}
 
 		return nil
 	},
