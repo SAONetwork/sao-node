@@ -672,7 +672,7 @@ var metaCmd = &cli.Command{
 
 			fmt.Println("Shards: ")
 			for _, shard := range res.Shards {
-				fmt.Printf("ShardId: %d\n", shard.ShardId)
+				fmt.Printf("ShardId: %s\n", shard.Idx)
 				fmt.Printf("Cid: %s\n", shard.Cid)
 				fmt.Printf("Peer: %s\n", shard.Peer)
 				fmt.Printf("Provider: %s\n", shard.Provider)
@@ -726,15 +726,17 @@ var orderCmd = &cli.Command{
 			fmt.Printf("Size: %d\n", res.Size_)
 			fmt.Printf("Operation: %d\n", res.Operation)
 
-			fmt.Println("Shards: ")
-			for _, shard := range res.Shards {
-				fmt.Printf("Id: %d\n", shard.Id)
-				fmt.Printf("OrderId: %d\n", shard.OrderId)
-				fmt.Printf("Status: %d\n", shard.Status)
-				fmt.Printf("Size: %d\n", shard.Size_)
-				fmt.Printf("Cid: %s\n", shard.Cid)
-				fmt.Printf("Pledge: %v\n", shard.Pledge)
-			}
+			/*
+				fmt.Println("Shards: ")
+				for _, shard := range res.Shards {
+					fmt.Printf("Id: %d\n", shard.Id)
+					fmt.Printf("OrderId: %d\n", shard.OrderId)
+					fmt.Printf("Status: %d\n", shard.Status)
+					fmt.Printf("Size: %d\n", shard.Size_)
+					fmt.Printf("Cid: %s\n", shard.Cid)
+					fmt.Printf("Pledge: %v\n", shard.Pledge)
+				}
+			*/
 
 		}
 

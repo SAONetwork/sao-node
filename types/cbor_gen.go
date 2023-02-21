@@ -7,6 +7,8 @@ import (
 	"io"
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -137,7 +139,9 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ShardId)); err != nil {
+	idx, _ := strconv.ParseInt(strings.SplitN(t.Idx, "-", 2)[1], 10, 64)
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(idx)); err != nil {
 		return err
 	}
 
@@ -308,7 +312,7 @@ func (t *OrderShardInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				if maj != cbg.MajUnsignedInt {
 					return fmt.Errorf("wrong type for uint64 field")
 				}
-				t.ShardId = uint64(extra)
+				t.Idx = fmt.Sprintf("%d", extra)
 
 			}
 			// t.Peer (string) (string)

@@ -60,7 +60,7 @@ func (s OrderState) String() string {
  * shard state in order
  */
 type OrderShardInfo struct {
-	ShardId      uint64
+	Idx          string
 	Peer         string
 	Cid          string
 	Provider     string

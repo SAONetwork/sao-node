@@ -101,6 +101,16 @@ func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, err
 	return resp.Node.Peer, nil
 }
 
+func (c *ChainSvc) GetShard(ctx context.Context, idx string) (*nodetypes.Shard, error) {
+	resp, err := c.nodeClient.Shard(ctx, &nodetypes.QueryGetShardRequest{
+		Idx: idx,
+	})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	return &resp.Shard, nil
+}
+
 func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, error) {
 	resp, err := c.nodeClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
 		Creator: creator,

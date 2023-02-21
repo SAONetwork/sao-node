@@ -21,6 +21,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
 
+	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -272,8 +273,16 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 		)
 	}
 
+	shards := make(map[string]*nodetypes.Shard, 0)
+
+	for i := 0; i < int(order.Replica); i++ {
+		idx := fmt.Sprintf("%s-%d", order.Metadata.DataId, i)
+		shard, _ := gs.chainSvc.GetShard(gs.ctx, idx)
+		shards[shard.Node] = shard
+	}
+
 	shardCids := make(map[string]struct{})
-	for key, shard := range order.Shards {
+	for key, shard := range shards {
 		if key == m.Creator {
 			shardCids[shard.Cid] = struct{}{}
 		}
@@ -381,9 +390,9 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 }
 
 func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error) {
-	contentList := make([][]byte, len(meta.Shards))
+	contentList := make(map[string][]byte, len(meta.Shards))
 	for key, shard := range meta.Shards {
-		if contentList[shard.ShardId] != nil {
+		if contentList[shard.Idx] != nil {
 			continue
 		}
 
@@ -421,7 +430,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			RequestId: time.Now().UnixMilli(),
 		}, shard.Peer)
 		if resp.Code == 0 {
-			contentList[shard.ShardId] = resp.Content
+			contentList[shard.Idx] = resp.Content
 		} else {
 			return nil, types.Wrapf(types.ErrFailuresResponsed, resp.Message)
 		}
@@ -553,7 +562,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		orderInfo.Shards = make(map[string]types.OrderShardInfo)
 		for node, s := range shards {
 			orderInfo.Shards[node] = types.OrderShardInfo{
-				ShardId:  s.ShardId,
+				Idx:      s.Idx,
 				Peer:     s.Peer,
 				Cid:      s.Cid,
 				Provider: s.Provider,
@@ -683,10 +692,17 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		}
 		log.Debugf("order %d complete: dataId=%s", oi.OrderId, order.Metadata.DataId)
 
+		_shards := make(map[string]*nodetypes.Shard, 0)
+		for i := 0; i < int(order.Replica); i++ {
+			idx := fmt.Sprintf("%s-%d", order.Metadata.DataId, i)
+			shard, _ := gs.chainSvc.GetShard(gs.ctx, idx)
+			_shards[shard.Node] = shard
+		}
+
 		shards := make(map[string]*saotypes.ShardMeta, 0)
-		for peer, shard := range order.Shards {
+		for peer, shard := range _shards {
 			meta := saotypes.ShardMeta{
-				ShardId:  shard.Id,
+				Idx:      shard.Idx,
 				Peer:     peer,
 				Cid:      shard.Cid,
 				Provider: order.Provider,

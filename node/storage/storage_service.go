@@ -155,13 +155,10 @@ func (ss *StoreSvc) processMigrate(ctx context.Context, req MigrateRequest) erro
 		return xerrors.Errorf("complete tx %s failed: code=%d", resultTx.Hash, resultTx.TxResult.Code)
 	}
 
-	// validate order information after migration
-	order, err := ss.chainSvc.GetOrder(ctx, req.OrderId)
-	if err != nil {
-		return err
-	}
-	shard, exists := order.Shards[req.ToProvider]
-	if !exists {
+	idx := fmt.Sprintf("migrate-%s-%s", req.DataId, req.ToProvider)
+	shard, found := ss.chainSvc.GetShard(ss.ctx, idx)
+
+	if found != nil {
 		return xerrors.Errorf("no shard assigned to new provider %s", req.ToProvider)
 	}
 
@@ -255,6 +252,7 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 			fmt.Sprintf("dataId migrate fails: %s", m),
 		)
 	}
+
 	order, err := ss.chainSvc.GetOrder(ss.ctx, req.OrderId)
 	if err != nil {
 		return logAndRespond(
@@ -262,13 +260,17 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 			fmt.Sprintf("get order %d error: %d", order.Id, err),
 		)
 	}
-	shard, exists := order.Shards[ss.nodeAddress]
-	if !exists {
+
+	idx := fmt.Sprintf("migrate-%s-%s", req.DataId, req.MigrateFrom)
+	shard, found := ss.chainSvc.GetShard(ss.ctx, idx)
+
+	if found != nil {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("no shard to current provider %s", ss.nodeAddress),
 		)
 	}
+
 	if shard.From != req.MigrateFrom {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
@@ -466,17 +468,15 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 		}
 
 		var shardCids []string
-		for key, shard := range order.Shards {
-			if key == ss.nodeAddress {
-				shardCids = append(shardCids, shard.Cid)
-			}
-		}
-		if len(shardCids) <= 0 {
+		migrateIdx := fmt.Sprintf("migrate-%s-%s", order.Metadata.DataId, ss.nodeAddress)
+		shard, exists := ss.chainSvc.GetShard(ss.ctx, migrateIdx)
+		if exists != nil {
 			return logAndRespond(
 				types.ErrorCodeInvalidProvider,
 				fmt.Sprintf("order %d doesn't have shard provider %s", req.OrderId, ss.nodeAddress),
 			)
 		}
+		shardCids = append(shardCids, shard.Cid)
 		for _, shardCid := range shardCids {
 			cid, err := cid.Decode(shardCid)
 			if err != nil {
@@ -756,39 +756,35 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 			if err != nil {
 				log.Error(err)
 			}
+
+			migrateIdx := fmt.Sprintf("migrate-%s-%s", k, ss.nodeAddress)
+			shard, exists := ss.chainSvc.GetShard(ss.ctx, migrateIdx)
+			if exists != nil {
+				log.Error(exists)
+				continue
+			}
 			order, err := ss.chainSvc.GetOrder(ctx, resp.OrderId)
 			if err != nil {
 				log.Error(err)
 			}
 
-			cid := order.Shards[ss.nodeAddress].Cid
-			for node, shard := range order.Shards {
-				if shard.Cid == cid &&
-					node != ss.nodeAddress &&
-					shard.Status == ordertypes.ShardWaiting &&
-					shard.From == ss.nodeAddress {
-
-					mi.OrderId = order.Id
-					mi.ToProvider = node
-					mi.Cid = shard.Cid
-					err = utils.SaveMigrate(ctx, ss.orderDs, mi)
-					if err != nil {
-						log.Error("save migrate error: ", err)
-					}
-
-					ss.migrateChan <- MigrateRequest{
-						OrderId:       order.Id,
-						FromProvider:  ss.nodeAddress,
-						DataId:        k,
-						Cid:           shard.Cid,
-						ToProvider:    node,
-						MigrateTxHash: hash,
-						MigrateHeight: height,
-					}
-					break
-				}
+			mi.OrderId = order.Id
+			mi.ToProvider = shard.Node
+			mi.Cid = shard.Cid
+			err = utils.SaveMigrate(ctx, ss.orderDs, mi)
+			if err != nil {
+				log.Error("save migrate error: ", err)
 			}
 
+			ss.migrateChan <- MigrateRequest{
+				OrderId:       order.Id,
+				FromProvider:  ss.nodeAddress,
+				DataId:        k,
+				Cid:           shard.Cid,
+				ToProvider:    shard.Node,
+				MigrateTxHash: hash,
+				MigrateHeight: height,
+			}
 		}
 	}
 	return hash, results, err
