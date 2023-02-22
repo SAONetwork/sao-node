@@ -13,7 +13,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-const DENOM string = "stake"
+const DENOM string = "sao"
 
 func newAccountRegistry(_ context.Context, repo string) (cosmosaccount.Registry, error) {
 	repoPath, err := homedir.Expand(repo)
