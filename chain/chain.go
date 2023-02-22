@@ -24,7 +24,7 @@ import (
 
 var log = logging.Logger("chain")
 
-const ADDRESS_PREFIX = "cosmos"
+const ADDRESS_PREFIX = "sao"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
