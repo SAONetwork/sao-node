@@ -152,9 +152,9 @@ func (gs *GatewaySvc) completeLoop(ctx context.Context) {
 }
 
 func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
-	log.Info("process pending orders...")
 
 	if os.Getenv("SAO_PENDING_ORDERS") == "true" {
+		log.Info("process pending orders...")
 		pendings, err := gs.getPendingOrders(ctx)
 		if err != nil {
 			log.Error("process pending orders error: %v", err)
