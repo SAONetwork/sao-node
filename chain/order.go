@@ -77,7 +77,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	return storeResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }
 
-func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size int32) (string, int64, error) {
+func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", -1, types.Wrap(types.ErrAccountNotFound, err)
