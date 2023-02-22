@@ -24,7 +24,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 
-	sid "github.com/SaoNetwork/sao-did/sid"
+	"github.com/SaoNetwork/sao-did/sid"
 	logging "github.com/ipfs/go-log/v2"
 
 	saodid "github.com/SaoNetwork/sao-did"
@@ -301,7 +301,7 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 		return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("store cid %s error: %v", cid, err))
 	}
 	// send tx
-	txHash, height, err := ss.chainSvc.CompleteOrder(ss.ctx, ss.nodeAddress, order.Id, cid, int32(len(req.Content)))
+	txHash, height, err := ss.chainSvc.CompleteOrder(ss.ctx, ss.nodeAddress, order.Id, cid, uint64(len(req.Content)))
 	if err != nil {
 		return logAndRespond(
 			types.ErrorCodeInvalidTx,
@@ -587,7 +587,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	}
 
 	if task.State < types.ShardStateTxSent {
-		txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, int32(task.Size))
+		txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, task.Size)
 		if err != nil {
 			ss.updateShardError(task, err)
 			return err
