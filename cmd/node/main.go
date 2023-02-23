@@ -5,6 +5,7 @@ package main
 // later cmd(join, quit) should call node process api to get node address if accountAddress not provided.
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -95,6 +96,7 @@ func main() {
 		Commands: []*cli.Command{
 			initCmd,
 			joinCmd,
+			cleanCmd,
 			updateCmd,
 			peersCmd,
 			runCmd,
@@ -237,10 +239,85 @@ var joinCmd = &cli.Command{
 			return err
 		}
 
-		if tx, err := chain.Create(ctx, creator); err != nil {
+		repo, err := prepareRepo(cctx)
+		if err != nil {
+			return err
+		}
+		c, err := repo.Config()
+		if err != nil {
+			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
+		}
+
+		cfg, ok := c.(*config.Node)
+		if !ok {
+			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
+		}
+		var status = node.NODE_STATUS_ONLINE
+		if cfg.Module.GatewayEnable {
+			status = status | node.NODE_STATUS_SERVE_GATEWAY
+		}
+		if cfg.Module.StorageEnable {
+			status = status | node.NODE_STATUS_SERVE_STORAGE
+			if cctx.Bool("accept-order") {
+				status = status | node.NODE_STATUS_ACCEPT_ORDER
+			} else if cfg.Storage.AcceptOrder {
+				status = status | node.NODE_STATUS_ACCEPT_ORDER
+			}
+		}
+
+		tx, err := chain.Reset(ctx, creator, "", status)
+		if err != nil {
 			return err
 		} else {
 			fmt.Println(tx)
+		}
+
+		// update metadata datastore
+		mds, err := repo.Datastore(ctx, "/metadata")
+		if err != nil {
+			return types.Wrap(types.ErrOpenDataStoreFailed, err)
+		}
+		if err := mds.Put(ctx, datastore.NewKey("node-address"), []byte(creator)); err != nil {
+			return types.Wrap(types.ErrGetFailed, err)
+		}
+
+		return nil
+	},
+}
+
+var cleanCmd = &cli.Command{
+	Name:  "clean",
+	Usage: "clean up the local datastore",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		console := color.New(color.FgRed, color.Bold)
+		console.Println("!!!BE CAREFULL!!!")
+		console.Print("It'll remove all the configurations in the local datastore and you have to init a new storage node. Confirm with 'yes' :")
+		reader := bufio.NewReader(os.Stdin)
+		indata, err := reader.ReadBytes('\n')
+		if err != nil {
+			return types.Wrap(types.ErrInvalidParameters, err)
+		}
+		if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) == "yes" {
+			repo, err := prepareRepo(cctx)
+			if err != nil {
+				return err
+			}
+
+			mds, err := repo.Datastore(ctx, "/metadata")
+			if err != nil {
+				return types.Wrap(types.ErrOpenDataStoreFailed, err)
+			}
+			mds.Delete(ctx, datastore.NewKey("node-address"))
+			console.Println("Node address information has been deleted!")
+
+			tds, err := repo.Datastore(ctx, "/transport")
+			if err != nil {
+				return types.Wrap(types.ErrOpenDataStoreFailed, err)
+			}
+			tds.Delete(ctx, datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX)))
+			console.Println("Peer information has been deleted!")
 		}
 
 		return nil
