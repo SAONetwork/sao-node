@@ -80,8 +80,8 @@ github.com/Microsoft/go-winio v0.6.0 h1:slsWYD/zyx7lCXoZVlvQrj0hPTM1HI4+v1sIda2y
 github.com/Microsoft/go-winio v0.6.0/go.mod h1:cTAf44im0RAYeL23bpB+fzCyDH2MJiz2BO69KH/soAE=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
-github.com/SaoNetwork/sao v0.0.8 h1:Ex18z06B28eUab9lUVX3uyYjxz1p8uqRVpvH5SEu6Qc=
-github.com/SaoNetwork/sao v0.0.8/go.mod h1:UyeWVcfN0Rp1L3lGTdK1UkWE5qX4UoutlhDdwClZnoE=
+github.com/SaoNetwork/sao v0.0.9 h1:AvkvA7eaXED2nj7c+HYFpPSI+/2u6Z3nYf0hXpCuUnY=
+github.com/SaoNetwork/sao v0.0.9/go.mod h1:3IGP0yddfeBuucAwHFpv2uOa9vrdKveKcuFOdcOHXBc=
 github.com/SaoNetwork/sao-did v0.0.12 h1:PchVFK+z8e8uxdZNP3xLmP/hic/xTypy2mIw72yxRcE=
 github.com/SaoNetwork/sao-did v0.0.12/go.mod h1:Xl9sUZtuMwF8ooxvXMS5AOpgv5qKP0D6d0lex6rNJi4=
 github.com/Shopify/sarama v1.19.0/go.mod h1:FVkBWblsNy7DGZRfXLU0O9RCGt5g3g3yEuWXgklEdEo=
