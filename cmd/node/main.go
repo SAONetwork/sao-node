@@ -180,36 +180,30 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		askFor := true
 		for {
-			if askFor {
-				console := color.New(color.BlinkSlow, color.Bold)
-				console.Print("Please make sure there is enough SAO tokens in the account ")
-				console.Print(creator)
-				console.Print(". Confirm with 'yes' :")
+			fmt.Printf("Please make sure there is enough SAO tokens in the account %s. Confirm with 'yes' :", creator)
 
-				reader := bufio.NewReader(os.Stdin)
-				indata, err := reader.ReadBytes('\n')
-				if err != nil {
-					return types.Wrap(types.ErrInvalidParameters, err)
-				}
-				if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) != "yes" {
+			reader := bufio.NewReader(os.Stdin)
+			indata, err := reader.ReadBytes('\n')
+			if err != nil {
+				return types.Wrap(types.ErrInvalidParameters, err)
+			}
+			if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) != "yes" {
+				continue
+			}
+
+			coins, err := chain.GetBalance(ctx, creator)
+			if err != nil {
+				fmt.Printf("%v", err)
+				continue
+			} else {
+				if coins.AmountOf("sao").LT(math.NewInt(1000)) {
 					continue
-				}
-
-				coins, err := chain.GetBalance(ctx, creator)
-				askFor = false
-				if err != nil {
-					fmt.Printf("%v", err)
-					askFor = true
 				} else {
-					if coins.AmountOf("sao").LT(math.NewInt(1000)) {
-						askFor = true
-					} else {
-						break
-					}
+					break
 				}
 			}
+
 		}
 
 		if tx, err := chain.Create(ctx, creator); err != nil {
