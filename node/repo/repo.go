@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sao-node/node/config"
@@ -197,11 +196,12 @@ func (r *Repo) initConfig(chainAddress string) error {
 	}
 
 	defaultConfig := r.defaultConfig()
+	newConfig := r.defaultConfig()
 	if chainAddress != "" {
-		defaultConfig.Chain.Remote = chainAddress
+		newConfig.Chain.Remote = chainAddress
 	}
-	fmt.Print("remote: ", defaultConfig.Chain.Remote)
-	comm, err := config.ConfigComment(defaultConfig)
+	// comm, err := config.ConfigComment(defaultConfig)
+	comm, err := config.ConfigUpdate(newConfig, defaultConfig, true)
 	//comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))
 	if err != nil {
 		return types.Wrapf(types.ErrReadConfigFailed, "load default: %v", err)
