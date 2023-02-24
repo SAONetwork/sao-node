@@ -15,7 +15,7 @@ import (
 	"sort"
 
 	saodid "github.com/SaoNetwork/sao-did"
-	sid "github.com/SaoNetwork/sao-did/sid"
+	"github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
@@ -629,7 +629,8 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 		return types.Wrap(types.ErrMarshalFailed, err)
 	}
 
-	// log.Debug("base64url.Encode(proposalBytes): ", base64url.Encode(proposalBytes))
+	log.Error("base64url.Encode(proposalBytes): ", base64url.Encode(proposalBytes))
+	log.Error("proposal: %#v", proposal)
 	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
 		Payload: base64url.Encode(proposalBytes),
 		Signatures: []saodidtypes.JwsSignature{
