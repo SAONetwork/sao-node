@@ -104,7 +104,19 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		return nil, types.Wrap(types.ErrCreateP2PServiceFaild, err)
 	}
 
-	peerInfos := strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
+	peerInfos := ""
+	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
+		peerInfos = strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
+	} else {
+		for _, a := range host.Addrs() {
+			withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
+			log.Debug("addr=", withP2p.String())
+			if len(peerInfos) > 0 {
+				peerInfos = peerInfos + ","
+			}
+			peerInfos = peerInfos + withP2p.String()
+		}
+	}
 	fmt.Println("cfg.Chain.Remote: ", cfg.Chain.Remote)
 	// chain
 	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
