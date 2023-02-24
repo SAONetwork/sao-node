@@ -20,6 +20,7 @@ import (
 	"sao-node/types"
 	"strings"
 
+	"cosmossdk.io/math"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -146,6 +147,9 @@ var initCmd = &cli.Command{
 		ctx := cctx.Context
 
 		chainAddress := cliutil.ChainAddress
+		if chainAddress == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --chain-address")
+		}
 
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
@@ -160,11 +164,6 @@ var initCmd = &cli.Command{
 			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
-		cfg, ok := c.(*config.Node)
-		if !ok {
-			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
-		}
-
 		// init metadata datastore
 		mds, err := r.Datastore(ctx, "/metadata")
 		if err != nil {
@@ -176,9 +175,41 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chain, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, "/websocket", cliutil.KeyringHome)
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
+		}
+
+		askFor := true
+		for {
+			if askFor {
+				console := color.New(color.BlinkSlow, color.Bold)
+				console.Print("Please make sure there is enough SAO tokens in the account ")
+				console.Print(creator)
+				console.Print(". Confirm with 'yes' :")
+
+				reader := bufio.NewReader(os.Stdin)
+				indata, err := reader.ReadBytes('\n')
+				if err != nil {
+					return types.Wrap(types.ErrInvalidParameters, err)
+				}
+				if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) != "yes" {
+					continue
+				}
+
+				coins, err := chain.GetBalance(ctx, creator)
+				askFor = false
+				if err != nil {
+					fmt.Printf("%v", err)
+					askFor = true
+				} else {
+					if coins.AmountOf("sao").LT(math.NewInt(1000)) {
+						askFor = true
+					} else {
+						break
+					}
+				}
+			}
 		}
 
 		if tx, err := chain.Create(ctx, creator); err != nil {
