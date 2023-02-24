@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -14,7 +13,6 @@ import (
 	"sao-node/types"
 	"sao-node/utils"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -51,25 +49,6 @@ func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, se
 	err = h.Network().Listen(ma.StringCast(address + "/quic/webtransport"))
 	if err != nil {
 		return nil, err
-	}
-
-	var peerInfos []string
-	for _, a := range h.Addrs() {
-		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
-		log.Debug("addr=", withP2p.String())
-		peerInfos = append(peerInfos, withP2p.String())
-	}
-	if len(peerInfos) > 0 {
-		key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
-		peers, err := db.Get(ctx, key)
-		if err != nil {
-			return nil, err
-		}
-		if len(peers) > 0 {
-			db.Put(ctx, key, []byte(string(peers)+","+strings.Join(peerInfos, ",")))
-		} else {
-			db.Put(ctx, key, []byte(strings.Join(peerInfos, ",")))
-		}
 	}
 
 	rs := &Libp2pRpcServer{

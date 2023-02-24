@@ -86,7 +86,8 @@ type Chain struct {
 type Libp2p struct {
 	// Binding address for the libp2p host - 0 means random port.
 	// Format: multiaddress; see https://multiformats.io/multiaddr/
-	ListenAddress []string
+	ListenAddress     []string
+	AnnounceAddresses []string
 }
 
 type Cache struct {
