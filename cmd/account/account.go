@@ -34,19 +34,20 @@ var listCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
+		var err error
 		repoPath := cctx.String("repo")
 		if repoPath == "" {
-			var err error
 			if cctx.App.Name == "saoclient" {
-				repoPath, err = homedir.Expand("~/.sao-cli")
+				repoPath = "~/.sao-cli"
 			} else if cctx.App.Name == "saonode" {
-				repoPath, err = homedir.Expand("~/.sao-node")
+				repoPath = "~/.sao-node"
 			} else {
 				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
 			}
-			if err != nil {
-				return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %v", err)
-			}
+		}
+		repoPath, err = homedir.Expand(repoPath)
+		if err != nil {
+			return types.Wrapf(types.ErrInvalidRepoPath, ", path=%s, %v", err)
 		}
 		chainAddress, err := cliutil.GetChainAddress(cctx, repoPath, cctx.App.Name)
 		if err != nil {

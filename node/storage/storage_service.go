@@ -636,9 +636,9 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 	for k, p := range ss.storageProtocolMap {
 		err = p.Stop(ctx)
 		if err != nil {
-			log.Error("stopping %s storage protocol failed: %v", k, err)
+			log.Errorf("stopping %s storage protocol failed: %v", k, err)
 		} else {
-			log.Info("%s storage protocol stopped.", k)
+			log.Infof("%s storage protocol stopped.", k)
 		}
 	}
 
