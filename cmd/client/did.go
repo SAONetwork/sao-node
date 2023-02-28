@@ -35,6 +35,11 @@ var didCreateCmd = &cli.Command{
 			Required: false,
 			Value:    false,
 		},
+		&cli.StringFlag{
+			Name:     "chain-id",
+			Required: false,
+			Value:    "sao",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		opt := saoclient.SaoClientOptions{
@@ -54,7 +59,7 @@ var didCreateCmd = &cli.Command{
 			return err
 		}
 
-		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
+		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:%s:%s", cctx.String("chain-id"), address))
 		if err != nil {
 			return err
 		}

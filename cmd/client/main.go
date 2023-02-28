@@ -114,6 +114,11 @@ var initCmd = &cli.Command{
 			Required: true,
 			Aliases:  []string{"k"},
 		},
+		&cli.StringFlag{
+			Name:     "chain-id",
+			Required: false,
+			Value:    "sao",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		repo := cctx.String(FlagClientRepo)
@@ -164,7 +169,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:sao:%s", address))
+		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:%s:%s", cctx.String("chain-id"), address))
 		if err != nil {
 			return err
 		}
