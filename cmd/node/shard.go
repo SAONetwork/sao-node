@@ -18,7 +18,7 @@ var shardsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		shardStatusCmd,
 		shardListCmd,
-		shardFixCmd,
+		// shardFixCmd,
 	},
 }
 
@@ -93,39 +93,39 @@ var shardListCmd = &cli.Command{
 	},
 }
 
-var shardFixCmd = &cli.Command{
-	Name:  "fix",
-	Usage: "Fix shard",
-	Flags: []cli.Flag{
-		&cli.Uint64Flag{
-			Name:     "orderId",
-			Required: true,
-		},
-		&cli.StringFlag{
-			Name:     "cid",
-			Required: true,
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-		orderId := cctx.Uint64("orderId")
-		shardCidStr := cctx.String("cid")
-		shardCid, err := cid.Decode(shardCidStr)
-		if err != nil {
-			return err
-		}
+// var shardFixCmd = &cli.Command{
+// 	Name:  "fix",
+// 	Usage: "Fix shard",
+// 	Flags: []cli.Flag{
+// 		&cli.Uint64Flag{
+// 			Name:     "orderId",
+// 			Required: true,
+// 		},
+// 		&cli.StringFlag{
+// 			Name:     "cid",
+// 			Required: true,
+// 		},
+// 	},
+// 	Action: func(cctx *cli.Context) error {
+// 		ctx := cctx.Context
+// 		orderId := cctx.Uint64("orderId")
+// 		shardCidStr := cctx.String("cid")
+// 		shardCid, err := cid.Decode(shardCidStr)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
-		if err != nil {
-			return err
-		}
-		defer closer()
+// 		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+// 		if err != nil {
+// 			return err
+// 		}
+// 		defer closer()
 
-		err = gatewayApi.ShardFix(ctx, orderId, shardCid)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("shard orderId=%d cid=%v is in process.", orderId, shardCid)
-		return nil
-	},
-}
+// 		err = gatewayApi.ShardFix(ctx, orderId, shardCid)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		fmt.Printf("shard orderId=%d cid=%v is in process.", orderId, shardCid)
+// 		return nil
+// 	},
+// }

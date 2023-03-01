@@ -18,12 +18,13 @@ type SaoApi interface {
 	// MethodGroup: Order Job
 	OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) //perm:read
 	OrderList(ctx context.Context) ([]types.OrderInfo, error)            //perm:read
-	OrderFix(ctx context.Context, id string) error                       //perm:write
+	// OrderFix(ctx context.Context, id string) error                       //perm:write
 
 	// MethodGroup: Shard Job
 	ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) //perm:read
 	ShardList(ctx context.Context) ([]types.ShardInfo, error)                              //perm:read
-	ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
+	// ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
+
 	// MethodGroup: Migration Job
 	MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error)
 

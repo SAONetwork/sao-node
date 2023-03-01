@@ -8,7 +8,9 @@ saonode
 
 ```
 [--chain-address]
+[--gateway]
 [--help|-h]
+[--keyring]
 [--repo]
 [--version|-v]
 [--vv]
@@ -24,7 +26,11 @@ saonode [GLOBAL OPTIONS] command [COMMAND OPTIONS] [ARGUMENTS...]
 ```
 --chain-address     sao chain api
 
+--gateway           gateway connection
+
 --help, -h          show help
+
+--keyring           account keyring home directory (default: ~/.sao/)
 
 --repo              repo directory for sao storage node (default: ~/.sao-node)
 
@@ -51,6 +57,10 @@ _Options_
 ```
 --creator           node's account on sao chain
 ```
+## clean
+
+clean up the local datastore
+
 ## update
 
 update node information
@@ -65,16 +75,6 @@ _Options_
 
 show p2p peer list
 
-## quit
-
-quit sao network
-
->can re-join sao network by 'join' cmd. after quiting, no new shard will be assign to this node.
-
-_Options_
-```
---creator           node's account on chain
-```
 ## run
 
 start node
@@ -82,6 +82,64 @@ start node
 ## api-token-gen
 
 Generate API tokens
+
+## migrate
+
+
+## info
+
+show node information
+
+_Options_
+```
+--creator           node's account on sao chain
+```
+## claim
+
+claim sao network storage reward
+
+_Options_
+```
+--creator           node's account on sao chain
+```
+## job
+
+
+### orders
+
+orders management
+
+#### status
+
+
+#### list
+
+List orders
+
+### shards
+
+shards management
+
+#### status
+
+show specified shard status
+
+_Options_
+```
+--cid               
+--orderId            (default: 0)
+```
+#### list
+
+List shards
+
+### migrations
+
+migration job management
+
+#### list
+
+List migration jobs
 
 ## account
 
@@ -99,6 +157,16 @@ _Options_
 ```
 --key-name          account name
 ```
+### send
+
+send SAO tokens from one account to another
+
+_Options_
+```
+--amount            the token amount to send (default: 0)
+--from              the original account to spend tokens
+--to                the target account to received tokens
+```
 ### import
 
 
@@ -114,6 +182,19 @@ _Options_
 ```
 --key-name          account name to export
 ```
+## clidoc
+
+
+_Options_
+```
+--doctype           current supported type: markdown / man (default: markdown)
+--help, -h          show help
+--output            file path to export to
+```
+### help, h
+
+Shows a list of commands or help for one command
+
 ## help, h
 
 Shows a list of commands or help for one command

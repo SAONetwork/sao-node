@@ -9,11 +9,17 @@
   * [GetNetPeers](#GetNetPeers)
   * [GetNodeAddress](#GetNodeAddress)
   * [GetPeerInfo](#GetPeerInfo)
+  * [MigrateJobList](#MigrateJobList)
+  * [OrderList](#OrderList)
+  * [OrderStatus](#OrderStatus)
+  * [ShardList](#ShardList)
+  * [ShardStatus](#ShardStatus)
 * [Model](#Model)
   * [ModelCreate](#ModelCreate)
   * [ModelCreateFile](#ModelCreateFile)
   * [ModelDelete](#ModelDelete)
   * [ModelLoad](#ModelLoad)
+  * [ModelMigrate](#ModelMigrate)
   * [ModelRenewOrder](#ModelRenewOrder)
   * [ModelShowCommits](#ModelShowCommits)
   * [ModelUpdate](#ModelUpdate)
@@ -163,6 +169,158 @@ Response:
 ```json
 {
   "PeerInfo": "/ip4/172.16.0.10/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/tcp/26660/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/172.16.0.10/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT,/ip4/127.0.0.1/udp/26662/quic/webtransport/certhash/uEiCzHFKwct72TeBBh7-LUQ8L9QWwAo0b7d4VvsatjsQlQQ/certhash/uEiBKclz2BT5PNmQ9LIZr0DdhY7MpLLNXz8xLVdzSGyVXbA/p2p/12D3KooWR9jc8uHQ7T1n8Um5kt48usmNZxZftBKKEq9o4MYdFizT"
+}
+```
+
+### MigrateJobList
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "DataId": "4821b0f9-736c-4d48-95b7-4f80cd432781",
+    "OrderId": 0,
+    "Cid": "bafkreide7eax3pd3qsbolguprfta7thinb4wmbvyh2kestrdeiydg77tsq",
+    "FromProvider": "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+    "ToProvider": "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba5",
+    "MigrateTxHash": "",
+    "MigrateTxHeight": 1,
+    "CompleteTxHash": "",
+    "CompleteTxHeight": 1,
+    "State": 1
+  }
+]
+```
+
+### OrderList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "DataId": "4821b0f9-736c-4d48-95b7-4f80cd432781",
+    "Owner": "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+    "Cid": {
+      "/": "bafkreihrwzskd3wixnkuikjidbx7ntgqugyiquglldl7yx2q2jbpzeoiyi"
+    },
+    "StagePath": "~/.saonode/staging",
+    "Proposal": null,
+    "JwsSignature": null,
+    "OrderId": 0,
+    "OrderHash": "",
+    "OrderTxType": "",
+    "OrderHeight": 0,
+    "Shards": null,
+    "State": 0,
+    "LastErr": ""
+  }
+]
+```
+
+### OrderStatus
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "DataId": "4821b0f9-736c-4d48-95b7-4f80cd432781",
+  "Owner": "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+  "Cid": {
+    "/": "bafkreihrwzskd3wixnkuikjidbx7ntgqugyiquglldl7yx2q2jbpzeoiyi"
+  },
+  "StagePath": "~/.saonode/staging",
+  "Proposal": null,
+  "JwsSignature": null,
+  "OrderId": 0,
+  "OrderHash": "",
+  "OrderTxType": "",
+  "OrderHeight": 0,
+  "Shards": null,
+  "State": 0,
+  "LastErr": ""
+}
+```
+
+### ShardList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "OrderId": 1,
+    "DataId": "4821b0f9-736c-4d48-95b7-4f80cd432781",
+    "Cid": {
+      "/": "bafkreihrwzskd3wixnkuikjidbx7ntgqugyiquglldl7yx2q2jbpzeoiyi"
+    },
+    "Owner": "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+    "Gateway": "cosmos197vlml2yg75rg9dmf07sau0mn0053p9dscrfsf",
+    "OrderOperation": "1",
+    "ShardOperation": "1",
+    "CompleteHash": "",
+    "CompleteHeight": 1,
+    "Size": 1,
+    "State": 2,
+    "LastErr": ""
+  }
+]
+```
+
+### ShardStatus
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs:
+```json
+[
+  42,
+  {
+    "/": "bafkreihrwzskd3wixnkuikjidbx7ntgqugyiquglldl7yx2q2jbpzeoiyi"
+  }
+]
+```
+
+Response:
+```json
+{
+  "OrderId": 1,
+  "DataId": "4821b0f9-736c-4d48-95b7-4f80cd432781",
+  "Cid": {
+    "/": "bafkreihrwzskd3wixnkuikjidbx7ntgqugyiquglldl7yx2q2jbpzeoiyi"
+  },
+  "Owner": "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+  "Gateway": "cosmos197vlml2yg75rg9dmf07sau0mn0053p9dscrfsf",
+  "OrderOperation": "1",
+  "ShardOperation": "1",
+  "CompleteHash": "",
+  "CompleteHeight": 1,
+  "Size": 1,
+  "State": 2,
+  "LastErr": ""
 }
 ```
 
@@ -351,6 +509,31 @@ Response:
   "Version": "v0",
   "Cid": "bafkreide7eax3pd3qsbolguprfta7thinb4wmbvyh2kestrdeiydg77tsq",
   "Content": "{\"content\":\"\",\"isEdit\":false,\"time\":\"2022-12-20 06:41\",\"title\":\"sample\"}"
+}
+```
+
+### ModelMigrate
+perm:write
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  [
+    "string value"
+  ]
+]
+```
+
+Response:
+```json
+{
+  "TxHash": "",
+  "Results": {
+    "4821b0f9-736c-4d48-95b7-4f80cd432781": "SUCCESS"
+  }
 }
 ```
 

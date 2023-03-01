@@ -3,10 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p/core/peer"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -19,6 +15,11 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 func main() {
@@ -148,6 +149,7 @@ var ExampleValues = map[reflect.Type]interface{}{
 	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
 	reflect.TypeOf(""):                  "string value",
 	reflect.TypeOf(uint64(42)):          uint64(42),
+	reflect.TypeOf(int64(42)):           int64(42),
 	reflect.TypeOf(byte(7)):             byte(7),
 	reflect.TypeOf([]byte{}):            []byte("byte array"),
 	reflect.TypeOf(uint32(32)):          uint32(32),
@@ -290,6 +292,51 @@ func init() {
 		Duration: 31536000,
 		Timeout:  86400,
 		Data:     []string{"4821b0f9-736c-4d48-95b7-4f80cd432781"},
+	})
+
+	addExample([]types.MigrateInfo{{
+		DataId:           "4821b0f9-736c-4d48-95b7-4f80cd432781",
+		OrderId:          0,
+		Cid:              "bafkreide7eax3pd3qsbolguprfta7thinb4wmbvyh2kestrdeiydg77tsq",
+		FromProvider:     "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+		ToProvider:       "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba5",
+		MigrateTxHash:    "",
+		MigrateTxHeight:  1,
+		CompleteTxHash:   "",
+		CompleteTxHeight: 1,
+		State:            types.MigrateStateComplete,
+	}})
+
+	addExample(apitypes.MigrateResp{
+		TxHash: "",
+		Results: map[string]string{
+			"4821b0f9-736c-4d48-95b7-4f80cd432781": "SUCCESS",
+		},
+	})
+
+	addExample(types.OrderInfo{
+		DataId:    "4821b0f9-736c-4d48-95b7-4f80cd432781",
+		Owner:     "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+		Cid:       cid,
+		StagePath: "~/.saonode/staging",
+
+		State:   types.OrderStateStaged,
+		LastErr: "",
+	})
+
+	addExample(types.ShardInfo{
+		OrderId:        1,
+		DataId:         "4821b0f9-736c-4d48-95b7-4f80cd432781",
+		Cid:            cid,
+		Owner:          "did:sid:67a2be7315740823ebb6a27e2cfd7825fc02102a942235dd2589af47a2dafba4",
+		Gateway:        "cosmos197vlml2yg75rg9dmf07sau0mn0053p9dscrfsf",
+		OrderOperation: "1",
+		ShardOperation: "1",
+		CompleteHash:   "",
+		CompleteHeight: 1,
+		Size:           1,
+		State:          types.ShardStateTxSent,
+		LastErr:        "",
 	})
 }
 

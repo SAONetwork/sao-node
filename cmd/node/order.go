@@ -17,7 +17,7 @@ var ordersCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		orderStatusCmd,
 		orderListCmd,
-		orderFixCmd,
+		// orderFixCmd,
 	},
 }
 
@@ -79,26 +79,26 @@ var orderStatusCmd = &cli.Command{
 	},
 }
 
-var orderFixCmd = &cli.Command{
-	Name:  "fix",
-	Usage: "",
-	Action: func(cctx *cli.Context) error {
-		ctx := cctx.Context
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
-		if err != nil {
-			return err
-		}
-		defer closer()
+// var orderFixCmd = &cli.Command{
+// 	Name:  "fix",
+// 	Usage: "",
+// 	Action: func(cctx *cli.Context) error {
+// 		ctx := cctx.Context
+// 		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+// 		if err != nil {
+// 			return err
+// 		}
+// 		defer closer()
 
-		if cctx.Args().Len() <= 0 {
-			return types.Wrapf(types.ErrInvalidParameters, "missing proposal id parameter.")
-		}
-		dataId := cctx.Args().Get(0)
+// 		if cctx.Args().Len() <= 0 {
+// 			return types.Wrapf(types.ErrInvalidParameters, "missing proposal id parameter.")
+// 		}
+// 		dataId := cctx.Args().Get(0)
 
-		err = gatewayApi.OrderFix(ctx, dataId)
-		if err != nil {
-			return err
-		}
-		return nil
-	},
-}
+// 		err = gatewayApi.OrderFix(ctx, dataId)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		return nil
+// 	},
+// }
