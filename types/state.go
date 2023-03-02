@@ -111,8 +111,10 @@ type ShardInfo struct {
 	CompleteHeight int64
 	Size           uint64
 
-	State   ShardState
-	LastErr string
+	Tries        int
+	ExpireHeight int32
+	State        ShardState
+	LastErr      string
 }
 
 type ShardState uint64
@@ -122,6 +124,7 @@ const (
 	ShardStateStored
 	ShardStateTxSent
 	ShardStateComplete
+	ShardStateTerminate
 )
 
 var shardStateString = map[ShardState]string{

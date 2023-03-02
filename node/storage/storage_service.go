@@ -497,6 +497,7 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 					OrderOperation: fmt.Sprintf("%d", order.Operation),
 					ShardOperation: fmt.Sprintf("%d", order.Operation),
 					State:          types.ShardStateValidated,
+					ExpireHeight:   order.Expire,
 				}
 				err = utils.SaveShard(ss.ctx, ss.orderDs, shardInfo)
 				if err != nil {
@@ -535,8 +536,25 @@ func (ss *StoreSvc) Start(ctx context.Context) error {
 
 func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	log.Infof("start processing: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
+	task.Tries++
+	if task.Tries >= 3 {
+		task.State = types.ShardStateTerminate
+		errMsg := fmt.Sprintf("order %d shard %v too many retries %d", task.OrderId, task.DataId, task.Tries)
+		ss.updateShardError(task, xerrors.Errorf(errMsg))
+		return types.Wrapf(types.ErrShardRetriesExceed, errMsg)
+	}
 
-	var err error
+	latestHeight, err := ss.chainSvc.GetLastHeight(ctx)
+	if err != nil {
+		return err
+	}
+
+	if latestHeight > int64(task.ExpireHeight) {
+		task.State = types.ShardStateTerminate
+		errStr := fmt.Sprintf("order expired: latest=%d expireAt=%d", latestHeight, task.ExpireHeight)
+		ss.updateShardError(task, xerrors.Errorf(errStr))
+		return types.Wrapf(types.ErrExpiredOrder, errStr)
+	}
 
 	sp, peerInfo, err := ss.getStorageProtocolAndPeer(ctx, task.Gateway)
 	if err != nil {
@@ -692,7 +710,7 @@ func (ss *StoreSvc) getPendingShardList(ctx context.Context) ([]types.ShardInfo,
 		if err != nil {
 			return nil, err
 		}
-		if shard.State != types.ShardStateComplete {
+		if shard.State != types.ShardStateComplete && shard.State != types.ShardStateTerminate {
 			pending = append(pending, shard)
 		}
 	}
