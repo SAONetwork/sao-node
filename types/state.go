@@ -10,7 +10,11 @@ import "github.com/ipfs/go-cid"
  * order index for quick access to OrderInfo datastore keys.
  */
 type OrderIndex struct {
-	All string
+	All []OrderKey
+}
+
+type OrderKey struct {
+	DataId string
 }
 
 /**
@@ -34,10 +38,10 @@ type OrderInfo struct {
 	OrderHeight int64
 	Shards      map[string]OrderShardInfo
 
-	ExpireHeight int32
+	ExpireHeight uint64
 
 	State   OrderState
-	Tries   int
+	Tries   uint64
 	LastErr string
 }
 
@@ -115,8 +119,8 @@ type ShardInfo struct {
 	CompleteHeight int64
 	Size           uint64
 
-	Tries        int
-	ExpireHeight int32
+	Tries        uint64
+	ExpireHeight uint64
 	State        ShardState
 	LastErr      string
 }

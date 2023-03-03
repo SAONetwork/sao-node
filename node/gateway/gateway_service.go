@@ -12,7 +12,6 @@ import (
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
-	"strings"
 	"sync"
 	"time"
 
@@ -597,7 +596,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 
 		order, err := gs.chainSvc.GetOrder(ctx, orderInfo.OrderId)
 		if err == nil {
-			orderInfo.ExpireHeight = order.Expire
+			orderInfo.ExpireHeight = uint64(order.Expire)
 		} else {
 			log.Warn("chain get order err: ", err)
 		}
@@ -802,17 +801,13 @@ func (gs *GatewaySvc) OrderStatus(ctx context.Context, id string) (types.OrderIn
 	return utils.GetOrder(ctx, gs.orderDs, id)
 }
 
-func (gs *GatewaySvc) getOrderKeys(ctx context.Context) ([]string, error) {
+func (gs *GatewaySvc) getOrderKeys(ctx context.Context) ([]types.OrderKey, error) {
 	index, err := utils.GetOrderIndex(ctx, gs.orderDs)
 	if err != nil {
 		return nil, err
 	}
 
-	if (index == types.OrderIndex{}) {
-		return []string{}, nil
-	} else {
-		return strings.Split(index.All, ","), nil
-	}
+	return index.All, nil
 }
 
 func (gs *GatewaySvc) OrderList(ctx context.Context) ([]types.OrderInfo, error) {
@@ -823,7 +818,7 @@ func (gs *GatewaySvc) OrderList(ctx context.Context) ([]types.OrderInfo, error) 
 
 	var orderInfos []types.OrderInfo
 	for _, orderId := range keys {
-		orderInfo, err := utils.GetOrder(ctx, gs.orderDs, orderId)
+		orderInfo, err := utils.GetOrder(ctx, gs.orderDs, orderId.DataId)
 		if err != nil {
 			return nil, err
 		}
@@ -850,7 +845,7 @@ func (gs *GatewaySvc) getPendingOrders(ctx context.Context) ([]types.OrderInfo, 
 
 	var orders []types.OrderInfo
 	for _, orderKey := range orderKeys {
-		order, err := utils.GetOrder(ctx, gs.orderDs, orderKey)
+		order, err := utils.GetOrder(ctx, gs.orderDs, orderKey.DataId)
 		if err != nil {
 			return nil, err
 		}

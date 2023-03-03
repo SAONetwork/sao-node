@@ -106,11 +106,8 @@ func UpdateOrderIndex(ctx context.Context, ds datastore.Batching, id string) err
 			return err
 		}
 	}
-	if len(index.All) > 0 {
-		index.All = index.All + "," + id
-	} else {
-		index.All = id
-	}
+	index.All = append(index.All, types.OrderKey{DataId: id})
+
 	buf := new(bytes.Buffer)
 	err = index.MarshalCBOR(buf)
 	if err != nil {

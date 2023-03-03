@@ -11,6 +11,7 @@ import (
 func main() {
 	err := gen.WriteMapEncodersToFile("./types/cbor_gen.go", "types",
 		// order state
+		types.OrderKey{},
 		types.OrderIndex{},
 		types.OrderShardInfo{},
 		types.OrderInfo{},

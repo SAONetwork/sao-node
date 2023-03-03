@@ -501,7 +501,7 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 					OrderOperation: fmt.Sprintf("%d", order.Operation),
 					ShardOperation: fmt.Sprintf("%d", order.Operation),
 					State:          types.ShardStateValidated,
-					ExpireHeight:   order.Expire,
+					ExpireHeight:   uint64(order.Expire),
 				}
 				err = utils.SaveShard(ss.ctx, ss.orderDs, shardInfo)
 				if err != nil {
