@@ -125,26 +125,26 @@ func (t *OrderIndex) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.All ([]types.OrderKey) (slice)
-	if len("All") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"All\" was too long")
+	// t.Alls ([]types.OrderKey) (slice)
+	if len("Alls") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Alls\" was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("All"))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Alls"))); err != nil {
 		return err
 	}
-	if _, err := io.WriteString(w, string("All")); err != nil {
+	if _, err := io.WriteString(w, string("Alls")); err != nil {
 		return err
 	}
 
-	if len(t.All) > cbg.MaxLength {
-		return xerrors.Errorf("Slice value in field t.All was too long")
+	if len(t.Alls) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Alls was too long")
 	}
 
-	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.All))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Alls))); err != nil {
 		return err
 	}
-	for _, v := range t.All {
+	for _, v := range t.Alls {
 		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
@@ -190,8 +190,8 @@ func (t *OrderIndex) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.All ([]types.OrderKey) (slice)
-		case "All":
+		// t.Alls ([]types.OrderKey) (slice)
+		case "Alls":
 
 			maj, extra, err = cr.ReadHeader()
 			if err != nil {
@@ -199,7 +199,7 @@ func (t *OrderIndex) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > cbg.MaxLength {
-				return fmt.Errorf("t.All: array too large (%d)", extra)
+				return fmt.Errorf("t.Alls: array too large (%d)", extra)
 			}
 
 			if maj != cbg.MajArray {
@@ -207,7 +207,7 @@ func (t *OrderIndex) UnmarshalCBOR(r io.Reader) (err error) {
 			}
 
 			if extra > 0 {
-				t.All = make([]OrderKey, extra)
+				t.Alls = make([]OrderKey, extra)
 			}
 
 			for i := 0; i < int(extra); i++ {
@@ -217,7 +217,7 @@ func (t *OrderIndex) UnmarshalCBOR(r io.Reader) (err error) {
 					return err
 				}
 
-				t.All[i] = v
+				t.Alls[i] = v
 			}
 
 		default:

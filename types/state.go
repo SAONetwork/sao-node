@@ -10,7 +10,7 @@ import "github.com/ipfs/go-cid"
  * order index for quick access to OrderInfo datastore keys.
  */
 type OrderIndex struct {
-	All []OrderKey
+	Alls []OrderKey
 }
 
 type OrderKey struct {
