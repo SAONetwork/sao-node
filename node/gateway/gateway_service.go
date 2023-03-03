@@ -20,6 +20,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
+	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
@@ -152,16 +153,14 @@ func (gs *GatewaySvc) completeLoop(ctx context.Context) {
 }
 
 func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
-	if os.Getenv("SAO_PENDING_ORDERS") == "true" {
-		log.Info("process pending orders...")
-		pendings, err := gs.getPendingOrders(ctx)
-		if err != nil {
-			log.Error("process pending orders error: %v", err)
-		} else {
-			for _, p := range pendings {
-				gs.schedule <- &WorkRequest{
-					Order: p,
-				}
+	log.Info("process pending orders...")
+	pendings, err := gs.getPendingOrders(ctx)
+	if err != nil {
+		log.Error("process pending orders error: %v", err)
+	} else {
+		for _, p := range pendings {
+			gs.schedule <- &WorkRequest{
+				Order: p,
 			}
 		}
 	}
@@ -486,9 +485,43 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	gs.locks.Lock(lockname(orderInfo.OrderId))
 	defer gs.locks.Unlock(lockname(orderInfo.OrderId))
 
+	if orderInfo.State == types.OrderStateTerminate {
+		return nil
+	}
+
 	if orderInfo.State == types.OrderStateComplete {
 		gs.completeResultChan <- orderInfo.DataId
 		return nil
+	}
+
+	orderInfo.Tries++
+	if orderInfo.Tries >= 3 {
+		orderInfo.State = types.OrderStateTerminate
+		errMsg := fmt.Sprintf("order %d too many retries %d", orderInfo.OrderId, orderInfo.Tries)
+		orderInfo.LastErr = errMsg
+		e := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+		if e != nil {
+			log.Warn("put order %d error: %v", orderInfo.OrderId, e)
+		}
+		return xerrors.Errorf(errMsg)
+	}
+
+	if orderInfo.ExpireHeight > 0 {
+		latestHeight, err := gs.chainSvc.GetLastHeight(ctx)
+		if err != nil {
+			return err
+		}
+
+		if latestHeight > int64(orderInfo.ExpireHeight) {
+			orderInfo.State = types.OrderStateTerminate
+			errStr := fmt.Sprintf("order expired: latest=%d expireAt=%d", latestHeight, orderInfo.ExpireHeight)
+			orderInfo.LastErr = errStr
+			e := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+			if e != nil {
+				log.Warn("put order %d error: %v", orderInfo.OrderId, e)
+			}
+			return types.Wrapf(types.ErrExpiredOrder, errStr)
+		}
 	}
 
 	var proposal saotypes.Proposal
@@ -560,6 +593,13 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 				Provider: s.Provider,
 				State:    types.ShardStateAssigned,
 			}
+		}
+
+		order, err := gs.chainSvc.GetOrder(ctx, orderInfo.OrderId)
+		if err == nil {
+			orderInfo.ExpireHeight = order.Expire
+		} else {
+			log.Warn("chain get order err: ", err)
 		}
 		err = utils.SaveOrder(ctx, gs.orderDs, orderInfo)
 		if err != nil {

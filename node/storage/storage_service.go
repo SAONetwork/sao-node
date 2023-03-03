@@ -35,6 +35,10 @@ import (
 
 var log = logging.Logger("storage")
 
+const (
+	MAX_RETRIES = 3
+)
+
 type MigrateRequest struct {
 	FromProvider  string
 	OrderId       uint64
@@ -536,24 +540,31 @@ func (ss *StoreSvc) Start(ctx context.Context) error {
 
 func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	log.Infof("start processing: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
+
+	if task.State == types.ShardStateTerminate {
+		return nil
+	}
+
 	task.Tries++
-	if task.Tries >= 3 {
+	if task.Tries >= MAX_RETRIES {
 		task.State = types.ShardStateTerminate
 		errMsg := fmt.Sprintf("order %d shard %v too many retries %d", task.OrderId, task.DataId, task.Tries)
 		ss.updateShardError(task, xerrors.Errorf(errMsg))
-		return types.Wrapf(types.ErrShardRetriesExceed, errMsg)
+		return types.Wrapf(types.ErrRetriesExceed, errMsg)
 	}
 
-	latestHeight, err := ss.chainSvc.GetLastHeight(ctx)
-	if err != nil {
-		return err
-	}
+	if task.ExpireHeight > 0 {
+		latestHeight, err := ss.chainSvc.GetLastHeight(ctx)
+		if err != nil {
+			return err
+		}
 
-	if latestHeight > int64(task.ExpireHeight) {
-		task.State = types.ShardStateTerminate
-		errStr := fmt.Sprintf("order expired: latest=%d expireAt=%d", latestHeight, task.ExpireHeight)
-		ss.updateShardError(task, xerrors.Errorf(errStr))
-		return types.Wrapf(types.ErrExpiredOrder, errStr)
+		if latestHeight > int64(task.ExpireHeight) {
+			task.State = types.ShardStateTerminate
+			errStr := fmt.Sprintf("order expired: latest=%d expireAt=%d", latestHeight, task.ExpireHeight)
+			ss.updateShardError(task, xerrors.Errorf(errStr))
+			return types.Wrapf(types.ErrExpiredOrder, errStr)
+		}
 	}
 
 	sp, peerInfo, err := ss.getStorageProtocolAndPeer(ctx, task.Gateway)

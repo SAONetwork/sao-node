@@ -34,7 +34,10 @@ type OrderInfo struct {
 	OrderHeight int64
 	Shards      map[string]OrderShardInfo
 
+	ExpireHeight int32
+
 	State   OrderState
+	Tries   int
 	LastErr string
 }
 
@@ -44,6 +47,7 @@ const (
 	OrderStateStaged OrderState = iota
 	OrderStateReady
 	OrderStateComplete
+	OrderStateTerminate
 )
 
 var orderStateString = map[OrderState]string{

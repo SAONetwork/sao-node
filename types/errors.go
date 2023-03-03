@@ -140,7 +140,7 @@ var (
 	ErrInvalidSchema      = errors.Register(ModuleModel, 14027, "invalid schema")
 	ErrProcessOrderFailed = errors.Register(ModuleModel, 14028, "failed to process the order")
 	ErrExpiredOrder       = errors.Register(ModuleModel, 14029, "expired order")
-	ErrShardRetriesExceed = errors.Register(ModuleModel, 14030, "shard retries too many times")
+	ErrRetriesExceed      = errors.Register(ModuleModel, 14030, "shard retries too many times")
 )
 
 var (
