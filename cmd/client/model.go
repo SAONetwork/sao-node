@@ -557,24 +557,24 @@ var statusCmd = &cli.Command{
 				}
 			} else {
 				duration := res.Metadata.Duration
-				used := uint64(time.Now().Second()) - res.Metadata.CreatedAt
+				currentHeight, err := client.GetLastHeight(ctx)
+				if err != nil {
+					return err
+				}
+				stored := uint64(currentHeight) - res.Metadata.CreatedAt
 				if len(states) > 0 {
 					states = states + "\n"
 				}
 				consoleOK := color.New(color.FgGreen, color.Bold)
 				consoleWarn := color.New(color.FgHiRed, color.Bold)
 
-				var leftDays uint64
-				if duration >= used {
-					leftDays = duration - used
-
+				var leftHeight uint64
+				if duration >= stored {
+					leftHeight = duration - stored
+					states = fmt.Sprintf("%s[%s]: expired in %s heights", states, dataId, consoleOK.Sprintf("%d", leftHeight))
 				} else {
-					leftDays = used - duration
-				}
-				if leftDays > 5 {
-					states = fmt.Sprintf("%s[%s]: expired in %s days", states, dataId, consoleOK.Sprintf("%d", leftDays/(60*60*24*1000000000)))
-				} else {
-					states = fmt.Sprintf("%s[%s]: expired %s days ago", states, dataId, consoleWarn.Sprintf("%d", leftDays/(60*60*24*1000000000)))
+					leftHeight = stored - duration
+					states = fmt.Sprintf("%s[%s]: expired %s heights ago", states, dataId, consoleWarn.Sprintf("%d", leftHeight))
 				}
 			}
 		}
