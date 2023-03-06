@@ -494,7 +494,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	}
 
 	orderInfo.Tries++
-	log.Info("order dataid=%d tries ", orderInfo.DataId, orderInfo.Tries)
+	log.Infof("order dataid=%s tries %d", orderInfo.DataId, orderInfo.Tries)
 	if orderInfo.Tries >= 3 {
 		orderInfo.State = types.OrderStateTerminate
 		errMsg := fmt.Sprintf("order %d too many retries %d", orderInfo.OrderId, orderInfo.Tries)

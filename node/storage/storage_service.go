@@ -546,6 +546,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	}
 
 	task.Tries++
+	log.Infof("shard orderid=%d cid=%v: %d", task.OrderId, task.Cid, task.Tries)
 	if task.Tries >= MAX_RETRIES {
 		task.State = types.ShardStateTerminate
 		errMsg := fmt.Sprintf("order %d shard %v too many retries %d", task.OrderId, task.DataId, task.Tries)
