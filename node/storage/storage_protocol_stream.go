@@ -104,12 +104,12 @@ func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
 		})
 		return
 	}
-	peerInfo := string(s.Conn().RemoteMultiaddr().String())
-	log.Debug("check peer: %v<->%v", req.Proposal.Proposal.Gateway, peerInfo)
-	if !strings.Contains(req.Proposal.Proposal.Gateway, peerInfo) {
+	peerId := string(s.Conn().RemotePeer().String())
+	log.Debug("check peer: %v<->%v", req.Proposal.Proposal.Gateway, peerId)
+	if !strings.Contains(req.Proposal.Proposal.Gateway, peerId) {
 		respond(types.ShardLoadResp{
 			Code:       types.ErrorCodeInternalErr,
-			Message:    fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", peerInfo, req.Proposal.Proposal.Gateway),
+			Message:    fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", peerId, req.Proposal.Proposal.Gateway),
 			OrderId:    req.OrderId,
 			Cid:        req.Cid,
 			RequestId:  req.RequestId,
