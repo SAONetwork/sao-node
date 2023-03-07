@@ -121,6 +121,7 @@ func NewGatewaySvc(
 		cs,
 	)
 	cs.gatewayProtocolMap["stream"] = NewStreamGatewayProtocol(
+		ctx,
 		host,
 		cs,
 	)
@@ -418,7 +419,14 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 				},
 			},
 			RequestId: time.Now().UnixMilli(),
-		}, shard.Peer)
+			RelayProposal: types.RelayProposalCbor{
+				Proposal: types.RelayProposal{
+					LocalPeerId:    "LocalPeerId",
+					RelayPeerId:    "RelayPeerId",
+					TargetPeerInfo: shard.Peer,
+				},
+			},
+		}, shard.Peer, true)
 		if resp.Code == 0 {
 			contentList[shard.ShardId] = resp.Content
 		} else {

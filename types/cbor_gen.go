@@ -2900,6 +2900,169 @@ func (t *QueryProposal) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
+func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{163}); err != nil {
+		return err
+	}
+
+	// t.LocalPeerId (string) (string)
+	if len("LocalPeerId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"LocalPeerId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("LocalPeerId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("LocalPeerId")); err != nil {
+		return err
+	}
+
+	if len(t.LocalPeerId) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.LocalPeerId was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.LocalPeerId))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.LocalPeerId)); err != nil {
+		return err
+	}
+
+	// t.RelayPeerId (string) (string)
+	if len("RelayPeerId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RelayPeerId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RelayPeerId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RelayPeerId")); err != nil {
+		return err
+	}
+
+	if len(t.RelayPeerId) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.RelayPeerId was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.RelayPeerId))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.RelayPeerId)); err != nil {
+		return err
+	}
+
+	// t.TargetPeerInfo (string) (string)
+	if len("TargetPeerInfo") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TargetPeerInfo\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("TargetPeerInfo"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("TargetPeerInfo")); err != nil {
+		return err
+	}
+
+	if len(t.TargetPeerInfo) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.TargetPeerInfo was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.TargetPeerInfo))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.TargetPeerInfo)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *RelayProposal) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = RelayProposal{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("RelayProposal: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.LocalPeerId (string) (string)
+		case "LocalPeerId":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.LocalPeerId = string(sval)
+			}
+			// t.RelayPeerId (string) (string)
+		case "RelayPeerId":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.RelayPeerId = string(sval)
+			}
+			// t.TargetPeerInfo (string) (string)
+		case "TargetPeerInfo":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.TargetPeerInfo = string(sval)
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
 func (t *JwsSignature) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)
@@ -3114,6 +3277,119 @@ func (t *MetadataProposalCbor) UnmarshalCBOR(r io.Reader) (err error) {
 
 		switch name {
 		// t.Proposal (types.QueryProposal) (struct)
+		case "Proposal":
+
+			{
+
+				if err := t.Proposal.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.Proposal: %w", err)
+				}
+
+			}
+			// t.JwsSignature (types.JwsSignature) (struct)
+		case "JwsSignature":
+
+			{
+
+				if err := t.JwsSignature.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.JwsSignature: %w", err)
+				}
+
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (t *RelayProposalCbor) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{162}); err != nil {
+		return err
+	}
+
+	// t.Proposal (types.RelayProposal) (struct)
+	if len("Proposal") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Proposal\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Proposal"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Proposal")); err != nil {
+		return err
+	}
+
+	if err := t.Proposal.MarshalCBOR(cw); err != nil {
+		return err
+	}
+
+	// t.JwsSignature (types.JwsSignature) (struct)
+	if len("JwsSignature") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"JwsSignature\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("JwsSignature"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("JwsSignature")); err != nil {
+		return err
+	}
+
+	if err := t.JwsSignature.MarshalCBOR(cw); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *RelayProposalCbor) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = RelayProposalCbor{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("RelayProposalCbor: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Proposal (types.RelayProposal) (struct)
 		case "Proposal":
 
 			{
@@ -3974,7 +4250,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{165}); err != nil {
+	if _, err := cw.Write([]byte{166}); err != nil {
 		return err
 	}
 
@@ -4069,6 +4345,22 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.RequestId-1)); err != nil {
 			return err
 		}
+	}
+
+	// t.RelayProposal (types.RelayProposalCbor) (struct)
+	if len("RelayProposal") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RelayProposal\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RelayProposal"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RelayProposal")); err != nil {
+		return err
+	}
+
+	if err := t.RelayProposal.MarshalCBOR(cw); err != nil {
+		return err
 	}
 	return nil
 }
@@ -4185,6 +4477,16 @@ func (t *ShardLoadReq) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.RequestId = int64(extraI)
+			}
+			// t.RelayProposal (types.RelayProposalCbor) (struct)
+		case "RelayProposal":
+
+			{
+
+				if err := t.RelayProposal.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.RelayProposal: %w", err)
+				}
+
 			}
 
 		default:

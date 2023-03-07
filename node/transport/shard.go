@@ -26,7 +26,7 @@ type CommonMarshaler interface {
 	Marshal(io.Writer, string) error
 }
 
-func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protocol protocol.ID, req interface{}, resp interface{}) error {
+func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protocol protocol.ID, req interface{}, resp interface{}, isForward bool) error {
 	var pi *peer.AddrInfo
 	for _, peerInfo := range strings.Split(peerInfos, ",") {
 		if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
@@ -52,6 +52,28 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 	}
 	stream, err := host.NewStream(ctx, pi.ID, protocol)
 	if err != nil {
+		if isForward {
+			for _, peerId := range host.Peerstore().Peers() {
+				relayStream, err := host.NewStream(ctx, peerId, protocol)
+				if err != nil {
+					log.Warn(types.Wrap(types.ErrCreateStreamFailed, err))
+				}
+
+				defer relayStream.Close()
+				log.Debugf("open stream to %s protocol %s.", peerId, protocol)
+
+				// Set a deadline on reading from the stream so it doesn't hang
+				_ = relayStream.SetReadDeadline(time.Now().Add(300 * time.Second))
+				defer relayStream.SetReadDeadline(time.Time{}) // nolint
+
+				err = DoRequest(ctx, relayStream, req, resp, types.FormatCbor)
+				if err != nil {
+					log.Warn(types.Wrap(types.ErrCreateStreamFailed, err))
+				} else {
+					return nil
+				}
+			}
+		}
 		return types.Wrap(types.ErrCreateStreamFailed, err)
 	}
 	defer stream.Close()

@@ -25,8 +25,10 @@ func main() {
 		types.MigrateIndex{},
 
 		types.QueryProposal{},
+		types.RelayProposal{},
 		types.JwsSignature{},
 		types.MetadataProposalCbor{},
+		types.RelayProposalCbor{},
 		types.ShardAssignReq{},
 		types.ShardAssignResp{},
 		types.ShardCompleteReq{},

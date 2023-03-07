@@ -157,7 +157,7 @@ func (l StreamStorageProtocol) RequestShardMigrate(
 	peer string,
 ) types.ShardMigrateResp {
 	resp := types.ShardMigrateResp{}
-	err := transport.HandleRequest(ctx, peer, l.host, types.ShardMigrateProtocol, &req, &resp)
+	err := transport.HandleRequest(ctx, peer, l.host, types.ShardMigrateProtocol, &req, &resp, false)
 	if err != nil {
 		resp = types.ShardMigrateResp{
 			Code:    types.ErrorCodeInternalErr,
@@ -176,6 +176,7 @@ func (l StreamStorageProtocol) RequestShardComplete(ctx context.Context, req typ
 		types.ShardCompleteProtocol,
 		&req,
 		&resp,
+		false,
 	)
 	if err != nil {
 		resp = types.ShardCompleteResp{
@@ -196,6 +197,7 @@ func (l StreamStorageProtocol) RequestShardStore(ctx context.Context, req types.
 		types.ShardStoreProtocol,
 		&req,
 		&resp,
+		false,
 	)
 	if err != nil {
 		resp = types.ShardLoadResp{
