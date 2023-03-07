@@ -12,6 +12,7 @@ import (
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,9 +23,11 @@ import (
 	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	ma "github.com/multiformats/go-multiaddr"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var log = logging.Logger("gateway")
@@ -126,7 +129,7 @@ func NewGatewaySvc(
 		cs,
 	)
 
-	go cs.runSched(ctx)
+	go cs.runSched(ctx, host)
 	go cs.processIncompleteOrders(ctx)
 	go cs.completeLoop(ctx)
 
@@ -166,7 +169,39 @@ func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
 	}
 }
 
-func (gs *GatewaySvc) runSched(ctx context.Context) {
+func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
+	nodes, err := gs.chainSvc.ListNodes(ctx)
+	if err != nil {
+		log.Error(types.Wrap(types.ErrQueryNodeFailed, err))
+	}
+
+	for _, node := range nodes {
+		for _, peerInfo := range strings.Split(node.Peer, ",") {
+
+			if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
+				continue
+			}
+
+			a, err := ma.NewMultiaddr(peerInfo)
+			if err != nil {
+				log.Error(types.ErrInvalidServerAddress, "peerInfo=%s", peerInfo)
+				continue
+			}
+			pi, err := peer.AddrInfoFromP2pAddr(a)
+			if err != nil {
+				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
+				continue
+			}
+
+			err = host.Connect(ctx, *pi)
+			if err != nil {
+				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
+				continue
+			}
+			break
+		}
+	}
+
 	for {
 		select {
 		case req := <-gs.schedule:
