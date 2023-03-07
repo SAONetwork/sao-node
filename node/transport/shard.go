@@ -46,15 +46,16 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 	var err error = nil
 	if pi == nil {
 		for _, peerId := range host.Peerstore().Peers() {
-			log.Debug("peerInfos", peerInfos)
 			log.Debug("peerId", peerId)
-			if strings.Contains(peerInfos, string(peerId)) {
+			if strings.Contains(peerInfos, peerId.String()) {
 				stream, err = host.NewStream(ctx, pi.ID, protocol)
 				if err != nil {
 					defer stream.Close()
 					return types.Wrap(types.ErrCreateStreamFailed, err)
 				}
 				break
+			} else {
+				log.Debug("not ", peerInfos)
 			}
 		}
 		return types.Wrap(types.ErrInvalidServerAddress, nil)
