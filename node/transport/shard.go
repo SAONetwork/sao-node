@@ -48,7 +48,7 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 		for _, peerId := range host.Peerstore().Peers() {
 			log.Debug("peerId", peerId)
 			if strings.Contains(peerInfos, peerId.String()) {
-				stream, err = host.NewStream(ctx, pi.ID, protocol)
+				stream, err = host.NewStream(ctx, peerId, protocol)
 				if err != nil {
 					defer stream.Close()
 					return types.Wrap(types.ErrCreateStreamFailed, err)
