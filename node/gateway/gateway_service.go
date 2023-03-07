@@ -196,6 +196,8 @@ func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
 			if err != nil {
 				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
 				continue
+			} else {
+				log.Info("Connected to the gateway ", node.Creator)
 			}
 			break
 		}
