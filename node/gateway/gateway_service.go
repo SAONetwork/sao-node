@@ -176,10 +176,6 @@ func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
 	}
 
 	for _, node := range nodes {
-		if node.Status&1<<1 == 0 {
-			continue
-		}
-
 		for _, peerInfo := range strings.Split(node.Peer, ",") {
 			if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
 				continue
