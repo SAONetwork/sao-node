@@ -95,7 +95,7 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 		return types.Wrap(types.ErrCreateStreamFailed, err)
 	}
 	defer stream.Close()
-	log.Debugf("open stream to %s protocol %s.", pi.ID, protocol)
+	log.Debugf("open stream to %s protocol %s.", peerInfos, protocol)
 
 	// Set a deadline on reading from the stream so it doesn't hang
 	_ = stream.SetReadDeadline(time.Now().Add(300 * time.Second))
