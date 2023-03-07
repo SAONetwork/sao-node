@@ -105,7 +105,7 @@ func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
 		return
 	}
 	peerId := string(s.Conn().RemotePeer().String())
-	log.Debug("check peer: %s<->%s", req.Proposal.Proposal.Gateway, peerId)
+	log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, peerId)
 	if !strings.Contains(req.Proposal.Proposal.Gateway, peerId) {
 		respond(types.ShardLoadResp{
 			Code:       types.ErrorCodeInternalErr,
