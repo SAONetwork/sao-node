@@ -50,7 +50,6 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 			if strings.Contains(peerInfos, peerId.String()) {
 				stream, err = host.NewStream(ctx, peerId, protocol)
 				if err != nil {
-					defer stream.Close()
 					return types.Wrap(types.ErrCreateStreamFailed, err)
 				}
 				break

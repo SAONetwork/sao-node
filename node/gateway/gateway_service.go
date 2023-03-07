@@ -117,16 +117,19 @@ func NewGatewaySvc(
 		locks:              utils.NewMapLock(),
 	}
 	cs.gatewayProtocolMap = make(map[string]GatewayProtocol)
-	cs.gatewayProtocolMap["local"] = NewLocalGatewayProtocol(
+
+	local := NewLocalGatewayProtocol(
 		ctx,
 		notifyChan,
 		storeManager,
 		cs,
 	)
+	cs.gatewayProtocolMap["local"] = local
 	cs.gatewayProtocolMap["stream"] = NewStreamGatewayProtocol(
 		ctx,
 		host,
 		cs,
+		local,
 	)
 
 	go cs.runSched(ctx, host)

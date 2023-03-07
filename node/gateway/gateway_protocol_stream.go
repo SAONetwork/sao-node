@@ -16,13 +16,15 @@ type StreamGatewayProtocol struct {
 	ctx  context.Context
 	host host.Host
 	GatewayProtocolHandler
+	LocalGatewayProtocol
 }
 
-func NewStreamGatewayProtocol(ctx context.Context, host host.Host, handler GatewayProtocolHandler) StreamGatewayProtocol {
+func NewStreamGatewayProtocol(ctx context.Context, host host.Host, handler GatewayProtocolHandler, local LocalGatewayProtocol) StreamGatewayProtocol {
 	sgp := StreamGatewayProtocol{
 		ctx:                    ctx,
 		host:                   host,
 		GatewayProtocolHandler: handler,
+		LocalGatewayProtocol:   local,
 	}
 	host.SetStreamHandler(types.ShardStoreProtocol, sgp.handleShardStoreStream)
 	host.SetStreamHandler(types.ShardCompleteProtocol, sgp.handleShardCompleteStream)
@@ -141,10 +143,14 @@ func (l StreamGatewayProtocol) handleRelayStream(s network.Stream) {
 	}
 	log.Debugf("receive Relay ShardLoadReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
 
-	for _, peer := range l.host.Peerstore().Peers() {
-		if strings.Contains(req.RelayProposal.Proposal.TargetPeerInfo, peer.String()) {
-			respond(l.RequestShardLoad(l.ctx, req, req.RelayProposal.Proposal.TargetPeerInfo, false))
-			break
+	if strings.Contains(req.RelayProposal.Proposal.TargetPeerInfo, l.host.ID().String()) {
+		l.LocalGatewayProtocol.RequestShardLoad(l.ctx, req, req.RelayProposal.Proposal.TargetPeerInfo, false)
+	} else {
+		for _, peer := range l.host.Peerstore().Peers() {
+			if strings.Contains(req.RelayProposal.Proposal.TargetPeerInfo, peer.String()) {
+				respond(l.RequestShardLoad(l.ctx, req, req.RelayProposal.Proposal.TargetPeerInfo, false))
+				break
+			}
 		}
 	}
 }
