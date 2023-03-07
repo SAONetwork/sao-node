@@ -50,7 +50,7 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 				stream, err = host.NewStream(ctx, pi.ID, protocol)
 				if err != nil {
 					defer stream.Close()
-					return types.Wrap(types.ErrInvalidServerAddress, err)
+					return types.Wrap(types.ErrCreateStreamFailed, err)
 				}
 				break
 			}
