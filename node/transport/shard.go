@@ -42,7 +42,7 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 			return types.Wrapf(types.ErrInvalidServerAddress, "a=%v", a)
 		}
 	}
-	var stream network.Stream
+	var stream network.Stream = nil
 	var err error = nil
 	if pi == nil {
 		for _, peerId := range host.Peerstore().Peers() {
@@ -58,7 +58,9 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 				log.Debug("not ", peerInfos)
 			}
 		}
-		return types.Wrap(types.ErrInvalidServerAddress, nil)
+		if stream == nil {
+			return types.Wrap(types.ErrInvalidServerAddress, nil)
+		}
 	} else {
 		err = host.Connect(ctx, *pi)
 		if err != nil {
