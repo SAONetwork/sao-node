@@ -98,3 +98,7 @@ func (l LocalGatewayProtocol) RequestShardLoad(ctx context.Context, req types.Sh
 		ResponseId: time.Now().UnixMilli(),
 	}
 }
+
+func (l LocalGatewayProtocol) GetPeers(_ context.Context) string {
+	return ""
+}

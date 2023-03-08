@@ -320,7 +320,7 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 	}
 }
 
-func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq) types.ShardLoadResp {
+func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string) types.ShardLoadResp {
 	logAndRespond := func(code uint64, errMsg string) types.ShardLoadResp {
 		log.Error(errMsg)
 		return types.ShardLoadResp{
@@ -369,6 +369,33 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq) types.ShardLoadResp 
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("verify client order proposal signature failed: %v", err),
 		)
+	}
+
+	log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, remotePeerId)
+	if !strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
+		if len(req.RelayProposal.Signature) > 0 && strings.Contains(req.RelayProposal.Proposal.RelayPeerIds, remotePeerId) {
+			account, err := ss.chainSvc.GetAccount(ss.ctx, req.RelayProposal.Proposal.NodeAddress)
+			if err != nil {
+				return logAndRespond(
+					types.ErrorCodeInternalErr,
+					fmt.Sprintf("failed to get gateway account info: %v", err),
+				)
+			}
+			buf := new(bytes.Buffer)
+			err = req.RelayProposal.Proposal.MarshalCBOR(buf)
+			if err != nil {
+				return logAndRespond(
+					types.ErrorCodeInternalErr,
+					fmt.Sprintf("failed marshal relay proposal: %v", err),
+				)
+			}
+			account.GetPubKey().VerifySignature(buf.Bytes(), req.RelayProposal.Signature)
+		} else {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", remotePeerId, req.Proposal.Proposal.Gateway),
+			)
+		}
 	}
 
 	lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)

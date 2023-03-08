@@ -35,6 +35,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p/core/host"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -235,7 +236,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	if cfg.Module.GatewayEnable {
 		status = status | NODE_STATUS_SERVE_GATEWAY
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.gatewaySvc = gatewaySvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
@@ -274,6 +275,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		return nil, err
 	}
 	log.Info("Write token: ", string(tokenWrite))
+
+	// Connect to P2P network
+	sn.ConnectToGatewayCluster(ctx)
 
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
@@ -315,6 +319,46 @@ func newRpcServer(ga api.SaoApi, cfg *config.API) (*http.Server, error) {
 		return nil, types.Wrapf(types.ErrStartPRPCServerFailed, "failed to start json-rpc endpoint: %s", err)
 	}
 	return rpcServer, nil
+}
+
+func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
+	nodes, err := n.chainSvc.ListNodes(ctx)
+	if err != nil {
+		log.Error(types.Wrap(types.ErrQueryNodeFailed, err))
+		return
+	}
+
+	for _, node := range nodes {
+		if node.Status&NODE_STATUS_SERVE_GATEWAY == 0 {
+			continue
+		}
+
+		for _, peerInfo := range strings.Split(node.Peer, ",") {
+			if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
+				continue
+			}
+
+			a, err := multiaddr.NewMultiaddr(peerInfo)
+			if err != nil {
+				log.Error(types.ErrInvalidServerAddress, "peerInfo=%s", peerInfo)
+				continue
+			}
+			pi, err := peer.AddrInfoFromP2pAddr(a)
+			if err != nil {
+				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
+				continue
+			}
+
+			err = n.host.Connect(ctx, *pi)
+			if err != nil {
+				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
+				continue
+			} else {
+				log.Info("Connected to the gateway ", node.Creator, " , peerinfos: ", node.Peer)
+			}
+			break
+		}
+	}
 }
 
 func (n *Node) Stop(ctx context.Context) error {

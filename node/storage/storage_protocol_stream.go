@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sao-node/node/transport"
 	"sao-node/types"
-	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -104,20 +103,8 @@ func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
 		})
 		return
 	}
-	peerId := string(s.Conn().RemotePeer().String())
-	log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, peerId)
-	if !strings.Contains(req.Proposal.Proposal.Gateway, peerId) {
-		respond(types.ShardLoadResp{
-			Code:       types.ErrorCodeInternalErr,
-			Message:    fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", peerId, req.Proposal.Proposal.Gateway),
-			OrderId:    req.OrderId,
-			Cid:        req.Cid,
-			RequestId:  req.RequestId,
-			ResponseId: time.Now().UnixMilli(),
-		})
-		return
-	}
-	respond(l.HandleShardLoad(req))
+
+	respond(l.HandleShardLoad(req, s.Conn().RemotePeer().String()))
 }
 
 func (l StreamStorageProtocol) handleShardAssign(s network.Stream) {

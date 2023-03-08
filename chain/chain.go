@@ -14,6 +14,7 @@ import (
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
@@ -40,6 +41,7 @@ type ChainSvc struct {
 type ChainSvcApi interface {
 	Stop(ctx context.Context) error
 	GetLastHeight(ctx context.Context) (int64, error)
+	GetAccount(ctx context.Context, address string) (client.Account, error)
 	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
 	ShowDidInfo(ctx context.Context, did string)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
@@ -128,6 +130,10 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 
 func (c *ChainSvc) GetLastHeight(ctx context.Context) (int64, error) {
 	return c.cosmos.LatestBlockHeight(ctx)
+}
+
+func (c *ChainSvc) GetAccount(ctx context.Context, address string) (client.Account, error) {
+	return c.cosmos.Context().AccountRetriever.GetAccount(c.cosmos.Context(), sdktypes.AccAddress(address))
 }
 
 func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coins, error) {

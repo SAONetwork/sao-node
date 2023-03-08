@@ -199,3 +199,7 @@ func (l StreamGatewayProtocol) RequestShardLoad(ctx context.Context, req types.S
 	}
 	return resp
 }
+
+func (l StreamGatewayProtocol) GetPeers(_ context.Context) string {
+	return l.host.Peerstore().Peers().String()
+}

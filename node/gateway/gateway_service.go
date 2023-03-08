@@ -12,7 +12,6 @@ import (
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,11 +22,9 @@ import (
 	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	ma "github.com/multiformats/go-multiaddr"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
-	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 var log = logging.Logger("gateway")
@@ -73,7 +70,9 @@ type GatewaySvc struct {
 	ctx                context.Context
 	chainSvc           *chain.ChainSvc
 	storeManager       *store.StoreManager
+	keyringHome        string
 	nodeAddress        string
+	localPeerId        string
 	stagingPath        string
 	cfg                *config.Node
 	orderDs            datastore.Batching
@@ -100,12 +99,14 @@ func NewGatewaySvc(
 	storeManager *store.StoreManager,
 	notifyChan map[string]chan interface{},
 	orderDs datastore.Batching,
+	keyringHome string,
 ) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
 		storeManager:       storeManager,
 		nodeAddress:        nodeAddress,
+		localPeerId:        host.ID().String(),
 		stagingPath:        cfg.Transport.StagingPath,
 		cfg:                cfg,
 		commitWait:         make(map[string]chan struct{}),
@@ -173,39 +174,6 @@ func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
 }
 
 func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
-	nodes, err := gs.chainSvc.ListNodes(ctx)
-	if err != nil {
-		log.Error(types.Wrap(types.ErrQueryNodeFailed, err))
-	}
-
-	for _, node := range nodes {
-		for _, peerInfo := range strings.Split(node.Peer, ",") {
-			if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
-				continue
-			}
-
-			a, err := ma.NewMultiaddr(peerInfo)
-			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "peerInfo=%s", peerInfo)
-				continue
-			}
-			pi, err := peer.AddrInfoFromP2pAddr(a)
-			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
-				continue
-			}
-
-			err = host.Connect(ctx, *pi)
-			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
-				continue
-			} else {
-				log.Info("Connected to the gateway ", node.Creator)
-			}
-			break
-		}
-	}
-
 	for {
 		select {
 		case req := <-gs.schedule:
@@ -432,10 +400,37 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}
 
 		var gp GatewayProtocol
+		var relayProposal types.RelayProposalCbor
 		if key == gs.nodeAddress {
 			gp = gs.gatewayProtocolMap["local"]
+			relayProposal = types.RelayProposalCbor{}
 		} else {
 			gp = gs.gatewayProtocolMap["stream"]
+
+			proposal := types.RelayProposal{
+				NodeAddress:    gs.nodeAddress,
+				LocalPeerId:    gs.localPeerId,
+				RelayPeerIds:   gp.GetPeers(ctx),
+				TargetPeerInfo: shard.Peer,
+			}
+
+			buf := new(bytes.Buffer)
+			err = proposal.MarshalCBOR(buf)
+			if err != nil {
+				log.Error(types.ErrMarshalFailed, err)
+				relayProposal = types.RelayProposalCbor{}
+			} else {
+				signature, err := chain.SignByAddress(ctx, gs.keyringHome, gs.nodeAddress, buf.Bytes())
+				if err != nil {
+					log.Error(types.Wrap(types.ErrSignedFailed, err))
+					signature = make([]byte, 0)
+				}
+
+				relayProposal = types.RelayProposalCbor{
+					Proposal:  proposal,
+					Signature: signature,
+				}
+			}
 		}
 
 		resp := gp.RequestShardLoad(ctx, types.ShardLoadReq{
@@ -457,14 +452,8 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 					Signature: req.JwsSignature.Signature,
 				},
 			},
-			RequestId: time.Now().UnixMilli(),
-			RelayProposal: types.RelayProposalCbor{
-				Proposal: types.RelayProposal{
-					LocalPeerId:    "LocalPeerId",
-					RelayPeerId:    "RelayPeerId",
-					TargetPeerInfo: shard.Peer,
-				},
-			},
+			RequestId:     time.Now().UnixMilli(),
+			RelayProposal: relayProposal,
 		}, shard.Peer, true)
 		if resp.Code == 0 {
 			contentList[shard.ShardId] = resp.Content
