@@ -105,6 +105,7 @@ func NewGatewaySvc(
 		ctx:                ctx,
 		chainSvc:           chainSvc,
 		storeManager:       storeManager,
+		keyringHome:        keyringHome,
 		nodeAddress:        nodeAddress,
 		localPeerId:        host.ID().String(),
 		stagingPath:        cfg.Transport.StagingPath,
