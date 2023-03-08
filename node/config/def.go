@@ -43,13 +43,13 @@ func defCommon() Common {
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{
-				"/ip4/0.0.0.0/tcp/5153",
+				"/ip4/127.0.0.1/tcp/5153",
 			},
 			AnnounceAddresses: []string{},
 		},
 		Transport: Transport{
 			TransportListenAddress: []string{
-				"/ip4/0.0.0.0/udp/5154",
+				"/ip4/127.0.0.1/udp/5154",
 			},
 			StagingPath:      "~/.sao-node/staging",
 			StagingSapceSize: 32 * 1024 * 1024 * 1024,

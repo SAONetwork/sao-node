@@ -29,6 +29,7 @@ func NewStreamGatewayProtocol(ctx context.Context, host host.Host, handler Gatew
 	host.SetStreamHandler(types.ShardStoreProtocol, sgp.handleShardStoreStream)
 	host.SetStreamHandler(types.ShardCompleteProtocol, sgp.handleShardCompleteStream)
 	host.SetStreamHandler(types.ShardLoadProtocol, sgp.handleRelayStream)
+	host.SetStreamHandler(types.ShardPingPongProtocol, transport.HandlePingRequest)
 	return sgp
 }
 

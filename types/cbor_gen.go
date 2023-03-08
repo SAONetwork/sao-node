@@ -5409,3 +5409,98 @@ func (t *ShardMigrateResp) UnmarshalCBOR(r io.Reader) (err error) {
 
 	return nil
 }
+func (t *ShardPingPong) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{161}); err != nil {
+		return err
+	}
+
+	// t.Local (string) (string)
+	if len("Local") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Local\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Local"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Local")); err != nil {
+		return err
+	}
+
+	if len(t.Local) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Local was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Local))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Local)); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *ShardPingPong) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ShardPingPong{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("ShardPingPong: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Local (string) (string)
+		case "Local":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.Local = string(sval)
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}

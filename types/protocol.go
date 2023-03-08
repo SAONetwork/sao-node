@@ -16,6 +16,7 @@ const (
 	ShardAssignProtocol   = "/sao/shard/assign/1.0"
 	ShardCompleteProtocol = "/sao/shard/complete/1.0"
 	ShardMigrateProtocol  = "/sao/shard/migrate/1.0"
+	ShardPingPongProtocol = "/sao/shard/pingpong/1.0"
 
 	ErrorCodeInvalidRequest       = 1
 	ErrorCodeInvalidTx            = 2
@@ -99,6 +100,10 @@ type ShardMigrateResp struct {
 	Message        string
 	CompleteHash   string
 	CompleteHeight int64
+}
+
+type ShardPingPong struct {
+	Local string
 }
 
 func (f *ShardMigrateReq) Unmarshal(r io.Reader, format string) error {
@@ -320,6 +325,32 @@ func (f *ShardCompleteResp) Marshal(w io.Writer, format string) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		err = f.MarshalCBOR(w)
+	}
+	return err
+}
+
+func (f *ShardPingPong) Unmarshal(r io.Reader, format string) error {
+	var err error
+	if format == FormatJson {
+		buf := &bytes.Buffer{}
+		buf.ReadFrom(r)
+		err = json.Unmarshal(buf.Bytes(), f)
+	} else {
+		err = f.UnmarshalCBOR(r)
+	}
+	return err
+}
+
+func (f *ShardPingPong) Marshal(w io.Writer, format string) error {
+	var err error
+	if format == FormatJson {
+		bytes, err := json.Marshal(f)
+		if err != nil {
+			return err
+		}
+		_, err = w.Write(bytes)
 	} else {
 		err = f.MarshalCBOR(w)
 	}

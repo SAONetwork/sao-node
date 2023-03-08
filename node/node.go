@@ -13,6 +13,7 @@ import (
 	"sao-node/node/transport"
 	"sao-node/store"
 	"sort"
+	"time"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/sid"
@@ -363,6 +364,22 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 			break
 		}
 	}
+
+	go func() {
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				transport.DoPingRequest(ctx, n.host)
+
+				log.Infof("Sent keep alive messages to peers")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 }
 
 func (n *Node) Stop(ctx context.Context) error {

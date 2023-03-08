@@ -27,6 +27,8 @@ func NewStreamStorageProtocol(
 	host.SetStreamHandler(types.ShardAssignProtocol, ssp.handleShardAssign)
 	host.SetStreamHandler(types.ShardLoadProtocol, ssp.handleShardLoad)
 	host.SetStreamHandler(types.ShardMigrateProtocol, ssp.handleShardMigrate)
+	host.SetStreamHandler(types.ShardPingPongProtocol, transport.HandlePingRequest)
+
 	return ssp
 }
 

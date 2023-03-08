@@ -37,6 +37,7 @@ func main() {
 		types.ShardLoadResp{},
 		types.ShardMigrateReq{},
 		types.ShardMigrateResp{},
+		types.ShardPingPong{},
 	)
 	if err != nil {
 		fmt.Println(err)
