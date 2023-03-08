@@ -13,6 +13,10 @@ func DoPingRequest(ctx context.Context, host host.Host) {
 	for _, peerId := range host.Peerstore().Peers() {
 		log.Debug("peerId", peerId)
 
+		if peerId.String() == host.ID().String() {
+			continue
+		}
+
 		stream, err := host.NewStream(ctx, peerId, types.ShardPingPongProtocol)
 		if err != nil {
 			log.Error(types.Wrap(types.ErrCreateStreamFailed, err))
