@@ -400,37 +400,10 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}
 
 		var gp GatewayProtocol
-		var relayProposal types.RelayProposalCbor
 		if key == gs.nodeAddress {
 			gp = gs.gatewayProtocolMap["local"]
-			relayProposal = types.RelayProposalCbor{}
 		} else {
 			gp = gs.gatewayProtocolMap["stream"]
-
-			proposal := types.RelayProposal{
-				NodeAddress:    gs.nodeAddress,
-				LocalPeerId:    gs.localPeerId,
-				RelayPeerIds:   gp.GetPeers(ctx),
-				TargetPeerInfo: shard.Peer,
-			}
-
-			buf := new(bytes.Buffer)
-			err = proposal.MarshalCBOR(buf)
-			if err != nil {
-				log.Error(types.ErrMarshalFailed, err)
-				relayProposal = types.RelayProposalCbor{}
-			} else {
-				signature, err := chain.SignByAddress(ctx, gs.keyringHome, gs.nodeAddress, buf.Bytes())
-				if err != nil {
-					log.Error(types.Wrap(types.ErrSignedFailed, err))
-					signature = make([]byte, 0)
-				}
-
-				relayProposal = types.RelayProposalCbor{
-					Proposal:  proposal,
-					Signature: signature,
-				}
-			}
 		}
 
 		resp := gp.RequestShardLoad(ctx, types.ShardLoadReq{
@@ -453,7 +426,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 				},
 			},
 			RequestId:     time.Now().UnixMilli(),
-			RelayProposal: relayProposal,
+			RelayProposal: gs.buildRelayProposal(ctx, gp, shard.Peer),
 		}, shard.Peer, true)
 		if resp.Code == 0 {
 			contentList[shard.ShardId] = resp.Content
@@ -514,6 +487,46 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		Cid:     contentCid.String(),
 		Content: content,
 	}, nil
+}
+
+func (gs *GatewaySvc) buildRelayProposal(ctx context.Context, gp GatewayProtocol, peerInfos string) types.RelayProposalCbor {
+	if gp.GetPeers(ctx) == "" {
+		return types.RelayProposalCbor{
+			Proposal:  types.RelayProposal{},
+			Signature: make([]byte, 0),
+		}
+	}
+
+	proposal := types.RelayProposal{
+		NodeAddress:    gs.nodeAddress,
+		LocalPeerId:    gs.localPeerId,
+		RelayPeerIds:   gp.GetPeers(ctx),
+		TargetPeerInfo: peerInfos,
+	}
+
+	buf := new(bytes.Buffer)
+	err := proposal.MarshalCBOR(buf)
+	if err != nil {
+		log.Error(types.ErrMarshalFailed, err)
+		return types.RelayProposalCbor{
+			Proposal:  types.RelayProposal{},
+			Signature: make([]byte, 0),
+		}
+	} else {
+		signature, err := chain.SignByAddress(ctx, gs.keyringHome, gs.nodeAddress, buf.Bytes())
+		if err != nil {
+			log.Error(types.Wrap(types.ErrSignedFailed, err))
+			return types.RelayProposalCbor{
+				Proposal:  types.RelayProposal{},
+				Signature: make([]byte, 0),
+			}
+		} else {
+			return types.RelayProposalCbor{
+				Proposal:  proposal,
+				Signature: signature,
+			}
+		}
+	}
 }
 
 func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) error {

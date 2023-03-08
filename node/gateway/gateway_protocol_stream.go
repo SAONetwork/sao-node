@@ -144,6 +144,7 @@ func (l StreamGatewayProtocol) handleRelayStream(s network.Stream) {
 	log.Debugf("receive Relay ShardLoadReq: orderId=%d cid=%v requestId=%d", req.OrderId, req.Cid, req.RequestId)
 
 	if strings.Contains(req.RelayProposal.Proposal.TargetPeerInfo, l.host.ID().String()) {
+		// should not happen
 		respond(l.LocalGatewayProtocol.RequestShardLoad(l.ctx, req, req.RelayProposal.Proposal.TargetPeerInfo, false))
 	} else {
 		for _, peer := range l.host.Peerstore().Peers() {
