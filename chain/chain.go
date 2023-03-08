@@ -133,7 +133,12 @@ func (c *ChainSvc) GetLastHeight(ctx context.Context) (int64, error) {
 }
 
 func (c *ChainSvc) GetAccount(ctx context.Context, address string) (client.Account, error) {
-	return c.cosmos.Context().AccountRetriever.GetAccount(c.cosmos.Context(), sdktypes.AccAddress(address))
+	accAddress, err := sdktypes.AccAddressFromBech32(address)
+	if err != nil {
+		return nil, types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	return c.cosmos.Context().AccountRetriever.GetAccount(c.cosmos.Context(), accAddress)
 }
 
 func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coins, error) {
