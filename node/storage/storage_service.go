@@ -372,7 +372,7 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string)
 	}
 
 	log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, remotePeerId)
-	if strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
+	if !strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
 		if len(req.RelayProposal.Signature) > 0 && strings.Contains(req.RelayProposal.Proposal.RelayPeerIds, remotePeerId) {
 			account, err := ss.chainSvc.GetAccount(ss.ctx, req.RelayProposal.Proposal.NodeAddress)
 			if err != nil {

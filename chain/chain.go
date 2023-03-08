@@ -31,7 +31,6 @@ const ADDRESS_PREFIX = "sao"
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
 	cosmos           cosmosclient.Client
-	authClient       authtypes.QueryClient
 	bankClient       banktypes.QueryClient
 	orderClient      ordertypes.QueryClient
 	nodeClient       nodetypes.QueryClient
