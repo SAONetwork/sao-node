@@ -60,7 +60,8 @@ var (
 	ErrMarshalJwsFailed     = errors.Register(ModuleChain, 11024, "failed to marshal JWS")
 	ErrInvalidJwt           = errors.Register(ModuleChain, 11025, "invalid JWT")
 
-	ErrQueryHeightFailed = errors.Register(ModuleChain, 11026, "failed to query the latest height")
+	ErrQueryHeightFailed   = errors.Register(ModuleChain, 11026, "failed to query the latest height")
+	ErrInconsistentAddress = errors.Register(ModuleChain, 11027, "inconsistent address")
 )
 
 var (

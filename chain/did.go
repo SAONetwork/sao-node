@@ -56,6 +56,17 @@ func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did str
 	return txResp.TxResponse.TxHash, nil
 }
 
+func (c *ChainSvc) QueryPaymentAddress(ctx context.Context, did string) (string, error) {
+	msg := &sidtypes.QueryGetPaymentAddressRequest{
+		Did: did,
+	}
+	paymentAddrResp, err := c.didClient.PaymentAddress(ctx, msg)
+	if err != nil {
+		return "", err
+	}
+	return paymentAddrResp.PaymentAddress.Address, nil
+}
+
 func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 	_, err := c.didClient.ValidateDid(ctx, &sidtypes.QueryValidateDidRequest{
 		Did: did,
