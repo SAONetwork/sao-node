@@ -514,6 +514,8 @@ func (gs *GatewaySvc) buildRelayProposal(ctx context.Context, gp GatewayProtocol
 		}
 	} else {
 		signature, err := chain.SignByAddress(ctx, gs.keyringHome, gs.nodeAddress, buf.Bytes())
+		log.Debug("keyringHome", gs.keyringHome)
+		log.Debug("nodeAddress", gs.nodeAddress)
 		if err != nil {
 			log.Error(types.Wrap(types.ErrSignedFailed, err))
 			return types.RelayProposalCbor{
