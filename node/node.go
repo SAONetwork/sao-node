@@ -333,6 +333,10 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 			continue
 		}
 
+		if strings.Contains(node.Peer, n.host.ID().String()) {
+			continue
+		}
+
 		for _, peerInfo := range strings.Split(node.Peer, ",") {
 			if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
 				continue
@@ -340,18 +344,18 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 
 			a, err := multiaddr.NewMultiaddr(peerInfo)
 			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "peerInfo=%s", peerInfo)
+				log.Error(types.ErrInvalidServerAddress, "peerInfo=", peerInfo)
 				continue
 			}
 			pi, err := peer.AddrInfoFromP2pAddr(a)
 			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
+				log.Error(types.ErrInvalidServerAddress, "a=", a)
 				continue
 			}
 
 			err = n.host.Connect(ctx, *pi)
 			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "a=%v", a)
+				log.Error(types.ErrInvalidServerAddress, "a=", a)
 				continue
 			} else {
 				log.Info("Connected to the gateway ", node.Creator, " , peerinfos: ", node.Peer)
