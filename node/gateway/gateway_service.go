@@ -80,10 +80,6 @@ type GatewaySvc struct {
 	schedQueue *RequestQueue
 	locks      *utils.Maplock
 
-	// CommitModel is a synchrionzed function, commitWait channel is used to
-	// interrupt this wait once order is complete.
-	commitWait map[string]chan struct{}
-
 	completeResultChan chan string
 	completeMap        map[string]int64
 }
@@ -105,7 +101,6 @@ func NewGatewaySvc(
 		nodeAddress:        nodeAddress,
 		stagingPath:        cfg.Transport.StagingPath,
 		cfg:                cfg,
-		commitWait:         make(map[string]chan struct{}),
 		completeResultChan: make(chan string),
 		completeMap:        make(map[string]int64),
 		orderDs:            orderDs,
@@ -136,10 +131,6 @@ func (gs *GatewaySvc) completeLoop(ctx context.Context) {
 	for {
 		select {
 		case dataId := <-gs.completeResultChan:
-			if c, exists := gs.commitWait[dataId]; exists {
-				c <- struct{}{}
-			}
-
 			gs.locks.Lock("complete")
 			delete(gs.completeMap, dataId)
 			gs.locks.Unlock("complete")
@@ -687,19 +678,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		return nil, err
 	}
 
-	gs.commitWait[orderInfo.DataId] = make(chan struct{})
 	gs.schedule <- &WorkRequest{Order: orderInfo}
-
-	timeout := false
-	select {
-	case <-gs.commitWait[orderInfo.DataId]:
-		break
-	case <-time.After(chain.Blocktime * time.Duration(clientProposal.Proposal.Timeout)):
-		timeout = true
-	}
-
-	close(gs.commitWait[orderInfo.DataId])
-	delete(gs.commitWait, orderInfo.DataId)
 
 	// TODO: wsevent
 	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
@@ -709,41 +688,16 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	//	log.Debugf("UnsubscribeOrderComplete")
 	//}
 
-	if timeout {
-		// TODO: timeout handling
-		return nil, types.Wrapf(types.ErrProcessOrderFailed, "process order %d timeout.", orderId)
-	} else {
-		oi, err := utils.GetOrder(ctx, gs.orderDs, orderInfo.DataId)
-		if err != nil {
-			return nil, err
-		}
-
-		order, err := gs.chainSvc.GetOrder(ctx, oi.OrderId)
-		if err != nil {
-			return nil, err
-		}
-		log.Debugf("order %d complete: dataId=%s", oi.OrderId, order.Metadata.DataId)
-
-		shards := make(map[string]*saotypes.ShardMeta, 0)
-		for peer, shard := range order.Shards {
-			meta := saotypes.ShardMeta{
-				ShardId:  shard.Id,
-				Peer:     peer,
-				Cid:      shard.Cid,
-				Provider: order.Provider,
-			}
-			shards[peer] = &meta
-		}
-
-		return &CommitResult{
-			OrderId: order.Metadata.OrderId,
-			DataId:  order.Metadata.DataId,
-			Commit:  order.Metadata.Commit,
-			Commits: order.Metadata.Commits,
-			Shards:  shards,
-			Cid:     orderProposal.Cid,
-		}, nil
+	oi, err := utils.GetOrder(ctx, gs.orderDs, orderInfo.DataId)
+	if err != nil {
+		return nil, err
 	}
+
+	return &CommitResult{
+		OrderId: oi.OrderId,
+		DataId:  oi.DataId,
+		Cid:     oi.Cid.String(),
+	}, nil
 }
 
 func (gs *GatewaySvc) TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error {
@@ -788,12 +742,6 @@ func (gs *GatewaySvc) Stop(ctx context.Context) error {
 
 	log.Info("close complete result chan...")
 	close(gs.completeResultChan)
-
-	log.Info("close commit wait chans...")
-	for orderId, c := range gs.commitWait {
-		log.Infof("close wait chan for %d", orderId)
-		close(c)
-	}
 
 	return nil
 }
