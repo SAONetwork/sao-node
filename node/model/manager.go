@@ -313,6 +313,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	if err != nil {
 		return nil, err
 	}
+	log.Debug("CommitedModel!!!")
 
 	model := &types.Model{
 		DataId:     meta.DataId,
@@ -567,6 +568,7 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 		model.Content = make([]byte, 0)
 	}
 	mm.CacheSvc.Put(account, model.DataId, model)
+	mm.CacheSvc.Put(account, model.Alias, model)
 
 	buf, _ := json.Marshal(model)
 	log.Debug("model: ", string(buf), " CACHED!!!")
