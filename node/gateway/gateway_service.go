@@ -19,7 +19,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
-	"golang.org/x/xerrors"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
@@ -537,7 +536,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	}
 
 	orderInfo.Tries++
-	log.Info("order dataid=%d tries ", orderInfo.DataId, orderInfo.Tries)
+	log.Infof("order dataid=%d tries=%d", orderInfo.DataId, orderInfo.Tries)
 	if orderInfo.Tries >= 3 {
 		orderInfo.State = types.OrderStateTerminate
 		errMsg := fmt.Sprintf("order %d too many retries %d", orderInfo.OrderId, orderInfo.Tries)
@@ -546,7 +545,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		if e != nil {
 			log.Warn("put order %d error: %v", orderInfo.OrderId, e)
 		}
-		return xerrors.Errorf(errMsg)
+		return nil
 	}
 
 	if orderInfo.ExpireHeight > 0 {
@@ -564,89 +563,6 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 				log.Warn("put order %d error: %v", orderInfo.OrderId, e)
 			}
 			return types.Wrapf(types.ErrExpiredOrder, errStr)
-		}
-	}
-
-	var proposal saotypes.Proposal
-	err := proposal.Unmarshal(orderInfo.Proposal)
-	if err != nil {
-		return err
-	}
-
-	var txHash string
-	var shards map[string]*saotypes.ShardMeta
-	var txType types.AssignTxType
-	var height int64
-	if orderInfo.State < types.OrderStateReady {
-		if orderInfo.OrderId == 0 {
-			var signature saotypes.JwsSignature
-			err := signature.Unmarshal(orderInfo.JwsSignature)
-			if err != nil {
-				return err
-			}
-
-			clientProposal := types.OrderStoreProposal{
-				Proposal:     proposal,
-				JwsSignature: signature,
-			}
-			var resp saotypes.MsgStoreResponse
-			resp, txHash, height, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, &clientProposal)
-			if err != nil {
-				orderInfo.LastErr = err.Error()
-				e := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
-				if e != nil {
-					log.Warn("put order %d error: %v", orderInfo.OrderId, e)
-				}
-				return err
-			}
-			shards = resp.Shards
-			txType = types.AssignTxTypeStore
-			log.Infof("StoreOrder tx succeed. orderId=%d tx=%s shards=%v", resp.OrderId, txHash, resp.Shards)
-
-			orderInfo.OrderId = resp.OrderId
-		} else {
-			log.Debugf("Sending OrderReady... orderId=%d", orderInfo.OrderId)
-			var resp saotypes.MsgReadyResponse
-			resp, txHash, height, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderInfo.OrderId)
-			if err != nil {
-				orderInfo.LastErr = err.Error()
-				e := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
-				if e != nil {
-					log.Warn("put order %d error: %v", orderInfo.OrderId, e)
-				}
-				return err
-			}
-			shards = resp.Shards
-			txType = types.AssignTxTypeReady
-			log.Infof("OrderReady tx succeed. orderId=%d tx=%s", resp.OrderId, txHash)
-			log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
-
-			orderInfo.OrderId = resp.OrderId
-		}
-		orderInfo.OrderHash = txHash
-		orderInfo.OrderHeight = height
-		orderInfo.OrderTxType = txType
-		orderInfo.State = types.OrderStateReady
-		orderInfo.Shards = make(map[string]types.OrderShardInfo)
-		for node, s := range shards {
-			orderInfo.Shards[node] = types.OrderShardInfo{
-				ShardId:  s.ShardId,
-				Peer:     s.Peer,
-				Cid:      s.Cid,
-				Provider: s.Provider,
-				State:    types.ShardStateAssigned,
-			}
-		}
-
-		order, err := gs.chainSvc.GetOrder(ctx, orderInfo.OrderId)
-		if err == nil {
-			orderInfo.ExpireHeight = uint64(order.Expire)
-		} else {
-			log.Warn("chain get order err: ", err)
-		}
-		err = utils.SaveOrder(ctx, gs.orderDs, orderInfo)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -680,7 +596,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 				}
 			}
 		}
-		err = utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+		err := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
 		if err != nil {
 			return err
 		}
@@ -716,18 +632,89 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		return nil, err
 	}
 	orderInfo := types.OrderInfo{
-		State:        types.OrderStateStaged,
-		StagePath:    stagePath,
-		DataId:       clientProposal.Proposal.DataId,
-		OrderId:      orderId,
-		Proposal:     proposalBytes,
-		JwsSignature: signatureBytes,
-		Owner:        clientProposal.Proposal.Owner,
-		Cid:          cid,
+		State:     types.OrderStateStaged,
+		StagePath: stagePath,
+		DataId:    clientProposal.Proposal.DataId,
+		OrderId:   orderId,
+		Owner:     clientProposal.Proposal.Owner,
+		Cid:       cid,
 	}
 	err = utils.SaveOrder(ctx, gs.orderDs, orderInfo)
 	if err != nil {
 		return nil, err
+	}
+
+	var proposal saotypes.Proposal
+	err = proposal.Unmarshal(proposalBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	var txHash string
+	var shards map[string]*saotypes.ShardMeta
+	var txType types.AssignTxType
+	var height int64
+	if orderInfo.State < types.OrderStateReady {
+		if orderInfo.OrderId == 0 {
+			var signature saotypes.JwsSignature
+			err := signature.Unmarshal(signatureBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			clientProposal := types.OrderStoreProposal{
+				Proposal:     proposal,
+				JwsSignature: signature,
+			}
+			var resp saotypes.MsgStoreResponse
+			resp, txHash, height, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, &clientProposal)
+			if err != nil {
+				return nil, err
+			}
+			shards = resp.Shards
+			txType = types.AssignTxTypeStore
+			log.Infof("StoreOrder tx succeed. orderId=%d tx=%s shards=%v", resp.OrderId, txHash, resp.Shards)
+
+			orderInfo.OrderId = resp.OrderId
+		} else {
+			log.Debugf("Sending OrderReady... orderId=%d", orderInfo.OrderId)
+			var resp saotypes.MsgReadyResponse
+			resp, txHash, height, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderInfo.OrderId)
+			if err != nil {
+				return nil, err
+			}
+			shards = resp.Shards
+			txType = types.AssignTxTypeReady
+			log.Infof("OrderReady tx succeed. orderId=%d tx=%s", resp.OrderId, txHash)
+			log.Infof("OrderReady tx succeed. shards=%v", resp.Shards)
+
+			orderInfo.OrderId = resp.OrderId
+		}
+		orderInfo.OrderHash = txHash
+		orderInfo.OrderHeight = height
+		orderInfo.OrderTxType = txType
+		orderInfo.State = types.OrderStateReady
+		orderInfo.Shards = make(map[string]types.OrderShardInfo)
+		for node, s := range shards {
+			orderInfo.Shards[node] = types.OrderShardInfo{
+				ShardId:  s.ShardId,
+				Peer:     s.Peer,
+				Cid:      s.Cid,
+				Provider: s.Provider,
+				State:    types.ShardStateAssigned,
+			}
+		}
+
+		order, err := gs.chainSvc.GetOrder(ctx, orderInfo.OrderId)
+		if err == nil {
+			orderInfo.ExpireHeight = uint64(order.Expire)
+		} else {
+			log.Warn("chain get order err: ", err)
+		}
+		err = utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	gs.schedule <- &WorkRequest{Order: orderInfo}

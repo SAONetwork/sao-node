@@ -498,7 +498,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{175}); err != nil {
+	if _, err := cw.Write([]byte{173}); err != nil {
 		return err
 	}
 
@@ -584,54 +584,6 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 	if _, err := io.WriteString(w, string(t.StagePath)); err != nil {
-		return err
-	}
-
-	// t.Proposal ([]uint8) (slice)
-	if len("Proposal") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"Proposal\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Proposal"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("Proposal")); err != nil {
-		return err
-	}
-
-	if len(t.Proposal) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.Proposal was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.Proposal))); err != nil {
-		return err
-	}
-
-	if _, err := cw.Write(t.Proposal[:]); err != nil {
-		return err
-	}
-
-	// t.JwsSignature ([]uint8) (slice)
-	if len("JwsSignature") > cbg.MaxLength {
-		return xerrors.Errorf("Value in field \"JwsSignature\" was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("JwsSignature"))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(w, string("JwsSignature")); err != nil {
-		return err
-	}
-
-	if len(t.JwsSignature) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.JwsSignature was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.JwsSignature))); err != nil {
-		return err
-	}
-
-	if _, err := cw.Write(t.JwsSignature[:]); err != nil {
 		return err
 	}
 
@@ -922,50 +874,6 @@ func (t *OrderInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.StagePath = string(sval)
-			}
-			// t.Proposal ([]uint8) (slice)
-		case "Proposal":
-
-			maj, extra, err = cr.ReadHeader()
-			if err != nil {
-				return err
-			}
-
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.Proposal: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
-
-			if extra > 0 {
-				t.Proposal = make([]uint8, extra)
-			}
-
-			if _, err := io.ReadFull(cr, t.Proposal[:]); err != nil {
-				return err
-			}
-			// t.JwsSignature ([]uint8) (slice)
-		case "JwsSignature":
-
-			maj, extra, err = cr.ReadHeader()
-			if err != nil {
-				return err
-			}
-
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.JwsSignature: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
-
-			if extra > 0 {
-				t.JwsSignature = make([]uint8, extra)
-			}
-
-			if _, err := io.ReadFull(cr, t.JwsSignature[:]); err != nil {
-				return err
 			}
 			// t.OrderId (uint64) (uint64)
 		case "OrderId":
