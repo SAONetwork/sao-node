@@ -539,7 +539,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	}
 
 	orderInfo.Tries++
-	log.Infof("order dataid=%d tries=%d", orderInfo.DataId, orderInfo.Tries)
+	log.Infof("order dataid=%s tries=%d", orderInfo.DataId, orderInfo.Tries)
 	if orderInfo.Tries >= 3 {
 		orderInfo.State = types.OrderStateTerminate
 		errMsg := fmt.Sprintf("order %d too many retries %d", orderInfo.OrderId, orderInfo.Tries)
@@ -573,7 +573,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		log.Infof("assigning shards to nodes...")
 		// assign shards to storage nodes
 
-		log.Debug("assigning order %d.", orderInfo.OrderId)
+		log.Debugf("assigning order %d.", orderInfo.OrderId)
 		for node, shard := range orderInfo.Shards {
 			if shard.State != types.ShardStateCompleted {
 				var gp GatewayProtocol
@@ -600,7 +600,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 				}
 			}
 		}
-		log.Debug("assigned order %d done.", orderInfo.OrderId)
+		log.Debugf("assigned order %d done.", orderInfo.OrderId)
 
 		err := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
 		if err != nil {
