@@ -14,7 +14,9 @@ import (
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
@@ -28,22 +30,25 @@ const ADDRESS_PREFIX = "sao"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
-	cosmos      cosmosclient.Client
-	bankClient  banktypes.QueryClient
-	orderClient ordertypes.QueryClient
-	nodeClient  nodetypes.QueryClient
-	didClient   didtypes.QueryClient
-	modelClient modeltypes.QueryClient
-	listener    *http.HTTP
+	cosmos           cosmosclient.Client
+	bankClient       banktypes.QueryClient
+	orderClient      ordertypes.QueryClient
+	nodeClient       nodetypes.QueryClient
+	didClient        didtypes.QueryClient
+	modelClient      modeltypes.QueryClient
+	listener         *http.HTTP
+	accountRetriever authtypes.AccountRetriever
 }
 
 type ChainSvcApi interface {
 	Stop(ctx context.Context) error
 	GetLastHeight(ctx context.Context) (int64, error)
+	GetAccount(ctx context.Context, address string) (client.Account, error)
 	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
 	ShowDidInfo(ctx context.Context, did string)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
+	QueryPaymentAddress(ctx context.Context, did string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
@@ -85,6 +90,7 @@ func NewChainSvc(
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
 
+	accountRetriever := authtypes.AccountRetriever{}
 	bankClient := banktypes.NewQueryClient(cosmos.Context())
 	orderClient := ordertypes.NewQueryClient(cosmos.Context())
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
@@ -105,13 +111,14 @@ func NewChainSvc(
 	// log.Debugf("initialize chain listener3")
 
 	return &ChainSvc{
-		cosmos:      cosmos,
-		bankClient:  bankClient,
-		orderClient: orderClient,
-		nodeClient:  nodeClient,
-		didClient:   didClient,
-		modelClient: modelClient,
-		listener:    http,
+		cosmos:           cosmos,
+		bankClient:       bankClient,
+		orderClient:      orderClient,
+		nodeClient:       nodeClient,
+		didClient:        didClient,
+		modelClient:      modelClient,
+		listener:         http,
+		accountRetriever: accountRetriever,
 	}, nil
 }
 
@@ -128,6 +135,15 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 
 func (c *ChainSvc) GetLastHeight(ctx context.Context) (int64, error) {
 	return c.cosmos.LatestBlockHeight(ctx)
+}
+
+func (c *ChainSvc) GetAccount(ctx context.Context, address string) (client.Account, error) {
+	accAddress, err := sdktypes.AccAddressFromBech32(address)
+	if err != nil {
+		return nil, types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	return c.accountRetriever.GetAccount(c.cosmos.Context(), accAddress)
 }
 
 func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coins, error) {

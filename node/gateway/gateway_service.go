@@ -70,7 +70,9 @@ type GatewaySvc struct {
 	ctx                context.Context
 	chainSvc           *chain.ChainSvc
 	storeManager       *store.StoreManager
+	keyringHome        string
 	nodeAddress        string
+	localPeerId        string
 	stagingPath        string
 	cfg                *config.Node
 	orderDs            datastore.Batching
@@ -93,12 +95,15 @@ func NewGatewaySvc(
 	storeManager *store.StoreManager,
 	notifyChan map[string]chan interface{},
 	orderDs datastore.Batching,
+	keyringHome string,
 ) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
 		chainSvc:           chainSvc,
 		storeManager:       storeManager,
+		keyringHome:        keyringHome,
 		nodeAddress:        nodeAddress,
+		localPeerId:        host.ID().String(),
 		stagingPath:        cfg.Transport.StagingPath,
 		cfg:                cfg,
 		completeResultChan: make(chan string),
@@ -109,18 +114,22 @@ func NewGatewaySvc(
 		locks:              utils.NewMapLock(),
 	}
 	cs.gatewayProtocolMap = make(map[string]GatewayProtocol)
-	cs.gatewayProtocolMap["local"] = NewLocalGatewayProtocol(
+
+	local := NewLocalGatewayProtocol(
 		ctx,
 		notifyChan,
 		storeManager,
 		cs,
 	)
+	cs.gatewayProtocolMap["local"] = local
 	cs.gatewayProtocolMap["stream"] = NewStreamGatewayProtocol(
+		ctx,
 		host,
 		cs,
+		local,
 	)
 
-	go cs.runSched(ctx)
+	go cs.runSched(ctx, host)
 	go cs.processIncompleteOrders(ctx)
 	go cs.completeLoop(ctx)
 
@@ -156,7 +165,7 @@ func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
 	}
 }
 
-func (gs *GatewaySvc) runSched(ctx context.Context) {
+func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
 	for {
 		select {
 		case req := <-gs.schedule:
@@ -408,8 +417,9 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 					Signature: req.JwsSignature.Signature,
 				},
 			},
-			RequestId: time.Now().UnixMilli(),
-		}, shard.Peer)
+			RequestId:     time.Now().UnixMilli(),
+			RelayProposal: gs.buildRelayProposal(ctx, gp, shard.Peer),
+		}, shard.Peer, true)
 		if resp.Code == 0 {
 			contentList[shard.ShardId] = resp.Content
 		} else {
@@ -469,6 +479,48 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		Cid:     contentCid.String(),
 		Content: content,
 	}, nil
+}
+
+func (gs *GatewaySvc) buildRelayProposal(ctx context.Context, gp GatewayProtocol, peerInfos string) types.RelayProposalCbor {
+	if gp.GetPeers(ctx) == "" {
+		return types.RelayProposalCbor{
+			Proposal:  types.RelayProposal{},
+			Signature: make([]byte, 0),
+		}
+	}
+
+	proposal := types.RelayProposal{
+		NodeAddress:    gs.nodeAddress,
+		LocalPeerId:    gs.localPeerId,
+		RelayPeerIds:   gp.GetPeers(ctx),
+		TargetPeerInfo: peerInfos,
+	}
+
+	buf := new(bytes.Buffer)
+	err := proposal.MarshalCBOR(buf)
+	if err != nil {
+		log.Error(types.ErrMarshalFailed, err)
+		return types.RelayProposalCbor{
+			Proposal:  types.RelayProposal{},
+			Signature: make([]byte, 0),
+		}
+	} else {
+		signature, err := chain.SignByAddress(ctx, gs.keyringHome, gs.nodeAddress, buf.Bytes())
+		log.Debug("keyringHome", gs.keyringHome)
+		log.Debug("nodeAddress", gs.nodeAddress)
+		if err != nil {
+			log.Error(types.Wrap(types.ErrSignedFailed, err))
+			return types.RelayProposalCbor{
+				Proposal:  types.RelayProposal{},
+				Signature: make([]byte, 0),
+			}
+		} else {
+			return types.RelayProposalCbor{
+				Proposal:  proposal,
+				Signature: signature,
+			}
+		}
+	}
 }
 
 func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) error {
