@@ -69,9 +69,18 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 
 func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
 	log.Info("KeyWord:", req.Proposal.Keyword)
+
+	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
+	if model != nil {
+		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
+			return model, nil
+		}
+	}
+
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, err
+
 	}
 
 	version := req.Proposal.Version
@@ -128,14 +137,6 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, meta.DataId)
-	if model != nil {
-		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
-			model.Version = req.Proposal.Version
-
-			return model, nil
-		}
-	}
 	if model == nil {
 		model = &types.Model{
 			DataId:   meta.DataId,
