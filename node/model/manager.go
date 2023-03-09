@@ -69,9 +69,19 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 
 func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
 	log.Info("KeyWord:", req.Proposal.Keyword)
+
+	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
+	if model != nil {
+		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
+			log.Debug("model", model)
+			return model, nil
+		}
+	}
+
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, err
+
 	}
 
 	version := req.Proposal.Version
@@ -128,14 +138,6 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, meta.DataId)
-	if model != nil {
-		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
-			model.Version = req.Proposal.Version
-
-			return model, nil
-		}
-	}
 	if model == nil {
 		model = &types.Model{
 			DataId:   meta.DataId,
@@ -160,17 +162,13 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		model.ExtendInfo = meta.ExtendInfo
 	}
 
-	if len(meta.Shards) > 1 {
-		log.Warnf("large size content should go through P2P channel")
-	} else {
-		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
-		if err != nil {
-			return nil, err
-		}
-		model.Cid = result.Cid
-		model.Content = result.Content
-		model.Version = version
+	result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
+	if err != nil {
+		return nil, err
 	}
+	model.Cid = result.Cid
+	model.Content = result.Content
+	model.Version = version
 
 	mm.cacheModel(req.Proposal.Owner, model)
 
