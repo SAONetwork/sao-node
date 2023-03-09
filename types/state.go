@@ -27,9 +27,7 @@ type OrderInfo struct {
 	Cid    cid.Cid
 
 	// Staged
-	StagePath    string
-	Proposal     []byte
-	JwsSignature []byte
+	StagePath string
 
 	// ready
 	OrderId     uint64
