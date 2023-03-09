@@ -564,6 +564,8 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 	}
 	mm.CacheSvc.Put(account, model.DataId, model)
 
+	log.Debug("model: ", model, " CACHED!!!")
+
 	// mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
 	// Reserved for open data model search feature...
 	// for _, k := range model.Tags {
