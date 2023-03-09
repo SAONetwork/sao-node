@@ -313,7 +313,7 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 		log.Warn("put order %d error: %v", orderInfo.OrderId, err)
 	}
 
-	if orderInfo.State == types.OrderStateComplete {
+	if orderInfo.State != types.OrderStateComplete && order.Status == saotypes.OrderCompleted {
 		log.Debugf("complete channel done. order %d completes", orderInfo.OrderId)
 		orderInfo.State = types.OrderStateComplete
 		err = utils.SaveOrder(gs.ctx, gs.orderDs, orderInfo)
