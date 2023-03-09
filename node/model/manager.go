@@ -229,7 +229,7 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		ExtendInfo: orderProposal.ExtendInfo,
 	}
 
-	// mm.cacheModel(orderProposal.Owner, model)
+	mm.cacheModel(orderProposal.Owner, model)
 
 	return model, nil
 }
@@ -331,7 +331,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}
 
-	// mm.cacheModel(clientProposal.Proposal.Owner, model)
+	mm.cacheModel(clientProposal.Proposal.Owner, model)
 
 	return model, nil
 }
