@@ -73,6 +73,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
 	if model != nil {
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
+			log.Debug("model", model)
 			return model, nil
 		}
 	}
