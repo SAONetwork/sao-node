@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sao-node/node/cache"
@@ -546,6 +547,9 @@ func (mm *ModelManager) loadModel(account string, key string) *types.Model {
 			if len(model.Content) == 0 && len(model.Shards) > 0 {
 				log.Warnf("large size content should go through P2P channel")
 			}
+			buf, _ := json.Marshal(model)
+			log.Debug("model: ", string(buf), " LOADED!!!")
+
 			return model
 		}
 	}
@@ -564,7 +568,8 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 	}
 	mm.CacheSvc.Put(account, model.DataId, model)
 
-	log.Debug("model: ", model, " CACHED!!!")
+	buf, _ := json.Marshal(model)
+	log.Debug("model: ", string(buf), " CACHED!!!")
 
 	// mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
 	// Reserved for open data model search feature...
