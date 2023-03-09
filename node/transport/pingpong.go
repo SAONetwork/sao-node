@@ -33,9 +33,14 @@ func DoPingRequest(ctx context.Context, host host.Host) {
 		pingpong := types.ShardPingPong{
 			Local: host.ID().String(),
 		}
-		err = DoRequest(ctx, stream, pingpong, &pingpong, types.FormatCbor)
+		err = pingpong.Marshal(stream, types.FormatCbor)
 		if err != nil {
-			log.Error(err)
+			log.Error(err.Error())
+			continue
+		}
+		if err := stream.CloseWrite(); err != nil {
+			log.Error(err.Error())
+			continue
 		}
 	}
 }
