@@ -213,9 +213,6 @@ func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
 
 // -----------------  GatewayProtocolHandler Impl -----------------
 func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.ShardCompleteResp {
-	gs.locks.Lock("complete")
-	defer gs.locks.Unlock("complete")
-
 	logAndRespond := func(errMsg string, code uint64) types.ShardCompleteResp {
 		log.Error(errMsg)
 		return types.ShardCompleteResp{
