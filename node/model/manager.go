@@ -247,7 +247,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commitId:%s", clientProposal.Proposal.CommitId)
 	}
 
-	commitId := commitIds[0]
+	commitId := commitIds[1]
 	var isFetch = true
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
 	if orgModel != nil {
