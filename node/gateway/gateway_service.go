@@ -40,6 +40,7 @@ type CommitResult struct {
 	Commit  string
 	Commits []string
 	Cid     string
+	Height  int64
 	Shards  map[string]*saotypes.ShardMeta
 }
 
@@ -739,6 +740,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		OrderId: oi.OrderId,
 		DataId:  oi.DataId,
 		Cid:     oi.Cid.String(),
+		Height:  oi.OrderHeight,
 	}, nil
 }
 

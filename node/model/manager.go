@@ -221,8 +221,8 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		Tags:       orderProposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.Commit,
-		Commits:    result.Commits,
+		CommitId:   orderProposal.CommitId,
+		Commits:    append(make([]string, 0), orderProposal.CommitId),
 		Version:    "v0",
 		Content:    content,
 		ExtendInfo: orderProposal.ExtendInfo,
@@ -315,6 +315,10 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	}
 	log.Debug("CommitedModel!!!")
 
+	commit := bytes.NewBufferString(commitId)
+	commit.WriteByte(26)
+	commit.WriteString(fmt.Sprintf("%d", result.Height))
+
 	model := &types.Model{
 		DataId:     meta.DataId,
 		Alias:      meta.Alias,
@@ -324,8 +328,8 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		Tags:       clientProposal.Proposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.Commit,
-		Commits:    meta.Commits,
+		CommitId:   commitId,
+		Commits:    append(meta.Commits, commit.String()),
 		Version:    fmt.Sprintf("v%d", len(meta.Commits)),
 		Content:    newContent,
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
