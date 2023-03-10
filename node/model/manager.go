@@ -247,7 +247,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commitId:%s", clientProposal.Proposal.CommitId)
 	}
 
-	commitId := commitIds[1]
+	commitId := commitIds[0]
 	var isFetch = true
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
 	if orgModel != nil {
@@ -319,7 +319,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	}
 	log.Debug("CommitedModel!!!")
 
-	commit := bytes.NewBufferString(commitId)
+	commit := bytes.NewBufferString(commitIds[1])
 	commit.WriteByte(26)
 	commit.WriteString(fmt.Sprintf("%d", result.Height))
 
@@ -332,7 +332,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		Tags:       clientProposal.Proposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   commitId,
+		CommitId:   commitIds[1],
 		Commits:    append(meta.Commits, commit.String()),
 		Version:    fmt.Sprintf("v%d", len(meta.Commits)),
 		Content:    newContent,
