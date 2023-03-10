@@ -1,6 +1,8 @@
 package types
 
-import "github.com/ipfs/go-cid"
+import (
+	"github.com/ipfs/go-cid"
+)
 
 // ----------------
 // order state
@@ -40,6 +42,7 @@ type OrderInfo struct {
 
 	State   OrderState
 	Tries   uint64
+	RetryAt int64
 	LastErr string
 }
 
@@ -50,6 +53,7 @@ const (
 	OrderStateReady
 	OrderStateComplete
 	OrderStateTerminate
+	OrderStateExpired
 )
 
 var orderStateString = map[OrderState]string{
