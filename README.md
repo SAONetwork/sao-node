@@ -1,25 +1,23 @@
 # sao-node
 
-## Build & start consensus node
-	$ git clone git@github.com:SaoNetwork/sao-consensus.git
-	$ cd sao-consensus
-	$ git checkoiut matt/new-model-module
-	$ make
-	$ saod start
-
 ## Build node
 	$ git clone git@github.com:SaoNetwork/sao-node.git
 	$ cd sao-node
-	$ git checkout data_model_dev
+	$ git checkout testnet1
 	$ make
+Two binaries will be generated:
+* saonode - gateway/storage node
+* saoclient - cliednt to operate data models.
 
 ## Prepare accounts & tokens
 	$ ./saonode account create
-	Enter account name:node001
+	Enter account name: node001
 	Account: node001
 	Address: cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4
 	Mnemonic:
 	feel phone vacant level midnight attract student include common medal walnut van famous matrix hunt lesson evolve silk argue mesh affair grid oppose reunion
+This account will be used as storage node account.
+
 	$ ./saoclient account create
 	Enter account name:client001
 	Account: client001
@@ -28,6 +26,7 @@
 	walk mercy worry belt often biology arm angle caution seminar exhibit top raw sentence wasp fringe wage vocal learn wide measure sleep lend link
 	$ saod tx bank send alice cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4 100000000stake
 	$ saod tx bank send alice cosmos124uad7f4dvpnfre44yv8dh2ztrvkmcd4xgymrz 100000000stake
+This account will be used as client account.
 
 ## Init & start node
 	$ ./saonode init --creator cosmos1evfnyhkvgkm676s48y4tkuqj2js4eg23e8h2p4
