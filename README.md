@@ -3,7 +3,7 @@
 ## Build node
 	$ git clone git@github.com:SaoNetwork/sao-node.git
 	$ cd sao-node
-	$ git checkout testnet1
+	$ git checkout v0.1.0
 	$ make
 Two binaries will be generated:
 * saonode - gateway/storage node
