@@ -29,7 +29,7 @@ import (
 var log = logging.Logger("gateway")
 
 const (
-	WINDOW_SIZE       = 2
+	WINDOW_SIZE       = 10
 	SCHEDULE_INTERVAL = 1
 	LOCKNAME_COMPLETE = "complete"
 )
@@ -181,6 +181,9 @@ func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
 				}()
 
 				task := gs.schedQueue.PopFront()
+				if task == nil {
+					return
+				}
 				if task.Order.RetryAt > time.Now().Unix() {
 					gs.schedQueue.Push(task)
 					return

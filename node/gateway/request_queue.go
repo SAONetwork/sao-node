@@ -27,6 +27,9 @@ func (q *RequestQueue) Push(x *WorkRequest) {
 func (q *RequestQueue) PopFront() *WorkRequest {
 	q.Lock()
 	defer q.Unlock()
+	if len(q.queue) == 0 {
+		return nil
+	}
 
 	item := q.queue[0]
 	q.queue = q.queue[1:]
