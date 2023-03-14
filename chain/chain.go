@@ -85,6 +85,7 @@ func NewChainSvc(
 		cosmosclient.WithNodeAddress(chainAddress),
 		cosmosclient.WithKeyringDir(keyringHome),
 		cosmosclient.WithGas("auto"),
+		cosmosclient.WithGasometer(gasometer{}),
 	)
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
