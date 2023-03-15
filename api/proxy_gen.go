@@ -52,15 +52,11 @@ type SaoApiStruct struct {
 
 		ModelUpdatePermission func(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) `perm:"write"`
 
-		OrderFix func(p0 context.Context, p1 string) error `perm:"write"`
-
-		OrderList func(p0 context.Context) ([]types.OrderInfo, error) `perm:"read"`
+		OrderList func(p0 context.Context) ([]types.OrderInfo, error) ``
 
 		OrderStatus func(p0 context.Context, p1 string) (types.OrderInfo, error) `perm:"read"`
 
-		ShardFix func(p0 context.Context, p1 uint64, p2 cid.Cid) error ``
-
-		ShardList func(p0 context.Context) ([]types.ShardInfo, error) `perm:"read"`
+		ShardList func(p0 context.Context) ([]types.ShardInfo, error) ``
 
 		ShardStatus func(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) `perm:"read"`
 	}
@@ -267,17 +263,6 @@ func (s *SaoApiStub) ModelUpdatePermission(p0 context.Context, p1 *types.Permiss
 	return *new(apitypes.UpdatePermissionResp), ErrNotSupported
 }
 
-func (s *SaoApiStruct) OrderFix(p0 context.Context, p1 string) error {
-	if s.Internal.OrderFix == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.OrderFix(p0, p1)
-}
-
-func (s *SaoApiStub) OrderFix(p0 context.Context, p1 string) error {
-	return ErrNotSupported
-}
-
 func (s *SaoApiStruct) OrderList(p0 context.Context) ([]types.OrderInfo, error) {
 	if s.Internal.OrderList == nil {
 		return *new([]types.OrderInfo), ErrNotSupported
@@ -298,17 +283,6 @@ func (s *SaoApiStruct) OrderStatus(p0 context.Context, p1 string) (types.OrderIn
 
 func (s *SaoApiStub) OrderStatus(p0 context.Context, p1 string) (types.OrderInfo, error) {
 	return *new(types.OrderInfo), ErrNotSupported
-}
-
-func (s *SaoApiStruct) ShardFix(p0 context.Context, p1 uint64, p2 cid.Cid) error {
-	if s.Internal.ShardFix == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.ShardFix(p0, p1, p2)
-}
-
-func (s *SaoApiStub) ShardFix(p0 context.Context, p1 uint64, p2 cid.Cid) error {
-	return ErrNotSupported
 }
 
 func (s *SaoApiStruct) ShardList(p0 context.Context) ([]types.ShardInfo, error) {

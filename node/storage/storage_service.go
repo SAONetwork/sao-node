@@ -246,8 +246,14 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 			fmt.Sprintf("unmarshal tx error: %v", err),
 		)
 	}
-	m, exists := mr.Result[req.DataId]
-	if !exists {
+	var m string
+	for _, r := range mr.Result {
+		if r.K == req.DataId {
+			m = r.V
+			break
+		}
+	}
+	if m == "" {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("invalid data id: given dataId %s not in tx %s", req.DataId, req.TxHash),
@@ -573,6 +579,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	}
 
 	task.Tries++
+	log.Infof("shard orderid=%d cid=%v: %d", task.OrderId, task.Cid, task.Tries)
 	if task.Tries >= MAX_RETRIES {
 		task.State = types.ShardStateTerminate
 		errMsg := fmt.Sprintf("order %d shard %v too many retries %d", task.OrderId, task.DataId, task.Tries)

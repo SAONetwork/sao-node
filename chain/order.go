@@ -122,8 +122,13 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 	if err != nil {
 		return "", nil, err
 	}
-	return txResp.TxResponse.TxHash, renewResp.Result, nil
+	result := make(map[string]string)
+	for _, r := range renewResp.Result {
+		result[r.K] = r.V
+	}
+	return txResp.TxResponse.TxHash, result, nil
 }
+
 func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
@@ -146,7 +151,11 @@ func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []s
 	if err != nil {
 		return "", nil, -1, err
 	}
-	return txResp.TxResponse.TxHash, migrateResp.Result, txResp.TxResponse.Height, nil
+	result := make(map[string]string)
+	for _, r := range migrateResp.Result {
+		result[r.K] = r.V
+	}
+	return txResp.TxResponse.TxHash, result, txResp.TxResponse.Height, nil
 }
 
 func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
@@ -170,7 +179,7 @@ func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminate
 	return txResp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error) {
+func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.FullOrder, error) {
 	queryResp, err := c.orderClient.Order(ctx, &ordertypes.QueryGetOrderRequest{
 		Id: orderId,
 	})

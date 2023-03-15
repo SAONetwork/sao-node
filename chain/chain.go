@@ -63,7 +63,7 @@ type ChainSvcApi interface {
 	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error)
 	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
 	MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error)
-	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Order, error)
+	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.FullOrder, error)
 	//SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
 	//UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
 	//SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
