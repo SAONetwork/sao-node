@@ -366,7 +366,7 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 }
 
 func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error) {
-	contentList := make([][]byte, len(meta.Shards))
+	contentList := make(map[uint64][]byte)
 	for key, shard := range meta.Shards {
 		if contentList[shard.ShardId] != nil {
 			continue
