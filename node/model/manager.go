@@ -252,6 +252,9 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 			log.Debugf("load the model[%s]-%s from cache", orgModel.DataId, orgModel.Alias)
 			log.Debug("model: ", string(orgModel.Content))
 			isFetch = false
+		} else {
+			log.Debug("not model %s:%s found in the cache, fetch it from the network", orgModel.DataId, lastCommitId)
+			log.Debug("local version model is %s:%s.", orgModel.DataId, orgModel.CommitId)
 		}
 	}
 
