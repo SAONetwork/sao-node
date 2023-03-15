@@ -124,6 +124,7 @@ type ShardInfo struct {
 	Tries        uint64
 	ExpireHeight uint64
 	State        ShardState
+	RetryAt      int64
 	LastErr      string
 }
 

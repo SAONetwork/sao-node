@@ -4,16 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sao-node/chain"
 	"sao-node/node/config"
+	"sao-node/node/queue"
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
 	"time"
+
+	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/ipfs/go-cid"
@@ -32,6 +34,7 @@ const (
 	WINDOW_SIZE       = 10
 	SCHEDULE_INTERVAL = 1
 	LOCKNAME_COMPLETE = "complete"
+	MAX_RETRIES       = 3
 )
 
 type CommitResult struct {
@@ -62,10 +65,6 @@ type GatewaySvcApi interface {
 	OrderList(ctx context.Context) ([]types.OrderInfo, error)
 }
 
-type WorkRequest struct {
-	Order types.OrderInfo
-}
-
 type GatewaySvc struct {
 	ctx                context.Context
 	chainSvc           *chain.ChainSvc
@@ -78,7 +77,7 @@ type GatewaySvc struct {
 	orderDs            datastore.Batching
 	gatewayProtocolMap map[string]GatewayProtocol
 
-	schedQueue *RequestQueue
+	schedQueue *queue.RequestQueue
 	locks      *utils.Maplock
 
 	completeResultChan chan string
@@ -108,7 +107,7 @@ func NewGatewaySvc(
 		completeResultChan: make(chan string),
 		completeMap:        make(map[string]int64),
 		orderDs:            orderDs,
-		schedQueue:         &RequestQueue{},
+		schedQueue:         &queue.RequestQueue{},
 		locks:              utils.NewMapLock(),
 	}
 	cs.gatewayProtocolMap = make(map[string]GatewayProtocol)
@@ -156,7 +155,7 @@ func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
 		log.Error("process pending orders error: %v", err)
 	} else {
 		for _, p := range pendings {
-			gs.schedQueue.Push(&WorkRequest{
+			gs.schedQueue.Push(&queue.WorkRequest{
 				Order: p,
 			})
 		}
@@ -526,7 +525,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 	orderInfo.Tries++
 	orderInfo.RetryAt = utils.GetRetryAt(orderInfo.Tries)
 	log.Infof("order dataid=%s tries=%d", orderInfo.DataId, orderInfo.Tries)
-	if orderInfo.Tries >= 3 {
+	if orderInfo.Tries >= MAX_RETRIES {
 		orderInfo.State = types.OrderStateTerminate
 		errMsg := fmt.Sprintf("order %d too many retries %d", orderInfo.OrderId, orderInfo.Tries)
 		orderInfo.LastErr = errMsg
@@ -709,7 +708,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		}
 	}
 
-	gs.schedQueue.Push(&WorkRequest{Order: orderInfo})
+	gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
 
 	// TODO: wsevent
 	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
@@ -814,14 +813,17 @@ func (gs *GatewaySvc) OrderFix(ctx context.Context, dataId string) error {
 		return err
 	}
 
-	gs.schedQueue.Push(&WorkRequest{Order: orderInfo})
+	gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
 	return nil
 }
 
 func (gs *GatewaySvc) getPendingOrders(ctx context.Context) ([]types.OrderInfo, error) {
 	orderKeys, err := gs.getOrderKeys(ctx)
 	if err != nil {
-		return nil, err
+		return nil, err // wsevent way to receive shard assign
+		//if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
+		//	return nil, err
+		//}
 	}
 
 	var orders []types.OrderInfo
