@@ -143,6 +143,7 @@ var shardStateString = map[ShardState]string{
 	ShardStateStored:    "stored",
 	ShardStateTxSent:    "txSent",
 	ShardStateComplete:  "completed",
+	ShardStateTerminate: "terminated",
 }
 
 func (s ShardState) String() string {
