@@ -246,8 +246,14 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 			fmt.Sprintf("unmarshal tx error: %v", err),
 		)
 	}
-	m, exists := mr.Result[req.DataId]
-	if !exists {
+	var m string
+	for _, r := range mr.Result {
+		if r.K == req.DataId {
+			m = r.V
+			break
+		}
+	}
+	if m == "" {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("invalid data id: given dataId %s not in tx %s", req.DataId, req.TxHash),

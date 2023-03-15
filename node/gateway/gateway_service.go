@@ -531,7 +531,8 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	}
 
 	var txHash string
-	var shards map[string]*saotypes.ShardMeta
+	// var shards map[string]*saotypes.ShardMeta
+	var shards []*saotypes.ShardMeta
 	var txType types.AssignTxType
 	var height int64
 	if orderInfo.State < types.OrderStateReady {
@@ -585,8 +586,8 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		orderInfo.OrderTxType = txType
 		orderInfo.State = types.OrderStateReady
 		orderInfo.Shards = make(map[string]types.OrderShardInfo)
-		for node, s := range shards {
-			orderInfo.Shards[node] = types.OrderShardInfo{
+		for _, s := range shards {
+			orderInfo.Shards[s.Sp] = types.OrderShardInfo{
 				ShardId:  s.ShardId,
 				Peer:     s.Peer,
 				Cid:      s.Cid,
