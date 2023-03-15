@@ -76,6 +76,9 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
 			return model, nil
+		} else {
+			log.Debugf("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
+			log.Debugf("local version model is %s:%s.", model.DataId, model.CommitId)
 		}
 	}
 
@@ -253,8 +256,8 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 			log.Debug("model: ", string(orgModel.Content))
 			isFetch = false
 		} else {
-			log.Debug("not model %s:%s found in the cache, fetch it from the network", orgModel.DataId, lastCommitId)
-			log.Debug("local version model is %s:%s.", orgModel.DataId, orgModel.CommitId)
+			log.Debugf("not model %s:%s found in the cache, fetch it from the network", orgModel.DataId, lastCommitId)
+			log.Debugf("local version model is %s:%s.", orgModel.DataId, orgModel.CommitId)
 		}
 	}
 

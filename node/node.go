@@ -323,6 +323,27 @@ func newRpcServer(ga api.SaoApi, cfg *config.API) (*http.Server, error) {
 }
 
 func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
+	n.ConnectPeers(ctx)
+
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				n.ConnectPeers(ctx)
+				transport.DoPingRequest(ctx, n.host)
+
+				log.Infof("Sent keep alive messages to peers")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+}
+
+func (n *Node) ConnectPeers(ctx context.Context) {
 	nodes, err := n.chainSvc.ListNodes(ctx)
 	if err != nil {
 		log.Error(types.Wrap(types.ErrQueryNodeFailed, err))
@@ -340,6 +361,17 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 
 		for _, peerInfo := range strings.Split(node.Peer, ",") {
 			if strings.Contains(peerInfo, "udp") || strings.Contains(peerInfo, "127.0.0.1") {
+				continue
+			}
+
+			isFound := false
+			for _, peer := range n.host.Peerstore().Peers() {
+				strings.Contains(peerInfo, peer.ShortString())
+				isFound = true
+				break
+			}
+
+			if isFound {
 				continue
 			}
 
@@ -364,22 +396,6 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 			break
 		}
 	}
-
-	go func() {
-		ticker := time.NewTicker(1 * time.Minute)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				transport.DoPingRequest(ctx, n.host)
-
-				log.Infof("Sent keep alive messages to peers")
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 }
 
 func (n *Node) Stop(ctx context.Context) error {
