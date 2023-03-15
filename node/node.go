@@ -366,9 +366,10 @@ func (n *Node) ConnectPeers(ctx context.Context) {
 
 			isFound := false
 			for _, peer := range n.host.Peerstore().Peers() {
-				strings.Contains(peerInfo, peer.ShortString())
-				isFound = true
-				break
+				if strings.Contains(peerInfo, peer.ShortString()) {
+					isFound = true
+					break
+				}
 			}
 
 			if isFound {
