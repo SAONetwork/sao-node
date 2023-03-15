@@ -7,7 +7,8 @@ import (
 
 type GatewayProtocol interface {
 	RequestShardAssign(ctx context.Context, req types.ShardAssignReq, peer string) types.ShardAssignResp
-	RequestShardLoad(ctx context.Context, req types.ShardLoadReq, peer string) types.ShardLoadResp
+	RequestShardLoad(ctx context.Context, req types.ShardLoadReq, peer string, isForward bool) types.ShardLoadResp
+	GetPeers(ctx context.Context) string
 	Stop(ctx context.Context) error
 }
 

@@ -61,7 +61,7 @@ func (l LocalGatewayProtocol) RequestShardAssign(ctx context.Context, req types.
 	return types.ShardAssignResp{Code: 0}
 }
 
-func (l LocalGatewayProtocol) RequestShardLoad(ctx context.Context, req types.ShardLoadReq, _ string) types.ShardLoadResp {
+func (l LocalGatewayProtocol) RequestShardLoad(ctx context.Context, req types.ShardLoadReq, _ string, _ bool) types.ShardLoadResp {
 	returnErr := func(code uint64, errMsg string) types.ShardLoadResp {
 		return types.ShardLoadResp{
 			Code:       code,
@@ -97,4 +97,8 @@ func (l LocalGatewayProtocol) RequestShardLoad(ctx context.Context, req types.Sh
 		RequestId:  req.RequestId,
 		ResponseId: time.Now().UnixMilli(),
 	}
+}
+
+func (l LocalGatewayProtocol) GetPeers(_ context.Context) string {
+	return ""
 }

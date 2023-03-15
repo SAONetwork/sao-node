@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sao-node/node/transport"
 	"sao-node/types"
-	"strings"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -28,6 +27,8 @@ func NewStreamStorageProtocol(
 	host.SetStreamHandler(types.ShardAssignProtocol, ssp.handleShardAssign)
 	host.SetStreamHandler(types.ShardLoadProtocol, ssp.handleShardLoad)
 	host.SetStreamHandler(types.ShardMigrateProtocol, ssp.handleShardMigrate)
+	host.SetStreamHandler(types.ShardPingPongProtocol, transport.HandlePingRequest)
+
 	return ssp
 }
 
@@ -104,20 +105,8 @@ func (l StreamStorageProtocol) handleShardLoad(s network.Stream) {
 		})
 		return
 	}
-	peerInfo := string(s.Conn().RemoteMultiaddr().String())
-	log.Debug("check peer: %v<->%v", req.Proposal.Proposal.Gateway, peerInfo)
-	if !strings.Contains(req.Proposal.Proposal.Gateway, peerInfo) {
-		respond(types.ShardLoadResp{
-			Code:       types.ErrorCodeInternalErr,
-			Message:    fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", peerInfo, req.Proposal.Proposal.Gateway),
-			OrderId:    req.OrderId,
-			Cid:        req.Cid,
-			RequestId:  req.RequestId,
-			ResponseId: time.Now().UnixMilli(),
-		})
-		return
-	}
-	respond(l.HandleShardLoad(req))
+
+	respond(l.HandleShardLoad(req, s.Conn().RemotePeer().String()))
 }
 
 func (l StreamStorageProtocol) handleShardAssign(s network.Stream) {
@@ -157,7 +146,7 @@ func (l StreamStorageProtocol) RequestShardMigrate(
 	peer string,
 ) types.ShardMigrateResp {
 	resp := types.ShardMigrateResp{}
-	err := transport.HandleRequest(ctx, peer, l.host, types.ShardMigrateProtocol, &req, &resp)
+	err := transport.HandleRequest(ctx, peer, l.host, types.ShardMigrateProtocol, &req, &resp, false)
 	if err != nil {
 		resp = types.ShardMigrateResp{
 			Code:    types.ErrorCodeInternalErr,
@@ -176,6 +165,7 @@ func (l StreamStorageProtocol) RequestShardComplete(ctx context.Context, req typ
 		types.ShardCompleteProtocol,
 		&req,
 		&resp,
+		false,
 	)
 	if err != nil {
 		resp = types.ShardCompleteResp{
@@ -196,6 +186,7 @@ func (l StreamStorageProtocol) RequestShardStore(ctx context.Context, req types.
 		types.ShardStoreProtocol,
 		&req,
 		&resp,
+		false,
 	)
 	if err != nil {
 		resp = types.ShardLoadResp{

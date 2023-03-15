@@ -290,7 +290,7 @@ var joinCmd = &cli.Command{
 			}
 		}
 
-		tx, err := chain.Reset(ctx, creator, "", status)
+		tx, err := chain.Create(ctx, creator)
 		if err != nil {
 			return err
 		} else {

@@ -58,6 +58,25 @@ func SignByAccount(ctx context.Context, repo string, name string, payload []byte
 	return sig, nil
 }
 
+func SignByAddress(ctx context.Context, repo string, address string, payload []byte) ([]byte, error) {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
+	if err != nil {
+		return nil, types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	addr, err := sdktypes.AccAddressFromBech32(address)
+	if err != nil {
+		return nil, types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	sig, _, err := accountRegistry.Keyring.SignByAddress(addr, payload)
+	if err != nil {
+		return nil, types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	return sig, nil
+}
+
 func (c *ChainSvc) List(ctx context.Context, repo string) error {
 	accountRegistry, err := newAccountRegistry(ctx, repo)
 	if err != nil {

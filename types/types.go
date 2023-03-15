@@ -66,6 +66,11 @@ type MetadataProposalCbor struct {
 	JwsSignature JwsSignature
 }
 
+type RelayProposalCbor struct {
+	Proposal  RelayProposal
+	Signature []byte
+}
+
 type JwsSignature struct {
 	Protected string
 	Signature string
@@ -81,6 +86,12 @@ type QueryProposal struct {
 	Version         string
 }
 
+type RelayProposal struct {
+	NodeAddress    string
+	LocalPeerId    string
+	RelayPeerIds   string
+	TargetPeerInfo string
+}
 type PermissionProposal struct {
 	Proposal     saotypes.PermissionProposal
 	JwsSignature saotypes.JwsSignature

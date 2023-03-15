@@ -188,6 +188,8 @@ func GetChainAddress(cctx *cli.Context, repoPath string, binaryName string) (str
 		}
 	}
 
+	fmt.Println("chainaddress: ", chainAddress)
+
 	if chainAddress == "" {
 		return chainAddress, types.Wrapf(types.ErrInvalidChainAddress, "no chain address specified")
 	}

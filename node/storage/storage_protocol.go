@@ -14,6 +14,6 @@ type StorageProtocol interface {
 
 type StorageProtocolHandler interface {
 	HandleShardAssign(req types.ShardAssignReq) types.ShardAssignResp
-	HandleShardLoad(req types.ShardLoadReq) types.ShardLoadResp
+	HandleShardLoad(req types.ShardLoadReq, remotePeerId string) types.ShardLoadResp
 	HandleShardMigrate(req types.ShardMigrateReq) types.ShardMigrateResp
 }

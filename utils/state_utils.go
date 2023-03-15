@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"sao-node/types"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -387,4 +388,17 @@ func GetShardIndex(ctx context.Context, ds datastore.Batching) (types.ShardIndex
 	var index types.ShardIndex
 	err = index.UnmarshalCBOR(bytes.NewReader(data))
 	return index, err
+}
+
+const RetryIntervalCoeff time.Duration = 3
+
+/**
+ * Get order retry timestamp.
+ */
+func GetRetryAt(tries uint64) int64 {
+	retryInterval := time.Second
+	for i := uint64(0); i < tries; i++ {
+		retryInterval *= RetryIntervalCoeff
+	}
+	return time.Now().Add(retryInterval).Unix()
 }

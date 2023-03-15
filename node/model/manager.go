@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sao-node/node/cache"
@@ -69,9 +70,19 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 
 func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
 	log.Info("KeyWord:", req.Proposal.Keyword)
+
+	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
+	if model != nil {
+		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
+			log.Debug("model", model)
+			return model, nil
+		}
+	}
+
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, err
+
 	}
 
 	version := req.Proposal.Version
@@ -128,14 +139,6 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, meta.DataId)
-	if model != nil {
-		if model.CommitId == meta.CommitId && len(model.Content) > 0 {
-			model.Version = req.Proposal.Version
-
-			return model, nil
-		}
-	}
 	if model == nil {
 		model = &types.Model{
 			DataId:   meta.DataId,
@@ -160,17 +163,13 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		model.ExtendInfo = meta.ExtendInfo
 	}
 
-	if len(meta.Shards) > 1 {
-		log.Warnf("large size content should go through P2P channel")
-	} else {
-		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
-		if err != nil {
-			return nil, err
-		}
-		model.Cid = result.Cid
-		model.Content = result.Content
-		model.Version = version
+	result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
+	if err != nil {
+		return nil, err
 	}
+	model.Cid = result.Cid
+	model.Content = result.Content
+	model.Version = version
 
 	mm.cacheModel(req.Proposal.Owner, model)
 
@@ -213,6 +212,10 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		return nil, err
 	}
 
+	commit := bytes.NewBufferString(orderProposal.CommitId)
+	commit.WriteByte(26)
+	commit.WriteString(fmt.Sprintf("%d", result.Height))
+
 	model := &types.Model{
 		DataId:     result.DataId,
 		Alias:      orderProposal.Alias,
@@ -222,14 +225,14 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		Tags:       orderProposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.Commit,
-		Commits:    result.Commits,
+		CommitId:   orderProposal.CommitId,
+		Commits:    append(make([]string, 0), commit.String()),
 		Version:    "v0",
 		Content:    content,
 		ExtendInfo: orderProposal.ExtendInfo,
 	}
 
-	// mm.cacheModel(orderProposal.Owner, model)
+	mm.cacheModel(orderProposal.Owner, model)
 
 	return model, nil
 }
@@ -314,6 +317,11 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	if err != nil {
 		return nil, err
 	}
+	log.Debug("CommitedModel!!!")
+
+	commit := bytes.NewBufferString(commitIds[1])
+	commit.WriteByte(26)
+	commit.WriteString(fmt.Sprintf("%d", result.Height))
 
 	model := &types.Model{
 		DataId:     meta.DataId,
@@ -324,14 +332,14 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		Tags:       clientProposal.Proposal.Tags,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
-		CommitId:   result.Commit,
-		Commits:    result.Commits,
-		Version:    fmt.Sprintf("v%d", len(result.Commits)-1),
+		CommitId:   commitIds[1],
+		Commits:    append(meta.Commits, commit.String()),
+		Version:    fmt.Sprintf("v%d", len(meta.Commits)),
 		Content:    newContent,
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}
 
-	// mm.cacheModel(clientProposal.Proposal.Owner, model)
+	mm.cacheModel(clientProposal.Proposal.Owner, model)
 
 	return model, nil
 }
@@ -548,6 +556,9 @@ func (mm *ModelManager) loadModel(account string, key string) *types.Model {
 			if len(model.Content) == 0 && len(model.Shards) > 0 {
 				log.Warnf("large size content should go through P2P channel")
 			}
+			buf, _ := json.Marshal(model)
+			log.Debug("model: ", string(buf), " LOADED!!!")
+
 			return model
 		}
 	}
@@ -565,6 +576,10 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 		model.Content = make([]byte, 0)
 	}
 	mm.CacheSvc.Put(account, model.DataId, model)
+	mm.CacheSvc.Put(account, model.Alias, model)
+
+	buf, _ := json.Marshal(model)
+	log.Debug("model: ", string(buf), " CACHED!!!")
 
 	// mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
 	// Reserved for open data model search feature...

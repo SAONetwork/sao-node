@@ -85,6 +85,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
+			recoverCmd,
 			netCmd,
 			modelCmd,
 			fileCmd,
@@ -106,7 +107,8 @@ var initCmd = &cli.Command{
 	Usage: "initialize a cli sao client",
 	UsageText: "if you want to use sao cli client, you must first init using this command.\n " +
 		"create sao chain account locally which will be used as default account in following commands. \n" +
-		"under --repo directory, there are client configuration file and keystore.",
+		"under --repo directory, there is client configuration file,\n" +
+		"under --keyring directory, there are keystore files.",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:     cliutil.FlagKeyName,
@@ -182,6 +184,69 @@ var initCmd = &cli.Command{
 		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
 		fmt.Println()
 		fmt.Println("sao client initialized.")
+		return nil
+	},
+}
+
+var recoverCmd = &cli.Command{
+	Name:  "recover",
+	Usage: "recover cli sao client with a specific did",
+	UsageText: "if you have already init sao cli client, you can do recover client by did.\n " +
+		"return error if did is not exists or payment address of did is not found in keyring directory ",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     cliutil.FlagKeyName,
+			Usage:    "sao chain account key name",
+			Required: true,
+			Aliases:  []string{"k"},
+		},
+		&cli.StringFlag{
+			Name:     "did",
+			Usage:    "sao chain key did",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "chain-id",
+			Required: false,
+			Value:    "sao",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		repo := cctx.String(FlagClientRepo)
+
+		saoclient, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		fmt.Printf("repo %s is initialized.", repo)
+		fmt.Println()
+		address, err := chain.GetAddress(cctx.Context, cliutil.KeyringHome, saoclient.Cfg.KeyName)
+		//accountName, address, mnemonic, err := chain.Create(cctx.Context, cliutil.KeyringHome, saoclient.Cfg.KeyName)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("address with key name %s is, %s\n", saoclient.Cfg.KeyName, address)
+
+		did := cctx.String("did")
+		payAddr, err := saoclient.QueryPaymentAddress(cctx.Context, did)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("payment address of did %s is, %s\n", did, payAddr)
+
+		if address != payAddr {
+			return types.ErrInconsistentAddress
+		}
+
+		err = saoclient.SaveConfig(saoclient.Cfg)
+		if err != nil {
+			return types.Wrapf(types.ErrWriteConfigFailed, "save local config failed: %v", err)
+		}
+
+		fmt.Println()
+		fmt.Println("sao client recovered.")
 		return nil
 	},
 }

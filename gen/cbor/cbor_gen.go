@@ -25,8 +25,10 @@ func main() {
 		types.MigrateIndex{},
 
 		types.QueryProposal{},
+		types.RelayProposal{},
 		types.JwsSignature{},
 		types.MetadataProposalCbor{},
+		types.RelayProposalCbor{},
 		types.ShardAssignReq{},
 		types.ShardAssignResp{},
 		types.ShardCompleteReq{},
@@ -35,6 +37,7 @@ func main() {
 		types.ShardLoadResp{},
 		types.ShardMigrateReq{},
 		types.ShardMigrateResp{},
+		types.ShardPingPong{},
 	)
 	if err != nil {
 		fmt.Println(err)
