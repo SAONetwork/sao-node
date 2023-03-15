@@ -1,20 +1,44 @@
 package gateway
 
-type RequestQueue []*WorkRequest
+import (
+	"sync"
+)
 
-func (q RequestQueue) Len() int { return len(q) }
-
-func (q *RequestQueue) Push(x *WorkRequest) {
-	item := x
-	*q = append(*q, item)
+type RequestQueue struct {
+	sync.Mutex
+	queue []*WorkRequest
 }
 
-func (q *RequestQueue) Remove(i int) *WorkRequest {
-	old := *q
-	n := len(old)
-	item := old[i]
-	old[i] = old[n-1]
-	old[n-1] = nil
-	*q = old[0 : n-1]
+func (q *RequestQueue) Len() int {
+	q.Lock()
+	defer q.Unlock()
+
+	return len(q.queue)
+}
+
+func (q *RequestQueue) Push(x *WorkRequest) {
+	q.Lock()
+	defer q.Unlock()
+
+	item := x
+	q.queue = append(q.queue, item)
+}
+
+func (q *RequestQueue) PopFront() *WorkRequest {
+	q.Lock()
+	defer q.Unlock()
+	if len(q.queue) == 0 {
+		return nil
+	}
+
+	item := q.queue[0]
+	q.queue = q.queue[1:]
 	return item
+}
+
+func (q *RequestQueue) Clean() {
+	q.Lock()
+	defer q.Unlock()
+
+	q.queue = []*WorkRequest{}
 }

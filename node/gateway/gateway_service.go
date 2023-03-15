@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,7 +13,6 @@ import (
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
-	"sync"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types/tx"
@@ -29,7 +29,7 @@ import (
 var log = logging.Logger("gateway")
 
 const (
-	WINDOW_SIZE       = 2
+	WINDOW_SIZE       = 10
 	SCHEDULE_INTERVAL = 1
 	LOCKNAME_COMPLETE = "complete"
 )
@@ -40,6 +40,7 @@ type CommitResult struct {
 	Commit  string
 	Commits []string
 	Cid     string
+	Height  int64
 	Shards  map[string]*saotypes.ShardMeta
 }
 
@@ -77,7 +78,6 @@ type GatewaySvc struct {
 	orderDs            datastore.Batching
 	gatewayProtocolMap map[string]GatewayProtocol
 
-	schedule   chan *WorkRequest
 	schedQueue *RequestQueue
 	locks      *utils.Maplock
 
@@ -108,7 +108,6 @@ func NewGatewaySvc(
 		completeResultChan: make(chan string),
 		completeMap:        make(map[string]int64),
 		orderDs:            orderDs,
-		schedule:           make(chan *WorkRequest),
 		schedQueue:         &RequestQueue{},
 		locks:              utils.NewMapLock(),
 	}
@@ -157,65 +156,51 @@ func (gs *GatewaySvc) processIncompleteOrders(ctx context.Context) {
 		log.Error("process pending orders error: %v", err)
 	} else {
 		for _, p := range pendings {
-			gs.schedule <- &WorkRequest{
+			gs.schedQueue.Push(&WorkRequest{
 				Order: p,
-			}
+			})
 		}
 	}
 }
 
 func (gs *GatewaySvc) runSched(ctx context.Context, host host.Host) {
+	throttle := make(chan struct{}, WINDOW_SIZE)
 	for {
-		select {
-		case req := <-gs.schedule:
-			gs.schedQueue.Push(req)
-		case <-time.After(time.Minute * SCHEDULE_INTERVAL):
+		if gs.schedQueue.Len() == 0 {
+			time.Sleep(time.Second * SCHEDULE_INTERVAL)
+			continue
 		}
 
-		throttle := make(chan struct{}, WINDOW_SIZE)
-
-		var reschedule []types.OrderInfo
 		len := gs.schedQueue.Len()
-		var wg sync.WaitGroup
-		wg.Add(len)
 		for i := 0; i < len; i++ {
 			throttle <- struct{}{}
 
-			go func(sqi int) {
-				defer wg.Done()
+			go func() {
 				defer func() {
 					<-throttle
 				}()
 
-				task := (*gs.schedQueue)[sqi]
-				err := gs.process(ctx, task.Order)
+				task := gs.schedQueue.PopFront()
+				if task == nil {
+					return
+				}
+				if task.Order.RetryAt > time.Now().Unix() {
+					gs.schedQueue.Push(task)
+					return
+				}
+
+				err := gs.process(ctx, &task.Order)
 				if err != nil {
 					log.Warnf("process order %d error: %v", task.Order.OrderId, err)
-					newOrder, err := utils.GetOrder(ctx, gs.orderDs, task.Order.DataId)
-					if err != nil {
-						reschedule = append(reschedule, newOrder)
-					} else {
-						reschedule = append(reschedule, task.Order)
-					}
+					gs.schedQueue.Push(task)
 				}
-			}(i)
-		}
-		wg.Wait()
-
-		for i := 0; i < len; i++ {
-			gs.schedQueue.Remove(0)
-		}
-		for _, r := range reschedule {
-			gs.schedQueue.Push(&WorkRequest{Order: r})
+			}()
 		}
 	}
 }
 
 // -----------------  GatewayProtocolHandler Impl -----------------
 func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.ShardCompleteResp {
-	gs.locks.Lock("complete")
-	defer gs.locks.Unlock("complete")
-
 	logAndRespond := func(errMsg string, code uint64) types.ShardCompleteResp {
 		log.Error(errMsg)
 		return types.ShardCompleteResp{
@@ -313,7 +298,7 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 		log.Warn("put order %d error: %v", orderInfo.OrderId, err)
 	}
 
-	if orderInfo.State != types.OrderStateComplete && order.Status == saotypes.OrderCompleted {
+	if orderInfo.State != types.OrderStateComplete && order.Status == ordertypes.OrderCompleted {
 		log.Debugf("complete channel done. order %d completes", orderInfo.OrderId)
 		orderInfo.State = types.OrderStateComplete
 		err = utils.SaveOrder(gs.ctx, gs.orderDs, orderInfo)
@@ -525,7 +510,7 @@ func (gs *GatewaySvc) buildRelayProposal(ctx context.Context, gp GatewayProtocol
 	}
 }
 
-func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) error {
+func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) error {
 	gs.locks.Lock(lockname(orderInfo.OrderId))
 	defer gs.locks.Unlock(lockname(orderInfo.OrderId))
 
@@ -539,12 +524,13 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 	}
 
 	orderInfo.Tries++
+	orderInfo.RetryAt = utils.GetRetryAt(orderInfo.Tries)
 	log.Infof("order dataid=%s tries=%d", orderInfo.DataId, orderInfo.Tries)
 	if orderInfo.Tries >= 3 {
 		orderInfo.State = types.OrderStateTerminate
 		errMsg := fmt.Sprintf("order %d too many retries %d", orderInfo.OrderId, orderInfo.Tries)
 		orderInfo.LastErr = errMsg
-		e := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+		e := utils.SaveOrder(ctx, gs.orderDs, *orderInfo)
 		if e != nil {
 			log.Warn("put order %d error: %v", orderInfo.OrderId, e)
 		}
@@ -558,14 +544,14 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		}
 
 		if latestHeight > int64(orderInfo.ExpireHeight) {
-			orderInfo.State = types.OrderStateTerminate
+			orderInfo.State = types.OrderStateExpired
 			errStr := fmt.Sprintf("order expired: latest=%d expireAt=%d", latestHeight, orderInfo.ExpireHeight)
 			orderInfo.LastErr = errStr
-			e := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+			e := utils.SaveOrder(ctx, gs.orderDs, *orderInfo)
 			if e != nil {
 				log.Warn("put order %d error: %v", orderInfo.OrderId, e)
 			}
-			return types.Wrapf(types.ErrExpiredOrder, errStr)
+			return nil
 		}
 	}
 
@@ -602,7 +588,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo types.OrderInfo) er
 		}
 		log.Debugf("assigned order %d done.", orderInfo.OrderId)
 
-		err := utils.SaveOrder(ctx, gs.orderDs, orderInfo)
+		err := utils.SaveOrder(ctx, gs.orderDs, *orderInfo)
 		if err != nil {
 			return err
 		}
@@ -723,7 +709,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		}
 	}
 
-	gs.schedule <- &WorkRequest{Order: orderInfo}
+	gs.schedQueue.Push(&WorkRequest{Order: orderInfo})
 
 	// TODO: wsevent
 	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
@@ -742,6 +728,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		OrderId: oi.OrderId,
 		DataId:  oi.DataId,
 		Cid:     oi.Cid.String(),
+		Height:  oi.OrderHeight,
 	}, nil
 }
 
@@ -827,7 +814,7 @@ func (gs *GatewaySvc) OrderFix(ctx context.Context, dataId string) error {
 		return err
 	}
 
-	gs.schedule <- &WorkRequest{Order: orderInfo}
+	gs.schedQueue.Push(&WorkRequest{Order: orderInfo})
 	return nil
 }
 
