@@ -1,0 +1,4 @@
+#!/bin/sh
+
+git-chglog  -o CHANGELOG.md v0.1.3..
+git add CHANGELOG.md
