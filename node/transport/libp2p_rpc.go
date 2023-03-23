@@ -37,7 +37,7 @@ type Libp2pRpcServer struct {
 	StagingSapceSize int64
 }
 
-func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*Libp2pRpcServer, error) {
+func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, stagingPath string) (*Libp2pRpcServer, error) {
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, se
 		Ctx:              ctx,
 		Db:               db,
 		GatewayApi:       ga,
-		StagingPath:      cfg.Transport.StagingPath,
+		StagingPath:      stagingPath,
 		StagingSapceSize: cfg.Transport.StagingSapceSize,
 	}
 
