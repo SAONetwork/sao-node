@@ -6,6 +6,7 @@ import (
 	"sao-node/types"
 	"time"
 
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/SaoNetwork/sao-did/sid"
@@ -15,7 +16,6 @@ import (
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/cosmos/cosmos-sdk/client"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
@@ -30,6 +30,7 @@ const ADDRESS_PREFIX = "sao"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
+	ctx              context.Context
 	cosmos           cosmosclient.Client
 	bankClient       banktypes.QueryClient
 	orderClient      ordertypes.QueryClient
@@ -38,6 +39,20 @@ type ChainSvc struct {
 	modelClient      modeltypes.QueryClient
 	listener         *http.HTTP
 	accountRetriever authtypes.AccountRetriever
+
+	broadcastChanMap map[string]chan BroadcastTxJob
+	stopChan         chan struct{}
+}
+
+type BroadcastTxJob struct {
+	signer     string
+	msg        sdktypes.Msg
+	resultChan chan BroadcastTxJobResult
+}
+
+type BroadcastTxJobResult struct {
+	resp cosmosclient.Response
+	err  error
 }
 
 type ChainSvcApi interface {
@@ -111,6 +126,7 @@ func NewChainSvc(
 	// log.Debugf("initialize chain listener3")
 
 	return &ChainSvc{
+		ctx:              ctx,
 		cosmos:           cosmos,
 		bankClient:       bankClient,
 		orderClient:      orderClient,
@@ -119,7 +135,64 @@ func NewChainSvc(
 		modelClient:      modelClient,
 		listener:         http,
 		accountRetriever: accountRetriever,
+		broadcastChanMap: make(map[string]chan BroadcastTxJob),
+		stopChan:         make(chan struct{}),
 	}, nil
+}
+
+/**
+ * add tx msg to wait channel for broadcasting.
+ *
+ * @param respChan is to notify broadcast result
+ */
+func (c *ChainSvc) broadcastMsg(signer string, msg sdktypes.Msg, respChan chan BroadcastTxJobResult) {
+	if _, exists := c.broadcastChanMap[signer]; !exists {
+		log.Debugf("broadcast chan for signer %s doesn't exist, create.", signer)
+		c.broadcastChanMap[signer] = make(chan BroadcastTxJob, 1)
+		go c.broadcastLoop(c.ctx, c.broadcastChanMap[signer])
+		time.Sleep(time.Second)
+	}
+
+	c.broadcastChanMap[signer] <- BroadcastTxJob{
+		signer:     signer,
+		msg:        msg,
+		resultChan: respChan,
+	}
+}
+
+/**
+ * loop for tx msg to proceed for a certain signer.
+ * TODO: better to have a mechanism if a signer chan empty too long, then release this chan.
+ */
+func (c *ChainSvc) broadcastLoop(ctx context.Context, ch chan BroadcastTxJob) {
+	log.Info("start tx broadcast loop...")
+	for {
+		select {
+		case job := <-ch:
+			signerAcc, err := c.cosmos.Account(job.signer)
+			if err != nil {
+				job.resultChan <- BroadcastTxJobResult{
+					err: types.Wrap(types.ErrAccountNotFound, err),
+				}
+			} else {
+				txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, job.msg)
+				if err != nil {
+					job.resultChan <- BroadcastTxJobResult{
+						err: types.Wrap(types.ErrTxProcessFailed, err),
+					}
+				} else {
+					job.resultChan <- BroadcastTxJobResult{
+						resp: txResp,
+					}
+				}
+			}
+		case <-c.stopChan:
+			log.Info("tx broadcast loop stopped.")
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 func (c *ChainSvc) Stop(ctx context.Context) error {
@@ -129,6 +202,10 @@ func (c *ChainSvc) Stop(ctx context.Context) error {
 		if err != nil {
 			return types.Wrap(types.ErrStopChainServiceFailed, err)
 		}
+	}
+	c.stopChan <- struct{}{}
+	for _, ch := range c.broadcastChanMap {
+		close(ch)
 	}
 	return nil
 }

@@ -11,63 +11,54 @@ import (
 )
 
 func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
-	account, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
-	}
-
 	msg := &nodetypes.MsgCreate{
 		Creator: creator,
 	}
 
-	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgCreate tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgCreate tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error) {
-	account, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
-	}
-
 	msg := &nodetypes.MsgReset{
 		Creator: creator,
 		Peer:    peerInfo,
 		Status:  status,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgReset tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgReset tx hash=%s, code=%d", result.resp.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, error) {
-	account, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
-	}
-
 	msg := &nodetypes.MsgClaimReward{
 		Creator: creator,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, account, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgClaimReward tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgClaimReward tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, error) {

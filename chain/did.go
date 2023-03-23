@@ -36,24 +36,21 @@ func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*sid.S
 }
 
 func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error) {
-	signerAcc, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
-	}
-
 	msg := &sidtypes.MsgUpdatePaymentAddress{
 		Creator:   creator,
 		Did:       did,
 		AccountId: accountId,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdatePaymentAddress tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdatePaymentAddress tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) QueryPaymentAddress(ctx context.Context, did string) (string, error) {
