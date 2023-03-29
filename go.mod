@@ -59,6 +59,7 @@ require (
 	github.com/filecoin-project/lotus v1.19.0
 	github.com/labstack/gommon v0.4.0
 	github.com/libp2p/go-libp2p v0.23.2
+	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c
 )
 
