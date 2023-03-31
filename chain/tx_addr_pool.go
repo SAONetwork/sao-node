@@ -20,7 +20,7 @@ type AddressPool struct {
 func CreateAddressPool(ctx context.Context, keyringHome string, size uint) error {
 	rootAddress, err := GetAddress(ctx, keyringHome, "tx_addr_0")
 	if err == nil {
-		log.Error("there is a root address[%s] already", rootAddress)
+		log.Infof("there is a root address[%s] with name tx_addr_0 already", rootAddress)
 	} else {
 		mnemonic, err := GenerateMnemonic(ctx)
 		if err != nil {

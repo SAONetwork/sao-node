@@ -107,6 +107,7 @@ func main() {
 			infoCmd,
 			claimCmd,
 			jobsCmd,
+			initTxAddressPoolCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -125,6 +126,96 @@ var jobsCmd = &cli.Command{
 		ordersCmd,
 		shardsCmd,
 		migrationsCmd,
+	},
+}
+
+var initTxAddressPoolCmd = &cli.Command{
+	Name:  "init-tx-address-pool",
+	Usage: "initialize tx address pool for a sao network node",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: true,
+		},
+		&cli.UintFlag{
+			Name:     "tx-pool-size",
+			Usage:    "address pool size for sending message, the default value is 10",
+			Value:    10,
+			Required: false,
+		},
+		&cli.UintFlag{
+			Name:     "pool-token-amount",
+			Usage:    "SAO token amount reserved for address pool, the default value is 0",
+			Value:    0,
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+		creator := cctx.String("creator")
+		txPoolSize := cctx.Uint("tx-pool-size")
+		poolTokenAmount := cctx.Uint("pool-token-amount")
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		for {
+			fmt.Printf("Please make sure there is enough SAO tokens in the account %s. Confirm with 'yes' :", creator)
+
+			reader := bufio.NewReader(os.Stdin)
+			indata, err := reader.ReadBytes('\n')
+			if err != nil {
+				return types.Wrap(types.ErrInvalidParameters, err)
+			}
+			if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) != "yes" {
+				continue
+			}
+
+			coins, err := chainSvc.GetBalance(ctx, creator)
+			if err != nil {
+				fmt.Printf("%v", err)
+				continue
+			} else {
+				if coins.AmountOf("sao").LT(math.NewInt(int64(poolTokenAmount + 1000000))) {
+					continue
+				} else {
+					break
+				}
+			}
+
+		}
+
+		err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+		if err != nil {
+			return err
+		}
+
+		ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+		if err != nil {
+			return err
+		}
+
+		if poolTokenAmount > 0 {
+			for address := range ap.Addresses {
+				amount := int64(poolTokenAmount / txPoolSize)
+				if tx, err := chainSvc.Send(ctx, creator, address, amount); err != nil {
+					// TODO: clear dir
+					return err
+				} else {
+					fmt.Printf("Sent %d SAO from creator %s to pool address %s, txhash=%s\r", amount, creator, address, tx)
+				}
+			}
+		}
+
+		return nil
 	},
 }
 
@@ -205,7 +296,7 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(1000)) {
+				if coins.AmountOf("sao").LT(math.NewInt(int64(110000000))) {
 					continue
 				} else {
 					break
@@ -232,11 +323,12 @@ var initCmd = &cli.Command{
 		}
 
 		for address := range ap.Addresses {
-			if tx, err := chainSvc.Send(ctx, creator, address, 100000000); err != nil {
+			amount := int64(100000000 / txPoolSize)
+			if tx, err := chainSvc.Send(ctx, creator, address, amount); err != nil {
 				// TODO: clear dir
 				return err
 			} else {
-				fmt.Println(tx)
+				fmt.Printf("Sent %d SAO from creator %s to pool address %s, txhash=%s\r", amount, creator, address, tx)
 			}
 		}
 
