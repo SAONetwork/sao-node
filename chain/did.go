@@ -2,8 +2,9 @@ package chain
 
 import (
 	"context"
-	"golang.org/x/xerrors"
 	"sao-node/types"
+
+	"golang.org/x/xerrors"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/parser"

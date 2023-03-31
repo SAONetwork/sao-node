@@ -80,6 +80,9 @@ type Chain struct {
 
 	// websocket endpoint
 	WsEndpoint string
+
+	// tx address pool size
+	TxPoolSize uint
 }
 
 // Libp2p contains configs for libp2p

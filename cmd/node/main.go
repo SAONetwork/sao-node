@@ -34,6 +34,7 @@ import (
 	"os"
 	"sao-node/chain"
 
+	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -142,6 +143,12 @@ var initCmd = &cli.Command{
 			Value:    "/ip4/127.0.0.1/tcp/5153/",
 			Required: false,
 		},
+		&cli.UintFlag{
+			Name:     "tx-pool-size",
+			Usage:    "address pool size for sending message, the default value is 10",
+			Value:    10,
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -153,8 +160,9 @@ var initCmd = &cli.Command{
 
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
+		txPoolSize := cctx.Uint("tx-pool-size")
 
-		r, err := initRepo(repoPath, chainAddress)
+		r, err := initRepo(repoPath, chainAddress, txPoolSize)
 		if err != nil {
 			return err
 		}
@@ -175,7 +183,7 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -192,7 +200,7 @@ var initCmd = &cli.Command{
 				continue
 			}
 
-			coins, err := chain.GetBalance(ctx, creator)
+			coins, err := chainSvc.GetBalance(ctx, creator)
 			if err != nil {
 				fmt.Printf("%v", err)
 				continue
@@ -206,18 +214,37 @@ var initCmd = &cli.Command{
 
 		}
 
-		if tx, err := chain.Create(ctx, creator); err != nil {
+		err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+		if err != nil {
+			return err
+		}
+
+		if tx, err := chainSvc.Create(ctx, creator); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
 			fmt.Println(tx)
 		}
 
+		ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+		if err != nil {
+			return err
+		}
+
+		for address := range ap.Addresses {
+			if tx, err := chainSvc.Send(ctx, creator, address, 100000000); err != nil {
+				// TODO: clear dir
+				return err
+			} else {
+				fmt.Println(tx)
+			}
+		}
+
 		return nil
 	},
 }
 
-func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
+func initRepo(repoPath string, chainAddress string, TxPoolSize uint) (*repo.Repo, error) {
 	// init base dir
 	r, err := repo.NewRepo(repoPath)
 	if err != nil {
@@ -234,7 +261,7 @@ func initRepo(repoPath string, chainAddress string) (*repo.Repo, error) {
 	}
 
 	log.Info("Initializing repo")
-	if err = r.Init(chainAddress); err != nil {
+	if err = r.Init(chainAddress, TxPoolSize); err != nil {
 		return nil, err
 	}
 	return r, nil
@@ -271,23 +298,6 @@ var joinCmd = &cli.Command{
 		c, err := repo.Config()
 		if err != nil {
 			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
-		}
-
-		cfg, ok := c.(*config.Node)
-		if !ok {
-			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
-		}
-		var status = node.NODE_STATUS_ONLINE
-		if cfg.Module.GatewayEnable {
-			status = status | node.NODE_STATUS_SERVE_GATEWAY
-		}
-		if cfg.Module.StorageEnable {
-			status = status | node.NODE_STATUS_SERVE_STORAGE
-			if cctx.Bool("accept-order") {
-				status = status | node.NODE_STATUS_ACCEPT_ORDER
-			} else if cfg.Storage.AcceptOrder {
-				status = status | node.NODE_STATUS_ACCEPT_ORDER
-			}
 		}
 
 		tx, err := chain.Create(ctx, creator)
@@ -368,6 +378,22 @@ var updateCmd = &cli.Command{
 			Value:    true,
 			Required: false,
 		},
+		&cli.StringFlag{
+			Name:  "details",
+			Usage: "node's details informaton",
+		},
+		&cli.StringFlag{
+			Name:  "moniker",
+			Usage: "node's moniker",
+		},
+		&cli.StringFlag{
+			Name:  "security-contact",
+			Usage: "node's security contact",
+		},
+		&cli.StringFlag{
+			Name:  "website",
+			Usage: "node's website",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -385,6 +411,9 @@ var updateCmd = &cli.Command{
 				ma, err := multiaddr.NewMultiaddr(maddr)
 				if err != nil {
 					return types.Wrapf(types.ErrInvalidParameters, "invalid --multiaddrs: %v", err)
+				}
+				if strings.Contains(ma.String(), "127.0.0.1") {
+					continue
 				}
 				if len(peerInfo) > 0 {
 					peerInfo = peerInfo + ","
@@ -413,7 +442,7 @@ var updateCmd = &cli.Command{
 			log.Warn(err)
 		}
 
-		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
 		if err != nil {
 			return err
 		}
@@ -431,7 +460,24 @@ var updateCmd = &cli.Command{
 			}
 		}
 
-		tx, err := chain.Reset(ctx, creator, peerInfo, status)
+		ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, cfg.Chain.TxPoolSize)
+		if err != nil {
+			return err
+		}
+
+		addresses := make([]string, 0)
+		for address := range ap.Addresses {
+			addresses = append(addresses, address)
+		}
+
+		description := &nodetypes.Description{
+			Details:         cctx.String("details"),
+			Moniker:         cctx.String("moniker"),
+			SecurityContact: cctx.String("security-contact"),
+			Website:         cctx.String("website"),
+		}
+
+		tx, err := chainSvc.Reset(ctx, creator, peerInfo, status, addresses, description)
 		if err != nil {
 			return err
 		}

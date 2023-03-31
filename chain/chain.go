@@ -38,6 +38,7 @@ type ChainSvc struct {
 	modelClient      modeltypes.QueryClient
 	listener         *http.HTTP
 	accountRetriever authtypes.AccountRetriever
+	ap               *AddressPool
 }
 
 type ChainSvcApi interface {
@@ -53,7 +54,7 @@ type ChainSvcApi interface {
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
 	Create(ctx context.Context, creator string) (string, error)
-	Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error)
+	Reset(ctx context.Context, creator string, peerInfo string, status uint32, txAddresses []string, description *nodetypes.Description) (string, error)
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
 	ListNodes(ctx context.Context) ([]nodetypes.Node, error)
@@ -102,13 +103,6 @@ func NewChainSvc(
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
-	// log.Debug("initialize chain listener2", chainAddress)
-
-	// err = http.Reset()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// log.Debugf("initialize chain listener3")
 
 	return &ChainSvc{
 		cosmos:           cosmos,
@@ -120,6 +114,10 @@ func NewChainSvc(
 		listener:         http,
 		accountRetriever: accountRetriever,
 	}, nil
+}
+
+func (c *ChainSvc) SetAddressPool(ctx context.Context, ap *AddressPool) {
+	c.ap = ap
 }
 
 func (c *ChainSvc) Stop(ctx context.Context) error {

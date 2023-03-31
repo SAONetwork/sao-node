@@ -126,6 +126,12 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		return nil, err
 	}
 
+	ap, err := chain.LoadAddressPool(ctx, keyringHome, cfg.Chain.TxPoolSize)
+	if err != nil {
+		return nil, err
+	}
+	chainSvc.SetAddressPool(ctx, ap)
+
 	var stopFuncs []StopFunc
 	tds, err := repo.Datastore(ctx, "/transport")
 	if err != nil {
@@ -283,7 +289,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
 
-	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status)
+	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status, make([]string, 0), nil)
 	log.Infof("repo: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	log.Infof("node[%s] is joining SAO network...", sn.address)
 	if err != nil {

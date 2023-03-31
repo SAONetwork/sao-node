@@ -20,14 +20,24 @@ type OrderCompleteResult struct {
 }
 
 func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error) {
-	signerAcc, err := c.cosmos.Account(provider)
+	txAddress := provider
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgReady{
-		OrderId: orderId,
-		Creator: provider,
+		OrderId:  orderId,
+		Creator:  txAddress,
+		Provider: provider,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -46,19 +56,29 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 }
 
 func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error) {
-	signerAcc, err := c.cosmos.Account(signer)
+	txAddress := signer
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	// TODO: Cid
 	msg := &saotypes.MsgStore{
-		Creator:  signer,
+		Creator:  txAddress,
 		Proposal: clientProposal.Proposal,
 		JwsSignature: saotypes.JwsSignature{
 			Protected: clientProposal.JwsSignature.Protected,
 			Signature: clientProposal.JwsSignature.Signature,
 		},
+		Provider: signer,
 	}
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
@@ -78,16 +98,26 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 }
 
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error) {
-	signerAcc, err := c.cosmos.Account(creator)
+	txAddress := creator
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgComplete{
-		Creator: creator,
-		OrderId: orderId,
-		Cid:     cid.String(),
-		Size_:   size,
+		Creator:  txAddress,
+		OrderId:  orderId,
+		Cid:      cid.String(),
+		Size_:    size,
+		Provider: creator,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -100,15 +130,25 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 }
 
 func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
-	signerAcc, err := c.cosmos.Account(creator)
+	txAddress := creator
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", nil, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return "", nil, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgRenew{
-		Creator:      creator,
+		Creator:      txAddress,
 		Proposal:     orderRenewProposal.Proposal,
 		JwsSignature: orderRenewProposal.JwsSignature,
+		Provider:     creator,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -130,14 +170,24 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 }
 
 func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error) {
-	signerAcc, err := c.cosmos.Account(creator)
+	txAddress := creator
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgMigrate{
-		Creator: creator,
-		Data:    dataIds,
+		Creator:  txAddress,
+		Data:     dataIds,
+		Provider: creator,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -159,15 +209,25 @@ func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []s
 }
 
 func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
-	signerAcc, err := c.cosmos.Account(creator)
+	txAddress := creator
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgTerminate{
-		Creator:      creator,
+		Creator:      txAddress,
 		Proposal:     terminateProposal.Proposal,
 		JwsSignature: terminateProposal.JwsSignature,
+		Provider:     creator,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {

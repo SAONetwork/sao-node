@@ -48,19 +48,29 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 }
 
 func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
-	signerAcc, err := c.cosmos.Account(signer)
+	txAddress := signer
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	signerAcc, err := c.cosmos.Account(txAddress)
 	if err != nil {
 		return "", types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	// TODO: Cid
 	msg := &saotypes.MsgUpdataPermission{
-		Creator:  signer,
+		Creator:  txAddress,
 		Proposal: proposal.Proposal,
 		JwsSignature: saotypes.JwsSignature{
 			Protected: proposal.JwsSignature.Protected,
 			Signature: proposal.JwsSignature.Signature,
 		},
+		Provider: signer,
 	}
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
