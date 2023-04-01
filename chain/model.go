@@ -49,6 +49,12 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 
 func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
 	txAddress := signer
+	defer func() {
+		if c.ap != nil && txAddress != signer {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)

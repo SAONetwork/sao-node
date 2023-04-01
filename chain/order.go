@@ -21,6 +21,12 @@ type OrderCompleteResult struct {
 
 func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error) {
 	txAddress := provider
+	defer func() {
+		if c.ap != nil && txAddress != provider {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)
@@ -57,6 +63,12 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 
 func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error) {
 	txAddress := signer
+	defer func() {
+		if c.ap != nil && txAddress != signer {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)
@@ -99,6 +111,12 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error) {
 	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)
@@ -131,6 +149,12 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 
 func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
 	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)
@@ -171,6 +195,12 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 
 func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error) {
 	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)
@@ -210,6 +240,12 @@ func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []s
 
 func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
 	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
 	var err error
 	if c.ap != nil {
 		txAddress, err = c.ap.GetRandomAddress(ctx)
