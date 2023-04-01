@@ -475,6 +475,10 @@ var updateCmd = &cli.Command{
 			Usage: "node's details informaton",
 		},
 		&cli.StringFlag{
+			Name:  "identity",
+			Usage: "keybase identity for the node",
+		},
+		&cli.StringFlag{
 			Name:  "moniker",
 			Usage: "node's moniker",
 		},
@@ -564,6 +568,7 @@ var updateCmd = &cli.Command{
 
 		description := &nodetypes.Description{
 			Details:         cctx.String("details"),
+			Identity:        cctx.String("identity"),
 			Moniker:         cctx.String("moniker"),
 			SecurityContact: cctx.String("security-contact"),
 			Website:         cctx.String("website"),
