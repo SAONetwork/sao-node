@@ -59,6 +59,9 @@ type Module struct {
 
 	// Enable storage module
 	StorageEnable bool
+
+	// Enable indexer module
+	IndexerEnable bool
 }
 
 // API contains configs for API endpoint

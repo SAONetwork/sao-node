@@ -10,6 +10,7 @@ import (
 	"sao-node/api"
 	"sao-node/chain"
 	"sao-node/node/gateway"
+	"sao-node/node/indexer"
 	"sao-node/node/transport"
 	"sao-node/store"
 	"sort"
@@ -66,6 +67,7 @@ type Node struct {
 	tds       datastore.Read
 	hfs       *gateway.HttpFileServer
 	rpcServer *http.Server
+	indexSvc  *indexer.IndexSvc
 }
 
 type JwtPayload struct {
@@ -119,7 +121,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 			peerInfos = peerInfos + withP2p.String()
 		}
 	}
-	fmt.Println("cfg.Chain.Remote: ", cfg.Chain.Remote)
+
 	// chain
 	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
 	if err != nil {
@@ -255,6 +257,18 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		}
 
 		log.Info("gateway node initialized")
+	}
+
+	if cfg.Module.IndexerEnable {
+		jobsDs, err := repo.Datastore(ctx, "/indexer")
+		if err != nil {
+			return nil, err
+		}
+		indexSvc := indexer.NewIndexSvc(ctx, chainSvc, jobsDs)
+		sn.indexSvc = indexSvc
+		sn.stopFuncs = append(sn.stopFuncs, sn.indexSvc.Stop)
+
+		log.Info("indexing node initialized")
 	}
 
 	// api server

@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"sao-node/chain"
 	"sao-node/node/queue"
-	"sao-node/node/repo"
 	"sao-node/types"
 	"sao-node/utils"
+	"strings"
 	"time"
 
 	"github.com/ipfs/go-datastore"
@@ -46,16 +47,9 @@ type IndexSvc struct {
 func NewIndexSvc(
 	ctx context.Context,
 	chainSvc *chain.ChainSvc,
-	repo *repo.Repo,
 	jobsDs datastore.Batching,
 ) *IndexSvc {
-	jds, err := repo.Datastore(ctx, "/jobs")
-	if err != nil {
-		log.Error("failed to open datastore, %v", err)
-		return nil
-	}
-
-	db, err := sql.Open("sqlite3", "./foo.db")
+	db, err := sql.Open("sqlite3", "./indexer.db")
 	if err != nil {
 		log.Error("failed to open database, %v", err)
 		return nil
@@ -64,7 +58,7 @@ func NewIndexSvc(
 	is := &IndexSvc{
 		ctx:        ctx,
 		chainSvc:   chainSvc,
-		jobDs:      jds,
+		jobDs:      jobsDs,
 		schedQueue: &queue.RequestQueue{},
 		locks:      utils.NewMapLock(),
 		jobsMap:    make(map[string]types.Job),
@@ -74,6 +68,10 @@ func NewIndexSvc(
 	go is.runSched(ctx)
 	go is.processPendingJobs(ctx)
 
+	is.schedQueue.Push(&queue.WorkRequest{
+		Job: is.BuildDataIdIndexJob(ctx, "abc"),
+	})
+
 	return is
 }
 
@@ -81,6 +79,7 @@ func (is *IndexSvc) runSched(ctx context.Context) {
 	throttle := make(chan struct{}, WINDOW_SIZE)
 	for {
 		if is.schedQueue.Len() == 0 {
+			log.Info("no job found.")
 			time.Sleep(time.Second * SCHEDULE_INTERVAL)
 			continue
 		}
@@ -99,11 +98,17 @@ func (is *IndexSvc) runSched(ctx context.Context) {
 					return
 				}
 
+				log.Infof("job[%s] loaded.", sq.Job.ID)
+
 				err := is.excute(ctx, &sq.Job)
+				log.Infof("job[%s] running...", sq.Job.ID)
+
 				if err != nil {
-					log.Warnf("failed to excute the job %v due to %v", sq.Job.ID, err)
+					log.Errorf("job[%s] failed due to %v", sq.Job.ID, err)
 					is.schedQueue.Push(sq)
 					sq.Job.Status = types.JobStatusPending
+				} else {
+					log.Infof("job[%s] done.", sq.Job.ID)
 				}
 			}()
 		}
@@ -116,16 +121,20 @@ func (is *IndexSvc) processPendingJobs(ctx context.Context) {
 	key := datastore.NewKey("pending_jobs")
 	value, err := is.jobDs.Get(ctx, key)
 	if err != nil {
-		log.Error("failed to obtain the pending jobs, %v", err)
-	}
-
-	var pendingJobs []queue.WorkRequest
-	err = json.Unmarshal(value, &pendingJobs)
-	if err != nil {
-		log.Error("process pending orders error: %v", err)
+		if strings.Contains(fmt.Sprintf("%v", err), "key not found") {
+			log.Infof("no pending jobs found")
+		} else {
+			log.Errorf("failed to obtain the pending jobs, %v", err)
+		}
 	} else {
-		for _, job := range pendingJobs {
-			is.schedQueue.Push(&job)
+		var pendingJobs []queue.WorkRequest
+		err = json.Unmarshal(value, &pendingJobs)
+		if err != nil {
+			log.Errorf("process pending jobs error: %v", err)
+		} else {
+			for _, job := range pendingJobs {
+				is.schedQueue.Push(&job)
+			}
 		}
 	}
 }

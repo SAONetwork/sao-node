@@ -65,6 +65,7 @@ func before(_ *cli.Context) error {
 	_ = logging.SetLogLevel("storage", "INFO")
 	_ = logging.SetLogLevel("transport", "INFO")
 	_ = logging.SetLogLevel("store", "INFO")
+	_ = logging.SetLogLevel("indexer", "INFO")
 	if cliutil.IsVeryVerbose {
 		_ = logging.SetLogLevel("cache", "DEBUG")
 		_ = logging.SetLogLevel("model", "DEBUG")
@@ -75,6 +76,7 @@ func before(_ *cli.Context) error {
 		_ = logging.SetLogLevel("storage", "DEBUG")
 		_ = logging.SetLogLevel("transport", "DEBUG")
 		_ = logging.SetLogLevel("store", "DEBUG")
+		_ = logging.SetLogLevel("indexer", "DEBUG")
 	}
 
 	return nil

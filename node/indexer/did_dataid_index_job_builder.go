@@ -11,7 +11,7 @@ import (
 	"github.com/ipfs/go-datastore"
 )
 
-func (is *IndexSvc) BuildDataIdIndexJob(ctx context.Context) *types.Job {
+func (is *IndexSvc) BuildDataIdIndexJob(ctx context.Context, platFormId string) types.Job {
 	execFn := func(ctx context.Context, args []interface{}) (interface{}, error) {
 		key := datastore.NewKey("did_dataid_index_job_last_loaded_id")
 		lastLoadId := ""
@@ -38,25 +38,31 @@ func (is *IndexSvc) BuildDataIdIndexJob(ctx context.Context) *types.Job {
 				if lastLoadId != "" && lastLoadId == meta.Commit {
 					break
 				} else {
-					owenedMeta = append(owenedMeta, meta)
+					if meta.GroupId == platFormId {
+						owenedMeta = append(owenedMeta, meta)
+					}
 				}
 			}
 		}
 
 		if len(owenedMeta) > 0 {
-			lastCommitId := owenedMeta[0].Commit
+			err := is.jobDs.Put(ctx, key, []byte(lastLoadId))
+			if err != nil {
+				return nil, err
+			}
+
 			var valueStrings []string
-			if len(owenedMeta) > 1000 {
-				valueStrings = make([]string, 0, 1000)
+			if len(owenedMeta) > 500 {
+				valueStrings = make([]string, 0, 500)
 			} else {
 				valueStrings = make([]string, 0, len(owenedMeta))
 			}
 			valueArgs := make([]interface{}, 0, len(owenedMeta)*3)
 			for index, meta := range owenedMeta {
-				valueArgs := fmt.Sprintf("%s (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
-					valueArgs, meta.Owner, meta.DataId, meta.Alias, meta.GroupId, meta.Commit, fmt.Sprintf("v%d", len(meta.Commits)), meta.Size, meta.CreatedAt, meta.Duration, meta.ReadonlyDids, meta.ReadwriteDids)
+				valueArgs := fmt.Sprintf("%s (%s, %s, %s, %s, %s, v%d, %d, %d, %d, %s, %s)",
+					valueArgs, meta.Owner, meta.DataId, meta.Alias, meta.GroupId, meta.Commit, len(meta.Commits), meta.Size(), meta.CreatedAt, meta.Duration, meta.ReadonlyDids, meta.ReadwriteDids)
 
-				if index%999 == 0 {
+				if index%500 == 0 {
 					stmt := fmt.Sprintf("INSERT INTO METADATA (OWNER, DATAID, NAME, PLAT, COMMITID, VERSION, SIZE, EXPIRATION, READER, WRITER) VALUES %s",
 						valueArgs)
 					_, err := is.db.Exec(stmt)
@@ -69,7 +75,7 @@ func (is *IndexSvc) BuildDataIdIndexJob(ctx context.Context) *types.Job {
 			}
 			stmt := fmt.Sprintf("INSERT INTO METADATA (OWNER, DATAID, NAME, PLAT, COMMITID, VERSION, SIZE, EXPIRATION, READER, WRITER) VALUES %s",
 				strings.Join(valueStrings, ","))
-			_, err := is.db.Exec(stmt, valueArgs...)
+			_, err = is.db.Exec(stmt, valueArgs...)
 			if err != nil {
 				return nil, err
 			}
@@ -79,7 +85,7 @@ func (is *IndexSvc) BuildDataIdIndexJob(ctx context.Context) *types.Job {
 		return nil, nil
 	}
 
-	return &types.Job{
+	return types.Job{
 		ID:       utils.GenerateDataId("job-id"),
 		Status:   types.JobStatusPending,
 		ExecFunc: execFn,
