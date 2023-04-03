@@ -2,7 +2,10 @@ package gql
 
 import (
 	"context"
+	"fmt"
+	"sao-node/node/indexer/gql/types"
 
+	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
 )
 
@@ -13,8 +16,8 @@ type metadata struct {
 	Alias      string
 	GroupId    string
 	Version    string
-	Size       uint
-	Expiration uint64
+	Size       int32
+	Expiration types.Uint64
 	Readers    string
 	Writers    string
 }
@@ -27,21 +30,68 @@ type metadataList struct {
 
 // query: metadata(id) Metadata
 func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (*metadata, error) {
+	var commitId uuid.UUID
+	err := commitId.UnmarshalText([]byte(args.ID))
+	if err != nil {
+		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
+	}
+
+	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COMMITID, DID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA WHERE COMMITID="+commitId.String())
+	var CommitId string
+	var Did string
+	var DataId string
+	var Alias string
+	var GroupId string
+	var Version string
+	var Size int32
+	var Expiration types.Uint64
+	var Readers string
+	var Writers string
+	err = row.Scan(&CommitId, &Did, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
+	if err != nil {
+		return nil, err
+	}
+
 	return &metadata{
-		CommitId: "",
+		CommitId, Did, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
 	}, nil
 }
 
-type metadatasArgs struct {
-	Query  graphql.NullString
-	Cursor *graphql.ID
-	Offset graphql.NullInt
-	Limit  graphql.NullInt
-}
-
 // query: metadatas(cursor, offset, limit) DealList
-func (r *resolver) Metadatas(ctx context.Context, args metadatasArgs) (*metadataList, error) {
+func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.NullString }) (*metadataList, error) {
+	queryStr := "SELECT COMMITID, DID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA "
+	if args.Query.Set && args.Query.Value != nil {
+		queryStr = queryStr + *args.Query.Value
+	}
+	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
 	metadatas := make([]*metadata, 0)
+	for rows.Next() {
+		var CommitId string
+		var Did string
+		var DataId string
+		var Alias string
+		var GroupId string
+		var Version string
+		var Size int32
+		var Expiration types.Uint64
+		var Readers string
+		var Writers string
+		err = rows.Scan(&CommitId, &Did, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
+		if err != nil {
+			return nil, err
+		}
+		metadatas = append(metadatas, &metadata{
+			CommitId, Did, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
 	return &metadataList{
 		TotalCount: int32(len(metadatas)),

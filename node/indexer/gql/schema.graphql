@@ -1,9 +1,23 @@
+"""
+The `Uint64` scalar type represents a uint64.
+"""
+scalar Uint64
+
 schema {
   query: RootQuery
 }
 
 type Metadata {
   ID: ID!
+  Did: String!
+	DataId: String!
+	Alias: String!
+	GroupId: String!
+	Version: String!
+	Size: Int!
+	Expiration: Uint64!
+	Readers: String!
+	Writers: String!
 }
 
 type MetadataList {
@@ -17,7 +31,7 @@ type RootQuery {
   metadata(id: ID!): Metadata
 
   """Get all Metadatas"""
-  metadatas(query: String, cursor: ID, offset: Int, limit: Int): MetadataList!
+  metadatas(query: String): MetadataList!
 
   """Get the total number of deals"""
   metadataCount: Int!

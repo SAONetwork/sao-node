@@ -37,13 +37,13 @@ type IndexSvcApi interface {
 
 type IndexSvc struct {
 	ctx      context.Context
-	chainSvc *chain.ChainSvc
+	ChainSvc *chain.ChainSvc
 	jobDs    datastore.Batching
 
 	schedQueue *queue.RequestQueue
 	locks      *utils.Maplock
 	jobsMap    map[string]types.Job
-	db         *sql.DB
+	Db         *sql.DB
 }
 
 func NewIndexSvc(
@@ -60,12 +60,12 @@ func NewIndexSvc(
 
 	is := &IndexSvc{
 		ctx:        ctx,
-		chainSvc:   chainSvc,
+		ChainSvc:   chainSvc,
 		jobDs:      jobsDs,
 		schedQueue: &queue.RequestQueue{},
 		locks:      utils.NewMapLock(),
 		jobsMap:    make(map[string]types.Job),
-		db:         db,
+		Db:         db,
 	}
 
 	go is.runSched(ctx)
@@ -74,7 +74,7 @@ func NewIndexSvc(
 	is.schedQueue.Push(&queue.WorkRequest{
 		// create a job to collect the metadata created on dapp
 		// whose platform id is 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
-		Job: jobs.BuildMetadataIndexJob(ctx, is.chainSvc, is.db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b"),
+		Job: jobs.BuildMetadataIndexJob(ctx, is.ChainSvc, is.Db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b"),
 	})
 
 	return is
