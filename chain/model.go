@@ -13,7 +13,7 @@ import (
 
 func (c *ChainSvc) ListMeta(ctx context.Context, offset uint64, limit uint64) ([]modeltypes.Metadata, uint64, error) {
 	resp, err := c.modelClient.MetadataAll(ctx, &modeltypes.QueryAllMetadataRequest{
-		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: true}})
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
 	if err != nil {
 		return make([]modeltypes.Metadata, 0), 0, types.Wrap(types.ErrQueryNodeFailed, err)
 	}

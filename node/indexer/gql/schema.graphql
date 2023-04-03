@@ -1,0 +1,24 @@
+schema {
+  query: RootQuery
+}
+
+type Metadata {
+  ID: ID!
+}
+
+type MetadataList {
+  totalCount: Int!
+  Metadatas: [Metadata]!
+  more: Boolean!
+}
+
+type RootQuery {
+  """Get Metadata by ID"""
+  metadata(id: ID!): Metadata
+
+  """Get all Metadatas"""
+  metadatas(query: String, cursor: ID, offset: Int, limit: Int): MetadataList!
+
+  """Get the total number of deals"""
+  metadataCount: Int!
+}

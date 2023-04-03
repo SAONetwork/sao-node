@@ -32,6 +32,10 @@ func DefaultSaoNode() *Node {
 			Enable: true,
 			Repo:   "~/.sao-node/ipfs",
 		},
+		Indexer: Indexer{
+			DbPath:        "~/.sao-node/datastore",
+			ListenAddress: "localhost:5155",
+		},
 	}
 }
 

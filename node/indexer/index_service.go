@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"sao-node/node/indexer/jobs"
+
 	"github.com/ipfs/go-datastore"
 	_ "github.com/mattn/go-sqlite3"
 
@@ -48,8 +50,9 @@ func NewIndexSvc(
 	ctx context.Context,
 	chainSvc *chain.ChainSvc,
 	jobsDs datastore.Batching,
+	dbPath string,
 ) *IndexSvc {
-	db, err := sql.Open("sqlite3", "./indexer.db")
+	db, err := sql.Open("sqlite3", dbPath+"/indexer.db")
 	if err != nil {
 		log.Error("failed to open database, %v", err)
 		return nil
@@ -69,7 +72,9 @@ func NewIndexSvc(
 	go is.processPendingJobs(ctx)
 
 	is.schedQueue.Push(&queue.WorkRequest{
-		Job: is.BuildDataIdIndexJob(ctx, "abc"),
+		// create a job to collect the metadata created on dapp
+		// whose platform id is 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
+		Job: jobs.BuildMetadataIndexJob(ctx, is.chainSvc, is.db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b"),
 	})
 
 	return is
