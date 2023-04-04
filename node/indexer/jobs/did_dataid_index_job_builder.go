@@ -17,13 +17,13 @@ import (
 
 var log = logging.Logger("indexer-jobs")
 
-//go:embed sqls/create_meta_data_table.sql
-var createMetaDBSQL string
+//go:embed sqls/create_metadata_table.sql
+var createMetadataDBSQL string
 
-func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, platFormIds string) types.Job {
+func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, platFormIds string) *types.Job {
 	// initialize the metadata database tables
 	log.Info("creating metadata tables...")
-	if _, err := db.ExecContext(ctx, createMetaDBSQL); err != nil {
+	if _, err := db.ExecContext(ctx, createMetadataDBSQL); err != nil {
 		log.Errorf("failed to create tables: %w", err)
 	}
 	log.Info("creating metadata tables done.")
@@ -99,10 +99,11 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		return nil, nil
 	}
 
-	return types.Job{
-		ID:       utils.GenerateDataId("job-id"),
-		Status:   types.JobStatusPending,
-		ExecFunc: execFn,
-		Args:     make([]interface{}, 0),
+	return &types.Job{
+		ID:          utils.GenerateDataId("job-id"),
+		Description: "build metadata index for models with specified groupIds",
+		Status:      types.JobStatusPending,
+		ExecFunc:    execFn,
+		Args:        make([]interface{}, 0),
 	}
 }

@@ -8,7 +8,7 @@ import (
 type WorkRequest struct {
 	Order types.OrderInfo
 	Shard types.ShardInfo
-	Job   types.Job
+	Job   *types.Job
 }
 
 type RequestQueue struct {

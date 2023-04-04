@@ -57,7 +57,7 @@ func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (
 	}, nil
 }
 
-// query: metadatas(cursor, offset, limit) DealList
+// query: metadatas(cursor, offset, limit) MetaList
 func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.NullString }) (*metadataList, error) {
 	queryStr := "SELECT COMMITID, DID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA "
 	if args.Query.Set && args.Query.Value != nil {

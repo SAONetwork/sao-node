@@ -15,12 +15,13 @@ const (
 )
 
 type Job struct {
-	ID       string
-	Status   string
-	ExecFunc ExecutionFunc
-	Args     []interface{}
-	Result   interface{}
-	Error    error
+	ID          string
+	Description string
+	Status      string
+	ExecFunc    ExecutionFunc
+	Args        []interface{}
+	Result      interface{}
+	Error       error
 }
 
 func (j Job) Execute(ctx context.Context) (interface{}, error) {

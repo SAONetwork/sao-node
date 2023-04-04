@@ -5,6 +5,8 @@ import (
 	"sao-node/types"
 	"time"
 
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"
@@ -187,6 +189,17 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Fu
 		return nil, types.Wrap(types.ErrQueryOrderFailed, err)
 	}
 	return &queryResp.Order, nil
+}
+
+func (c *ChainSvc) ListOrder(ctx context.Context, offset uint64, limit uint64) ([]ordertypes.Order, uint64, error) {
+	resp, err := c.orderClient.OrderAll(ctx, &ordertypes.QueryAllOrderRequest{
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
+
+	if err != nil {
+		return make([]ordertypes.Order, 0), 0, types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+
+	return resp.Order, resp.Pagination.Total, nil
 }
 
 // wsevent

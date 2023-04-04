@@ -61,7 +61,7 @@ func defCommon() Common {
 		Module: Module{
 			GatewayEnable: true,
 			StorageEnable: true,
-			IndexerEnable: true,
+			IndexerEnable: false,
 		},
 	}
 }

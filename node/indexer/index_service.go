@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"sao-node/node/indexer/jobs"
-
 	"github.com/ipfs/go-datastore"
 	_ "github.com/mattn/go-sqlite3"
 
@@ -42,7 +40,7 @@ type IndexSvc struct {
 
 	schedQueue *queue.RequestQueue
 	locks      *utils.Maplock
-	jobsMap    map[string]types.Job
+	JobsMap    map[string]*types.Job
 	Db         *sql.DB
 }
 
@@ -64,18 +62,27 @@ func NewIndexSvc(
 		jobDs:      jobsDs,
 		schedQueue: &queue.RequestQueue{},
 		locks:      utils.NewMapLock(),
-		jobsMap:    make(map[string]types.Job),
+		JobsMap:    make(map[string]*types.Job),
 		Db:         db,
 	}
 
 	go is.runSched(ctx)
 	go is.processPendingJobs(ctx)
 
-	is.schedQueue.Push(&queue.WorkRequest{
-		// create a job to collect the metadata created on dapp
-		// whose platform id is 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
-		Job: jobs.BuildMetadataIndexJob(ctx, is.ChainSvc, is.Db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b"),
-	})
+	// two examples
+	// examples1: create a job to collect the metadata created on dapp whose platform id is 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
+	// job1 := jobs.BuildMetadataIndexJob(ctx, is.ChainSvc, is.Db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b")
+	// is.JobsMap[job1.ID] = job1
+	// is.schedQueue.Push(&queue.WorkRequest{
+	// 	Job: job1,
+	// })
+
+	// examples2: create a job to collect the shards which assigned to sp 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
+	// job2 := jobs.BuildSpShardIndexJob(ctx, is.ChainSvc, is.Db, "sao1ek2nmuzjc479kz78qun00v30j8whpt52vcarme")
+	// is.JobsMap[job2.ID] = job2
+	// is.schedQueue.Push(&queue.WorkRequest{
+	// 	Job: job2,
+	// })
 
 	return is
 }
@@ -105,7 +112,7 @@ func (is *IndexSvc) runSched(ctx context.Context) {
 
 				log.Infof("job[%s] loaded.", sq.Job.ID)
 
-				err := is.excute(ctx, &sq.Job)
+				err := is.excute(ctx, sq.Job)
 				log.Infof("job[%s] running...", sq.Job.ID)
 
 				if err != nil {
@@ -148,7 +155,6 @@ func (is *IndexSvc) excute(ctx context.Context, job *types.Job) error {
 	is.locks.Lock(job.ID)
 	defer is.locks.Unlock(job.ID)
 
-	is.jobsMap[job.ID] = *job
 	job.Status = types.JobStatusRuning
 	result, err := job.ExecFunc(ctx, job.Args)
 	if err != nil {
