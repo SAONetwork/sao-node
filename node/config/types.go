@@ -23,7 +23,6 @@ type Node struct {
 type SaoHttpFileServer struct {
 	Enable                  bool
 	HttpFileServerAddress   string
-	HttpFileServerPath      string
 	EnableHttpFileServerLog bool
 	TokenPeriod             time.Duration
 }
@@ -32,8 +31,6 @@ type SaoHttpFileServer struct {
 type SaoIpfs struct {
 	// Enable in process ipfs instance
 	Enable bool
-	// ipfs repo path
-	Repo string
 }
 
 // Storage contains configs for backend storages
@@ -102,6 +99,5 @@ type Cache struct {
 
 type Transport struct {
 	TransportListenAddress []string
-	StagingPath            string
 	StagingSapceSize       int64
 }

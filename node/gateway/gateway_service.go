@@ -73,6 +73,7 @@ type GatewaySvc struct {
 	nodeAddress        string
 	localPeerId        string
 	stagingPath        string
+	serverPath         string
 	cfg                *config.Node
 	orderDs            datastore.Batching
 	gatewayProtocolMap map[string]GatewayProtocol
@@ -94,6 +95,8 @@ func NewGatewaySvc(
 	notifyChan map[string]chan interface{},
 	orderDs datastore.Batching,
 	keyringHome string,
+	stagingPath string,
+	serverPath string,
 ) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
@@ -102,7 +105,8 @@ func NewGatewaySvc(
 		keyringHome:        keyringHome,
 		nodeAddress:        nodeAddress,
 		localPeerId:        host.ID().String(),
-		stagingPath:        cfg.Transport.StagingPath,
+		stagingPath:        stagingPath,
+		serverPath:         serverPath,
 		cfg:                cfg,
 		completeResultChan: make(chan string),
 		completeMap:        make(map[string]int64),
@@ -434,9 +438,9 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 	if len(content) > gs.cfg.Cache.ContentLimit || match {
 		// large size content should go through P2P channel
 
-		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
+		path, err := homedir.Expand(gs.serverPath)
 		if err != nil {
-			return nil, types.Wrapf(types.ErrInvalidPath, "%s", gs.cfg.SaoHttpFileServer.HttpFileServerPath)
+			return nil, types.Wrapf(types.ErrInvalidPath, "%s", gs.serverPath)
 		}
 
 		file, err := os.Create(filepath.Join(path, meta.DataId))
