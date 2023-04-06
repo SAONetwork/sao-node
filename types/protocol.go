@@ -40,6 +40,7 @@ type ShardStaging struct {
 // TODO: store node should sign the request.
 type ShardLoadReq struct {
 	Owner         string
+	DataId        string
 	OrderId       uint64
 	Cid           cid.Cid
 	Proposal      MetadataProposalCbor

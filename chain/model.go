@@ -80,7 +80,7 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 	}
 
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(signer, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return "", types.Wrap(types.ErrTxProcessFailed, result.err)

@@ -266,13 +266,13 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 
 	shardCids := make(map[string]struct{})
 	for key, shard := range order.Shards {
-		if key == m.Creator {
+		if key == m.Provider {
 			shardCids[shard.Cid] = struct{}{}
 		}
 	}
 	if len(shardCids) <= 0 {
 		return logAndRespond(
-			fmt.Sprintf("order %d doesn't have shard provider %s", m.OrderId, m.Creator),
+			fmt.Sprintf("order %d doesn't have shard provider %s", m.OrderId, m.Provider),
 			types.ErrorCodeInvalidProvider,
 		)
 	}
@@ -296,7 +296,7 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 			types.ErrorCodeInternalErr,
 		)
 	}
-	shardInfo := orderInfo.Shards[m.Creator]
+	shardInfo := orderInfo.Shards[m.Provider]
 	shardInfo.State = types.ShardStateCompleted
 	shardInfo.CompleteHash = req.TxHash
 	err = utils.SaveOrder(gs.ctx, gs.orderDs, orderInfo)
@@ -313,7 +313,7 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 		}
 
 		log.Debugf("unstage shard %s/%s/%v", gs.stagingPath, orderInfo.Owner, orderInfo.Cid)
-		err := UnstageShard(gs.stagingPath, orderInfo.Owner, orderInfo.Cid.String())
+		err := UnstageShard(gs.stagingPath, orderInfo.Owner, orderInfo.Cid.String(), orderInfo.DataId)
 		if err != nil {
 			log.Warnf("unstage shard error: %v", err)
 		}
@@ -331,7 +331,7 @@ func (gs *GatewaySvc) HandleShardStore(req types.ShardLoadReq) types.ShardLoadRe
 		ResponseId: time.Now().UnixMilli(),
 	}
 
-	contentBytes, err := GetStagedShard(gs.stagingPath, req.Owner, req.Cid)
+	contentBytes, err := GetStagedShard(gs.stagingPath, req.Owner, req.Cid, req.DataId)
 	if err != nil {
 		resp.Code = types.ErrorCodeInternalErr
 		resp.Message = fmt.Sprintf("Get staged shard(%v) error: %v", req.Cid, err)
@@ -393,6 +393,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 
 		resp := gp.RequestShardLoad(ctx, types.ShardLoadReq{
 			Cid:     shardCid,
+			DataId:  meta.DataId,
 			OrderId: meta.OrderId,
 			Proposal: types.MetadataProposalCbor{
 				Proposal: types.QueryProposal{
@@ -613,7 +614,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error) {
 	// stage order data.
 	orderProposal := clientProposal.Proposal
-	stagePath, err := StageShard(gs.stagingPath, orderProposal.Owner, orderProposal.Cid, content)
+	stagePath, err := StageShard(gs.stagingPath, orderProposal, content)
 	if err != nil {
 		return nil, err
 	}
