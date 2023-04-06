@@ -58,12 +58,13 @@ type ShardLoadResp struct {
 }
 
 type ShardAssignReq struct {
-	OrderId      uint64
-	DataId       string
-	Assignee     string
-	TxHash       string
-	Height       int64
-	AssignTxType AssignTxType
+	OrderId       uint64
+	DataId        string
+	Assignee      string
+	TxHash        string
+	Height        int64
+	AssignTxType  AssignTxType
+	TimeoutHeight uint64
 }
 
 type ShardAssignResp struct {

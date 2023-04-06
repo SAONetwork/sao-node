@@ -17,6 +17,7 @@ const (
 	dsNsMetadata  = "metadata"
 	dsNsOrder     = "order"
 	dsNsTransport = "transport"
+	dsNsIndexer   = "indexer"
 )
 
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)
@@ -26,6 +27,7 @@ var fsDatastores = map[string]dsCtor{
 	// Those need to be fast for large writes... but also need a really good GC
 	dsNsOrder:     badgerDs,
 	dsNsTransport: levelDs,
+	dsNsIndexer:   levelDs,
 }
 
 func levelDs(path string, readonly bool) (datastore.Batching, error) {

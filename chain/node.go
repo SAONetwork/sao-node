@@ -27,11 +27,19 @@ func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
 	return result.resp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error) {
+func (c *ChainSvc) Reset(ctx context.Context, creator string, peerInfo string, status uint32,
+	txAddresses []string, description *nodetypes.Description) (string, error) {
+	_, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", types.Wrap(types.ErrAccountNotFound, err)
+	}
+
 	msg := &nodetypes.MsgReset{
-		Creator: creator,
-		Peer:    peerInfo,
-		Status:  status,
+		Creator:     creator,
+		Peer:        peerInfo,
+		Status:      status,
+		TxAddresses: txAddresses,
+		Description: description,
 	}
 	resultChan := make(chan BroadcastTxJobResult)
 	c.broadcastMsg(creator, msg, resultChan)
@@ -113,7 +121,6 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
 		fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
 		fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
-		fmt.Println("LastRewardAt:", pledgeResp.Pledge.LastRewardAt)
 	}
 }
 
@@ -133,7 +140,7 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 		for {
 			select {
 			case <-ticker.C:
-				txHash, err := c.Reset(ctx, creator, "", status)
+				txHash, err := c.Reset(ctx, creator, "", status, make([]string, 0), nil)
 				if err != nil {
 					log.Error(err.Error())
 				}
