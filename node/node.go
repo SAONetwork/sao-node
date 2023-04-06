@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"sao-node/api"
 	"sao-node/chain"
@@ -155,9 +156,10 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		chainSvc:  chainSvc,
 	}
 
+	transportStagingPath := path.Join(repo.Path, "staging")
 	for _, address := range cfg.Transport.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			_, err := transport.StartLibp2pRpcServer(ctx, &sn, address, peerKey, tds, cfg)
+			_, err := transport.StartLibp2pRpcServer(ctx, &sn, address, peerKey, tds, cfg, transportStagingPath)
 			if err != nil {
 				return nil, types.Wrap(types.ErrStartLibP2PRPCServerFailed, err)
 			}
@@ -207,7 +209,8 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		}
 
 		if cfg.SaoIpfs.Enable {
-			ipfsDaemon, err := store.NewIpfsDaemon(cfg.SaoIpfs.Repo)
+			ipfsPath := path.Join(repo.Path, "ipfs")
+			ipfsDaemon, err := store.NewIpfsDaemon(ipfsPath)
 			if err != nil {
 				return nil, err
 			}
@@ -230,7 +233,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		storageManager = store.NewStoreManager(backends)
 		log.Info("store manager daemon initialized")
 
-		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, cfg.Transport.StagingPath, storageManager, notifyChan, ods)
+		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, transportStagingPath, storageManager, notifyChan, ods)
 		if err != nil {
 			return nil, err
 		}
@@ -240,8 +243,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 
 	if cfg.Module.GatewayEnable {
+		serverPath := path.Join(repo.Path, "http-files")
 		status = status | NODE_STATUS_SERVE_GATEWAY
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.gatewaySvc = gatewaySvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
@@ -250,7 +254,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		if cfg.SaoHttpFileServer.Enable {
 			log.Info("initialize http file server")
 
-			hfs, err := gateway.StartHttpFileServer(&cfg.SaoHttpFileServer)
+			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer)
 			if err != nil {
 				return nil, err
 			}

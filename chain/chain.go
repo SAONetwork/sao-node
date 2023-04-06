@@ -45,7 +45,7 @@ type ChainSvcApi interface {
 	GetLastHeight(ctx context.Context) (int64, error)
 	GetAccount(ctx context.Context, address string) (client.Account, error)
 	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
-	ShowDidInfo(ctx context.Context, did string)
+	GetDidInfo(ctx context.Context, did string) (types.DidInfo, error)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	QueryPaymentAddress(ctx context.Context, did string) (string, error)

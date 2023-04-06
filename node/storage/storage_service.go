@@ -534,13 +534,18 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 					OrderOperation: fmt.Sprintf("%d", order.Operation),
 					ShardOperation: fmt.Sprintf("%d", order.Operation),
 					State:          types.ShardStateValidated,
-					ExpireHeight:   uint64(order.Expire),
+					ExpireHeight:   req.TimeoutHeight,
 				}
 				err = utils.SaveShard(ss.ctx, ss.orderDs, shardInfo)
 				if err != nil {
 					// do not throw error, the best case is storage node handle shard again.
 					log.Warn("put shard order=%d cid=%v error: %v", shardInfo.OrderId, shardInfo.Cid, err)
 				}
+			}
+			if shardInfo.ExpireHeight < req.TimeoutHeight {
+				shardInfo.State = types.ShardStateValidated
+				shardInfo.ExpireHeight = req.TimeoutHeight
+				shardInfo.Tries = 0
 			}
 			ss.schedQueue.Push(&queue.WorkRequest{Shard: shardInfo})
 		}

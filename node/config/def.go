@@ -20,7 +20,6 @@ func DefaultSaoNode() *Node {
 		SaoHttpFileServer: SaoHttpFileServer{
 			Enable:                  true,
 			HttpFileServerAddress:   "localhost:5152",
-			HttpFileServerPath:      "~/.sao-node/http-files",
 			EnableHttpFileServerLog: false,
 			TokenPeriod:             24 * time.Hour,
 		},
@@ -30,7 +29,6 @@ func DefaultSaoNode() *Node {
 		},
 		SaoIpfs: SaoIpfs{
 			Enable: true,
-			Repo:   "~/.sao-node/ipfs",
 		},
 		Indexer: Indexer{
 			DbPath:        "~/.sao-node/datastore",
@@ -55,7 +53,6 @@ func defCommon() Common {
 			TransportListenAddress: []string{
 				"/ip4/0.0.0.0/udp/5154",
 			},
-			StagingPath:      "~/.sao-node/staging",
 			StagingSapceSize: 32 * 1024 * 1024 * 1024,
 		},
 		Module: Module{
