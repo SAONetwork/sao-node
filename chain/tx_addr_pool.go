@@ -59,6 +59,10 @@ func CreateAddressPool(ctx context.Context, keyringHome string, size uint) error
 }
 
 func LoadAddressPool(ctx context.Context, keyringHome string, size uint) (*AddressPool, error) {
+	if size == 0 {
+		return nil, nil
+	}
+
 	pool := &AddressPool{
 		ctx:         ctx,
 		Addresses:   make(map[string]string, size),
