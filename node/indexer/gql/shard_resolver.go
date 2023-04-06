@@ -14,7 +14,7 @@ type shard struct {
 	ShardId types.Uint64
 	OrderId types.Uint64
 	Sp      string
-	DataId  string
+	Cid     string
 }
 
 type shardList struct {
@@ -31,24 +31,24 @@ func (r *resolver) Shard(ctx context.Context, args struct{ ID graphql.ID }) (*sh
 		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 	}
 
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT SHARDID, ORDERID, SP, DATAID WHERE COMMITID="+shardId.String())
+	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT SHARDID, ORDERID, SP, CID WHERE COMMITID="+shardId.String())
 	var ShardId types.Uint64
 	var OrderId types.Uint64
 	var Sp string
-	var DataId string
-	err = row.Scan(&ShardId, &OrderId, &Sp, &DataId)
+	var Cid string
+	err = row.Scan(&ShardId, &OrderId, &Sp, &Cid)
 	if err != nil {
 		return nil, err
 	}
 
 	return &shard{
-		ShardId, OrderId, Sp, DataId,
+		ShardId, OrderId, Sp, Cid,
 	}, nil
 }
 
 // query: shards(cursor, offset, limit) ShardList
 func (r *resolver) Shards(ctx context.Context, args struct{ Query graphql.NullString }) (*shardList, error) {
-	queryStr := "SELECT SHARDID, ORDERID, SP, DATAID WRITER FROM SP_SHARD "
+	queryStr := "SELECT SHARDID, ORDERID, SP, CID WRITER FROM SP_SHARD "
 	if args.Query.Set && args.Query.Value != nil {
 		queryStr = queryStr + *args.Query.Value
 	}
@@ -63,13 +63,13 @@ func (r *resolver) Shards(ctx context.Context, args struct{ Query graphql.NullSt
 		var ShardId types.Uint64
 		var OrderId types.Uint64
 		var Sp string
-		var DataId string
-		err = rows.Scan(&ShardId, &OrderId, &Sp, &DataId)
+		var Cid string
+		err = rows.Scan(&ShardId, &OrderId, &Sp, &Cid)
 		if err != nil {
 			return nil, err
 		}
 		shards = append(shards, &shard{
-			ShardId, OrderId, Sp, DataId,
+			ShardId, OrderId, Sp, Cid,
 		})
 	}
 	if err := rows.Err(); err != nil {

@@ -19,7 +19,7 @@ type Shard struct {
 	ShardId uint64
 	OrderId uint64
 	Sp      string
-	DataId  string
+	Cid     string
 }
 
 func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, providers string) *types.Job {
@@ -30,12 +30,12 @@ func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql
 	}
 	log.Info("creating sp shard tables done.")
 
-	execFn := func(ctx context.Context, args []interface{}) (interface{}, error) {
+	execFn := func(ctx context.Context, _ []interface{}) (interface{}, error) {
 		var offset uint64 = 0
 		var limit uint64 = 100
 		shards := make([]Shard, 0)
 		for {
-			orderList, total, err := chainSvc.ListOrder(ctx, offset, limit)
+			shardList, total, err := chainSvc.ListShards(ctx, offset, limit)
 			if err != nil {
 				return nil, err
 			}
@@ -45,30 +45,29 @@ func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql
 				break
 			}
 
-			for _, order := range orderList {
-				for _, shard := range order.Shards {
-					qry := "SELECT COUNT(*) FROM SP_SHARD WHERE ORDERID=? AND SHARDID=?"
-					row := db.QueryRowContext(ctx, qry, order.Id, shard)
-					var count int
-					err := row.Scan(&count)
-					if err != nil {
-						return nil, err
-					}
+			for _, shard := range shardList {
+				qry := "SELECT COUNT(*) FROM SP_SHARD WHERE ORDERID=? AND SHARDID=?"
+				row := db.QueryRowContext(ctx, qry, shard.OrderId, shard.Id)
+				var count int
+				err := row.Scan(&count)
+				if err != nil {
+					return nil, err
+				}
 
-					if count > 0 {
-						continue
-					} else {
-						if strings.Contains(providers, order.Provider) {
-							shards = append(shards, Shard{
-								ShardId: shard,
-								OrderId: order.Id,
-								Sp:      order.Provider + fmt.Sprintf("-%d", shard),
-								DataId:  order.Metadata.DataId,
-							})
-						}
+				if count > 0 {
+					continue
+				} else {
+					if strings.Contains(providers, shard.Sp) {
+						shards = append(shards, Shard{
+							ShardId: shard.Id,
+							OrderId: shard.OrderId,
+							Sp:      shard.Sp,
+							Cid:     shard.Cid,
+						})
 					}
 				}
 			}
+
 		}
 
 		if len(shards) > 0 {
@@ -80,11 +79,11 @@ func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql
 				}
 
 				valueArgs = fmt.Sprintf(`%s(%d, %d, "%s", "%s")`,
-					valueArgs, shard.ShardId, shard.OrderId, shard.Sp, shard.DataId)
+					valueArgs, shard.ShardId, shard.OrderId, shard.Sp, shard.Cid)
 
 				if index > 0 && index%500 == 0 {
 					log.Infof("sub batch prepare, 500 sp shard records to be saved.")
-					stmt := fmt.Sprintf("INSERT INTO SP_SHARD (SHARDID, ORDERID, SP, DATAID) VALUES %s",
+					stmt := fmt.Sprintf("INSERT INTO SP_SHARD (SHARDID, ORDERID, SP, CID) VALUES %s",
 						valueArgs)
 					_, err := db.Exec(stmt)
 					if err != nil {
@@ -95,7 +94,7 @@ func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql
 				}
 			}
 			if len(valueArgs) > 0 {
-				stmt := fmt.Sprintf("INSERT INTO SP_SHARD (SHARDID, ORDERID, SP, DATAID) VALUES %s",
+				stmt := fmt.Sprintf("INSERT INTO SP_SHARD (SHARDID, ORDERID, SP, CID) VALUES %s",
 					valueArgs)
 				_, err := db.Exec(stmt)
 				if err != nil {
