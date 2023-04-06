@@ -154,7 +154,7 @@ var createFileCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			resp, _, _, err := client.StoreOrder(ctx, signer, clientProposal)
+			resp, _, _, err := client.StoreOrder(ctx, signer, gatewayAddress, clientProposal)
 			if err != nil {
 				return err
 			}

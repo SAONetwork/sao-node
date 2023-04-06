@@ -58,7 +58,7 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 	return resp, nil
 }
 
-func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
+func (c *ChainSvc) UpdatePermission(ctx context.Context, signer, provider string, proposal *types.PermissionProposal) (string, error) {
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
 		return "", types.Wrap(types.ErrAccountNotFound, err)
@@ -72,6 +72,7 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 			Protected: proposal.JwsSignature.Protected,
 			Signature: proposal.JwsSignature.Signature,
 		},
+		Provider: provider,
 	}
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
