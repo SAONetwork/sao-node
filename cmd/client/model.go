@@ -200,7 +200,7 @@ var createCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			resp, _, _, err := client.StoreOrder(ctx, signer, gatewayAddress, clientProposal)
+			resp, _, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -456,14 +456,9 @@ var renewCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		gatewayAddress, err := client.GetNodeAddress(ctx)
-		if err != nil {
-			return err
-		}
-
 		var results map[string]string
 		if clientPublish {
-			_, results, err = client.RenewOrder(ctx, signer, gatewayAddress, clientProposal)
+			_, results, err = client.RenewOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -799,13 +794,8 @@ var deleteCmd = &cli.Command{
 			JwsSignature: saotypes.JwsSignature(jws.Signatures[0]),
 		}
 
-		gatewayAddress, err := client.GetNodeAddress(ctx)
-		if err != nil {
-			return err
-		}
-
 		if clientPublish {
-			_, err = client.TerminateOrder(ctx, signer, gatewayAddress, request)
+			_, err = client.TerminateOrder(ctx, signer, request)
 			if err != nil {
 				return err
 			}
@@ -1088,7 +1078,7 @@ var updateCmd = &cli.Command{
 
 		var orderId uint64 = 0
 		if clientPublish {
-			resp, _, _, err := client.StoreOrder(ctx, signer, gatewayAddress, clientProposal)
+			resp, _, _, err := client.StoreOrder(ctx, signer, clientProposal)
 			if err != nil {
 				return err
 			}
@@ -1170,13 +1160,8 @@ var updatePermissionCmd = &cli.Command{
 			},
 		}
 
-		gatewayAddress, err := client.GetNodeAddress(ctx)
-		if err != nil {
-			return err
-		}
-
 		if clientPublish {
-			_, err = client.UpdatePermission(ctx, signer, gatewayAddress, request)
+			_, err = client.UpdatePermission(ctx, signer, request)
 			if err != nil {
 				return err
 			}

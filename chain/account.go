@@ -6,8 +6,11 @@ import (
 	"math/big"
 	"sao-node/types"
 
+	"github.com/cosmos/cosmos-sdk/crypto/hd"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/cosmos/go-bip39"
 
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/mitchellh/go-homedir"
@@ -153,6 +156,50 @@ func (c *ChainSvc) Send(ctx context.Context, from string, to string, amount int6
 	}
 
 	return txResp.TxResponse.TxHash, nil
+}
+
+func GenerateMnemonic(ctx context.Context) (string, error) {
+	entropySeed, err := bip39.NewEntropy(256)
+	if err != nil {
+		return "", types.Wrap(types.ErrGenerateMnemonicFailed, err)
+	}
+	mnemonic, err := bip39.NewMnemonic(entropySeed)
+	if err != nil {
+		return "", types.Wrap(types.ErrGenerateMnemonicFailed, err)
+	}
+	return mnemonic, nil
+}
+
+func GenerateAccount(ctx context.Context, repo string, name string, mnemonic string) (string, error) {
+	accountRegistry, err := newAccountRegistry(ctx, repo)
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateAccountFailed, err)
+	}
+
+	hdPath := hd.CreateHDPath(sdktypes.GetConfig().GetCoinType(), 0, 0).String()
+	algos, _ := accountRegistry.Keyring.SupportedAlgorithms()
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateAccountFailed, err)
+	}
+	algo, err := keyring.NewSigningAlgoFromString(string(hd.Secp256k1Type), algos)
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateAccountFailed, err)
+	}
+	record, err := accountRegistry.Keyring.NewAccount(name, mnemonic, "", hdPath, algo)
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateAccountFailed, err)
+	}
+	account := cosmosaccount.Account{
+		Name:   name,
+		Record: record,
+	}
+
+	address, err := account.Address(ADDRESS_PREFIX)
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateAccountFailed, err)
+	}
+
+	return address, nil
 }
 
 func Create(ctx context.Context, repo string, name string) (string, string, string, error) {

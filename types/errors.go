@@ -36,7 +36,7 @@ var (
 	ErrListAccountsFailed  = errors.Register(ModuleChain, 11004, "failed to list the local accounts")
 	ErrCreateAccountFailed = errors.Register(ModuleChain, 11005, "failed to create the account")
 	ErrImportAccountFailed = errors.Register(ModuleChain, 11006, "failed to import the account")
-	ErrExportAccountFailed = errors.Register(ModuleChain, 10007, "failed to export the account")
+	ErrExportAccountFailed = errors.Register(ModuleChain, 11007, "failed to export the account")
 
 	ErrGetAddressFailed = errors.Register(ModuleChain, 11008, "failed to get address")
 	ErrGetBalanceFailed = errors.Register(ModuleChain, 11009, "failed to get the balance")
@@ -62,6 +62,8 @@ var (
 
 	ErrQueryHeightFailed   = errors.Register(ModuleChain, 11026, "failed to query the latest height")
 	ErrInconsistentAddress = errors.Register(ModuleChain, 11027, "inconsistent address")
+
+	ErrGenerateMnemonicFailed = errors.Register(ModuleChain, 11028, "failed to generate mnemonic")
 )
 
 var (

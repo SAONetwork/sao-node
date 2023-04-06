@@ -311,7 +311,7 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 		return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("store cid %s error: %v", cid, err))
 	}
 	// send tx
-	txHash, height, err := ss.chainSvc.CompleteOrder(ss.ctx, ss.nodeAddress, ss.nodeAddress, order.Id, cid, uint64(len(req.Content)))
+	txHash, height, err := ss.chainSvc.CompleteOrder(ss.ctx, ss.nodeAddress, order.Id, cid, uint64(len(req.Content)))
 	if err != nil {
 		return logAndRespond(
 			types.ErrorCodeInvalidTx,
@@ -673,7 +673,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 	}
 
 	if task.State < types.ShardStateTxSent {
-		txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, ss.nodeAddress, task.OrderId, task.Cid, task.Size)
+		txHash, height, err := ss.chainSvc.CompleteOrder(ctx, ss.nodeAddress, task.OrderId, task.Cid, task.Size)
 		if err != nil {
 			ss.updateShardError(task, err)
 			return err
@@ -820,7 +820,7 @@ func (ss *StoreSvc) ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) e
 }
 
 func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[string]string, error) {
-	hash, results, height, err := ss.chainSvc.MigrateOrder(ctx, ss.nodeAddress, ss.nodeAddress, dataIds)
+	hash, results, height, err := ss.chainSvc.MigrateOrder(ctx, ss.nodeAddress, dataIds)
 
 	for k, v := range results {
 		if strings.HasPrefix(v, "SUCCESS") {

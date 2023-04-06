@@ -38,6 +38,7 @@ type ChainSvc struct {
 	modelClient      modeltypes.QueryClient
 	listener         *http.HTTP
 	accountRetriever authtypes.AccountRetriever
+	ap               *AddressPool
 }
 
 type ChainSvcApi interface {
@@ -51,24 +52,24 @@ type ChainSvcApi interface {
 	QueryPaymentAddress(ctx context.Context, did string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
-	UpdatePermission(ctx context.Context, signer string, provider string, proposal *types.PermissionProposal) (string, error)
+	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
 	Create(ctx context.Context, creator string) (string, error)
-	Reset(ctx context.Context, creator string, peerInfo string, status uint32) (string, error)
+	Reset(ctx context.Context, creator string, peerInfo string, status uint32, txAddresses []string, description *nodetypes.Description) (string, error)
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
 	ListNodes(ctx context.Context) ([]nodetypes.Node, error)
 	StartStatusReporter(ctx context.Context, creator string, status uint32)
-	OrderReady(ctx context.Context, creator string, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error)
-	StoreOrder(ctx context.Context, signer string, provider string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error)
-	CompleteOrder(ctx context.Context, creator string, provider string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error)
-	RenewOrder(ctx context.Context, creator string, provider string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
-	MigrateOrder(ctx context.Context, creator string, provider string, dataIds []string) (string, map[string]string, int64, error)
+	OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error)
+	StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error)
+	CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error)
+	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
+	MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error)
 	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.FullOrder, error)
 	//SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
 	//UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
 	//SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
-	TerminateOrder(ctx context.Context, creator string, provider string, terminateProposal types.OrderTerminateProposal) (string, error)
+	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error)
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
 }
 
@@ -102,13 +103,6 @@ func NewChainSvc(
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
-	// log.Debug("initialize chain listener2", chainAddress)
-
-	// err = http.Reset()
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// log.Debugf("initialize chain listener3")
 
 	return &ChainSvc{
 		cosmos:           cosmos,
@@ -120,6 +114,10 @@ func NewChainSvc(
 		listener:         http,
 		accountRetriever: accountRetriever,
 	}, nil
+}
+
+func (c *ChainSvc) SetAddressPool(ctx context.Context, ap *AddressPool) {
+	c.ap = ap
 }
 
 func (c *ChainSvc) Stop(ctx context.Context) error {
