@@ -5,6 +5,8 @@ import (
 	"sao-node/types"
 	"time"
 
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"
@@ -19,15 +21,16 @@ type OrderCompleteResult struct {
 	Result string
 }
 
-func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error) {
+func (c *ChainSvc) OrderReady(ctx context.Context, creater, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error) {
 	signerAcc, err := c.cosmos.Account(provider)
 	if err != nil {
 		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgReady{
-		OrderId: orderId,
-		Creator: provider,
+		OrderId:  orderId,
+		Creator:  creater,
+		Provider: provider,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -45,7 +48,7 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 	return readyResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }
 
-func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error) {
+func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, provider string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error) {
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
 		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
@@ -59,6 +62,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 			Protected: clientProposal.JwsSignature.Protected,
 			Signature: clientProposal.JwsSignature.Signature,
 		},
+		Provider: provider,
 	}
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
@@ -77,17 +81,18 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	return storeResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }
 
-func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error) {
+func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, provider string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgComplete{
-		Creator: creator,
-		OrderId: orderId,
-		Cid:     cid.String(),
-		Size_:   size,
+		Creator:  creator,
+		OrderId:  orderId,
+		Cid:      cid.String(),
+		Size_:    size,
+		Provider: provider,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -99,7 +104,7 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 	return txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
 }
 
-func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
+func (c *ChainSvc) RenewOrder(ctx context.Context, creator, provider string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", nil, types.Wrap(types.ErrAccountNotFound, err)
@@ -109,6 +114,7 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 		Creator:      creator,
 		Proposal:     orderRenewProposal.Proposal,
 		JwsSignature: orderRenewProposal.JwsSignature,
+		Provider:     provider,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -129,15 +135,16 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 	return txResp.TxResponse.TxHash, result, nil
 }
 
-func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error) {
+func (c *ChainSvc) MigrateOrder(ctx context.Context, creator, provider string, dataIds []string) (string, map[string]string, int64, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgMigrate{
-		Creator: creator,
-		Data:    dataIds,
+		Creator:  creator,
+		Data:     dataIds,
+		Provider: provider,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -158,7 +165,7 @@ func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []s
 	return txResp.TxResponse.TxHash, result, txResp.TxResponse.Height, nil
 }
 
-func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
+func (c *ChainSvc) TerminateOrder(ctx context.Context, creator, provider string, terminateProposal types.OrderTerminateProposal) (string, error) {
 	signerAcc, err := c.cosmos.Account(creator)
 	if err != nil {
 		return "", types.Wrap(types.ErrAccountNotFound, err)
@@ -168,6 +175,7 @@ func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminate
 		Creator:      creator,
 		Proposal:     terminateProposal.Proposal,
 		JwsSignature: terminateProposal.JwsSignature,
+		Provider:     provider,
 	}
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
 	if err != nil {
@@ -187,6 +195,17 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Fu
 		return nil, types.Wrap(types.ErrQueryOrderFailed, err)
 	}
 	return &queryResp.Order, nil
+}
+
+func (c *ChainSvc) ListOrder(ctx context.Context, offset uint64, limit uint64) ([]ordertypes.Order, uint64, error) {
+	resp, err := c.orderClient.OrderAll(ctx, &ordertypes.QueryAllOrderRequest{
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
+
+	if err != nil {
+		return make([]ordertypes.Order, 0), 0, types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+
+	return resp.Order, resp.Pagination.Total, nil
 }
 
 // wsevent

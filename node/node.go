@@ -11,6 +11,8 @@ import (
 	"sao-node/api"
 	"sao-node/chain"
 	"sao-node/node/gateway"
+	"sao-node/node/indexer"
+	"sao-node/node/indexer/gql"
 	"sao-node/node/transport"
 	"sao-node/store"
 	"sort"
@@ -51,6 +53,7 @@ const NODE_STATUS_ONLINE uint32 = 1
 const NODE_STATUS_SERVE_GATEWAY uint32 = 1 << 1
 const NODE_STATUS_SERVE_STORAGE uint32 = 1 << 2
 const NODE_STATUS_ACCEPT_ORDER uint32 = 1 << 3
+const NODE_STATUS_SERVE_INDEXER uint32 = 1 << 4
 
 type Node struct {
 	ctx        context.Context
@@ -67,6 +70,7 @@ type Node struct {
 	tds       datastore.Read
 	hfs       *gateway.HttpFileServer
 	rpcServer *http.Server
+	indexSvc  *indexer.IndexSvc
 }
 
 type JwtPayload struct {
@@ -120,6 +124,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 			peerInfos = peerInfos + withP2p.String()
 		}
 	}
+
 	// chain
 	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
 	if err != nil {
@@ -260,6 +265,31 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		log.Info("gateway node initialized")
 	}
 
+	if cfg.Module.IndexerEnable {
+		status = status | NODE_STATUS_SERVE_INDEXER
+		jobsDs, err := repo.Datastore(ctx, "/indexer")
+		if err != nil {
+			return nil, err
+		}
+
+		dbPath, err := homedir.Expand(cfg.Indexer.DbPath)
+		if err != nil {
+			return nil, types.Wrap(types.ErrInvalidPath, err)
+		}
+		indexSvc := indexer.NewIndexSvc(ctx, chainSvc, jobsDs, dbPath)
+		sn.indexSvc = indexSvc
+		sn.stopFuncs = append(sn.stopFuncs, sn.indexSvc.Stop)
+
+		graphqlServer := gql.NewGraphqlServer(cfg.Indexer.ListenAddress, indexSvc)
+		err = graphqlServer.Start(ctx)
+		if err != nil {
+			return nil, err
+		}
+		sn.stopFuncs = append(sn.stopFuncs, graphqlServer.Stop)
+
+		log.Info("indexing node initialized")
+	}
+
 	// api server
 	rpcServer, err := newRpcServer(&sn, &cfg.Api)
 	if err != nil {
@@ -280,8 +310,10 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 	log.Info("Write token: ", string(tokenWrite))
 
-	// Connect to P2P network
-	sn.ConnectToGatewayCluster(ctx)
+	if cfg.Module.StorageEnable {
+		// Connect to P2P network
+		sn.ConnectToGatewayCluster(ctx)
+	}
 
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
@@ -392,10 +424,10 @@ func (n *Node) ConnectPeers(ctx context.Context) {
 
 			err = n.host.Connect(ctx, *pi)
 			if err != nil {
-				log.Error(types.ErrInvalidServerAddress, "a=", a)
+				log.Info(types.ErrInvalidServerAddress, "a=", a)
 				continue
 			} else {
-				log.Info("Connected to the gateway ", node.Creator, " , peerinfos: ", node.Peer)
+				log.Info("Connected to the peer ", node.Creator, " , peerinfos: ", node.Peer)
 			}
 			break
 		}

@@ -666,7 +666,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 				JwsSignature: signature,
 			}
 			var resp saotypes.MsgStoreResponse
-			resp, txHash, height, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, &clientProposal)
+			resp, txHash, height, err = gs.chainSvc.StoreOrder(ctx, gs.nodeAddress, gs.nodeAddress, &clientProposal)
 			if err != nil {
 				return nil, err
 			}
@@ -678,7 +678,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 		} else {
 			log.Debugf("Sending OrderReady... orderId=%d", orderInfo.OrderId)
 			var resp saotypes.MsgReadyResponse
-			resp, txHash, height, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, orderInfo.OrderId)
+			resp, txHash, height, err = gs.chainSvc.OrderReady(ctx, gs.nodeAddress, gs.nodeAddress, orderInfo.OrderId)
 			if err != nil {
 				return nil, err
 			}
@@ -750,7 +750,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 }
 
 func (gs *GatewaySvc) TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error {
-	_, err := gs.chainSvc.TerminateOrder(ctx, gs.nodeAddress, *req)
+	_, err := gs.chainSvc.TerminateOrder(ctx, gs.nodeAddress, gs.nodeAddress, *req)
 	if err != nil {
 		return err
 	}
@@ -759,7 +759,7 @@ func (gs *GatewaySvc) TerminateOrder(ctx context.Context, req *types.OrderTermin
 }
 
 func (gs *GatewaySvc) RenewOrder(ctx context.Context, req *types.OrderRenewProposal) (map[string]string, error) {
-	_, results, err := gs.chainSvc.RenewOrder(ctx, gs.nodeAddress, *req)
+	_, results, err := gs.chainSvc.RenewOrder(ctx, gs.nodeAddress, gs.nodeAddress, *req)
 	if err != nil {
 		return nil, err
 	}
@@ -768,7 +768,7 @@ func (gs *GatewaySvc) RenewOrder(ctx context.Context, req *types.OrderRenewPropo
 }
 
 func (gs *GatewaySvc) UpdateModelPermission(ctx context.Context, req *types.PermissionProposal) error {
-	_, err := gs.chainSvc.UpdatePermission(ctx, gs.nodeAddress, req)
+	_, err := gs.chainSvc.UpdatePermission(ctx, gs.nodeAddress, gs.nodeAddress, req)
 	if err != nil {
 		return err
 	}

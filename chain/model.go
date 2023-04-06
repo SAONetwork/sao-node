@@ -4,10 +4,21 @@ import (
 	"context"
 	"sao-node/types"
 
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 )
+
+func (c *ChainSvc) ListMeta(ctx context.Context, offset uint64, limit uint64) ([]modeltypes.Metadata, uint64, error) {
+	resp, err := c.modelClient.MetadataAll(ctx, &modeltypes.QueryAllMetadataRequest{
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
+	if err != nil {
+		return make([]modeltypes.Metadata, 0), 0, types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	return resp.Metadata, resp.Pagination.Total, nil
+}
 
 func (c *ChainSvc) GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
 	resp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
@@ -47,7 +58,7 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 	return resp, nil
 }
 
-func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
+func (c *ChainSvc) UpdatePermission(ctx context.Context, signer, provider string, proposal *types.PermissionProposal) (string, error) {
 	signerAcc, err := c.cosmos.Account(signer)
 	if err != nil {
 		return "", types.Wrap(types.ErrAccountNotFound, err)
@@ -61,6 +72,7 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 			Protected: proposal.JwsSignature.Protected,
 			Signature: proposal.JwsSignature.Signature,
 		},
+		Provider: provider,
 	}
 
 	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)

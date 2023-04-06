@@ -30,6 +30,10 @@ func DefaultSaoNode() *Node {
 		SaoIpfs: SaoIpfs{
 			Enable: true,
 		},
+		Indexer: Indexer{
+			DbPath:        "~/.sao-node/datastore",
+			ListenAddress: "localhost:5155",
+		},
 	}
 }
 
@@ -54,6 +58,7 @@ func defCommon() Common {
 		Module: Module{
 			GatewayEnable: true,
 			StorageEnable: true,
+			IndexerEnable: false,
 		},
 	}
 }
