@@ -131,11 +131,15 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		return nil, err
 	}
 
-	ap, err := chain.LoadAddressPool(ctx, keyringHome, cfg.Chain.TxPoolSize)
-	if err != nil {
-		return nil, err
+	if cfg.Chain.TxPoolSize > 0 {
+		fmt.Println("cfg.Chain.TxPoolSize: ", cfg.Chain.TxPoolSize)
+
+		ap, err := chain.LoadAddressPool(ctx, keyringHome, cfg.Chain.TxPoolSize)
+		if err != nil {
+			return nil, err
+		}
+		chainSvc.SetAddressPool(ctx, ap)
 	}
-	chainSvc.SetAddressPool(ctx, ap)
 
 	var stopFuncs []StopFunc
 	tds, err := repo.Datastore(ctx, "/transport")

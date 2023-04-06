@@ -171,6 +171,10 @@ var initTxAddressPoolCmd = &cli.Command{
 			return err
 		}
 
+		if txPoolSize <= 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "tx-pool-size should greater than 0")
+		}
+
 		for {
 			fmt.Printf("Please make sure there is enough SAO tokens in the account %s. Confirm with 'yes' :", creator)
 
@@ -256,6 +260,10 @@ var initCmd = &cli.Command{
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
 		txPoolSize := cctx.Uint("tx-pool-size")
+
+		if txPoolSize <= 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "tx-pool-size should greater than 0")
+		}
 
 		r, err := initRepo(repoPath, chainAddress, txPoolSize)
 		if err != nil {
@@ -560,9 +568,12 @@ var updateCmd = &cli.Command{
 			}
 		}
 
-		ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, cfg.Chain.TxPoolSize)
-		if err != nil {
-			return err
+		var ap *chain.AddressPool
+		if cfg.Chain.TxPoolSize > 0 {
+			ap, err = chain.LoadAddressPool(ctx, cliutil.KeyringHome, cfg.Chain.TxPoolSize)
+			if err != nil {
+				return err
+			}
 		}
 
 		addresses := make([]string, 0)

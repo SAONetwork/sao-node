@@ -42,7 +42,7 @@ func defCommon() Common {
 		Chain: Chain{
 			Remote:     "http://localhost:26657",
 			WsEndpoint: "/websocket",
-			TxPoolSize: 10,
+			TxPoolSize: 0,
 		},
 		Libp2p: Libp2p{
 			ListenAddress: []string{
