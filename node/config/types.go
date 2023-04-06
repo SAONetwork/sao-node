@@ -18,12 +18,12 @@ type Node struct {
 
 	Storage Storage
 	SaoIpfs SaoIpfs
+	Indexer Indexer
 }
 
 type SaoHttpFileServer struct {
 	Enable                  bool
 	HttpFileServerAddress   string
-	HttpFileServerPath      string
 	EnableHttpFileServerLog bool
 	TokenPeriod             time.Duration
 }
@@ -32,8 +32,6 @@ type SaoHttpFileServer struct {
 type SaoIpfs struct {
 	// Enable in process ipfs instance
 	Enable bool
-	// ipfs repo path
-	Repo string
 }
 
 // Storage contains configs for backend storages
@@ -51,6 +49,15 @@ type Ipfs struct {
 	Conn string
 }
 
+// Indexer contains configs for indexing and graphsql service
+type Indexer struct {
+	// indexer db path
+	DbPath string
+
+	// Binding address for the graphsql service
+	ListenAddress string
+}
+
 // Module contains configs for Submodules
 type Module struct {
 
@@ -59,6 +66,9 @@ type Module struct {
 
 	// Enable storage module
 	StorageEnable bool
+
+	// Enable indexer module
+	IndexerEnable bool
 }
 
 // API contains configs for API endpoint
@@ -105,6 +115,5 @@ type Cache struct {
 
 type Transport struct {
 	TransportListenAddress []string
-	StagingPath            string
 	StagingSapceSize       int64
 }

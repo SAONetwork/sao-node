@@ -19,7 +19,7 @@ func DoPingRequest(ctx context.Context, host host.Host) {
 
 		stream, err := host.NewStream(ctx, peerId, types.ShardPingPongProtocol)
 		if err != nil {
-			log.Error(types.Wrap(types.ErrCreateStreamFailed, err))
+			log.Info(types.Wrap(types.ErrCreateStreamFailed, err))
 			continue
 		}
 

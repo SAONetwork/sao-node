@@ -1,0 +1,73 @@
+"""
+The `Uint64` scalar type represents a uint64.
+"""
+scalar Uint64
+
+schema {
+  query: RootQuery
+}
+
+type Job {
+  ID: ID!
+	Description: String!
+	Status: String!
+}
+
+type JobList {
+  totalCount: Int!
+  Jobs: [Job]!
+  more: Boolean!
+}
+
+type Metadata {
+  ID: ID!
+  Did: String!
+	DataId: String!
+	Alias: String!
+	GroupId: String!
+	Version: String!
+	Size: Int!
+	Expiration: Uint64!
+	Readers: String!
+	Writers: String!
+}
+
+type MetadataList {
+  totalCount: Int!
+  Metadatas: [Metadata]!
+  more: Boolean!
+}
+
+type Shard {
+  ID: ID!
+  ShardId: Uint64!
+	OrderId: Uint64!
+	Sp: String!
+	DataId: String!
+}
+
+type ShardList {
+  totalCount: Int!
+  Shards: [Shard]!
+  more: Boolean!
+}
+
+type RootQuery {
+  """Get Job by ID"""
+  job(id: ID!): Job
+
+  """Get all Jobs"""
+  jobs(query: String): JobList!
+
+  """Get Metadata by ID"""
+  metadata(id: ID!): Metadata
+
+  """Get all Metadatas"""
+  metadatas(query: String): MetadataList!
+
+  """Get Shard by ID"""
+  shard(id: ID!): Shard
+
+  """Get all Shards"""
+  shards(query: String): ShardList!
+}

@@ -718,7 +718,7 @@ var orderCmd = &cli.Command{
 			fmt.Printf("Cid: %s\n", res.Cid)
 			fmt.Printf("Duration: %d\n", res.Duration)
 			fmt.Printf("CreatedAt: %d\n", res.CreatedAt)
-			fmt.Printf("Expire: %d\n", res.Expire)
+			fmt.Printf("Timeout: %d\n", res.Timeout)
 			fmt.Printf("Status: %d\n", res.Status)
 			fmt.Printf("Replica: %d\n", res.Replica)
 			fmt.Printf("Amount: %v\n", res.Amount)
