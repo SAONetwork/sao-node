@@ -1223,7 +1223,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{174}); err != nil {
+	if _, err := cw.Write([]byte{175}); err != nil {
 		return err
 	}
 
@@ -1483,6 +1483,28 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
+	// t.RetryAt (int64) (int64)
+	if len("RetryAt") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"RetryAt\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("RetryAt"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("RetryAt")); err != nil {
+		return err
+	}
+
+	if t.RetryAt >= 0 {
+		if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.RetryAt)); err != nil {
+			return err
+		}
+	} else {
+		if err := cw.WriteMajorTypeHeader(cbg.MajNegativeInt, uint64(-t.RetryAt-1)); err != nil {
+			return err
+		}
+	}
+
 	// t.LastErr (string) (string)
 	if len("LastErr") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"LastErr\" was too long")
@@ -1725,6 +1747,32 @@ func (t *ShardInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 				t.State = ShardState(extra)
 
+			}
+			// t.RetryAt (int64) (int64)
+		case "RetryAt":
+			{
+				maj, extra, err := cr.ReadHeader()
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.RetryAt = int64(extraI)
 			}
 			// t.LastErr (string) (string)
 		case "LastErr":
@@ -3436,7 +3484,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{166}); err != nil {
+	if _, err := cw.Write([]byte{167}); err != nil {
 		return err
 	}
 
@@ -3569,6 +3617,23 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	if _, err := io.WriteString(w, string(t.AssignTxType)); err != nil {
 		return err
 	}
+
+	// t.TimeoutHeight (uint64) (uint64)
+	if len("TimeoutHeight") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"TimeoutHeight\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("TimeoutHeight"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("TimeoutHeight")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.TimeoutHeight)); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -3694,6 +3759,21 @@ func (t *ShardAssignReq) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.AssignTxType = AssignTxType(sval)
+			}
+			// t.TimeoutHeight (uint64) (uint64)
+		case "TimeoutHeight":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.TimeoutHeight = uint64(extra)
+
 			}
 
 		default:
