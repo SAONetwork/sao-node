@@ -20,163 +20,271 @@ type OrderCompleteResult struct {
 }
 
 func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint64) (saotypes.MsgReadyResponse, string, int64, error) {
-	signerAcc, err := c.cosmos.Account(provider)
+	txAddress := provider
+	defer func() {
+		if c.ap != nil && txAddress != provider {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	_, err = c.cosmos.Account(txAddress)
 	if err != nil {
 		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgReady{
-		OrderId: orderId,
-		Creator: provider,
+		OrderId:  orderId,
+		Creator:  txAddress,
+		Provider: provider,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(provider, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgReady tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgReady tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
 	var readyResp saotypes.MsgReadyResponse
-	err = txResp.Decode(&readyResp)
+	err = result.resp.Decode(&readyResp)
 	if err != nil {
 		return saotypes.MsgReadyResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgReadyResponse, due to %v", err)
 	}
 
-	return readyResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
+	return readyResp, result.resp.TxResponse.TxHash, result.resp.TxResponse.Height, nil
 }
 
 func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal *types.OrderStoreProposal) (saotypes.MsgStoreResponse, string, int64, error) {
-	signerAcc, err := c.cosmos.Account(signer)
-	if err != nil {
-		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
+	txAddress := signer
+	defer func() {
+		if c.ap != nil && txAddress != signer {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+
+		_, err = c.cosmos.Account(txAddress)
+		if err != nil {
+			return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
 	}
 
 	// TODO: Cid
 	msg := &saotypes.MsgStore{
-		Creator:  signer,
+		Creator:  txAddress,
 		Proposal: clientProposal.Proposal,
 		JwsSignature: saotypes.JwsSignature{
 			Protected: clientProposal.JwsSignature.Protected,
 			Signature: clientProposal.JwsSignature.Signature,
 		},
+		Provider: signer,
 	}
 
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(signer, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
 	// log.Debug("MsgStore result: ", txResp)
-	if txResp.TxResponse.Code != 0 {
-		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgStore tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgStore tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
 	var storeResp saotypes.MsgStoreResponse
-	err = txResp.Decode(&storeResp)
+	err = result.resp.Decode(&storeResp)
 	if err != nil {
 		return saotypes.MsgStoreResponse{}, "", -1, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgStoreResponse, due to %v", err)
 	}
-	return storeResp, txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
+	return storeResp, result.resp.TxResponse.TxHash, result.resp.TxResponse.Height, nil
 }
 
 func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId uint64, cid cid.Cid, size uint64) (string, int64, error) {
-	signerAcc, err := c.cosmos.Account(creator)
+	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+	}
+
+	_, err = c.cosmos.Account(txAddress)
 	if err != nil {
 		return "", -1, types.Wrap(types.ErrAccountNotFound, err)
 	}
 
 	msg := &saotypes.MsgComplete{
-		Creator: creator,
-		OrderId: orderId,
-		Cid:     cid.String(),
-		Size_:   size,
+		Creator:  txAddress,
+		OrderId:  orderId,
+		Cid:      cid.String(),
+		Size_:    size,
+		Provider: creator,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", -1, types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgComplete tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", -1, types.Wrapf(types.ErrTxProcessFailed, "MsgComplete tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, txResp.TxResponse.Height, nil
+	return result.resp.TxResponse.TxHash, result.resp.TxResponse.Height, nil
 }
 
 func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error) {
-	signerAcc, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", nil, types.Wrap(types.ErrAccountNotFound, err)
+	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", nil, types.Wrap(types.ErrAccountNotFound, err)
+		}
+
+		_, err = c.cosmos.Account(txAddress)
+		if err != nil {
+			return "", nil, types.Wrap(types.ErrAccountNotFound, err)
+		}
 	}
 
 	msg := &saotypes.MsgRenew{
-		Creator:      creator,
+		Creator:      txAddress,
 		Proposal:     orderRenewProposal.Proposal,
 		JwsSignature: orderRenewProposal.JwsSignature,
+		Provider:     creator,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", nil, types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", nil, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", nil, types.Wrapf(types.ErrTxProcessFailed, "MsgRenew tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", nil, types.Wrapf(types.ErrTxProcessFailed, "MsgRenew tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
 	var renewResp saotypes.MsgRenewResponse
-	err = txResp.Decode(&renewResp)
+	err = result.resp.Decode(&renewResp)
 	if err != nil {
 		return "", nil, err
 	}
-	result := make(map[string]string)
+	resultMap := make(map[string]string)
 	for _, r := range renewResp.Result {
-		result[r.K] = r.V
+		resultMap[r.K] = r.V
 	}
-	return txResp.TxResponse.TxHash, result, nil
+	return result.resp.TxResponse.TxHash, resultMap, nil
 }
 
 func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error) {
-	signerAcc, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
+	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
+
+		_, err = c.cosmos.Account(txAddress)
+		if err != nil {
+			return "", nil, -1, types.Wrap(types.ErrAccountNotFound, err)
+		}
 	}
 
 	msg := &saotypes.MsgMigrate{
-		Creator: creator,
-		Data:    dataIds,
+		Creator:  txAddress,
+		Data:     dataIds,
+		Provider: creator,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", nil, -1, types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", nil, -1, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", nil, -1, types.Wrapf(types.ErrTxProcessFailed, "MsgMigrate tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", nil, -1, types.Wrapf(types.ErrTxProcessFailed, "MsgMigrate tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
 	var migrateResp saotypes.MsgMigrateResponse
-	err = txResp.Decode(&migrateResp)
+	err = result.resp.Decode(&migrateResp)
 	if err != nil {
 		return "", nil, -1, err
 	}
-	result := make(map[string]string)
+	resultMap := make(map[string]string)
 	for _, r := range migrateResp.Result {
-		result[r.K] = r.V
+		resultMap[r.K] = r.V
 	}
-	return txResp.TxResponse.TxHash, result, txResp.TxResponse.Height, nil
+	return result.resp.TxResponse.TxHash, resultMap, result.resp.TxResponse.Height, nil
 }
 
 func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error) {
-	signerAcc, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
+	txAddress := creator
+	defer func() {
+		if c.ap != nil && txAddress != creator {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", types.Wrap(types.ErrAccountNotFound, err)
+		}
+
+		_, err = c.cosmos.Account(txAddress)
+		if err != nil {
+			return "", types.Wrap(types.ErrAccountNotFound, err)
+		}
 	}
 
 	msg := &saotypes.MsgTerminate{
-		Creator:      creator,
+		Creator:      txAddress,
 		Proposal:     terminateProposal.Proposal,
 		JwsSignature: terminateProposal.JwsSignature,
+		Provider:     creator,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgTerminate tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgTerminate tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.FullOrder, error) {

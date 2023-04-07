@@ -73,11 +73,13 @@ type GatewaySvc struct {
 	nodeAddress        string
 	localPeerId        string
 	stagingPath        string
+	serverPath         string
 	cfg                *config.Node
 	orderDs            datastore.Batching
 	gatewayProtocolMap map[string]GatewayProtocol
 
 	schedQueue *queue.RequestQueue
+	timeoutMap map[uint64][]types.OrderInfo
 	locks      *utils.Maplock
 
 	completeResultChan chan string
@@ -94,6 +96,8 @@ func NewGatewaySvc(
 	notifyChan map[string]chan interface{},
 	orderDs datastore.Batching,
 	keyringHome string,
+	stagingPath string,
+	serverPath string,
 ) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
@@ -102,12 +106,14 @@ func NewGatewaySvc(
 		keyringHome:        keyringHome,
 		nodeAddress:        nodeAddress,
 		localPeerId:        host.ID().String(),
-		stagingPath:        cfg.Transport.StagingPath,
+		stagingPath:        stagingPath,
+		serverPath:         serverPath,
 		cfg:                cfg,
 		completeResultChan: make(chan string),
 		completeMap:        make(map[string]int64),
 		orderDs:            orderDs,
 		schedQueue:         &queue.RequestQueue{},
+		timeoutMap:         make(map[uint64][]types.OrderInfo),
 		locks:              utils.NewMapLock(),
 	}
 	cs.gatewayProtocolMap = make(map[string]GatewayProtocol)
@@ -129,6 +135,7 @@ func NewGatewaySvc(
 	go cs.runSched(ctx, host)
 	go cs.processIncompleteOrders(ctx)
 	go cs.completeLoop(ctx)
+	go cs.checkTimeout(ctx)
 
 	return cs
 }
@@ -434,9 +441,9 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 	if len(content) > gs.cfg.Cache.ContentLimit || match {
 		// large size content should go through P2P channel
 
-		path, err := homedir.Expand(gs.cfg.SaoHttpFileServer.HttpFileServerPath)
+		path, err := homedir.Expand(gs.serverPath)
 		if err != nil {
-			return nil, types.Wrapf(types.ErrInvalidPath, "%s", gs.cfg.SaoHttpFileServer.HttpFileServerPath)
+			return nil, types.Wrapf(types.ErrInvalidPath, "%s", gs.serverPath)
 		}
 
 		file, err := os.Create(filepath.Join(path, meta.DataId))
@@ -568,12 +575,13 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 					gp = gs.gatewayProtocolMap["stream"]
 				}
 				req := types.ShardAssignReq{
-					OrderId:      orderInfo.OrderId,
-					TxHash:       orderInfo.OrderHash,
-					DataId:       orderInfo.DataId,
-					Assignee:     node,
-					Height:       orderInfo.OrderHeight,
-					AssignTxType: orderInfo.OrderTxType,
+					OrderId:       orderInfo.OrderId,
+					TxHash:        orderInfo.OrderHash,
+					DataId:        orderInfo.DataId,
+					Assignee:      node,
+					Height:        orderInfo.OrderHeight,
+					AssignTxType:  orderInfo.OrderTxType,
+					TimeoutHeight: orderInfo.ExpireHeight,
 				}
 				resp := gp.RequestShardAssign(ctx, req, shard.Peer)
 				if resp.Code == 0 {
@@ -698,7 +706,7 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 
 		order, err := gs.chainSvc.GetOrder(ctx, orderInfo.OrderId)
 		if err == nil {
-			orderInfo.ExpireHeight = uint64(order.Expire)
+			orderInfo.ExpireHeight = order.CreatedAt + order.Timeout
 		} else {
 			log.Warn("chain get order err: ", err)
 		}
@@ -709,6 +717,16 @@ func (gs *GatewaySvc) CommitModel(ctx context.Context, clientProposal *types.Ord
 	}
 
 	gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
+
+	gs.locks.Lock("timeout")
+	orderInfoList, ok := gs.timeoutMap[orderInfo.ExpireHeight]
+	if ok {
+		orderInfoList = append(orderInfoList, orderInfo)
+		gs.timeoutMap[orderInfo.ExpireHeight] = orderInfoList
+	} else {
+		gs.timeoutMap[orderInfo.ExpireHeight] = []types.OrderInfo{orderInfo}
+	}
+	gs.locks.Unlock("timeout")
 
 	// TODO: wsevent
 	//err = gs.chainSvc.UnsubscribeOrderComplete(ctx, orderId)
@@ -841,4 +859,78 @@ func (gs *GatewaySvc) getPendingOrders(ctx context.Context) ([]types.OrderInfo, 
 
 func lockname(orderId uint64) string {
 	return fmt.Sprintf("lk-order-%d", orderId)
+}
+
+func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
+	var latestHeight uint64 = 0
+	for {
+		height, err := gs.chainSvc.GetLastHeight(ctx)
+		newHeight := uint64(height)
+		if err != nil || newHeight <= latestHeight {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		latestHeight++
+		for ; ; latestHeight++ {
+			gs.locks.Lock("timeout")
+			orderInfoList, ok := gs.timeoutMap[latestHeight]
+			gs.locks.Unlock("timeout")
+
+			if ok {
+				for _, orderInfo := range orderInfoList {
+
+					order, err := gs.chainSvc.GetOrder(ctx, orderInfo.OrderId)
+					if err != nil {
+						continue
+					}
+					if order.Status == ordertypes.OrderCompleted || order.Status == ordertypes.OrderMigrating {
+						continue
+					}
+					newShards := make(map[string]types.OrderShardInfo)
+					for sp, shard := range order.Shards {
+						peer, err := gs.chainSvc.GetNodePeer(ctx, sp)
+						if err != nil {
+							return
+						}
+						newShard := types.OrderShardInfo{
+							ShardId:  shard.Id,
+							Peer:     peer,
+							Cid:      shard.Cid,
+							Provider: order.Provider,
+							State:    types.ShardStateAssigned,
+						}
+						if shard.Status == ordertypes.ShardCompleted {
+							newShard.State = types.ShardStateCompleted
+						}
+						newShards[sp] = newShard
+					}
+					orderInfo.Shards = newShards
+					orderInfo.ExpireHeight += order.Timeout
+					orderInfo.Tries = 0
+
+					log.Info("order ", order.Id, " timeout at ", latestHeight, " block, re-sched for new assigned sp")
+					gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
+
+					gs.locks.Lock("timeout")
+					updateOrderInfoList, ok := gs.timeoutMap[orderInfo.ExpireHeight]
+					if ok {
+						orderInfoList = append(updateOrderInfoList, orderInfo)
+						gs.timeoutMap[orderInfo.ExpireHeight] = updateOrderInfoList
+					} else {
+						gs.timeoutMap[orderInfo.ExpireHeight] = []types.OrderInfo{orderInfo}
+					}
+					gs.locks.Unlock("timeout")
+				}
+			}
+			if latestHeight == newHeight {
+				break
+			}
+
+			gs.locks.Lock("timeout")
+			delete(gs.timeoutMap, latestHeight)
+			gs.locks.Unlock("timeout")
+		}
+	}
+
 }

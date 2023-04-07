@@ -27,7 +27,7 @@ type jwtClaims struct {
 	jwt.StandardClaims
 }
 
-func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error) {
+func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer) (*HttpFileServer, error) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
@@ -41,7 +41,7 @@ func StartHttpFileServer(cfg *config.SaoHttpFileServer) (*HttpFileServer, error)
 	// Unauthenticated entry
 	e.GET("/test", test)
 
-	path, err := homedir.Expand(cfg.HttpFileServerPath)
+	path, err := homedir.Expand(serverPath)
 	if err != nil {
 		return nil, types.Wrap(types.ErrInvalidPath, err)
 	}
