@@ -105,7 +105,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		}
 
 		if len(cfg.Token) == 0 {
-			return nil, nil, types.Wrap(types.ErrInvalidToken, err)
+			return nil, nil, types.Wrapf(types.ErrInvalidToken, "Please fill token in configuration file.")
 		}
 
 		gatewayApi, closer, err = apiclient.NewNodeApi(ctx, opt.Gateway, cfg.Token)
@@ -141,7 +141,7 @@ func DefaultSaoClientConfig() *SaoClientConfig {
 		KeyName:      "",
 		ChainAddress: "http://127.0.0.1:26657",
 		Gateway:      "http://127.0.0.1:5151/rpc/v0",
-		Token:        "DEFAULT_TOKEN",
+		Token:        "",
 	}
 }
 

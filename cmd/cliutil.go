@@ -38,7 +38,6 @@ var FlagToken = &cli.StringFlag{
 	Usage:       "connection token",
 	EnvVars:     []string{"SAO_API_TOKEN"},
 	Required:    false,
-	Value:       "DEFAULT_TOKEN",
 	Destination: &ApiToken,
 }
 
