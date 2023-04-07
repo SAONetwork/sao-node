@@ -31,9 +31,7 @@ import (
 	"os"
 	"sao-node/chain"
 
-	manet "github.com/multiformats/go-multiaddr/net"
 
-	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/urfave/cli/v2"
