@@ -32,7 +32,6 @@ import (
 	"sao-node/chain"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
-	manet "github.com/multiformats/go-multiaddr/net"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"

@@ -14,6 +14,7 @@ import (
 	"sao-node/node/repo"
 	"sao-node/types"
 	"sao-node/utils"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
@@ -183,7 +184,7 @@ func GetNodeApi(cctx *cli.Context, repoPath string, nodeApi string, apiToken str
 		return nil, nil, err
 	}
 
-	token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
+	token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:3]}, jwt.NewHS256(key))
 	if err != nil {
 		return nil, nil, types.Wrap(types.ErrSignedFailed, err)
 	}
@@ -197,7 +198,7 @@ func GetNodeApi(cctx *cli.Context, repoPath string, nodeApi string, apiToken str
 		return nil, nil, types.Wrap(types.ErrConnectFailed, err)
 	}
 
-	apiAddress := "http://" + addr + "/rpc/v0"
+	apiAddress := "http://" + strings.ReplaceAll(addr, "0.0.0.0", "127.0.0.1") + "/rpc/v0"
 	return apiclient.NewNodeApi(cctx.Context, apiAddress, string(token))
 }
 
