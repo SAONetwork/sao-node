@@ -108,7 +108,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 			return nil, nil, types.Wrap(types.ErrInvalidToken, err)
 		}
 
-		gatewayApi, closer, err = apiclient.NewGatewayApi(ctx, opt.Gateway, cfg.Token)
+		gatewayApi, closer, err = apiclient.NewNodeApi(ctx, opt.Gateway, cfg.Token)
 		if err != nil {
 			return nil, nil, types.Wrap(types.ErrCreateApiServiceFailed, err)
 		}
