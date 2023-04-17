@@ -37,7 +37,7 @@ func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (
 		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 	}
 
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COMMITID, DID, CID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA WHERE COMMITID="+commitId.String())
+	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COMMITID, DID, COALESCE(CID, '') AS CID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA WHERE COMMITID= ?", commitId.String())
 	var CommitId string
 	var Did string
 	var DataId string
@@ -51,6 +51,7 @@ func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (
 	var Writers string
 	err = row.Scan(&CommitId, &Did, &Cid, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
 	if err != nil {
+		fmt.Errorf("database scan error: %v", err)
 		return nil, err
 	}
 

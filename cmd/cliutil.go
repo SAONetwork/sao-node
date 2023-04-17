@@ -77,6 +77,8 @@ func GetDidManager(cctx *cli.Context, keyName string) (*saodid.DidManager, strin
 		keyName = cctx.String(FlagKeyName)
 	}
 
+	fmt.Println("keyName: ", keyName)
+
 	// repo := cctx.String("repo")
 
 	address, err := chain.GetAddress(cctx.Context, KeyringHome, keyName)

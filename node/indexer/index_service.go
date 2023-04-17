@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sao-node/chain"
+	"sao-node/node/indexer/jobs"
 	"sao-node/node/queue"
 	"sao-node/types"
 	"sao-node/utils"
@@ -22,7 +23,7 @@ var log = logging.Logger("indexer")
 
 const (
 	WINDOW_SIZE       = 20
-	SCHEDULE_INTERVAL = 60
+	SCHEDULE_INTERVAL = 20
 	MAX_RETRIES       = 10
 )
 
@@ -83,6 +84,13 @@ func NewIndexSvc(
 	// is.schedQueue.Push(&queue.WorkRequest{
 	// 	Job: job2,
 	// })
+
+	log.Info("building storverse views job...")
+	job1 := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b", log)
+	is.JobsMap[job1.ID] = job1
+	is.schedQueue.Push(&queue.WorkRequest{
+		Job: job1,
+	})
 
 	return is
 }

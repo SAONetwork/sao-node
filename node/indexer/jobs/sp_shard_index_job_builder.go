@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	logging "github.com/ipfs/go-log/v2"
 	"strings"
 
 	"sao-node/chain"
@@ -22,7 +23,7 @@ type Shard struct {
 	Cid     string
 }
 
-func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, providers string) *types.Job {
+func BuildSpShardIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, providers string, log *logging.ZapEventLogger) *types.Job {
 	// initialize the sp shard database tables
 	log.Info("creating sp shard tables...")
 	if _, err := db.ExecContext(ctx, createSpShardDBSQL); err != nil {

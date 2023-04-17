@@ -278,6 +278,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		log.Info("gateway node initialized")
 	}
 
+	log.Info("indexer enable: ", cfg.Module.IndexerEnable)
 	if cfg.Module.IndexerEnable {
 		status = status | NODE_STATUS_SERVE_INDEXER
 		jobsDs, err := repo.Datastore(ctx, "/indexer")
@@ -289,6 +290,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		if err != nil {
 			return nil, types.Wrap(types.ErrInvalidPath, err)
 		}
+		log.Info("indexer db path: ", dbPath)
 		indexSvc := indexer.NewIndexSvc(ctx, chainSvc, jobsDs, dbPath)
 		sn.indexSvc = indexSvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.indexSvc.Stop)

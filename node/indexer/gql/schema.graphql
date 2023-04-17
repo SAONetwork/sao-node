@@ -4,71 +4,137 @@ The `Uint64` scalar type represents a uint64.
 scalar Uint64
 
 schema {
-  query: RootQuery
+    query: RootQuery
 }
 
 type Job {
-  ID: ID!
-	Description: String!
-	Status: String!
+    ID: ID!
+    Description: String!
+    Status: String!
 }
 
 type JobList {
-  totalCount: Int!
-  Jobs: [Job]!
-  more: Boolean!
+    totalCount: Int!
+    Jobs: [Job]!
+    more: Boolean!
 }
 
 type Metadata {
-  ID: ID!
-  Did: String!
-	DataId: String!
-	Alias: String!
-	Cid: String!
-	GroupId: String!
-	Version: String!
-	Size: Int!
-	Expiration: Uint64!
-	Readers: String!
-	Writers: String!
+    ID: ID!
+    Did: String!
+    DataId: String!
+    Alias: String!
+    Cid: String!
+    GroupId: String!
+    Version: String!
+    Size: Int!
+    Expiration: Uint64!
+    Readers: String!
+    Writers: String!
 }
 
 type MetadataList {
-  totalCount: Int!
-  Metadatas: [Metadata]!
-  more: Boolean!
+    totalCount: Int!
+    Metadatas: [Metadata]!
+    more: Boolean!
 }
 
 type Shard {
-  ID: ID!
-  ShardId: Uint64!
-	OrderId: Uint64!
-	Sp: String!
-	Cid: String!
+    ID: ID!
+    ShardId: Uint64!
+    OrderId: Uint64!
+    Sp: String!
+    Cid: String!
 }
 
 type ShardList {
-  totalCount: Int!
-  Shards: [Shard]!
-  more: Boolean!
+    totalCount: Int!
+    Shards: [Shard]!
+    more: Boolean!
+}
+
+type UserProfile {
+    ID: ID!
+    DataId: String!
+    CreatedAt: Uint64!
+    UpdatedAt: Uint64!
+    Did: String!
+    EthAddr: String!
+    Avatar: String!
+    Username: String!
+    FollowingCount: Int!
+    Twitter: String!
+    Youtube: String!
+    Bio: String!
+    Banner: String!
+    FollowingDataId: String!
+}
+
+type Verse {
+    ID: ID!
+    DataId: String!
+    CreatedAt: Uint64!
+    FileIDs: [String!]!
+    Owner: String!
+    Price: String!
+    Digest: String!
+    Scope: String!
+    Status: String!
+    NftTokenID: String!
+}
+
+type FileInfo {
+    ID: ID!
+    DataId: String!
+    CreatedAt: Uint64!
+    FileName: String!
+    ContentType: String!
+    FileDataID: String!
+    Owner: String!
+    FileCategory: String!
+}
+
+type UserFollowing {
+    ID: ID!
+    CreatedAt: Uint64!
+    UpdatedAt: Uint64!
+    ExpiredAt: Uint64!
+    Follower: String!
+    Following: String!
+    Status: String!
 }
 
 type RootQuery {
-  """Get Job by ID"""
-  job(id: ID!): Job
+    """Get Job by ID"""
+    job(id: ID!): Job
 
-  """Get all Jobs"""
-  jobs(query: String): JobList!
+    """Get all Jobs"""
+    jobs(query: String): JobList!
 
-  """Get Metadata by ID"""
-  metadata(id: ID!): Metadata
+    """Get Metadata by ID"""
+    metadata(id: ID!): Metadata
 
-  """Get all Metadatas"""
-  metadatas(query: String): MetadataList!
+    """Get all Metadatas"""
+    metadatas(query: String): MetadataList!
 
-  """Get Shard by ID"""
-  shard(id: ID!): Shard
+    """Get Shard by ID"""
+    shard(id: ID!): Shard
 
-  """Get all Shards"""
-  shards(query: String): ShardList!
+    """Get all Shards"""
+    shards(query: String): ShardList!
+
+    """Get UserProfile by ID"""
+    userProfile(id: ID!): UserProfile
+
+    """Get Verse by ID"""
+    verse(id: ID!): Verse
+
+    """Get Verses with multiple filtering options"""
+    verses(owner: String, price: String, createdAt: Uint64, status: String): [Verse!]!
+
+    """Get FileInfo by ID"""
+    fileInfo(id: ID!): FileInfo
+
+    """Get Followings by FollowingDataId"""
+    followings(followingDataId: String!): [UserFollowing!]!
 }

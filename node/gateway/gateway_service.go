@@ -343,6 +343,8 @@ func (gs *GatewaySvc) HandleShardStore(req types.ShardLoadReq) types.ShardLoadRe
 }
 
 func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error) {
+	//log the req
+	log.Debugf("QueryMeta. req=%v", req)
 	res, err := gs.chainSvc.QueryMetadata(ctx, req, height)
 	if err != nil {
 		return nil, err
