@@ -81,11 +81,14 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var offset uint64 = 0
 		var limit uint64 = 100
 		// Create slice to store the user data
-		var usersToCreate []storverse.UserProfile
 		//var usersToUpdate []storverse.UserProfile
-		var versesToCreate []storverse.Verse
+		var usersToCreate []storverse.UserProfile
 		//var versesToUpdate []storverse.Verse
+		var versesToCreate []storverse.Verse
+		//var fileInfosToUpdate []storverse.FileInfo
 		var fileInfosToCreate []storverse.FileInfo
+		//var userFollowingToUpdate []storverse.UserFollowing
+		var userFollowingToCreate []storverse.UserFollowing
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset, limit)
 			if err != nil {
@@ -141,6 +144,9 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						case storverse.FileInfo:
 							log.Infof("add to fileInfosToCreate: %v", r)
 							fileInfosToCreate = append(fileInfosToCreate, r)
+						case storverse.UserFollowing:
+							log.Infof("add to userFollowingToCreate: %v", r)
+							userFollowingToCreate = append(userFollowingToCreate, r)
 						}
 					}
 				}
@@ -177,6 +183,17 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		err = BatchInsert(db, "FILE_INFO", fileInfoBatchInserters, 500, log)
 		if err != nil {
 			log.Errorf("Error inserting file infos: %v", err)
+		}
+
+		// Convert []UserFollowing to []BatchInserter
+		userFollowingBatchInserters := make([]BatchInserter, len(userFollowingToCreate))
+		for i, userFollowing := range userFollowingToCreate {
+			userFollowingBatchInserters[i] = userFollowing
+		}
+
+		err = BatchInsert(db, "USER_FOLLOWING", userFollowingBatchInserters, 500, log)
+		if err != nil {
+			log.Errorf("Error inserting user followings: %v", err)
 		}
 
 		return nil, nil

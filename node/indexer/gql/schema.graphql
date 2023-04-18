@@ -96,12 +96,18 @@ type FileInfo {
 
 type UserFollowing {
     ID: ID!
+    DataId: String!
     CreatedAt: Uint64!
     UpdatedAt: Uint64!
     ExpiredAt: Uint64!
     Follower: String!
     Following: String!
     Status: String!
+}
+
+type FollowingResult {
+    followings: [UserFollowing!]!
+    count: Int!
 }
 
 type RootQuery {
@@ -136,5 +142,5 @@ type RootQuery {
     fileInfo(id: ID!): FileInfo
 
     """Get Followings by FollowingDataId"""
-    followings(followingDataId: String!): [UserFollowing!]!
+    followings(followingDataId: String!): FollowingResult!
 }

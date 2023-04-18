@@ -19,6 +19,11 @@ type userFollowing struct {
 	Status    string    `json:"Status"`
 }
 
+type followingResult struct {
+	Followings []*userFollowing
+	Count      int32
+}
+
 // query: userFollowing(id) UserFollowing
 func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID }) (*userFollowing, error) {
 	var id uuid.UUID
@@ -48,8 +53,7 @@ func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID
 	return &uf, nil
 }
 
-// Add this new function to the resolver
-func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId string }) ([]*userFollowing, error) {
+func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId string }) (*followingResult, error) {
 	rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM USER_FOLLOWING WHERE FOLLOWING = ?", args.FollowingDataId)
 	if err != nil {
 		return nil, err
@@ -79,7 +83,13 @@ func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId 
 		return nil, err
 	}
 
-	return followings, nil
+	count := len(followings)
+	result := &followingResult{
+		Followings: followings,
+		Count: int32(count),
+	}
+
+	return result, nil
 }
 
 func (m *userFollowing) ID() graphql.ID {
