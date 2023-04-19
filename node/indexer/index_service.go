@@ -70,21 +70,6 @@ func NewIndexSvc(
 	go is.runSched(ctx)
 	go is.processPendingJobs(ctx)
 
-	// two examples
-	// examples1: create a job to collect the metadata created on dapp whose platform id is 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
-	// job1 := jobs.BuildMetadataIndexJob(ctx, is.ChainSvc, is.Db, "dcca376a-53d2-4a0e-a77f-b52ff19a5eda")
-	// is.JobsMap[job1.ID] = job1
-	// is.schedQueue.Push(&queue.WorkRequest{
-	// 	Job: job1,
-	// })
-
-	// examples2: create a job to collect the shards which assigned to sp 30293f0f-3e0f-4b3c-aff1-890a2fdf063b
-	// job2 := jobs.BuildSpShardIndexJob(ctx, is.ChainSvc, is.Db, "sao1w0y5r9kkva8pees574xx3dee9rtex0ne9y03m6")
-	// is.JobsMap[job2.ID] = job2
-	// is.schedQueue.Push(&queue.WorkRequest{
-	// 	Job: job2,
-	// })
-
 	log.Info("building storverse views job...")
 	job1 := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b", log)
 	is.JobsMap[job1.ID] = job1

@@ -196,6 +196,8 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 	}
 
 	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	log.Infof("orderProposal: %#v", orderProposal)
+	log.Infof("meta: %#v", meta)
 	if err == nil && meta != nil {
 		return nil, types.Wrapf(types.ErrConflictId, "the model is exsiting already, alias: %s, dataId: %s", meta.Alias, meta.DataId)
 	}

@@ -10,6 +10,7 @@ import (
 	saokey "github.com/SaoNetwork/sao-did/key"
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	logging "github.com/ipfs/go-log/v2"
 	"os"
 	"reflect"
 	"sao-node/api"
@@ -20,8 +21,7 @@ import (
 	"sao-node/types"
 	"sao-node/utils"
 	"strings"
-
-	logging "github.com/ipfs/go-log/v2"
+	"time"
 )
 
 //var log = logging.Logger("indexer-jobs")
@@ -91,13 +91,66 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var userFollowingToCreate []storverse.UserFollowing
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset, limit)
+			log.Infof("offset: %d, limit: %d, total: %d", offset, limit, total)
 			if err != nil {
 				return nil, err
 			}
 			if offset*limit <= total {
 				offset++
 			} else {
-				break
+				// Convert []UserProfile to []BatchInserter
+				userProfileBatchInserters := make([]BatchInserter, len(usersToCreate))
+				for i, user := range usersToCreate {
+					userProfileBatchInserters[i] = user
+				}
+				err = BatchInsert(db, "USER_PROFILE", userProfileBatchInserters, 500, log)
+				if err != nil {
+					log.Errorf("Error inserting user profiles: %v", err)
+				}
+
+				// Convert []Verse to []BatchInserter
+				verseBatchInserters := make([]BatchInserter, len(versesToCreate))
+				for i, verse := range versesToCreate {
+					verseBatchInserters[i] = verse
+				}
+
+				err = BatchInsert(db, "VERSE", verseBatchInserters, 500, log)
+				if err != nil {
+					log.Errorf("Error inserting verses: %v", err)
+				}
+
+				// Convert []FileInfo to []BatchInserter
+				fileInfoBatchInserters := make([]BatchInserter, len(fileInfosToCreate))
+				for i, fileInfo := range fileInfosToCreate {
+					fileInfoBatchInserters[i] = fileInfo
+				}
+
+				err = BatchInsert(db, "FILE_INFO", fileInfoBatchInserters, 500, log)
+				if err != nil {
+					log.Errorf("Error inserting file infos: %v", err)
+				}
+
+				// Convert []UserFollowing to []BatchInserter
+				userFollowingBatchInserters := make([]BatchInserter, len(userFollowingToCreate))
+				for i, userFollowing := range userFollowingToCreate {
+					userFollowingBatchInserters[i] = userFollowing
+				}
+
+				err = BatchInsert(db, "USER_FOLLOWING", userFollowingBatchInserters, 500, log)
+				if err != nil {
+					log.Errorf("Error inserting user followings: %v", err)
+				}
+
+				time.Sleep(1 * time.Minute)
+				offset = 0
+				limit = 100
+				// Clear the slices
+				usersToCreate = nil
+				versesToCreate = nil
+				fileInfosToCreate = nil
+				userFollowingToCreate = nil
+
+				continue
 			}
 
 			for _, meta := range metaList {
@@ -138,8 +191,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						log.Infof("record: %v", record)
 						switch r := record.(type) {
 						case storverse.UserProfile:
+							log.Infof("add to usersToCreate: %v", r)
 							usersToCreate = append(usersToCreate, r)
 						case storverse.Verse:
+							log.Infof("add to versesToCreate: %v", r)
 							versesToCreate = append(versesToCreate, r)
 						case storverse.FileInfo:
 							log.Infof("add to fileInfosToCreate: %v", r)
@@ -151,49 +206,6 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					}
 				}
 			}
-		}
-
-		// Convert []UserProfile to []BatchInserter
-		userProfileBatchInserters := make([]BatchInserter, len(usersToCreate))
-		for i, user := range usersToCreate {
-			userProfileBatchInserters[i] = user
-		}
-		err = BatchInsert(db, "USER_PROFILE", userProfileBatchInserters, 500, log)
-		if err != nil {
-			log.Errorf("Error inserting user profiles: %v", err)
-		}
-
-		// Convert []Verse to []BatchInserter
-		verseBatchInserters := make([]BatchInserter, len(versesToCreate))
-		for i, verse := range versesToCreate {
-			verseBatchInserters[i] = verse
-		}
-
-		err = BatchInsert(db, "VERSE", verseBatchInserters, 500, log)
-		if err != nil {
-			log.Errorf("Error inserting verses: %v", err)
-		}
-
-		// Convert []FileInfo to []BatchInserter
-		fileInfoBatchInserters := make([]BatchInserter, len(fileInfosToCreate))
-		for i, fileInfo := range fileInfosToCreate {
-			fileInfoBatchInserters[i] = fileInfo
-		}
-
-		err = BatchInsert(db, "FILE_INFO", fileInfoBatchInserters, 500, log)
-		if err != nil {
-			log.Errorf("Error inserting file infos: %v", err)
-		}
-
-		// Convert []UserFollowing to []BatchInserter
-		userFollowingBatchInserters := make([]BatchInserter, len(userFollowingToCreate))
-		for i, userFollowing := range userFollowingToCreate {
-			userFollowingBatchInserters[i] = userFollowing
-		}
-
-		err = BatchInsert(db, "USER_FOLLOWING", userFollowingBatchInserters, 500, log)
-		if err != nil {
-			log.Errorf("Error inserting user followings: %v", err)
 		}
 
 		return nil, nil

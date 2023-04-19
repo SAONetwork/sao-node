@@ -27,15 +27,15 @@ type userProfile struct {
 
 // query: userProfile(id) UserProfile
 func (r *resolver) UserProfile(ctx context.Context, args struct{ ID graphql.ID }) (*userProfile, error) {
-	var commitId uuid.UUID
-	err := commitId.UnmarshalText([]byte(args.ID))
+	var dataId uuid.UUID
+	err := dataId.UnmarshalText([]byte(args.ID))
 	if err != nil {
 		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 	}
 
-	// query the database for the user profile with the given commitId
+	// query the database for the user profile with the given dataId
 	var profile userProfile
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM USER_PROFILE WHERE COMMITID = ?", commitId) // use r.indexSvc.Db.QueryRowContext instead of db.QueryRow
+	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM USER_PROFILE WHERE DATAID = ?", dataId) // use r.indexSvc.Db.QueryRowContext instead of db.QueryRow
 	err = row.Scan(
 		&profile.CommitId,
 		&profile.DataId,

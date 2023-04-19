@@ -352,10 +352,15 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 
 	log.Debugf("QueryMeta succeed. meta=%v", res.Metadata)
 
-	commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
-	commitInfo, err := types.ParseMetaCommit(commit)
-	if err != nil {
-		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
+	var commitInfo types.MetaCommit
+	if len(res.Metadata.Commits) > 0 {
+		commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
+		commitInfo, err = types.ParseMetaCommit(commit)
+		if err != nil {
+			return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
+		}
+	} else {
+		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "no commit information")
 	}
 
 	return &types.Model{

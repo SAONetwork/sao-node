@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type Verse struct {
@@ -13,8 +14,8 @@ type Verse struct {
 	Owner      string   `json:"owner"`
 	Price      string   `json:"price"`
 	Digest     string   `json:"digest"`
-	Scope      string   `json:"scope"`
-	Status     string   `json:"status"`
+	Scope      int   `json:"scope"`
+	Status     int   `json:"status"`
 	NftTokenID string   `json:"nftTokenId"`
 	CommitID   string
 	DataID     string
@@ -26,16 +27,6 @@ func (v Verse) InsertValues() string {
 		// handle error
 	}
 
-	scope, err := strconv.Atoi(v.Scope)
-	if err != nil {
-		// handle error
-	}
-
-	status, err := strconv.Atoi(v.Status)
-	if err != nil {
-		// handle error
-	}
-
 	// Serialize the FileIDs into a JSON string
 	fileIDsJSON, err := json.Marshal(v.FileIDs)
 	if err != nil {
@@ -43,6 +34,10 @@ func (v Verse) InsertValues() string {
 	}
 
 	return fmt.Sprintf("('%s','%s',%d,'%s','%s',%.2f,'%s',%d,%d,'%s')",
-		v.CommitID, v.DataID, v.CreatedAt, string(fileIDsJSON), v.Owner, price, v.Digest, scope, status, v.NftTokenID)
+		v.CommitID, v.DataID, v.CreatedAt, string(fileIDsJSON), v.Owner, price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID)
 
+}
+
+func escapeSingleQuotes(s string) string {
+	return strings.ReplaceAll(s, "'", "''")
 }
