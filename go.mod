@@ -56,7 +56,9 @@ require (
 
 require (
 	github.com/cosmos/cosmos-sdk v0.46.6
+	github.com/cosmos/go-bip39 v1.0.0
 	github.com/filecoin-project/lotus v1.19.0
+	github.com/google/uuid v1.3.0
 	github.com/graph-gophers/graphql-go v1.5.0
 	github.com/labstack/gommon v0.4.0
 	github.com/libp2p/go-libp2p v0.23.2
@@ -96,7 +98,6 @@ require (
 	github.com/coreos/go-systemd/v22 v22.4.0 // indirect
 	github.com/cosmos/btcutil v1.0.4 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-alpha7 // indirect
-	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gorocksdb v1.2.0 // indirect
 	github.com/cosmos/iavl v0.19.4 // indirect
 	github.com/cosmos/ibc-go/v5 v5.1.0 // indirect
@@ -139,7 +140,6 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect

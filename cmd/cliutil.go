@@ -4,19 +4,27 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sao-node/api"
+	apiclient "sao-node/api/client"
 	"sao-node/chain"
 	saoclient "sao-node/client"
 	gen "sao-node/gen/clidoc"
+	"sao-node/node"
 	"sao-node/node/config"
 	"sao-node/node/repo"
 	"sao-node/types"
 	"sao-node/utils"
+	"strings"
 	"syscall"
 
 	"golang.org/x/term"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 )
 
@@ -24,13 +32,13 @@ const FlagKeyName = "key-name"
 const APP_NAME_NODE = "saonode"
 const APP_NAME_CLIENT = "saoclient"
 
-var Gateway string
-var FlagGateway = &cli.StringFlag{
-	Name:        "gateway",
-	Usage:       "gateway connection",
-	EnvVars:     []string{"SAO_GATEWAY_API"},
+var ApiToken string
+var FlagToken = &cli.StringFlag{
+	Name:        "token",
+	Usage:       "connection token",
+	EnvVars:     []string{"SAO_API_TOKEN"},
 	Required:    false,
-	Destination: &Gateway,
+	Destination: &ApiToken,
 }
 
 var KeyringHome string
@@ -145,6 +153,52 @@ var GenerateDocCmd = &cli.Command{
 		fmt.Println()
 		return nil
 	},
+}
+
+func GetNodeApi(cctx *cli.Context, repoPath string, nodeApi string, apiToken string) (api.SaoApi, jsonrpc.ClientCloser, error) {
+	if nodeApi != "" && apiToken != "" {
+		gatewayApi, closer, err := apiclient.NewNodeApi(cctx.Context, nodeApi, apiToken)
+		if err == nil {
+			return gatewayApi, closer, err
+		}
+	}
+
+	repo, err := repo.PrepareRepo(repoPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	c, err := repo.Config()
+	if err != nil {
+		return nil, nil, types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
+	}
+
+	cfg, ok := c.(*config.Node)
+	if !ok {
+		return nil, nil, types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
+	}
+
+	key, err := repo.GetKeyBytes()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:3]}, jwt.NewHS256(key))
+	if err != nil {
+		return nil, nil, types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
+	if err != nil {
+		return nil, nil, types.Wrap(types.ErrInvalidServerAddress, err)
+	}
+	_, addr, err := manet.DialArgs(ma)
+	if err != nil {
+		return nil, nil, types.Wrap(types.ErrConnectFailed, err)
+	}
+
+	apiAddress := "http://" + strings.ReplaceAll(addr, "0.0.0.0", "127.0.0.1") + "/rpc/v0"
+	return apiclient.NewNodeApi(cctx.Context, apiAddress, string(token))
 }
 
 func GetChainAddress(cctx *cli.Context, repoPath string, binaryName string) (string, error) {

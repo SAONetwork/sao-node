@@ -8,9 +8,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"sao-node/api"
-	apiclient "sao-node/api/client"
 	"sao-node/build"
 	cliutil "sao-node/cmd"
 	"sao-node/cmd/account"
@@ -23,7 +21,6 @@ import (
 	"cosmossdk.io/math"
 	"github.com/common-nighthawk/go-figure"
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/gbrlsnchs/jwt/v3"
 	"golang.org/x/xerrors"
@@ -35,7 +32,6 @@ import (
 	"sao-node/chain"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
-	manet "github.com/multiformats/go-multiaddr/net"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -48,6 +44,15 @@ const (
 	FlagStorageRepo        = "repo"
 	FlagStorageDefaultRepo = "~/.sao-node"
 )
+
+var NodeApi string
+var FlagNodeApi = &cli.StringFlag{
+	Name:        "node",
+	Usage:       "node connection",
+	EnvVars:     []string{"SAO_NODE_API"},
+	Required:    false,
+	Destination: &NodeApi,
+}
 
 var FlagRepo = &cli.StringFlag{
 	Name:    FlagStorageRepo,
@@ -97,7 +102,8 @@ func main() {
 			cliutil.FlagChainAddress,
 			cliutil.FlagVeryVerbose,
 			cliutil.FlagKeyringHome,
-			cliutil.FlagGateway,
+			FlagNodeApi,
+			cliutil.FlagToken,
 		},
 		Commands: []*cli.Command{
 			initCmd,
@@ -605,49 +611,9 @@ var peersCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		repo, err := prepareRepo(cctx)
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 		if err != nil {
 			return err
-		}
-
-		var apiClient api.SaoApiStruct
-
-		c, err := repo.Config()
-		if err != nil {
-			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
-		}
-
-		cfg, ok := c.(*config.Node)
-		if !ok {
-			return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
-		}
-
-		key, err := repo.GetKeyBytes()
-		if err != nil {
-			return err
-		}
-
-		token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
-		if err != nil {
-			return types.Wrap(types.ErrSignedFailed, err)
-		}
-
-		headers := http.Header{}
-		headers.Add("Authorization", "Bearer "+string(token))
-
-		ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
-		if err != nil {
-			return types.Wrap(types.ErrInvalidServerAddress, err)
-		}
-		_, addr, err := manet.DialArgs(ma)
-		if err != nil {
-			return err
-		}
-
-		apiAddress := "http://" + addr + "/rpc/v0"
-		closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
-		if err != nil {
-			return types.Wrap(types.ErrCreateClientFailed, err)
 		}
 		defer closer()
 
@@ -742,47 +708,7 @@ var infoCmd = &cli.Command{
 
 		creator := cctx.String("creator")
 		if creator == "" {
-			repo, err := prepareRepo(cctx)
-			if err != nil {
-				return err
-			}
-
-			var apiClient api.SaoApiStruct
-
-			c, err := repo.Config()
-			if err != nil {
-				return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
-			}
-
-			key, err := repo.GetKeyBytes()
-			if err != nil {
-				return err
-			}
-
-			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
-			if err != nil {
-				return types.Wrap(types.ErrSignedFailed, err)
-			}
-
-			headers := http.Header{}
-			headers.Add("Authorization", "Bearer "+string(token))
-
-			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
-			if err != nil {
-				return types.Wrap(types.ErrInvalidServerAddress, err)
-			}
-			_, addr, err := manet.DialArgs(ma)
-			if err != nil {
-				return types.Wrap(types.ErrConnectFailed, err)
-			}
-
-			apiAddress := "http://" + addr + "/rpc/v0"
-			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+			apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 			if err != nil {
 				return types.Wrap(types.ErrCreateClientFailed, err)
 			}
@@ -804,18 +730,18 @@ var migrateCmd = &cli.Command{
 	Name: "migrate",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
-		if err != nil {
-			return err
-		}
-		defer closer()
-
 		if cctx.Args().Len() != 1 {
 			return xerrors.Errorf("missing data ids parameter")
 		}
 		dataIds := strings.Split(cctx.Args().First(), ",")
 
-		resp, err := gatewayApi.ModelMigrate(ctx, dataIds)
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		resp, err := apiClient.ModelMigrate(ctx, dataIds)
 		if err != nil {
 			return err
 		}
@@ -850,47 +776,7 @@ var claimCmd = &cli.Command{
 
 		creator := cctx.String("creator")
 		if creator == "" {
-			repo, err := prepareRepo(cctx)
-			if err != nil {
-				return err
-			}
-
-			var apiClient api.SaoApiStruct
-
-			c, err := repo.Config()
-			if err != nil {
-				return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
-			}
-
-			cfg, ok := c.(*config.Node)
-			if !ok {
-				return types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
-			}
-
-			key, err := repo.GetKeyBytes()
-			if err != nil {
-				return err
-			}
-
-			token, err := jwt.Sign(&node.JwtPayload{Allow: api.AllPermissions[:2]}, jwt.NewHS256(key))
-			if err != nil {
-				return types.Wrap(types.ErrSignedFailed, err)
-			}
-
-			headers := http.Header{}
-			headers.Add("Authorization", "Bearer "+string(token))
-
-			ma, err := multiaddr.NewMultiaddr(cfg.Api.ListenAddress)
-			if err != nil {
-				return types.Wrapf(types.ErrInvalidServerAddress, "ListenAddress=%s", cfg.Api.ListenAddress)
-			}
-			_, addr, err := manet.DialArgs(ma)
-			if err != nil {
-				return types.Wrap(types.ErrConnectFailed, err)
-			}
-
-			apiAddress := "http://" + addr + "/rpc/v0"
-			closer, err := jsonrpc.NewMergeClient(ctx, apiAddress, "Sao", api.GetInternalStructs(&apiClient), headers)
+			apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 			if err != nil {
 				return types.Wrap(types.ErrCreateClientFailed, err)
 			}

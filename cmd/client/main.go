@@ -1,9 +1,5 @@
 package main
 
-// TODO:
-// * how to generate cid from scratch
-// * guic transfer data
-
 import (
 	"bufio"
 	"fmt"
@@ -28,6 +24,15 @@ const (
 	FlagClientRepo = "repo"
 )
 
+var GatewayApi string
+var FlagGateway = &cli.StringFlag{
+	Name:        "gateway",
+	Usage:       "gateway connection",
+	EnvVars:     []string{"SAO_GATEWAY_API"},
+	Required:    false,
+	Destination: &GatewayApi,
+}
+
 var flagRepo = &cli.StringFlag{
 	Name:     FlagClientRepo,
 	Usage:    "repo directory for sao client",
@@ -45,7 +50,7 @@ var flagPlatform = &cli.StringFlag{
 func getSaoClient(cctx *cli.Context) (*client.SaoClient, func(), error) {
 	opt := client.SaoClientOptions{
 		Repo:        cctx.String(FlagClientRepo),
-		Gateway:     cliutil.Gateway,
+		Gateway:     GatewayApi,
 		ChainAddr:   cliutil.ChainAddress,
 		KeyName:     cctx.String(cliutil.FlagKeyName),
 		KeyringHome: cliutil.KeyringHome,
@@ -78,7 +83,7 @@ func main() {
 		Flags: []cli.Flag{
 			cliutil.FlagChainAddress,
 			flagRepo,
-			cliutil.FlagGateway,
+			FlagGateway,
 			flagPlatform,
 			cliutil.FlagVeryVerbose,
 			cliutil.FlagKeyringHome,
