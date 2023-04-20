@@ -5,9 +5,19 @@ import (
 	"sao-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 )
+
+func (c *ChainSvc) ListMeta(ctx context.Context, offset uint64, limit uint64) ([]modeltypes.Metadata, uint64, error) {
+	resp, err := c.modelClient.MetadataAll(ctx, &modeltypes.QueryAllMetadataRequest{
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
+	if err != nil {
+		return make([]modeltypes.Metadata, 0), 0, types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	return resp.Metadata, resp.Pagination.Total, nil
+}
 
 func (c *ChainSvc) GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
 	resp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
@@ -80,7 +90,7 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 	}
 
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(signer, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return "", types.Wrap(types.ErrTxProcessFailed, result.err)

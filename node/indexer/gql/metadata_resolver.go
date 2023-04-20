@@ -14,6 +14,7 @@ type metadata struct {
 	Did        string
 	DataId     string
 	Alias      string
+	Cid        string
 	GroupId    string
 	Version    string
 	Size       int32
@@ -36,10 +37,11 @@ func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (
 		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 	}
 
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COMMITID, DID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA WHERE COMMITID="+commitId.String())
+	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COMMITID, DID, CID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA WHERE COMMITID="+commitId.String())
 	var CommitId string
 	var Did string
 	var DataId string
+	var Cid string
 	var Alias string
 	var GroupId string
 	var Version string
@@ -47,19 +49,19 @@ func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (
 	var Expiration types.Uint64
 	var Readers string
 	var Writers string
-	err = row.Scan(&CommitId, &Did, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
+	err = row.Scan(&CommitId, &Did, &Cid, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
 	if err != nil {
 		return nil, err
 	}
 
 	return &metadata{
-		CommitId, Did, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
+		CommitId, Did, Cid, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
 	}, nil
 }
 
 // query: metadatas(cursor, offset, limit) MetaList
 func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.NullString }) (*metadataList, error) {
-	queryStr := "SELECT COMMITID, DID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA "
+	queryStr := "SELECT COMMITID, DID, CID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA "
 	if args.Query.Set && args.Query.Value != nil {
 		queryStr = queryStr + *args.Query.Value
 	}
@@ -73,6 +75,7 @@ func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.Nul
 	for rows.Next() {
 		var CommitId string
 		var Did string
+		var Cid string
 		var DataId string
 		var Alias string
 		var GroupId string
@@ -81,12 +84,12 @@ func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.Nul
 		var Expiration types.Uint64
 		var Readers string
 		var Writers string
-		err = rows.Scan(&CommitId, &Did, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
+		err = rows.Scan(&CommitId, &Did, &Cid, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
 		if err != nil {
 			return nil, err
 		}
 		metadatas = append(metadatas, &metadata{
-			CommitId, Did, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
+			CommitId, Did, Cid, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
 		})
 	}
 	if err := rows.Err(); err != nil {

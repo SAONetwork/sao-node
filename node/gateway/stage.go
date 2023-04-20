@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"sao-node/types"
 
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"
 	"github.com/mitchellh/go-homedir"
 )
 
-func StageShard(basedir string, creator string, cid string, content []byte) (string, error) {
+func StageShard(basedir string, orderProposal saotypes.Proposal, content []byte) (string, error) {
 	// TODO: check enough space
 	// TODO: check existence
 	path, err := homedir.Expand(basedir)
@@ -18,15 +19,15 @@ func StageShard(basedir string, creator string, cid string, content []byte) (str
 		return "", types.Wrapf(types.ErrInvalidPath, "%s", basedir)
 	}
 
-	err = os.MkdirAll(filepath.Join(path, creator), 0755)
+	err = os.MkdirAll(filepath.Join(path, orderProposal.Owner), 0755)
 	if err != nil && !os.IsExist(err) {
 		return "", types.Wrap(types.ErrCreateDirFailed, err)
 	}
 
 	//filename := fmt.Sprintf("%d-%v", orderId, cid)
-	filename := fmt.Sprintf("%v", cid)
-	log.Debugf("staging file: %s/%s/%s", path, creator, filename)
-	filepath := filepath.Join(path, creator, filename)
+	filename := fmt.Sprintf("%s-%s", orderProposal.Cid, orderProposal.DataId)
+	log.Debugf("staging file: %s/%s/%s", path, orderProposal.Owner, filename)
+	filepath := filepath.Join(path, orderProposal.Owner, filename)
 	file, err := os.Create(filepath)
 	if err != nil {
 		return "", types.Wrap(types.ErrCreateFileFailed, err)
@@ -40,13 +41,13 @@ func StageShard(basedir string, creator string, cid string, content []byte) (str
 	return filepath, nil
 }
 
-func GetStagedShard(basedir string, creator string, cid cid.Cid) ([]byte, error) {
+func GetStagedShard(basedir string, creator string, cid cid.Cid, dataId string) ([]byte, error) {
 	path, err := homedir.Expand(basedir)
 	if err != nil {
 		return nil, types.Wrapf(types.ErrInvalidPath, "%s", basedir)
 	}
 
-	filename := cid.String()
+	filename := cid.String() + "-" + dataId
 	bytes, err := os.ReadFile(filepath.Join(path, creator, filename))
 	if err != nil {
 		return nil, types.Wrap(types.ErrReadFileFailed, err)
@@ -55,11 +56,11 @@ func GetStagedShard(basedir string, creator string, cid cid.Cid) ([]byte, error)
 	}
 }
 
-func UnstageShard(basedir string, creator string, cid string) error {
+func UnstageShard(basedir string, creator string, cid string, dataId string) error {
 	path, err := homedir.Expand(basedir)
 	if err != nil {
 		return types.Wrapf(types.ErrInvalidPath, "%s", basedir)
 	}
 
-	return os.Remove(filepath.Join(path, creator, cid))
+	return os.Remove(filepath.Join(path, creator, fmt.Sprintf("%s-%s", cid, dataId)))
 }

@@ -5,6 +5,8 @@ import (
 	"sao-node/types"
 	"time"
 
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"
@@ -46,7 +48,7 @@ func (c *ChainSvc) OrderReady(ctx context.Context, provider string, orderId uint
 		Provider: provider,
 	}
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(provider, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return saotypes.MsgReadyResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
@@ -96,7 +98,7 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	}
 
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(signer, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
@@ -142,7 +144,7 @@ func (c *ChainSvc) CompleteOrder(ctx context.Context, creator string, orderId ui
 		Provider: creator,
 	}
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(creator, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
@@ -181,7 +183,7 @@ func (c *ChainSvc) RenewOrder(ctx context.Context, creator string, orderRenewPro
 		Provider:     creator,
 	}
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(creator, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return "", nil, types.Wrap(types.ErrTxProcessFailed, result.err)
@@ -228,7 +230,7 @@ func (c *ChainSvc) MigrateOrder(ctx context.Context, creator string, dataIds []s
 		Provider: creator,
 	}
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(creator, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return "", nil, -1, types.Wrap(types.ErrTxProcessFailed, result.err)
@@ -276,7 +278,7 @@ func (c *ChainSvc) TerminateOrder(ctx context.Context, creator string, terminate
 		Provider:     creator,
 	}
 	resultChan := make(chan BroadcastTxJobResult)
-	c.broadcastMsg(creator, msg, resultChan)
+	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
 		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
@@ -295,6 +297,16 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Fu
 		return nil, types.Wrap(types.ErrQueryOrderFailed, err)
 	}
 	return &queryResp.Order, nil
+}
+
+func (c *ChainSvc) ListShards(ctx context.Context, offset uint64, limit uint64) ([]ordertypes.Shard, uint64, error) {
+	resp, err := c.orderClient.ShardAll(ctx, &ordertypes.QueryAllShardRequest{
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
+
+	if err != nil {
+		return nil, 0, types.Wrap(types.ErrQueryOrderFailed, err)
+	}
+	return resp.Shard, resp.Pagination.Total, nil
 }
 
 // wsevent

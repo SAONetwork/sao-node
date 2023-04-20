@@ -28,7 +28,7 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 	}
 	log.Info("creating metadata tables done.")
 
-	execFn := func(ctx context.Context, args []interface{}) (interface{}, error) {
+	execFn := func(ctx context.Context, _ []interface{}) (interface{}, error) {
 		var offset uint64 = 0
 		var limit uint64 = 100
 		owenedMeta := make([]modeltypes.Metadata, 0)

@@ -635,6 +635,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 		if task.OrderOperation != "3" || task.ShardOperation != "3" {
 			resp := sp.RequestShardStore(ctx, types.ShardLoadReq{
 				Owner:   task.Owner,
+				DataId:  task.DataId,
 				OrderId: task.OrderId,
 				Cid:     task.Cid,
 			}, peerInfo)
