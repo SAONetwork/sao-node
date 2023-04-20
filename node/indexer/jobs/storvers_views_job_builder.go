@@ -89,6 +89,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var fileInfosToCreate []storverse.FileInfo
 		//var userFollowingToUpdate []storverse.UserFollowing
 		var userFollowingToCreate []storverse.UserFollowing
+		commitIds := make(map[string]bool)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset, limit)
 			log.Infof("offset: %d, limit: %d, total: %d", offset, limit, total)
@@ -161,6 +162,19 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				tableName, found := storverse.GetTableNameForAlias(meta.Alias, storverse.TypeConfigs)
 				if found {
 					log.Infof("tableName: %s", tableName)
+					// Delete the row if the DATAID exists but the COMMITID does not match,
+					// and return the COMMITID of the deleted row
+					qry = fmt.Sprintf("DELETE FROM %s WHERE DATAID=? AND COMMITID<>? RETURNING COMMITID", tableName)
+					row := db.QueryRowContext(ctx, qry, meta.DataId, meta.Commit)
+					var commitIdToDelete string
+					if err := row.Scan(&commitIdToDelete); err != nil {
+						if err != sql.ErrNoRows {
+							return nil, err
+						}
+					} else {
+						// Log the number of rows deleted and proceed with the insert operation
+						log.Infof("Deleted 1 row with COMMITID=%s from table %s", commitIdToDelete, tableName)
+					}
 					qry = fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE COMMITID=? AND DATAID=?", tableName)
 				} else {
 					continue
@@ -185,23 +199,37 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						record, err := processMeta(meta, &resp, log)
 						if err != nil {
 							log.Errorf("failed to process meta: %w", err)
-							return nil, err
+							continue
 						}
 
 						log.Infof("record: %v", record)
 						switch r := record.(type) {
 						case storverse.UserProfile:
-							log.Infof("add to usersToCreate: %v", r)
-							usersToCreate = append(usersToCreate, r)
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to usersToCreate: %v", r)
+								usersToCreate = append(usersToCreate, r)
+								commitIds[r.CommitID] = true
+							}
 						case storverse.Verse:
-							log.Infof("add to versesToCreate: %v", r)
-							versesToCreate = append(versesToCreate, r)
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to versesToCreate: %v", r)
+								versesToCreate = append(versesToCreate, r)
+								commitIds[r.CommitID] = true
+							}
 						case storverse.FileInfo:
-							log.Infof("add to fileInfosToCreate: %v", r)
-							fileInfosToCreate = append(fileInfosToCreate, r)
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to fileInfosToCreate: %v", r)
+								fileInfosToCreate = append(fileInfosToCreate, r)
+								commitIds[r.CommitID] = true
+							}
 						case storverse.UserFollowing:
-							log.Infof("add to userFollowingToCreate: %v", r)
-							userFollowingToCreate = append(userFollowingToCreate, r)
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to userFollowingToCreate: %v", r)
+								userFollowingToCreate = append(userFollowingToCreate, r)
+								commitIds[r.CommitID] = true
+							}
+						default:
+							log.Warnf("unsupported record type: %T", r)
 						}
 					}
 				}
