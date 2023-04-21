@@ -118,7 +118,6 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		fmt.Println("Node Pledge")
 		fmt.Println("Reward:", pledgeResp.Pledge.Reward)
 		fmt.Println("Reward Debt:", pledgeResp.Pledge.RewardDebt)
-		fmt.Println("TotalOrderPledged:", pledgeResp.Pledge.TotalOrderPledged)
 		fmt.Println("TotalStoragePledged:", pledgeResp.Pledge.TotalStoragePledged)
 		fmt.Println("TotalStorage:", pledgeResp.Pledge.TotalStorage)
 	}
