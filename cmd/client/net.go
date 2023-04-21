@@ -89,7 +89,7 @@ var tokenGenCmd = &cli.Command{
 		console.Println(didManager.Id)
 
 		fmt.Print("  GateWay : ")
-		console.Println(cliutil.Gateway)
+		console.Println(GatewayApi)
 
 		fmt.Print("  Server  : ")
 		console.Println(resp.Server)

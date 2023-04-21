@@ -85,7 +85,7 @@ func (r *Repo) Exists() (bool, error) {
 	}
 }
 
-func (r *Repo) Init(chainAddress string) error {
+func (r *Repo) Init(chainAddress string, TxPoolSize uint) error {
 	exist, err := r.Exists()
 	if err != nil {
 		return types.Wrap(types.ErrOpenRepoFailed, err)
@@ -100,7 +100,7 @@ func (r *Repo) Init(chainAddress string) error {
 		return types.Wrap(types.ErrOpenFileFailed, err)
 	}
 
-	if err := r.initConfig(chainAddress); err != nil {
+	if err := r.initConfig(chainAddress, TxPoolSize); err != nil {
 		return types.Wrapf(types.ErrInitRepoFailed, "init config: %v", err)
 	}
 	err = r.initKeystore()
@@ -181,7 +181,7 @@ func (r *Repo) Datastore(ctx context.Context, ns string) (datastore.Batching, er
 	return nil, types.Wrapf(types.ErrOpenDataStoreFailed, "no such datastore: %s", ns)
 }
 
-func (r *Repo) initConfig(chainAddress string) error {
+func (r *Repo) initConfig(chainAddress string, TxPoolSize uint) error {
 	_, err := os.Stat(r.configPath)
 	if err == nil {
 		// exists
@@ -200,6 +200,8 @@ func (r *Repo) initConfig(chainAddress string) error {
 	if chainAddress != "" {
 		newConfig.Chain.Remote = chainAddress
 	}
+	newConfig.Chain.TxPoolSize = TxPoolSize
+
 	// comm, err := config.ConfigComment(defaultConfig)
 	comm, err := config.ConfigUpdate(newConfig, defaultConfig, true)
 	//comm, err := utils.NodeBytes(r.defaultConfig(chainAddress))

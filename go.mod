@@ -11,7 +11,7 @@ require (
 
 require (
 	cosmossdk.io/math v1.0.0-beta.3
-	github.com/SaoNetwork/sao v0.0.9
+	github.com/SaoNetwork/sao v0.1.2
 	github.com/SaoNetwork/sao-did v0.0.12
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
@@ -51,14 +51,18 @@ require (
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7
 	github.com/tendermint/tendermint v0.34.23
 	github.com/urfave/cli/v2 v2.23.2
-	golang.org/x/term v0.3.0
+	golang.org/x/term v0.5.0
 )
 
 require (
 	github.com/cosmos/cosmos-sdk v0.46.6
+	github.com/cosmos/go-bip39 v1.0.0
 	github.com/filecoin-project/lotus v1.19.0
+	github.com/google/uuid v1.3.0
+	github.com/graph-gophers/graphql-go v1.5.0
 	github.com/labstack/gommon v0.4.0
 	github.com/libp2p/go-libp2p v0.23.2
+	github.com/mattn/go-sqlite3 v1.14.16
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220514204315-f29c37e9c44c
 )
 
@@ -88,13 +92,12 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/ceramicnetwork/go-dag-jose v0.1.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/confio/ics23/go v0.7.0 // indirect
 	github.com/containerd/cgroups v1.0.4 // indirect
 	github.com/coreos/go-systemd/v22 v22.4.0 // indirect
 	github.com/cosmos/btcutil v1.0.4 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-alpha7 // indirect
-	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gorocksdb v1.2.0 // indirect
 	github.com/cosmos/iavl v0.19.4 // indirect
 	github.com/cosmos/ibc-go/v5 v5.1.0 // indirect
@@ -132,17 +135,16 @@ require (
 	github.com/golang/glog v1.0.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
+	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
@@ -334,14 +336,14 @@ require (
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/exp v0.0.0-20220916125017-b168a2c6b86b // indirect
 	golang.org/x/mod v0.6.0 // indirect
-	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/text v0.7.0 // indirect
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac // indirect
 	golang.org/x/tools v0.2.0 // indirect
-	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37 // indirect
-	google.golang.org/grpc v1.51.0 // indirect
+	google.golang.org/genproto v0.0.0-20230223222841-637eb2293923 // indirect
+	google.golang.org/grpc v1.53.0 // indirect
 	google.golang.org/protobuf v1.28.2-0.20220831092852-f930b1dc76e8 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect

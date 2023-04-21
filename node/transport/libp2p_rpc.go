@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
@@ -13,6 +14,7 @@ import (
 	"sao-node/types"
 	"sao-node/utils"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -35,7 +37,7 @@ type Libp2pRpcServer struct {
 	StagingSapceSize int64
 }
 
-func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node) (*Libp2pRpcServer, error) {
+func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, stagingPath string) (*Libp2pRpcServer, error) {
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
 		return nil, err
@@ -51,11 +53,30 @@ func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, se
 		return nil, err
 	}
 
+	var peerInfos []string
+	for _, a := range h.Addrs() {
+		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
+		log.Debug("addr=", withP2p.String())
+		peerInfos = append(peerInfos, withP2p.String())
+	}
+	if len(peerInfos) > 0 {
+		key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
+		peers, err := db.Get(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		if len(peers) > 0 {
+			db.Put(ctx, key, []byte(string(peers)+","+strings.Join(peerInfos, ",")))
+		} else {
+			db.Put(ctx, key, []byte(strings.Join(peerInfos, ",")))
+		}
+	}
+
 	rs := &Libp2pRpcServer{
 		Ctx:              ctx,
 		Db:               db,
 		GatewayApi:       ga,
-		StagingPath:      cfg.Transport.StagingPath,
+		StagingPath:      stagingPath,
 		StagingSapceSize: cfg.Transport.StagingSapceSize,
 	}
 

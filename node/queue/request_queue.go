@@ -1,8 +1,15 @@
-package gateway
+package queue
 
 import (
+	"sao-node/types"
 	"sync"
 )
+
+type WorkRequest struct {
+	Order types.OrderInfo
+	Shard types.ShardInfo
+	Job   *types.Job
+}
 
 type RequestQueue struct {
 	sync.Mutex

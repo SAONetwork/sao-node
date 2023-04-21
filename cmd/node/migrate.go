@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	apiclient "sao-node/api/client"
 	cliutil "sao-node/cmd"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
@@ -23,13 +22,13 @@ var migrateListCmd = &cli.Command{
 	Usage: "List migration jobs",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		jobs, err := gatewayApi.MigrateJobList(ctx)
+		jobs, err := apiClient.MigrateJobList(ctx)
 		if err != nil {
 			return err
 		}

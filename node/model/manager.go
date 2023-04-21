@@ -76,6 +76,9 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
 			return model, nil
+		} else {
+			log.Debugf("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
+			log.Debugf("local version model is %s:%s.", model.DataId, model.CommitId)
 		}
 	}
 
@@ -238,26 +241,32 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 }
 
 func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal, clientProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
-	if err != nil {
-		return nil, err
-	}
 	commitIds := strings.Split(clientProposal.Proposal.CommitId, "|")
-	if len(commitIds) != 2 || commitIds[0] != meta.CommitId {
+	if len(commitIds) != 2 {
 		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commitId:%s", clientProposal.Proposal.CommitId)
 	}
+	lastCommitId := commitIds[0]
 
-	commitId := commitIds[0]
 	var isFetch = true
-	orgModel := mm.loadModel(clientProposal.Proposal.Owner, meta.DataId)
+	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword)
 	if orgModel != nil {
-		if commitId == meta.CommitId && len(orgModel.Content) > 0 {
+		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
-			log.Debugf("load the model[%s]-%s from cache", meta.DataId, meta.Alias)
+			log.Debugf("load the model[%s]-%s from cache", orgModel.DataId, orgModel.Alias)
 			log.Debug("model: ", string(orgModel.Content))
 			isFetch = false
+		} else {
+			log.Debugf("not model %s:%s found in the cache, fetch it from the network", orgModel.DataId, lastCommitId)
+			log.Debugf("local version model is %s:%s.", orgModel.DataId, orgModel.CommitId)
 		}
-	} else {
+	}
+
+	if isFetch {
+		meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+		if err != nil {
+			return nil, err
+		}
+
 		orgModel = &types.Model{
 			DataId:   meta.DataId,
 			Alias:    meta.Alias,
@@ -272,9 +281,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 			// Content: N/a,
 			ExtendInfo: meta.ExtendInfo,
 		}
-	}
 
-	if isFetch {
 		result, err := mm.GatewaySvc.FetchContent(ctx, req, meta)
 		if err != nil {
 			return nil, err
@@ -324,8 +331,8 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	commit.WriteString(fmt.Sprintf("%d", result.Height))
 
 	model := &types.Model{
-		DataId:     meta.DataId,
-		Alias:      meta.Alias,
+		DataId:     orgModel.DataId,
+		Alias:      orgModel.Alias,
 		GroupId:    clientProposal.Proposal.GroupId,
 		OrderId:    result.OrderId,
 		Owner:      clientProposal.Proposal.Owner,
@@ -333,8 +340,8 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		Cid:        result.Cid,
 		Shards:     result.Shards,
 		CommitId:   commitIds[1],
-		Commits:    append(meta.Commits, commit.String()),
-		Version:    fmt.Sprintf("v%d", len(meta.Commits)),
+		Commits:    append(orgModel.Commits, commit.String()),
+		Version:    fmt.Sprintf("v%d", len(orgModel.Commits)),
 		Content:    newContent,
 		ExtendInfo: clientProposal.Proposal.ExtendInfo,
 	}

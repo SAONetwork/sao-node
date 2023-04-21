@@ -103,7 +103,11 @@ var didShowInfoCmd = &cli.Command{
 			return err
 		}
 		defer closer()
-		saoclient.ShowDidInfo(ctx, cctx.String("did-url"))
+		info, err := saoclient.GetDidInfo(ctx, cctx.String("did-url"))
+		if err != nil {
+			return err
+		}
+		info.PrintInfo()
 
 		return nil
 	},

@@ -2,8 +2,9 @@ package chain
 
 import (
 	"context"
-	"fmt"
 	"sao-node/types"
+
+	"golang.org/x/xerrors"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/parser"
@@ -36,24 +37,21 @@ func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*sid.S
 }
 
 func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error) {
-	signerAcc, err := c.cosmos.Account(creator)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
-	}
-
 	msg := &sidtypes.MsgUpdatePaymentAddress{
 		Creator:   creator,
 		Did:       did,
 		AccountId: accountId,
 	}
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdatePaymentAddress tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdatePaymentAddress tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }
 
 func (c *ChainSvc) QueryPaymentAddress(ctx context.Context, did string) (string, error) {
@@ -67,24 +65,20 @@ func (c *ChainSvc) QueryPaymentAddress(ctx context.Context, did string) (string,
 	return paymentAddrResp.PaymentAddress.Address, nil
 }
 
-func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
+func (c *ChainSvc) GetDidInfo(ctx context.Context, did string) (types.DidInfo, error) {
 	_, err := c.didClient.ValidateDid(ctx, &sidtypes.QueryValidateDidRequest{
 		Did: did,
 	})
 	if err != nil {
-		log.Error(err.Error())
-		return
+		return nil, err
 	}
-	fmt.Println("Did: ", did)
 
 	paymentAddressResp, err := c.didClient.PaymentAddress(ctx, &sidtypes.QueryGetPaymentAddressRequest{
 		Did: did,
 	})
 	if err != nil {
-		log.Error(err.Error())
-		return
+		return nil, err
 	}
-	fmt.Println("PaymentAddress:", paymentAddressResp.PaymentAddress.Address)
 
 	getSidDocFunc := func(versionId string) (*sid.SidDocument, error) {
 		return c.GetSidDocument(ctx, versionId)
@@ -101,144 +95,78 @@ func (c *ChainSvc) ShowDidInfo(ctx context.Context, did string) {
 
 	pd, err := parser.Parse(did)
 	if err != nil {
-		log.Error(err.Error())
-		return
+		return nil, err
 	}
 
 	if pd.Method == "sid" {
-
+		var info types.SidInfo
+		info.Did = did
+		info.PaymentAddress = paymentAddressResp.PaymentAddress.Address
 		accountAuthsResp, err := c.didClient.GetAllAccountAuths(ctx, &sidtypes.QueryGetAllAccountAuthsRequest{
 			Did: did,
 		})
 		if err != nil {
-			log.Error(err.Error())
-			return
+			return nil, err
 		}
-		fmt.Println("Accounts:")
-		for index, accAuth := range accountAuthsResp.AccountAuths {
+		for _, accAuth := range accountAuthsResp.AccountAuths {
 			accountIdResp, err := c.didClient.AccountId(ctx, &sidtypes.QueryGetAccountIdRequest{
 				AccountDid: accAuth.AccountDid,
 			})
 			if err != nil {
-				log.Error(err.Error())
-				return
+				return nil, err
 			}
-
-			fmt.Println("  Account", index, " id: ", accountIdResp.AccountId.AccountId)
-			fmt.Println("    AccountDid: ", accAuth.AccountDid)
-			fmt.Println("    AccountEncryptedSeed: ", accAuth.AccountEncryptedSeed)
-			fmt.Println("    SidEncryptedAccount:  ", accAuth.SidEncryptedAccount)
+			info.Accounts = append(info.Accounts, types.Account{
+				AccountId:            accountIdResp.AccountId.AccountId,
+				AccountDid:           accAuth.AccountDid,
+				AccountEncryptedSeed: accAuth.AccountEncryptedSeed,
+				SidEncryptedAccount:  accAuth.SidEncryptedAccount,
+			})
 		}
-		fmt.Println()
 
 		pastSeedsResp, err := c.didClient.PastSeeds(ctx, &sidtypes.QueryGetPastSeedsRequest{
 			Did: did,
 		})
 		if err == nil {
-			printStringArray(pastSeedsResp.PastSeeds.Seeds, "PastSeeds", "")
-			fmt.Println()
+			info.PastSeeds = pastSeedsResp.PastSeeds.Seeds
 		}
 
 		versionsResp, err := c.didClient.SidDocumentVersion(ctx, &sidtypes.QueryGetSidDocumentVersionRequest{
 			DocId: pd.ID,
 		})
 		if err != nil {
-			log.Error(err.Error())
-			return
+			return nil, err
 		}
 
-		fmt.Println("DidDocument:")
-		for index, version := range versionsResp.SidDocumentVersion.VersionList {
-			fmt.Println("  DocId", index, ": ", version)
+		for _, version := range versionsResp.SidDocumentVersion.VersionList {
 			didResolution, err := getDidResolutionFunc("did:sid:" + pd.ID + "?versionId=" + version)
 			if err != nil {
-				log.Error(err.Error())
-				return
+				return nil, err
 			}
 			if didResolution.DidResolutionMetadata.Error != "" {
-				log.Error(didResolution.DidResolutionMetadata.Error)
-				return
+				return nil, xerrors.New(didResolution.DidResolutionMetadata.Error)
 			}
-
-			printDidDocument(didResolution, "    ")
-
+			info.DidDocuments = append(info.DidDocuments, types.DidDocument{
+				Version:  version,
+				Document: didResolution.DidDocument,
+			})
 		}
 
+		return info, nil
 	} else if pd.Method == "key" {
-		fmt.Println("DidDocument:")
+		var info types.KidInfo
+		info.Did = did
+		info.PaymentAddress = paymentAddressResp.PaymentAddress.Address
 		didResolution, err := getDidResolutionFunc(did)
 		if err != nil {
-			log.Error(err.Error())
-			return
+			return nil, err
 		}
 		if didResolution.DidResolutionMetadata.Error != "" {
-			log.Error(didResolution.DidResolutionMetadata.Error)
-			return
+			return nil, xerrors.New(didResolution.DidResolutionMetadata.Error)
 		}
+		info.Document = didResolution.DidDocument
 
-		printDidDocument(didResolution, "  ")
-	}
-	fmt.Println()
-
-}
-
-func printDidDocument(didResolution saodidtypes.DidResolutionResult, prefix string) {
-	printVm := func(vm saodidtypes.VerificationMethod) {
-		fmt.Println(prefix+"  Id: ", vm.Id)
-		fmt.Println(prefix+"    Type:            ", vm.Type)
-		fmt.Println(prefix+"    Controller:      ", vm.Controller)
-		fmt.Println(prefix+"    PublicKeyBase58: ", vm.PublicKeyBase58)
-	}
-
-	// context
-	printStringArray(didResolution.DidDocument.Context, "Context", prefix)
-
-	// id
-	fmt.Println(prefix+"Id: ", didResolution.DidDocument.Id)
-
-	// also known as
-	printStringArray(didResolution.DidDocument.AlsoKnownAs, "AlsoKnownAs", prefix)
-
-	// controller
-	printStringArray(didResolution.DidDocument.Controller, "Controller", prefix)
-
-	// verification method
-	if len(didResolution.DidDocument.VerificationMethod) > 0 {
-		fmt.Println(prefix + "VerificationMethods: ")
-		for _, vm := range didResolution.DidDocument.VerificationMethod {
-			printVm(vm)
-		}
-	}
-
-	// authentication
-	if len(didResolution.DidDocument.Authentication) > 0 {
-		fmt.Println(prefix + "Authentication: ")
-		for _, vmany := range didResolution.DidDocument.Authentication {
-			switch t := vmany.(type) {
-			case string:
-				fmt.Println(prefix + "- " + t)
-			case saodidtypes.VerificationMethod:
-				printVm(t)
-			}
-		}
-	}
-
-	// key agreement
-	if len(didResolution.DidDocument.KeyAgreement) > 0 {
-		fmt.Println(prefix + "KeyAgreement: ")
-		for _, vm := range didResolution.DidDocument.KeyAgreement {
-			printVm(vm)
-		}
-	}
-
-}
-
-func printStringArray(array []string, name, prefix string) {
-	if len(array) > 0 {
-		fmt.Println(prefix + name + ": [")
-		for _, controller := range array {
-			fmt.Println(prefix + "  " + controller)
-		}
-		fmt.Println(prefix + "]")
+		return info, nil
+	} else {
+		return nil, xerrors.New("Unsupported did type")
 	}
 }

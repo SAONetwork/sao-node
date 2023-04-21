@@ -5,9 +5,19 @@ import (
 	"sao-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 )
+
+func (c *ChainSvc) ListMeta(ctx context.Context, offset uint64, limit uint64) ([]modeltypes.Metadata, uint64, error) {
+	resp, err := c.modelClient.MetadataAll(ctx, &modeltypes.QueryAllMetadataRequest{
+		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false}})
+	if err != nil {
+		return make([]modeltypes.Metadata, 0), 0, types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	return resp.Metadata, resp.Pagination.Total, nil
+}
 
 func (c *ChainSvc) GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
 	resp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
@@ -48,29 +58,47 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 }
 
 func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error) {
-	signerAcc, err := c.cosmos.Account(signer)
-	if err != nil {
-		return "", types.Wrap(types.ErrAccountNotFound, err)
+	txAddress := signer
+	defer func() {
+		if c.ap != nil && txAddress != signer {
+			c.ap.SetAddressAvailable(txAddress)
+		}
+	}()
+
+	var err error
+	if c.ap != nil {
+		txAddress, err = c.ap.GetRandomAddress(ctx)
+		if err != nil {
+			return "", types.Wrap(types.ErrAccountNotFound, err)
+		}
+
+		_, err = c.cosmos.Account(txAddress)
+		if err != nil {
+			return "", types.Wrap(types.ErrAccountNotFound, err)
+		}
 	}
 
 	// TODO: Cid
 	msg := &saotypes.MsgUpdataPermission{
-		Creator:  signer,
+		Creator:  txAddress,
 		Proposal: proposal.Proposal,
 		JwsSignature: saotypes.JwsSignature{
 			Protected: proposal.JwsSignature.Protected,
 			Signature: proposal.JwsSignature.Signature,
 		},
+		Provider: signer,
 	}
 
-	txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, msg)
-	if err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, err)
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(txAddress, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
 	// log.Debug("MsgStore result: ", txResp)
-	if txResp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdataPermission tx hash=%s, code=%d", txResp.TxResponse.TxHash, txResp.TxResponse.Code)
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdataPermission tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
 
-	return txResp.TxResponse.TxHash, nil
+	return result.resp.TxResponse.TxHash, nil
 }

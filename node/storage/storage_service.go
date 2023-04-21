@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sao-node/chain"
+	"sao-node/node/queue"
 	"sao-node/store"
 	"sao-node/types"
 	"sao-node/utils"
@@ -36,7 +37,9 @@ import (
 var log = logging.Logger("storage")
 
 const (
-	MAX_RETRIES = 3
+	WINDOW_SIZE       = 10
+	SCHEDULE_INTERVAL = 1
+	MAX_RETRIES       = 3
 )
 
 type MigrateRequest struct {
@@ -52,7 +55,7 @@ type MigrateRequest struct {
 type StoreSvc struct {
 	nodeAddress        string
 	chainSvc           *chain.ChainSvc
-	taskChan           chan types.ShardInfo
+	schedQueue         *queue.RequestQueue
 	migrateChan        chan MigrateRequest
 	host               host.Host
 	stagingPath        string
@@ -75,7 +78,7 @@ func NewStoreService(
 	ss := &StoreSvc{
 		nodeAddress:  nodeAddress,
 		chainSvc:     chainSvc,
-		taskChan:     make(chan types.ShardInfo),
+		schedQueue:   &queue.RequestQueue{},
 		migrateChan:  make(chan MigrateRequest),
 		host:         host,
 		stagingPath:  stagingPath,
@@ -92,11 +95,6 @@ func NewStoreService(
 		ss,
 	)
 	ss.storageProtocolMap["stream"] = NewStreamStorageProtocol(host, ss)
-
-	// wsevent way to receive shard assign
-	//if err := ss.chainSvc.SubscribeShardTask(ctx, ss.nodeAddress, ss.taskChan); err != nil {
-	//	return nil, err
-	//}
 
 	go ss.processIncompleteShards(ctx)
 	go ss.processMigrateLoop(ctx)
@@ -201,7 +199,9 @@ func (ss *StoreSvc) processIncompleteShards(ctx context.Context) {
 		log.Errorf("process pending shards error: %v", err)
 	}
 	for _, p := range pendings {
-		ss.taskChan <- p
+		ss.schedQueue.Push(&queue.WorkRequest{
+			Shard: p,
+		})
 	}
 }
 
@@ -246,8 +246,14 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 			fmt.Sprintf("unmarshal tx error: %v", err),
 		)
 	}
-	m, exists := mr.Result[req.DataId]
-	if !exists {
+	var m string
+	for _, r := range mr.Result {
+		if r.K == req.DataId {
+			m = r.V
+			break
+		}
+	}
+	if m == "" {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("invalid data id: given dataId %s not in tx %s", req.DataId, req.TxHash),
@@ -528,7 +534,7 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 					OrderOperation: fmt.Sprintf("%d", order.Operation),
 					ShardOperation: fmt.Sprintf("%d", order.Operation),
 					State:          types.ShardStateValidated,
-					ExpireHeight:   uint64(order.Expire),
+					ExpireHeight:   req.TimeoutHeight,
 				}
 				err = utils.SaveShard(ss.ctx, ss.orderDs, shardInfo)
 				if err != nil {
@@ -536,7 +542,12 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 					log.Warn("put shard order=%d cid=%v error: %v", shardInfo.OrderId, shardInfo.Cid, err)
 				}
 			}
-			ss.taskChan <- shardInfo
+			if shardInfo.ExpireHeight < req.TimeoutHeight {
+				shardInfo.State = types.ShardStateValidated
+				shardInfo.ExpireHeight = req.TimeoutHeight
+				shardInfo.Tries = 0
+			}
+			ss.schedQueue.Push(&queue.WorkRequest{Shard: shardInfo})
 		}
 		return types.ShardAssignResp{Code: 0}
 	} else {
@@ -548,24 +559,41 @@ func (ss *StoreSvc) HandleShardAssign(req types.ShardAssignReq) types.ShardAssig
 }
 
 func (ss *StoreSvc) Start(ctx context.Context) error {
+	throttle := make(chan struct{}, WINDOW_SIZE)
 	for {
-		select {
-		case t, ok := <-ss.taskChan:
-			if !ok {
-				return nil
-			}
-			err := ss.process(ctx, t)
-			if err != nil {
-				// TODO: retry mechanism
-				log.Error(err)
-			}
-		case <-ctx.Done():
-			return nil
+		if ss.schedQueue.Len() == 0 {
+			time.Sleep(time.Second * SCHEDULE_INTERVAL)
+			continue
+		}
+
+		len := ss.schedQueue.Len()
+		for i := 0; i < len; i++ {
+			throttle <- struct{}{}
+
+			go func() {
+				defer func() {
+					<-throttle
+				}()
+
+				task := ss.schedQueue.PopFront()
+				if task == nil {
+					return
+				}
+				if task.Shard.RetryAt > time.Now().Unix() {
+					ss.schedQueue.Push(task)
+					return
+				}
+				err := ss.process(ctx, &task.Shard)
+				if err != nil {
+					log.Errorf("process shard %s error: %v", task.Shard.Cid, err)
+					ss.schedQueue.Push(task)
+				}
+			}()
 		}
 	}
 }
 
-func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
+func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 	log.Infof("start processing: order id=%d gateway=%s shard_cid=%v", task.OrderId, task.Gateway, task.Cid)
 
 	if task.State == types.ShardStateTerminate {
@@ -573,11 +601,13 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	}
 
 	task.Tries++
+	task.RetryAt = utils.GetRetryAt(task.Tries)
+	log.Infof("shard orderid=%d cid=%v: %d", task.OrderId, task.Cid, task.Tries)
 	if task.Tries >= MAX_RETRIES {
 		task.State = types.ShardStateTerminate
 		errMsg := fmt.Sprintf("order %d shard %v too many retries %d", task.OrderId, task.DataId, task.Tries)
 		ss.updateShardError(task, xerrors.Errorf(errMsg))
-		return types.Wrapf(types.ErrRetriesExceed, errMsg)
+		return nil
 	}
 
 	if task.ExpireHeight > 0 {
@@ -590,7 +620,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 			task.State = types.ShardStateTerminate
 			errStr := fmt.Sprintf("order expired: latest=%d expireAt=%d", latestHeight, task.ExpireHeight)
 			ss.updateShardError(task, xerrors.Errorf(errStr))
-			return types.Wrapf(types.ErrExpiredOrder, errStr)
+			return nil
 		}
 	}
 
@@ -605,6 +635,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 		if task.OrderOperation != "3" || task.ShardOperation != "3" {
 			resp := sp.RequestShardStore(ctx, types.ShardLoadReq{
 				Owner:   task.Owner,
+				DataId:  task.DataId,
 				OrderId: task.OrderId,
 				Cid:     task.Cid,
 			}, peerInfo)
@@ -636,7 +667,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 			}
 		}
 		task.State = types.ShardStateStored
-		err = utils.SaveShard(ctx, ss.orderDs, task)
+		err = utils.SaveShard(ctx, ss.orderDs, *task)
 		if err != nil {
 			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
 		}
@@ -653,7 +684,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 		task.State = types.ShardStateComplete
 		task.CompleteHash = txHash
 		task.CompleteHeight = height
-		err = utils.SaveShard(ss.ctx, ss.orderDs, task)
+		err = utils.SaveShard(ss.ctx, ss.orderDs, *task)
 		if err != nil {
 			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
 		}
@@ -672,7 +703,7 @@ func (ss *StoreSvc) process(ctx context.Context, task types.ShardInfo) error {
 	}
 	if task.State < types.ShardStateComplete {
 		task.State = types.ShardStateComplete
-		err = utils.SaveShard(ss.ctx, ss.orderDs, task)
+		err = utils.SaveShard(ss.ctx, ss.orderDs, *task)
 		if err != nil {
 			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
 		}
@@ -686,7 +717,6 @@ func (ss *StoreSvc) Stop(ctx context.Context) error {
 	//	return err
 	//}
 	log.Info("stopping storage service...")
-	close(ss.taskChan)
 
 	var err error
 	for k, p := range ss.storageProtocolMap {
@@ -723,9 +753,9 @@ func (ss *StoreSvc) getStorageProtocolAndPeer(
 	return sp, peer, err
 }
 
-func (ss *StoreSvc) updateShardError(shard types.ShardInfo, err error) {
+func (ss *StoreSvc) updateShardError(shard *types.ShardInfo, err error) {
 	shard.LastErr = err.Error()
-	err = utils.SaveShard(ss.ctx, ss.orderDs, shard)
+	err = utils.SaveShard(ss.ctx, ss.orderDs, *shard)
 	if err != nil {
 		log.Warnf("put shard order=%d cid=%v error: %v", shard.OrderId, shard.Cid, err)
 	}
@@ -786,7 +816,7 @@ func (ss *StoreSvc) ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) e
 		return nil
 	}
 
-	ss.taskChan <- shardInfo
+	ss.schedQueue.Push(&queue.WorkRequest{Shard: shardInfo})
 	return nil
 }
 

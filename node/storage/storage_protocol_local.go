@@ -75,7 +75,7 @@ func (l LocalStorageProtocol) RequestShardStore(ctx context.Context, req types.S
 		return resp
 	}
 
-	filename := filepath.Join(path, req.Owner, req.Cid.String())
+	filename := filepath.Join(path, req.Owner, req.Cid.String()+"-"+req.DataId)
 	bytes, err := os.ReadFile(filename)
 	if err != nil {
 		resp.ResponseId = time.Now().UnixMilli()
