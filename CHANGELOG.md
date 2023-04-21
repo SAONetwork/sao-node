@@ -1,9 +1,6 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
-### Bug Fixes
-- node info print, total count in ListMeta/ListShards, check metadata commits length in QueryMeta
-
 
 <a name="v0.1.4"></a>
 ## [v0.1.4](https://github.com/SAONetwork/sao-node.git/compare/v0.1.3...v0.1.4) (2023-04-21)
@@ -15,6 +12,7 @@
 
 ### Bug Fixes
 
+* node info print, total count in ListMeta/ListShards, check metadata commits length in QueryMeta 
 * use default path, remove StagingPath, IpfsRepo and httpServerPath from config 
 * avoid tx duplicate nonce from same account 
 * move did print into did info cmd 
