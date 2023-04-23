@@ -71,21 +71,22 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
 	log.Info("KeyWord:", req.Proposal.Keyword)
 
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	if err != nil {
+		return nil, err
+	}
+
 	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
 	if model != nil {
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
-			return model, nil
+			if meta.CommitId == model.CommitId {
+				return model, nil
+			}
 		} else {
 			log.Debugf("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
 			log.Debugf("local version model is %s:%s.", model.DataId, model.CommitId)
 		}
-	}
-
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
-	if err != nil {
-		return nil, err
-
 	}
 
 	version := req.Proposal.Version
@@ -248,13 +249,20 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	lastCommitId := commitIds[0]
 
 	var isFetch = true
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	if err != nil {
+		return nil, err
+	}
+
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword)
 	if orgModel != nil {
 		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
 			// found latest data model in local cache
 			log.Debugf("load the model[%s]-%s from cache", orgModel.DataId, orgModel.Alias)
 			log.Debug("model: ", string(orgModel.Content))
-			isFetch = false
+			if meta.CommitId == orgModel.CommitId {
+				isFetch = false
+			}
 		} else {
 			log.Debugf("not model %s:%s found in the cache, fetch it from the network", orgModel.DataId, lastCommitId)
 			log.Debugf("local version model is %s:%s.", orgModel.DataId, orgModel.CommitId)
@@ -262,11 +270,6 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	}
 
 	if isFetch {
-		meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
-		if err != nil {
-			return nil, err
-		}
-
 		orgModel = &types.Model{
 			DataId:   meta.DataId,
 			Alias:    meta.Alias,
