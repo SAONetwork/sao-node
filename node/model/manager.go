@@ -81,7 +81,12 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
 			if meta.CommitId == model.CommitId {
+				// found latest data model in local cache already
+				log.Debugf("load the model[%s]-%s from cache", model.DataId, model.Alias)
+				log.Debug("model: ", string(model.Content))
 				return model, nil
+			} else {
+				log.Debugf("the local cached model is out of date")
 			}
 		} else {
 			log.Debugf("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
@@ -257,11 +262,13 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword)
 	if orgModel != nil {
 		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
-			// found latest data model in local cache
-			log.Debugf("load the model[%s]-%s from cache", orgModel.DataId, orgModel.Alias)
-			log.Debug("model: ", string(orgModel.Content))
 			if meta.CommitId == orgModel.CommitId {
+				// found latest data model in local cache already
+				log.Debugf("load the model[%s]-%s from cache", orgModel.DataId, orgModel.Alias)
+				log.Debug("model: ", string(orgModel.Content))
 				isFetch = false
+			} else {
+				log.Debugf("the local cached model is out of date")
 			}
 		} else {
 			log.Debugf("not model %s:%s found in the cache, fetch it from the network", orgModel.DataId, lastCommitId)
