@@ -79,7 +79,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		}
 
 		var offset uint64 = 0
-		var limit uint64 = 500
+		var limit uint64 = 200
 		// Create slice to store the user data
 		//var usersToUpdate []storverse.UserProfile
 		var usersToCreate []storverse.UserProfile
@@ -91,8 +91,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var userFollowingToCreate []storverse.UserFollowing
 		commitIds := make(map[string]bool)
 		for {
-			metaList, total, err := chainSvc.ListMeta(ctx, offset, limit)
-			log.Infof("offset: %d, limit: %d, total: %d", offset, limit, total)
+			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
+			log.Infof("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
 			if err != nil {
 				return nil, err
 			}
@@ -144,7 +144,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 				time.Sleep(1 * time.Minute)
 				offset = 0
-				limit = 100
+				limit = 200
 				// Clear the slices
 				usersToCreate = nil
 				versesToCreate = nil
