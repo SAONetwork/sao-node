@@ -11,6 +11,7 @@ import (
 type fileInfo struct {
 	CommitId     string
 	DataID       string
+	Alias        string
 	CreatedAt    types.Uint64
 	FileDataID   string
 	ContentType  string
@@ -32,6 +33,7 @@ func (r *resolver) FileInfo(ctx context.Context, args struct{ ID graphql.ID }) (
 	err = row.Scan(
 		&fi.CommitId,
 		&fi.DataID,
+		&fi.Alias,
 		&fi.CreatedAt,
 		&fi.FileDataID,
 		&fi.ContentType,

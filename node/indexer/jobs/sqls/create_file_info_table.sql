@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS FILE_INFO (
                                          COMMITID     TEXT,
                                          DATAID       TEXT,
+                                         ALIAS        TEXT,
                                          CREATEDAT    INTEGER,
                                          FILEDATAID   TEXT,
                                          CONTENTTYPE  TEXT,

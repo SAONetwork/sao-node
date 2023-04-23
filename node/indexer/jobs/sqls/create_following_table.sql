@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS USER_FOLLOWING (
                                               COMMITID    TEXT,
                                               DATAID      TEXT,
+                                              ALIAS       TEXT,
                                               CREATEDAT   INTEGER,
                                               UPDATEDAT   INTEGER,
                                               EXPIREDAT   INTEGER,

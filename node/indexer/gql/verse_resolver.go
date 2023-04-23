@@ -11,16 +11,17 @@ import (
 )
 
 type verse struct {
-	CommitId        string `json:"CommitId"`
-	DataId string `json:"DataId"`
-	CreatedAt   types.Uint64
-	FileIDs     []string
-	Owner       string
-	Price       string
-	Digest      string
-	Scope       string
-	Status      string
-	NftTokenID  string
+	CommitId   string `json:"CommitId"`
+	DataId     string `json:"DataId"`
+	Alias      string `json:"Alias"`
+	CreatedAt  types.Uint64
+	FileIDs    []string
+	Owner      string
+	Price      string
+	Digest     string
+	Scope      string
+	Status     string
+	NftTokenID string
 }
 
 // query: verse(id) Verse
@@ -96,6 +97,7 @@ func verseFromRow(rowScanner interface{}) (*verse, error) {
 		err = scanner.Scan(
 			&v.CommitId,
 			&v.DataId,
+			&v.Alias,
 			&v.CreatedAt,
 			&fileIDsJSON,
 			&v.Owner,
@@ -109,6 +111,7 @@ func verseFromRow(rowScanner interface{}) (*verse, error) {
 		err = scanner.Scan(
 			&v.CommitId,
 			&v.DataId,
+			&v.Alias,
 			&v.CreatedAt,
 			&fileIDsJSON,
 			&v.Owner,

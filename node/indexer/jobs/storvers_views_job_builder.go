@@ -79,7 +79,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		}
 
 		var offset uint64 = 0
-		var limit uint64 = 100
+		var limit uint64 = 500
 		// Create slice to store the user data
 		//var usersToUpdate []storverse.UserProfile
 		var usersToCreate []storverse.UserProfile
@@ -150,6 +150,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				versesToCreate = nil
 				fileInfosToCreate = nil
 				userFollowingToCreate = nil
+				commitIds = make(map[string]bool)
 
 				continue
 			}
@@ -191,7 +192,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				} else {
 					log.Info("no existing record found, get data from gateway")
 					if strings.Contains(platFormIds, meta.GroupId) && storverse.AliasInTypeConfigs(meta.Alias, storverse.TypeConfigs) {
-						resp, err := getDataModel(ctx, didManager, meta, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
+						resp, err := getDataModel(ctx, didManager, meta.DataId, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
 						if err != nil {
 							continue
 						}
@@ -306,11 +307,11 @@ func GetDidManager(ctx context.Context, keyName string, keyringHome string) (*di
 	return &didManager, address, nil
 }
 
-func getDataModel(ctx context.Context, didManager *did.DidManager, meta modeltypes.Metadata, platFormIds string,
+func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string, platFormIds string,
 	chainSvc *chain.ChainSvc, gatewayAddress string, gatewayApi api.SaoApi, log *logging.ZapEventLogger) (apitypes.LoadResp, error) {
 	proposal := saotypes.QueryProposal{
 		Owner:   didManager.Id,
-		Keyword: meta.DataId,
+		Keyword: dataId,
 		GroupId: platFormIds,
 	}
 
@@ -333,7 +334,37 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 	for alias, config := range storverse.TypeConfigs {
 		if strings.Contains(meta.Alias, alias) {
 			recordPtr := reflect.New(config.RecordType)
-			err := json.Unmarshal([]byte(resp.Content), recordPtr.Interface())
+
+			var raw map[string]interface{}
+			if err := json.Unmarshal([]byte(resp.Content), &raw); err != nil {
+				return nil, err
+			}
+
+			if fd, ok := raw["followingDataId"]; ok {
+				switch v := fd.(type) {
+				case string:
+					if v != "" {
+						raw["followingDataId"] = []string{v}
+					} else {
+						delete(raw, "followingDataId")
+					}
+				case []interface{}:
+					var followingDataID []string
+					for _, item := range v {
+						if s, ok := item.(string); ok {
+							followingDataID = append(followingDataID, s)
+						}
+					}
+					raw["followingDataId"] = followingDataID
+				}
+			}
+
+			updatedData, err := json.Marshal(raw)
+			if err != nil {
+				return nil, err
+			}
+
+			err = json.Unmarshal(updatedData, recordPtr.Interface())
 			if err != nil {
 				log.Errorf("Unmarshal error: %v", err)
 				return nil, err
@@ -351,6 +382,10 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 			dataIDField := record.FieldByName("DataID")
 			if dataIDField.IsValid() && dataIDField.CanSet() {
 				dataIDField.Set(reflect.ValueOf(meta.DataId))
+			}
+			aliasField := record.FieldByName("Alias")
+			if aliasField.IsValid() && aliasField.CanSet() {
+				aliasField.Set(reflect.ValueOf(meta.Alias))
 			}
 
 			log.Debugf("Processed record: %v", record)

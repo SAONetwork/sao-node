@@ -2,7 +2,7 @@ package storverse
 
 import (
 	"reflect"
-	"strings"
+	"regexp"
 )
 
 type DataModelTypeConfig struct {
@@ -20,7 +20,7 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 		TableName:  "VERSE",
 		RecordType: reflect.TypeOf(Verse{}),
 	},
-	"fileInfo": {
+	"fileinfo": {
 		TableName:  "FILE_INFO",
 		RecordType: reflect.TypeOf(FileInfo{}),
 	},
@@ -36,7 +36,7 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 
 func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeConfig) bool {
 	for alias := range typeConfigs {
-		if strings.Contains(metaAlias, alias) {
+		if regexp.MustCompile("^" + alias + "(-|$)").MatchString(metaAlias) {
 			return true
 		}
 	}
@@ -45,7 +45,7 @@ func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeCo
 
 func GetTableNameForAlias(metaAlias string, typeConfigs map[string]DataModelTypeConfig) (string, bool) {
 	for alias, config := range typeConfigs {
-		if strings.Contains(metaAlias, alias) {
+		if regexp.MustCompile("^" + alias + "(-|$)").MatchString(metaAlias) {
 			return config.TableName, true
 		}
 	}

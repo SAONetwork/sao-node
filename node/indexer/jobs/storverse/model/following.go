@@ -14,9 +14,10 @@ type UserFollowing struct {
 	Status    string    `json:"status"`
 	CommitID  string
 	DataID    string
+	Alias 	  string
 }
 
 func (uf UserFollowing) InsertValues() string {
-	return fmt.Sprintf("('%s','%s', %d, %d, %d, '%s', '%s', %s)",
-		uf.CommitID, uf.DataID, uf.CreatedAt, uf.UpdatedAt, uf.ExpiredAt, uf.Follower, uf.Following, uf.Status)
+	return fmt.Sprintf("('%s','%s','%s', %d, %d, %d, '%s', '%s', %s)",
+		uf.CommitID, uf.DataID, uf.Alias, uf.CreatedAt, uf.UpdatedAt, uf.ExpiredAt, uf.Follower, uf.Following, uf.Status)
 }

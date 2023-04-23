@@ -9,14 +9,15 @@ import (
 )
 
 type userFollowing struct {
-	CommitId        string `json:"CommitId"`
-	DataId          string `json:"DataId"`
-	CreatedAt types.Uint64  `json:"CreatedAt"`
-	UpdatedAt types.Uint64  `json:"UpdatedAt"`
-	ExpiredAt types.Uint64  `json:"ExpiredAt"`
-	Follower  string `json:"Follower"`
-	Following string `json:"Following"`
-	Status    string    `json:"Status"`
+	CommitId  string       `json:"CommitId"`
+	DataId    string       `json:"DataId"`
+	Alias     string       `json:"Alias"`
+	CreatedAt types.Uint64 `json:"CreatedAt"`
+	UpdatedAt types.Uint64 `json:"UpdatedAt"`
+	ExpiredAt types.Uint64 `json:"ExpiredAt"`
+	Follower  string       `json:"Follower"`
+	Following string       `json:"Following"`
+	Status    string       `json:"Status"`
 }
 
 type followingResult struct {
@@ -38,6 +39,7 @@ func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID
 	err = row.Scan(
 		&uf.CommitId,
 		&uf.DataId,
+		&uf.Alias,
 		&uf.CreatedAt,
 		&uf.UpdatedAt,
 		&uf.ExpiredAt,
@@ -66,6 +68,7 @@ func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId 
 		err = rows.Scan(
 			&uf.CommitId,
 			&uf.DataId,
+			&uf.Alias,
 			&uf.CreatedAt,
 			&uf.UpdatedAt,
 			&uf.ExpiredAt,
@@ -86,7 +89,7 @@ func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId 
 	count := len(followings)
 	result := &followingResult{
 		Followings: followings,
-		Count: int32(count),
+		Count:      int32(count),
 	}
 
 	return result, nil

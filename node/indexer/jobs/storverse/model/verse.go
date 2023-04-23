@@ -14,11 +14,12 @@ type Verse struct {
 	Owner      string   `json:"owner"`
 	Price      string   `json:"price"`
 	Digest     string   `json:"digest"`
-	Scope      int   `json:"scope"`
-	Status     int   `json:"status"`
+	Scope      int      `json:"scope"`
+	Status     int      `json:"status"`
 	NftTokenID string   `json:"nftTokenId"`
 	CommitID   string
 	DataID     string
+	Alias      string
 }
 
 func (v Verse) InsertValues() string {
@@ -33,9 +34,8 @@ func (v Verse) InsertValues() string {
 		// handle error
 	}
 
-	return fmt.Sprintf("('%s','%s',%d,'%s','%s',%.2f,'%s',%d,%d,'%s')",
-		v.CommitID, v.DataID, v.CreatedAt, string(fileIDsJSON), v.Owner, price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID)
-
+	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%.2f,'%s',%d,%d,'%s')",
+		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID)
 }
 
 func escapeSingleQuotes(s string) string {

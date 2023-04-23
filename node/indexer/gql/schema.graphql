@@ -129,8 +129,8 @@ type RootQuery {
     """Get all Shards"""
     shards(query: String): ShardList!
 
-    """Get UserProfile by ID"""
-    userProfile(id: ID!): UserProfile
+    """Get UserProfile by ID or DID"""
+    userProfile(id: ID, did: String): UserProfile
 
     """Get Verse by ID"""
     verse(id: ID!): Verse
