@@ -36,7 +36,7 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 
 func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeConfig) bool {
 	for alias := range typeConfigs {
-		if regexp.MustCompile("^" + alias + "(-|$)").MatchString(metaAlias) {
+		if regexp.MustCompile("^" + alias + "(-|_|$)").MatchString(metaAlias) {
 			return true
 		}
 	}
@@ -45,7 +45,7 @@ func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeCo
 
 func GetTableNameForAlias(metaAlias string, typeConfigs map[string]DataModelTypeConfig) (string, bool) {
 	for alias, config := range typeConfigs {
-		if regexp.MustCompile("^" + alias + "(-|$)").MatchString(metaAlias) {
+		if regexp.MustCompile("^" + alias + "(-|_|$)").MatchString(metaAlias) {
 			return config.TableName, true
 		}
 	}
