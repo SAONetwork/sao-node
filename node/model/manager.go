@@ -369,7 +369,7 @@ func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminatePro
 		m, ok := model.(*types.Model)
 		if ok {
 			mm.CacheSvc.Evict(req.Proposal.Owner, m.DataId)
-			mm.CacheSvc.Evict(req.Proposal.Owner, m.Alias+m.GroupId)
+			mm.CacheSvc.Evict(req.Proposal.Owner, m.Alias)
 
 			return &types.Model{
 				DataId: m.DataId,
