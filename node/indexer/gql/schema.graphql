@@ -74,13 +74,14 @@ type Verse {
     ID: ID!
     DataId: String!
     CreatedAt: Uint64!
-    FileIDs: [String!]!
+    FileIDs: String!
     Owner: String!
     Price: String!
     Digest: String!
     Scope: String!
     Status: String!
     NftTokenID: String!
+    IsPaid: Boolean!
 }
 
 type FileInfo {
@@ -105,9 +106,39 @@ type UserFollowing {
     Status: String!
 }
 
+type ListingInfo {
+    ID: ID!
+    DataId: String!
+    Price: String!
+    TokenId: String!
+    ItemDataId: String!
+    ChainType: String!
+    Time: Uint64!
+}
+
 type FollowingResult {
     followings: [UserFollowing!]!
     count: Int!
+}
+
+type PurchaseOrderList {
+    totalCount: Int!
+    PurchaseOrders: [PurchaseOrder!]!
+    more: Boolean!
+}
+
+type PurchaseOrder {
+    ID: ID!
+    DataID: String!
+    OrderID: Uint64!
+    ItemDataID: String!
+    BuyerDataID: String!
+    OrderTxHash: String!
+    ChainType: String!
+    Price: String!
+    Time: Uint64!
+    Type: Int!
+    ExpireTime: Uint64!
 }
 
 type RootQuery {
@@ -129,18 +160,24 @@ type RootQuery {
     """Get all Shards"""
     shards(query: String): ShardList!
 
-    """Get UserProfile by ID or DID"""
-    userProfile(id: ID, did: String): UserProfile
+    """Get UserProfile by ID or DID or EthAddress"""
+    userProfile(id: ID, did: String, ethAddress: String): UserProfile
 
     """Get Verse by ID"""
-    verse(id: ID!): Verse
+    verse(id: ID, nftTokenID: String, userDataId: String): Verse
 
     """Get Verses with multiple filtering options"""
-    verses(owner: String, price: String, createdAt: Uint64, status: String): [Verse!]!
+    verses(owner: String, price: String, createdAt: Uint64, status: String, userDataId: String): [Verse!]!
 
     """Get FileInfo by ID"""
-    fileInfo(id: ID!): FileInfo
+    fileInfo(id: ID!, userDataId: String): FileInfo
 
     """Get Followings by FollowingDataId"""
     followings(followingDataId: String!): FollowingResult!
+
+    """Get ListingInfo by DataId or TokenId"""
+    listingInfo(dataId: String, tokenId: String): ListingInfo
+
+    """Get all PurchaseOrders"""
+    purchaseOrders(itemDataID: String): PurchaseOrderList!
 }

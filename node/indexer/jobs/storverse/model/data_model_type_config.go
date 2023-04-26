@@ -32,6 +32,14 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 		TableName:  "USER_FOLLOWING",
 		RecordType: reflect.TypeOf(UserFollowing{}),
 	},
+	"listing_info": {
+		TableName:  "LISTING_INFO",
+		RecordType: reflect.TypeOf(ListingInfo{}),
+	},
+	"purchase_order": {
+		TableName:  "PURCHASE_ORDER",
+		RecordType: reflect.TypeOf(PurchaseOrder{}),
+	},
 }
 
 func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeConfig) bool {

@@ -38,6 +38,12 @@ var createFileInfoDBSQL string
 //go:embed sqls/create_following_table.sql
 var createUserFollowingDBSQL string
 
+//go:embed sqls/create_listing_info_table.sql
+var createListingInfoDBSQL string
+
+//go:embed sqls/create_purchase_order_table.sql
+var createPurchaseOrderDBSQL string
+
 type BatchInserter interface {
 	InsertValues() string
 }
@@ -89,6 +95,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var fileInfosToCreate []storverse.FileInfo
 		//var userFollowingToUpdate []storverse.UserFollowing
 		var userFollowingToCreate []storverse.UserFollowing
+		//var listingInfosToUpdate []storverse.ListingInfo
+		var listingInfosToCreate []storverse.ListingInfo
+		//var purchaseOrdersToUpdate []storverse.PurchaseOrder
+		var purchaseOrdersToCreate []storverse.PurchaseOrder
 		commitIds := make(map[string]bool)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
@@ -142,6 +152,28 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Errorf("Error inserting user followings: %v", err)
 				}
 
+				// Convert []ListingInfo to []BatchInserter
+				listingInfoBatchInserters := make([]BatchInserter, len(listingInfosToCreate))
+				for i, listingInfo := range listingInfosToCreate {
+					listingInfoBatchInserters[i] = listingInfo
+				}
+
+				err = BatchInsert(db, "LISTING_INFO", listingInfoBatchInserters, 500, log)
+				if err != nil {
+					log.Errorf("Error inserting listing infos: %v", err)
+				}
+
+				// Convert []PurchaseOrder to []BatchInserter
+				purchaseOrderBatchInserters := make([]BatchInserter, len(purchaseOrdersToCreate))
+				for i, purchaseOrder := range purchaseOrdersToCreate {
+					purchaseOrderBatchInserters[i] = purchaseOrder
+				}
+
+				err = BatchInsert(db, "PURCHASE_ORDER", purchaseOrderBatchInserters, 500, log)
+				if err != nil {
+					log.Errorf("Error inserting purchase orders: %v", err)
+				}
+
 				time.Sleep(1 * time.Minute)
 				offset = 0
 				limit = 200
@@ -150,6 +182,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				versesToCreate = nil
 				fileInfosToCreate = nil
 				userFollowingToCreate = nil
+				listingInfosToCreate = nil
+				purchaseOrdersToCreate = nil
 				commitIds = make(map[string]bool)
 
 				continue
@@ -229,6 +263,18 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 								userFollowingToCreate = append(userFollowingToCreate, r)
 								commitIds[r.CommitID] = true
 							}
+						case storverse.ListingInfo:
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to listingInfosToCreate: %v", r)
+								listingInfosToCreate = append(listingInfosToCreate, r)
+								commitIds[r.CommitID] = true
+							}
+						case storverse.PurchaseOrder:
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to purchaseOrdersToCreate: %v", r)
+								purchaseOrdersToCreate = append(purchaseOrdersToCreate, r)
+								commitIds[r.CommitID] = true
+							}
 						default:
 							log.Warnf("unsupported record type: %T", r)
 						}
@@ -277,6 +323,20 @@ func InitializeStorverseTables(ctx context.Context, log *logging.ZapEventLogger,
 		log.Errorf("failed to create tables: %w", err)
 	}
 	log.Info("creating user_following tables done.")
+
+	// initialize the listing_info database tables
+	log.Info("creating listing_info tables...")
+	if _, err := db.ExecContext(ctx, createListingInfoDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating listing_info tables done.")
+
+	// initialize the purchase_order database tables
+	log.Info("creating purchase_order tables...")
+	if _, err := db.ExecContext(ctx, createPurchaseOrderDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating purchase_order tables done.")
 }
 
 // // Define your function that accepts a context.Context as a parameter

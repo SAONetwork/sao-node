@@ -2,6 +2,8 @@ package gql
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
@@ -20,8 +22,8 @@ type fileInfo struct {
 	FileCategory string
 }
 
-// query: fileInfo(id) FileInfo
-func (r *resolver) FileInfo(ctx context.Context, args struct{ ID graphql.ID }) (*fileInfo, error) {
+// query: fileInfo(id, userDataId) FileInfo
+func (r *resolver) FileInfo(ctx context.Context, args struct{ ID graphql.ID; UserDataId *string }) (*fileInfo, error) {
 	var commitId uuid.UUID
 	err := commitId.UnmarshalText([]byte(args.ID))
 	if err != nil {
@@ -43,6 +45,39 @@ func (r *resolver) FileInfo(ctx context.Context, args struct{ ID graphql.ID }) (
 	)
 	if err != nil {
 		return nil, err
+	}
+
+	// Find verse by fileInfo ID
+	var verse struct {
+		DataID      string
+		Price       float64
+		FileIDs     string
+	}
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT DATAID, PRICE, FILEIDS FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(&verse.DataID, &verse.Price, &verse.FileIDs)
+
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	if err == sql.ErrNoRows {
+		return &fi, nil
+	}
+
+	// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
+	if verse.Price > 0 {
+		var count int
+		if args.UserDataId != nil {
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", verse.DataID, *args.UserDataId).Scan(&count)
+		} else {
+			return nil, errors.New("userDataId is required when the file is charged")
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if count == 0 {
+			return nil, errors.New("the file is charged and not paid yet")
+		}
 	}
 
 	return &fi, nil

@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
@@ -28,8 +27,9 @@ type userProfile struct {
 }
 
 type userProfileArgs struct {
-	ID  *graphql.ID
-	Did *string
+	ID        *graphql.ID
+	Did       *string
+	EthAddress *string
 }
 
 // query: userProfile(id) UserProfile
@@ -43,20 +43,41 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		}
 	}
 
-	// query the database for the user profile with the given dataId or did
-	var profile userProfile
-	var row *sql.Row
+	query := "SELECT * FROM USER_PROFILE WHERE"
+	queryParams := make([]interface{}, 0)
+	argsCount := 0
 
-	if args.ID != nil && args.Did != nil {
-		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM USER_PROFILE WHERE DATAID = ? OR DID = ?", dataId, *args.Did)
-	} else if args.ID != nil {
-		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM USER_PROFILE WHERE DATAID = ?", dataId)
-	} else if args.Did != nil {
-		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM USER_PROFILE WHERE DID = ?", *args.Did)
-	} else {
-		return nil, fmt.Errorf("either ID or DID must be provided")
+	if args.ID != nil {
+		query += " DATAID = ?"
+		queryParams = append(queryParams, dataId)
+		argsCount++
 	}
 
+	if args.Did != nil {
+		if argsCount > 0 {
+			query += " OR"
+		}
+		query += " DID = ?"
+		queryParams = append(queryParams, *args.Did)
+		argsCount++
+	}
+
+	if args.EthAddress != nil {
+		if argsCount > 0 {
+			query += " OR"
+		}
+		query += " ETHADDR = ?"
+		queryParams = append(queryParams, *args.EthAddress)
+		argsCount++
+	}
+
+	if argsCount == 0 {
+		return nil, fmt.Errorf("either ID, DID, or EthAddress must be provided")
+	}
+
+	row := r.indexSvc.Db.QueryRowContext(ctx, query, queryParams...)
+
+	var profile userProfile
 	err := row.Scan(
 		&profile.CommitId,
 		&profile.DataId,
@@ -75,10 +96,9 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		&profile.FollowingDataId,
 	)
 	if err != nil {
-		return nil, err // return error if query failed
+		return nil, err
 	}
 
-	// return the UserProfile variable
 	return &profile, nil
 }
 

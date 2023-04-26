@@ -1,13 +1,13 @@
 CREATE TABLE IF NOT EXISTS VERSE (
      COMMITID    TEXT,
      DATAID      TEXT,
-     ALIAS  TEXT,
+     ALIAS       TEXT,
      CREATEDAT   INTEGER,
      FILEIDS     TEXT,
      OWNER       TEXT,
      PRICE       REAL,
      DIGEST      TEXT,
-     `SCOPE`       INTEGER,
+     `SCOPE`     INTEGER,
      STATUS      INTEGER,
      NFTTOKENID  TEXT,
      PRIMARY KEY(COMMITID)

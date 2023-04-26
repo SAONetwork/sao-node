@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
 	"sao-node/node/indexer/gql/types"
+	"strconv"
 	"strings"
 )
 
@@ -15,33 +16,71 @@ type verse struct {
 	DataId     string `json:"DataId"`
 	Alias      string `json:"Alias"`
 	CreatedAt  types.Uint64
-	FileIDs    []string
+	FileIDs    string
 	Owner      string
 	Price      string
 	Digest     string
 	Scope      string
 	Status     string
 	NftTokenID string
+	IsPaid     bool
 }
 
-// query: verse(id) Verse
-func (r *resolver) Verse(ctx context.Context, args struct{ ID graphql.ID }) (*verse, error) {
-	var commitId uuid.UUID
-	err := commitId.UnmarshalText([]byte(args.ID))
-	if err != nil {
-		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
-	}
-
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE COMMITID = ?", commitId)
-	return verseFromRow(row)
-}
-
-func (r *resolver) Verses(ctx context.Context, args struct {
+type VerseArgs struct {
+	ID        *graphql.ID
+	UserDataId *string
 	Owner     *string
 	Price     *string
 	CreatedAt *types.Uint64
 	Status    *string
-}) ([]*verse, error) {
+	NftTokenId *string
+}
+
+// query: verse(id) Verse
+func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
+	var row *sql.Row
+	if args.ID != nil {
+		var dataId uuid.UUID
+		err := dataId.UnmarshalText([]byte(*args.ID))
+		if err != nil {
+			return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
+		}
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE DATAID = ?", dataId)
+	} else if args.NftTokenId != nil {
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE NFTTOKENID = ?", *args.NftTokenId)
+	} else {
+		return nil, fmt.Errorf("either ID or nftTokenId must be provided")
+	}
+
+	v, err := verseFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+
+	// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
+	if v.Price != "" {
+		price, err := strconv.ParseFloat(v.Price, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		if price > 0 {
+			var count int
+			if args.UserDataId != nil {
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+			}
+			if err != nil {
+				return nil, err
+			}
+
+			v.IsPaid = count > 0
+		}
+	}
+
+	return v, nil
+}
+
+func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error) {
 	// Prepare the base query
 	query := "SELECT * FROM VERSE"
 
@@ -65,6 +104,8 @@ func (r *resolver) Verses(ctx context.Context, args struct {
 		query = query + " WHERE " + strings.Join(filters, " AND ")
 	}
 
+	query = query + " ORDER BY CREATEDAT DESC"
+
 	rows, err := r.indexSvc.Db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
@@ -77,6 +118,16 @@ func (r *resolver) Verses(ctx context.Context, args struct {
 		if err != nil {
 			return nil, err
 		}
+
+		if args.UserDataId != nil {
+			count := 0
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+			v.IsPaid = count > 0
+		}
+
 		verses = append(verses, v)
 	}
 
@@ -89,7 +140,6 @@ func (r *resolver) Verses(ctx context.Context, args struct {
 
 func verseFromRow(rowScanner interface{}) (*verse, error) {
 	var v verse
-	var fileIDsJSON string
 
 	var err error
 	switch scanner := rowScanner.(type) {
@@ -99,7 +149,7 @@ func verseFromRow(rowScanner interface{}) (*verse, error) {
 			&v.DataId,
 			&v.Alias,
 			&v.CreatedAt,
-			&fileIDsJSON,
+			&v.FileIDs,
 			&v.Owner,
 			&v.Price,
 			&v.Digest,
@@ -113,7 +163,7 @@ func verseFromRow(rowScanner interface{}) (*verse, error) {
 			&v.DataId,
 			&v.Alias,
 			&v.CreatedAt,
-			&fileIDsJSON,
+			&v.FileIDs,
 			&v.Owner,
 			&v.Price,
 			&v.Digest,
