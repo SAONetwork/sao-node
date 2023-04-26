@@ -420,6 +420,12 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			RelayProposal: gs.buildRelayProposal(ctx, gp, shard.Peer),
 		}, shard.Peer, true)
 		if resp.Code == 0 {
+			if meta.Cid == shard.Cid {
+				return &FetchResult{
+					Cid:     meta.Cid,
+					Content: resp.Content,
+				}, nil
+			}
 			contentList[shard.ShardId] = resp.Content
 		} else {
 			return nil, types.Wrapf(types.ErrFailuresResponsed, resp.Message)
@@ -437,6 +443,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 	}
 	if contentCid.String() != meta.Cid {
 		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
+		return nil, types.Wrapf(types.ErrInvalidCid, "%s", contentCid.String())
 	}
 
 	match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(meta.Alias))
