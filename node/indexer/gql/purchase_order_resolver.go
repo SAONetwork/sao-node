@@ -8,15 +8,15 @@ import (
 )
 
 type purchaseOrderList struct {
-	TotalCount     int32           `json:"totalCount"`
+	TotalCount     int32            `json:"totalCount"`
 	PurchaseOrders []*purchaseOrder `json:"purchaseOrders"`
-	More           bool            `json:"more"`
+	More           bool             `json:"more"`
 }
 
 type purchaseOrder struct {
-	CommitId        string       `json:"CommitId"`
-	DataId  string       `json:"dataId"`
-	Alias      string `json:"Alias"`
+	CommitId    string       `json:"CommitId"`
+	DataId      string       `json:"dataId"`
+	Alias       string       `json:"Alias"`
 	OrderID     types.Uint64 `json:"orderId"`
 	ItemDataID  string       `json:"itemDataId"`
 	BuyerDataID string       `json:"buyerDataId"`
@@ -25,7 +25,7 @@ type purchaseOrder struct {
 	Price       string       `json:"price"`
 	Time        types.Uint64 `json:"time"`
 	Type        int32        `json:"type"`
-	ExpireTime  types.Uint64       `json:"expireTime"`
+	ExpireTime  types.Uint64 `json:"expireTime"`
 }
 
 type purchaseOrderArgs struct {

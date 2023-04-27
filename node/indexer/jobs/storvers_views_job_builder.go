@@ -11,7 +11,9 @@ import (
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	logging "github.com/ipfs/go-log/v2"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"reflect"
 	"sao-node/api"
 	apiclient "sao-node/api/client"
@@ -43,6 +45,9 @@ var createListingInfoDBSQL string
 
 //go:embed sqls/create_purchase_order_table.sql
 var createPurchaseOrderDBSQL string
+
+//go:embed sqls/create_file_content_table.sql
+var createFileContentDBSQL string
 
 type BatchInserter interface {
 	InsertValues() string
@@ -174,6 +179,14 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Errorf("Error inserting purchase orders: %v", err)
 				}
 
+				rowsAffected, err := UpdateUserFollowingStatus(ctx, db)
+				if err != nil {
+					log.Errorf("Error updating USER_FOLLOWING records: %v", err)
+				} else {
+					log.Infof("Updated %d rows in USER_FOLLOWING", rowsAffected)
+				}
+
+
 				time.Sleep(1 * time.Minute)
 				offset = 0
 				limit = 200
@@ -229,6 +242,30 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						resp, err := getDataModel(ctx, didManager, meta.DataId, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
 						if err != nil {
 							continue
+						}
+
+						//if meta.Alias contains filecontent, save the resp content to a file under keyringHome/tmp folder
+						if strings.Contains(meta.Alias, "filecontent") {
+							fileName := meta.DataId
+							filePath := filepath.Join(keyringHome, "tmp", fileName)
+							if _, err := os.Stat(filePath); os.IsNotExist(err) {
+								os.MkdirAll(filepath.Join(keyringHome, "tmp"), os.ModePerm)
+							}
+
+							// write file
+							err := ioutil.WriteFile(filePath, []byte(resp.Content), 0644)
+							if err != nil {
+								log.Errorf("failed to write file: %w", err)
+								continue
+							}
+
+							// insert a record to FILE_CONTENT table
+							qry := fmt.Sprintf("INSERT INTO FILE_CONTENT (COMMITID, DATAID, CONTENTPATH, ALIAS, CREATEDAT) VALUES (?, ?, ?, ?, ?)")
+							_, err = db.ExecContext(ctx, qry, meta.Commit, meta.DataId, filePath, meta.Alias, meta.CreatedAt)
+							if err != nil {
+								log.Errorf("failed to insert file content: %w", err)
+								continue
+							}
 						}
 
 						record, err := processMeta(meta, &resp, log)
@@ -337,6 +374,13 @@ func InitializeStorverseTables(ctx context.Context, log *logging.ZapEventLogger,
 		log.Errorf("failed to create tables: %w", err)
 	}
 	log.Info("creating purchase_order tables done.")
+
+	// initialize the file_content database tables
+	log.Info("creating file_content tables...")
+	if _, err := db.ExecContext(ctx, createFileContentDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating file_content tables done.")
 }
 
 // // Define your function that accepts a context.Context as a parameter
@@ -530,4 +574,26 @@ func BatchInsert(db *sql.DB, tableName string, records []BatchInserter, batchSiz
 		}
 	}
 	return nil
+}
+
+func UpdateUserFollowingStatus(ctx context.Context, db *sql.DB) (int64, error) {
+	updateQuery := `UPDATE USER_FOLLOWING
+                SET status = 1
+                WHERE EXISTS (
+                  SELECT 1 FROM PURCHASE_ORDER
+                  WHERE PURCHASE_ORDER.TYPE=2 AND PURCHASE_ORDER.ITEMDATAID = USER_FOLLOWING.FOLLOWING
+                  AND PURCHASE_ORDER.BUYERDATAID = USER_FOLLOWING.FOLLOWER
+                );`
+
+	result, err := db.ExecContext(ctx, updateQuery)
+	if err != nil {
+		return 0, fmt.Errorf("Error updating USER_FOLLOWING records: %v", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("Error getting the number of updated rows: %v", err)
+	}
+
+	return rowsAffected, nil
 }

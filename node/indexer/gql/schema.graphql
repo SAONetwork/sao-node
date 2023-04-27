@@ -78,10 +78,11 @@ type Verse {
     Owner: String!
     Price: String!
     Digest: String!
-    Scope: String!
+    Scope: Int!
     Status: String!
     NftTokenID: String!
     IsPaid: Boolean!
+    NotInScope: Int!
 }
 
 type FileInfo {
@@ -171,6 +172,9 @@ type RootQuery {
 
     """Get FileInfo by ID"""
     fileInfo(id: ID!, userDataId: String): FileInfo
+
+    """Get File by ID"""
+    file(id: ID!, userDataId: String): String
 
     """Get Followings by FollowingDataId"""
     followings(followingDataId: String!): FollowingResult!

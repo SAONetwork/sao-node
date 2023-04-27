@@ -20,19 +20,20 @@ type verse struct {
 	Owner      string
 	Price      string
 	Digest     string
-	Scope      string
+	Scope      int32
 	Status     string
 	NftTokenID string
 	IsPaid     bool
+	NotInScope int32
 }
 
 type VerseArgs struct {
-	ID        *graphql.ID
+	ID         *graphql.ID
 	UserDataId *string
-	Owner     *string
-	Price     *string
-	CreatedAt *types.Uint64
-	Status    *string
+	Owner      *string
+	Price      *string
+	CreatedAt  *types.Uint64
+	Status     *string
 	NftTokenId *string
 }
 
@@ -74,6 +75,14 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 			}
 
 			v.IsPaid = count > 0
+		}
+	}
+
+	if args.UserDataId != nil {
+		// Process verse scope
+		v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -126,6 +135,14 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 				return nil, err
 			}
 			v.IsPaid = count > 0
+
+			// Process verse scope
+			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+			if err != nil {
+				// print error and continue
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
+			}
 		}
 
 		verses = append(verses, v)
@@ -180,6 +197,32 @@ func verseFromRow(rowScanner interface{}) (*verse, error) {
 	}
 
 	return &v, nil
+}
+
+func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId string) (*verse, error) {
+	// Check verse scope conditions and modify the verse accordingly
+	switch v.Scope {
+	case 2:
+		var count int
+		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ? AND FOLLOWER = ?", v.Owner, userDataId).Scan(&count)
+		if err != nil {
+			return nil, err
+		}
+		v.NotInScope = 2
+	case 3:
+		var count int
+		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ? AND FOLLOWER = ?", userDataId, v.Owner).Scan(&count)
+		if err != nil {
+			return nil, err
+		}
+		v.NotInScope = 3
+	case 5:
+		if userDataId != v.Owner {
+			return nil, fmt.Errorf("verse is private")
+		}
+	}
+
+	return v, nil
 }
 
 func (v *verse) ID() graphql.ID {
