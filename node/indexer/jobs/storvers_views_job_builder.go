@@ -63,7 +63,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		if gwAddress == "" {
 			gwAddress = "http://127.0.0.1:5151/rpc/v0"
 		}
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, gwAddress, "DEFAULT_TOKEN")
+		gatewayApi, closer, err := apiclient.NewNodeApi(ctx, gwAddress, "DEFAULT_TOKEN")
 		if err != nil {
 			log.Errorf("failed to get gateway api: %w", err)
 			return nil, err

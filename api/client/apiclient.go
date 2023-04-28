@@ -14,10 +14,6 @@ const (
 func NewNodeApi(ctx context.Context, address string, token string) (api.SaoApi, jsonrpc.ClientCloser, error) {
 	var res api.SaoApiStruct
 
-	//fmt.Println("Sleeping for 8 seconds...")
-	//time.Sleep(8 * time.Second) // sleep for 8 seconds
-	//fmt.Println("Done.")
-
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 
