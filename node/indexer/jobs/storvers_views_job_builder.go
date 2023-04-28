@@ -77,6 +77,11 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 			log.Error("keyName or keyringHome is empty, please set the env variable")
 			return nil, err
 		}
+		stagingHome := os.Getenv("STORVERSE_STAGING_HOME")
+		if stagingHome == "" {
+			log.Warn("STAGING_HOME environment variable not set")
+			return nil, err
+		}
 		didManager, _, err := GetDidManager(ctx, keyName, keyringHome)
 		if err != nil {
 			log.Errorf("failed to get did manager: %w", err)
@@ -186,7 +191,6 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Infof("Updated %d rows in USER_FOLLOWING", rowsAffected)
 				}
 
-
 				time.Sleep(1 * time.Minute)
 				offset = 0
 				limit = 200
@@ -238,7 +242,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					continue
 				} else {
 					log.Info("no existing record found, get data from gateway")
-					if strings.Contains(platFormIds, meta.GroupId) && storverse.AliasInTypeConfigs(meta.Alias, storverse.TypeConfigs) {
+					if strings.Contains(platFormIds, meta.GroupId) && (storverse.AliasInTypeConfigs(meta.Alias, storverse.TypeConfigs) || strings.Contains(meta.Alias, "filecontent")) {
 						resp, err := getDataModel(ctx, didManager, meta.DataId, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
 						if err != nil {
 							continue
@@ -246,11 +250,13 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 						//if meta.Alias contains filecontent, save the resp content to a file under keyringHome/tmp folder
 						if strings.Contains(meta.Alias, "filecontent") {
+							log.Info("save file content to a file")
 							fileName := meta.DataId
-							filePath := filepath.Join(keyringHome, "tmp", fileName)
+							filePath := filepath.Join(stagingHome, fileName)
 							if _, err := os.Stat(filePath); os.IsNotExist(err) {
-								os.MkdirAll(filepath.Join(keyringHome, "tmp"), os.ModePerm)
+								os.MkdirAll(stagingHome, os.ModePerm)
 							}
+							log.Info("file path: ", filePath)
 
 							// write file
 							err := ioutil.WriteFile(filePath, []byte(resp.Content), 0644)
@@ -260,8 +266,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							}
 
 							// insert a record to FILE_CONTENT table
-							qry := fmt.Sprintf("INSERT INTO FILE_CONTENT (COMMITID, DATAID, CONTENTPATH, ALIAS, CREATEDAT) VALUES (?, ?, ?, ?, ?)")
-							_, err = db.ExecContext(ctx, qry, meta.Commit, meta.DataId, filePath, meta.Alias, meta.CreatedAt)
+							qry := fmt.Sprintf("INSERT INTO FILE_CONTENT (COMMITID, DATAID, CONTENTPATH, ALIAS, CREATEDAT, OWNER) VALUES (?, ?, ?, ?, ?, ?)")
+							_, err = db.ExecContext(ctx, qry, meta.Commit, meta.DataId, filePath, meta.Alias, meta.CreatedAt, meta.Owner)
 							if err != nil {
 								log.Errorf("failed to insert file content: %w", err)
 								continue

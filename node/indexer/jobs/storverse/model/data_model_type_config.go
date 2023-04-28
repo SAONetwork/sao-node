@@ -57,5 +57,8 @@ func GetTableNameForAlias(metaAlias string, typeConfigs map[string]DataModelType
 			return config.TableName, true
 		}
 	}
+	if regexp.MustCompile("^filecontent(-|_|$)").MatchString(metaAlias) {
+		return "FILE_CONTENT", true
+	}
 	return "", false
 }
