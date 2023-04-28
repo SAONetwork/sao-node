@@ -26,7 +26,7 @@ var orderListCmd = &cli.Command{
 	Usage: "List orders",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+		gatewayApi, closer, err := apiclient.NewNodeApi(ctx, NodeApi, cliutil.ApiToken)
 		if err != nil {
 			return err
 		}
@@ -58,7 +58,7 @@ var orderStatusCmd = &cli.Command{
 	Usage: "",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ var orderStatusCmd = &cli.Command{
 			return types.Wrapf(types.ErrInvalidParameters, "missing proposal id parameter.")
 		}
 		dataId := cctx.Args().Get(0)
-		orderInfo, err := gatewayApi.OrderStatus(ctx, dataId)
+		orderInfo, err := apiClient.OrderStatus(ctx, dataId)
 		if err != nil {
 			return err
 		}
@@ -78,27 +78,3 @@ var orderStatusCmd = &cli.Command{
 		return nil
 	},
 }
-
-// var orderFixCmd = &cli.Command{
-// 	Name:  "fix",
-// 	Usage: "",
-// 	Action: func(cctx *cli.Context) error {
-// 		ctx := cctx.Context
-// 		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
-// 		if err != nil {
-// 			return err
-// 		}
-// 		defer closer()
-
-// 		if cctx.Args().Len() <= 0 {
-// 			return types.Wrapf(types.ErrInvalidParameters, "missing proposal id parameter.")
-// 		}
-// 		dataId := cctx.Args().Get(0)
-
-// 		err = gatewayApi.OrderFix(ctx, dataId)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		return nil
-// 	},
-// }

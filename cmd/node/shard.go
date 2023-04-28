@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	apiclient "sao-node/api/client"
 	cliutil "sao-node/cmd"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
@@ -44,12 +43,12 @@ var shardStatusCmd = &cli.Command{
 			return err
 		}
 
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		shardInfo, err := gatewayApi.ShardStatus(ctx, orderId, shardCid)
+		shardInfo, err := apiClient.ShardStatus(ctx, orderId, shardCid)
 		if err != nil {
 			return err
 		}
@@ -66,13 +65,13 @@ var shardListCmd = &cli.Command{
 	Usage: "List shards",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
 		if err != nil {
 			return err
 		}
 		defer closer()
 
-		shards, err := gatewayApi.ShardList(ctx)
+		shards, err := apiClient.ShardList(ctx)
 		if err != nil {
 			return err
 		}
@@ -92,40 +91,3 @@ var shardListCmd = &cli.Command{
 		return tw.Flush(os.Stdout)
 	},
 }
-
-// var shardFixCmd = &cli.Command{
-// 	Name:  "fix",
-// 	Usage: "Fix shard",
-// 	Flags: []cli.Flag{
-// 		&cli.Uint64Flag{
-// 			Name:     "orderId",
-// 			Required: true,
-// 		},
-// 		&cli.StringFlag{
-// 			Name:     "cid",
-// 			Required: true,
-// 		},
-// 	},
-// 	Action: func(cctx *cli.Context) error {
-// 		ctx := cctx.Context
-// 		orderId := cctx.Uint64("orderId")
-// 		shardCidStr := cctx.String("cid")
-// 		shardCid, err := cid.Decode(shardCidStr)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		gatewayApi, closer, err := apiclient.NewGatewayApi(ctx, cliutil.Gateway, "DEFAULT_TOKEN")
-// 		if err != nil {
-// 			return err
-// 		}
-// 		defer closer()
-
-// 		err = gatewayApi.ShardFix(ctx, orderId, shardCid)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		fmt.Printf("shard orderId=%d cid=%v is in process.", orderId, shardCid)
-// 		return nil
-// 	},
-// }

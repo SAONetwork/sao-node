@@ -11,7 +11,7 @@ const (
 	namespace = "Sao"
 )
 
-func NewGatewayApi(ctx context.Context, address string, token string) (api.SaoApi, jsonrpc.ClientCloser, error) {
+func NewNodeApi(ctx context.Context, address string, token string) (api.SaoApi, jsonrpc.ClientCloser, error) {
 	var res api.SaoApiStruct
 
 	//fmt.Println("Sleeping for 8 seconds...")
