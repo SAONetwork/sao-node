@@ -22,6 +22,8 @@ type Verse struct {
 	Alias      string
 }
 
+type VerseInsertionStrategy struct{}
+
 func (v Verse) InsertValues() string {
 	price, err := strconv.ParseFloat(v.Price, 64)
 	if err != nil {
@@ -36,6 +38,14 @@ func (v Verse) InsertValues() string {
 
 	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%.2f,'%s',%d,%d,'%s')",
 		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID)
+}
+
+func (s VerseInsertionStrategy) Convert(item interface{}) BatchInserter {
+	return item.(Verse)
+}
+
+func (s VerseInsertionStrategy) TableName() string {
+	return "VERSE"
 }
 
 func escapeSingleQuotes(s string) string {

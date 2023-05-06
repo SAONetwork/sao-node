@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	did "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -49,8 +50,23 @@ var createPurchaseOrderDBSQL string
 //go:embed sqls/create_file_content_table.sql
 var createFileContentDBSQL string
 
-type BatchInserter interface {
-	InsertValues() string
+//go:embed sqls/create_verse_comment_table.sql
+var createVerseCommentDBSQL string
+
+//go:embed sqls/create_verse_comment_like_table.sql
+var createVerseCommentLikeDBSQL string
+
+type InsertionMap map[string]storverse.InsertionStrategy
+
+var insertionStrategies = InsertionMap{
+	"USER_PROFILE":    storverse.UserProfileInsertionStrategy{},
+	"VERSE":           storverse.VerseInsertionStrategy{},
+	"FILE_INFO":       storverse.FileInfoInsertionStrategy{},
+	"USER_FOLLOWING":  storverse.UserFollowingInsertionStrategy{},
+	"LISTING_INFO":    storverse.ListingInfoInsertionStrategy{},
+	"PURCHASE_ORDER":  storverse.PurchaseOrderInsertionStrategy{},
+	"VERSE_COMMENT":   storverse.VerseCommentInsertionStrategy{},
+	"VERSE_COMMENT_LIKE": storverse.VerseCommentLikeInsertionStrategy{},
 }
 
 func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, platFormIds string, log *logging.ZapEventLogger) *types.Job {
@@ -63,39 +79,43 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		if gwAddress == "" {
 			gwAddress = "http://127.0.0.1:5151/rpc/v0"
 		}
-		gatewayApi, closer, err := apiclient.NewNodeApi(ctx, gwAddress, "DEFAULT_TOKEN")
+		token := os.Getenv("STORVERSE_TOKEN")
+		if token == "" {
+			log.Error("STORVERSE_TOKEN environment variable not set")
+		}
+		keyName := os.Getenv("STORVERSE_KEY_NAME")
+		keyringHome := os.Getenv("SAO_KEYRING_HOME")
+		log.Infof("keyName: %s, keyringHome: %s, token: %s", keyName, keyringHome, token)
+		if keyName == "" || keyringHome == "" {
+			log.Error("keyName or keyringHome is empty, please set the env variable")
+			return nil, errors.New("keyName or keyringHome is empty")
+		}
+		gatewayApi, closer, err := apiclient.NewNodeApi(ctx, gwAddress, token)
 		if err != nil {
 			log.Errorf("failed to get gateway api: %w", err)
 			return nil, err
 		}
 		defer closer()
 
-		keyName := os.Getenv("STORVERSE_KEY_NAME")
-		keyringHome := os.Getenv("SAO_KEYRING_HOME")
-		log.Infof("keyName: %s, keyringHome: %s", keyName, keyringHome)
-		if keyName == "" || keyringHome == "" {
-			log.Error("keyName or keyringHome is empty, please set the env variable")
-			return nil, err
-		}
 		stagingHome := os.Getenv("STORVERSE_STAGING_HOME")
 		if stagingHome == "" {
 			log.Warn("STAGING_HOME environment variable not set")
-			return nil, err
+			return nil, errors.New("STAGING_HOME environment variable not set")
 		}
 		didManager, _, err := GetDidManager(ctx, keyName, keyringHome)
 		if err != nil {
 			log.Errorf("failed to get did manager: %w", err)
-			return nil, err
+			return nil, errors.New("failed to get did manager")
 		}
 
 		gatewayAddress, err := gatewayApi.GetNodeAddress(ctx)
 		if err != nil {
 			log.Errorf("failed to get gateway address: %w", err)
-			return nil, err
+			return nil, errors.New("failed to get gateway address")
 		}
 
 		var offset uint64 = 0
-		var limit uint64 = 200
+		var limit uint64 = 100
 		// Create slice to store the user data
 		//var usersToUpdate []storverse.UserProfile
 		var usersToCreate []storverse.UserProfile
@@ -109,6 +129,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var listingInfosToCreate []storverse.ListingInfo
 		//var purchaseOrdersToUpdate []storverse.PurchaseOrder
 		var purchaseOrdersToCreate []storverse.PurchaseOrder
+		//var verseCommentsToUpdate []storverse.VerseComment
+		var verseCommentsToCreate []storverse.VerseComment
+		//var verseCommentLikesToUpdate []storverse.VerseCommentLike
+		var verseCommentLikesToCreate []storverse.VerseCommentLike
 		commitIds := make(map[string]bool)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
@@ -119,69 +143,24 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 			if offset*limit <= total {
 				offset++
 			} else {
-				// Convert []UserProfile to []BatchInserter
-				userProfileBatchInserters := make([]BatchInserter, len(usersToCreate))
-				for i, user := range usersToCreate {
-					userProfileBatchInserters[i] = user
-				}
-				err = BatchInsert(db, "USER_PROFILE", userProfileBatchInserters, 500, log)
-				if err != nil {
-					log.Errorf("Error inserting user profiles: %v", err)
-				}
-
-				// Convert []Verse to []BatchInserter
-				verseBatchInserters := make([]BatchInserter, len(versesToCreate))
-				for i, verse := range versesToCreate {
-					verseBatchInserters[i] = verse
+				// Create the items map
+				var itemsMap = map[string][]interface{}{
+					"USER_PROFILE":   convertToInterfaceSlice(usersToCreate),
+					"VERSE":          convertToInterfaceSlice(versesToCreate),
+					"FILE_INFO":      convertToInterfaceSlice(fileInfosToCreate),
+					"USER_FOLLOWING": convertToInterfaceSlice(userFollowingToCreate),
+					"LISTING_INFO":   convertToInterfaceSlice(listingInfosToCreate),
+					"PURCHASE_ORDER": convertToInterfaceSlice(purchaseOrdersToCreate),
+					"VERSE_COMMENT":  convertToInterfaceSlice(verseCommentsToCreate),
+					"VERSE_COMMENT_LIKE": convertToInterfaceSlice(verseCommentLikesToCreate),
 				}
 
-				err = BatchInsert(db, "VERSE", verseBatchInserters, 500, log)
-				if err != nil {
-					log.Errorf("Error inserting verses: %v", err)
-				}
-
-				// Convert []FileInfo to []BatchInserter
-				fileInfoBatchInserters := make([]BatchInserter, len(fileInfosToCreate))
-				for i, fileInfo := range fileInfosToCreate {
-					fileInfoBatchInserters[i] = fileInfo
-				}
-
-				err = BatchInsert(db, "FILE_INFO", fileInfoBatchInserters, 500, log)
-				if err != nil {
-					log.Errorf("Error inserting file infos: %v", err)
-				}
-
-				// Convert []UserFollowing to []BatchInserter
-				userFollowingBatchInserters := make([]BatchInserter, len(userFollowingToCreate))
-				for i, userFollowing := range userFollowingToCreate {
-					userFollowingBatchInserters[i] = userFollowing
-				}
-
-				err = BatchInsert(db, "USER_FOLLOWING", userFollowingBatchInserters, 500, log)
-				if err != nil {
-					log.Errorf("Error inserting user followings: %v", err)
-				}
-
-				// Convert []ListingInfo to []BatchInserter
-				listingInfoBatchInserters := make([]BatchInserter, len(listingInfosToCreate))
-				for i, listingInfo := range listingInfosToCreate {
-					listingInfoBatchInserters[i] = listingInfo
-				}
-
-				err = BatchInsert(db, "LISTING_INFO", listingInfoBatchInserters, 500, log)
-				if err != nil {
-					log.Errorf("Error inserting listing infos: %v", err)
-				}
-
-				// Convert []PurchaseOrder to []BatchInserter
-				purchaseOrderBatchInserters := make([]BatchInserter, len(purchaseOrdersToCreate))
-				for i, purchaseOrder := range purchaseOrdersToCreate {
-					purchaseOrderBatchInserters[i] = purchaseOrder
-				}
-
-				err = BatchInsert(db, "PURCHASE_ORDER", purchaseOrderBatchInserters, 500, log)
-				if err != nil {
-					log.Errorf("Error inserting purchase orders: %v", err)
+				// Iterate over the strategies and call performBatchInsert for each type
+				for typeName, strategy := range insertionStrategies {
+					items := itemsMap[typeName]
+					if err := performBatchInsert(db, strategy, items, 500, log); err != nil {
+						log.Errorf("Error inserting %s: %v", typeName, err)
+					}
 				}
 
 				rowsAffected, err := UpdateUserFollowingStatus(ctx, db)
@@ -193,7 +172,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 				time.Sleep(1 * time.Minute)
 				offset = 0
-				limit = 200
+				limit = 100
 				// Clear the slices
 				usersToCreate = nil
 				versesToCreate = nil
@@ -201,6 +180,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				userFollowingToCreate = nil
 				listingInfosToCreate = nil
 				purchaseOrdersToCreate = nil
+				verseCommentsToCreate = nil
+				verseCommentLikesToCreate = nil
 				commitIds = make(map[string]bool)
 
 				continue
@@ -318,6 +299,18 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 								purchaseOrdersToCreate = append(purchaseOrdersToCreate, r)
 								commitIds[r.CommitID] = true
 							}
+						case storverse.VerseComment:
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to verseCommentsToCreate: %v", r)
+								verseCommentsToCreate = append(verseCommentsToCreate, r)
+								commitIds[r.CommitID] = true
+							}
+						case storverse.VerseCommentLike:
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to verseCommentLikesToCreate: %v", r)
+								verseCommentLikesToCreate = append(verseCommentLikesToCreate, r)
+								commitIds[r.CommitID] = true
+							}
 						default:
 							log.Warnf("unsupported record type: %T", r)
 						}
@@ -387,6 +380,20 @@ func InitializeStorverseTables(ctx context.Context, log *logging.ZapEventLogger,
 		log.Errorf("failed to create tables: %w", err)
 	}
 	log.Info("creating file_content tables done.")
+
+	// initialize the verse_comment database tables
+	log.Info("creating verse_comment tables...")
+	if _, err := db.ExecContext(ctx, createVerseCommentDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating verse_comment tables done.")
+
+	// initialize the verse_comment_like database tables
+	log.Info("creating verse_comment_like tables...")
+	if _, err := db.ExecContext(ctx, createVerseCommentLikeDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating verse_comment_like tables done.")
 }
 
 // // Define your function that accepts a context.Context as a parameter
@@ -440,68 +447,66 @@ func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string
 	return resp, nil
 }
 
-func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging.ZapEventLogger) (BatchInserter, error) {
-	for alias, config := range storverse.TypeConfigs {
-		if strings.Contains(meta.Alias, alias) {
-			recordPtr := reflect.New(config.RecordType)
+func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging.ZapEventLogger) (storverse.BatchInserter, error) {
+	if config, found := storverse.GetMatchingTypeConfig(meta.Alias, storverse.TypeConfigs); found {
+		recordPtr := reflect.New(config.RecordType)
 
-			var raw map[string]interface{}
-			if err := json.Unmarshal([]byte(resp.Content), &raw); err != nil {
-				return nil, err
-			}
-
-			if fd, ok := raw["followingDataId"]; ok {
-				switch v := fd.(type) {
-				case string:
-					if v != "" {
-						raw["followingDataId"] = []string{v}
-					} else {
-						delete(raw, "followingDataId")
-					}
-				case []interface{}:
-					var followingDataID []string
-					for _, item := range v {
-						if s, ok := item.(string); ok {
-							followingDataID = append(followingDataID, s)
-						}
-					}
-					raw["followingDataId"] = followingDataID
-				}
-			}
-
-			updatedData, err := json.Marshal(raw)
-			if err != nil {
-				return nil, err
-			}
-
-			err = json.Unmarshal(updatedData, recordPtr.Interface())
-			if err != nil {
-				log.Errorf("Unmarshal error: %v", err)
-				return nil, err
-			}
-
-			log.Debug(recordPtr)
-
-			record := recordPtr.Elem()
-
-			// Set CommitID and DataID fields
-			commitIDField := record.FieldByName("CommitID")
-			if commitIDField.IsValid() && commitIDField.CanSet() {
-				commitIDField.Set(reflect.ValueOf(meta.Commit))
-			}
-			dataIDField := record.FieldByName("DataID")
-			if dataIDField.IsValid() && dataIDField.CanSet() {
-				dataIDField.Set(reflect.ValueOf(meta.DataId))
-			}
-			aliasField := record.FieldByName("Alias")
-			if aliasField.IsValid() && aliasField.CanSet() {
-				aliasField.Set(reflect.ValueOf(meta.Alias))
-			}
-
-			log.Debugf("Processed record: %v", record)
-
-			return record.Interface().(BatchInserter), nil
+		var raw map[string]interface{}
+		if err := json.Unmarshal([]byte(resp.Content), &raw); err != nil {
+			return nil, err
 		}
+
+		if fd, ok := raw["followingDataId"]; ok {
+			switch v := fd.(type) {
+			case string:
+				if v != "" {
+					raw["followingDataId"] = []string{v}
+				} else {
+					delete(raw, "followingDataId")
+				}
+			case []interface{}:
+				var followingDataID []string
+				for _, item := range v {
+					if s, ok := item.(string); ok {
+						followingDataID = append(followingDataID, s)
+					}
+				}
+				raw["followingDataId"] = followingDataID
+			}
+		}
+
+		updatedData, err := json.Marshal(raw)
+		if err != nil {
+			return nil, err
+		}
+
+		err = json.Unmarshal(updatedData, recordPtr.Interface())
+		if err != nil {
+			log.Errorf("Unmarshal error: %v", err)
+			return nil, err
+		}
+
+		log.Debug(recordPtr)
+
+		record := recordPtr.Elem()
+
+		// Set CommitID and DataID fields
+		commitIDField := record.FieldByName("CommitID")
+		if commitIDField.IsValid() && commitIDField.CanSet() {
+			commitIDField.Set(reflect.ValueOf(meta.Commit))
+		}
+		dataIDField := record.FieldByName("DataID")
+		if dataIDField.IsValid() && dataIDField.CanSet() {
+			dataIDField.Set(reflect.ValueOf(meta.DataId))
+		}
+		aliasField := record.FieldByName("Alias")
+		if aliasField.IsValid() && aliasField.CanSet() {
+			aliasField.Set(reflect.ValueOf(meta.Alias))
+		}
+
+		log.Debugf("Processed record: %v", record)
+
+		return record.Interface().(storverse.BatchInserter), nil
 	}
 
 	return nil, fmt.Errorf("unsupported meta alias")
@@ -546,7 +551,30 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 	}, nil
 }
 
-func BatchInsert(db *sql.DB, tableName string, records []BatchInserter, batchSize int, log *logging.ZapEventLogger) error {
+func convertToInterfaceSlice(slice interface{}) []interface{} {
+	s := reflect.ValueOf(slice)
+	if s.Kind() != reflect.Slice {
+		log.Error("convertToInterfaceSlice() given a non-slice type")
+		return nil
+	}
+
+	result := make([]interface{}, s.Len())
+	for i := 0; i < s.Len(); i++ {
+		result[i] = s.Index(i).Interface()
+	}
+	return result
+}
+
+func performBatchInsert(db *sql.DB, strategy storverse.InsertionStrategy, items []interface{}, batchSize int, log *logging.ZapEventLogger) error {
+	batchInserters := make([]storverse.BatchInserter, len(items))
+	for i, item := range items {
+		batchInserters[i] = strategy.Convert(item)
+	}
+
+	return BatchInsert(db, strategy.TableName(), batchInserters, batchSize, log)
+}
+
+func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter, batchSize int, log *logging.ZapEventLogger) error {
 	if len(records) > 0 {
 		valueArgs := ""
 		log.Infof("Batch prepare, %d records to be created.", len(records))

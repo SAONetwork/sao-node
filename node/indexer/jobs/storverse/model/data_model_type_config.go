@@ -3,48 +3,66 @@ package storverse
 import (
 	"reflect"
 	"regexp"
+	"sort"
 )
 
 type DataModelTypeConfig struct {
-	TableName string
-	RecordType reflect.Type
+	TableNameFunc func() string
+	RecordType    reflect.Type
+}
+
+type InsertionStrategy interface {
+	Convert(item interface{}) BatchInserter
+	TableName() string
+}
+
+type BatchInserter interface {
+	InsertValues() string
 }
 
 // TypeConfigs is a map of data model type aliases to their table names and record types.
 var TypeConfigs = map[string]DataModelTypeConfig{
 	"user_profile": {
-		TableName:  "USER_PROFILE",
+		TableNameFunc: UserProfileInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(UserProfile{}),
 	},
 	"verse": {
-		TableName:  "VERSE",
+		TableNameFunc: VerseInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(Verse{}),
 	},
 	"fileinfo": {
-		TableName:  "FILE_INFO",
+		TableNameFunc: FileInfoInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(FileInfo{}),
 	},
 	"file_info": {
-		TableName:  "FILE_INFO",
+		TableNameFunc: FileInfoInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(FileInfo{}),
 	},
 	"user_following": {
-		TableName:  "USER_FOLLOWING",
+		TableNameFunc: UserFollowingInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(UserFollowing{}),
 	},
 	"listing_info": {
-		TableName:  "LISTING_INFO",
+		TableNameFunc: ListingInfoInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(ListingInfo{}),
 	},
 	"purchase_order": {
-		TableName:  "PURCHASE_ORDER",
+		TableNameFunc: PurchaseOrderInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(PurchaseOrder{}),
+	},
+	"verse_comment": {
+		TableNameFunc: VerseCommentInsertionStrategy{}.TableName,
+		RecordType: reflect.TypeOf(VerseComment{}),
+	},
+	"verse_comment_like": {
+		TableNameFunc: VerseCommentLikeInsertionStrategy{}.TableName,
+		RecordType: reflect.TypeOf(VerseCommentLike{}),
 	},
 }
 
 func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeConfig) bool {
 	for alias := range typeConfigs {
-		if regexp.MustCompile("^" + alias + "(-|_|$)").MatchString(metaAlias) {
+		if match, _ := regexp.MatchString(`^`+alias+`(?:_|-|$)`, metaAlias); match {
 			return true
 		}
 	}
@@ -52,9 +70,12 @@ func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeCo
 }
 
 func GetTableNameForAlias(metaAlias string, typeConfigs map[string]DataModelTypeConfig) (string, bool) {
-	for alias, config := range typeConfigs {
-		if regexp.MustCompile("^" + alias + "(-|_|$)").MatchString(metaAlias) {
-			return config.TableName, true
+	sortedAliases := sortAliasesByLength(typeConfigs)
+
+	for _, alias := range sortedAliases {
+		config := typeConfigs[alias]
+		if match, _ := regexp.MatchString(`^`+alias+`(?:_|-|$)`, metaAlias); match {
+			return config.TableNameFunc(), true
 		}
 	}
 	if regexp.MustCompile("^filecontent(-|_|$)").MatchString(metaAlias) {
@@ -62,3 +83,26 @@ func GetTableNameForAlias(metaAlias string, typeConfigs map[string]DataModelType
 	}
 	return "", false
 }
+
+func GetMatchingTypeConfig(metaAlias string, typeConfigs map[string]DataModelTypeConfig) (*DataModelTypeConfig, bool) {
+	sortedAliases := sortAliasesByLength(typeConfigs)
+	for _, alias := range sortedAliases {
+		config := typeConfigs[alias]
+		if match, _ := regexp.MatchString(`^`+alias+`(?:_|-|$)`, metaAlias); match {
+			return &config, true
+		}
+	}
+	return nil, false
+}
+
+func sortAliasesByLength(typeConfigs map[string]DataModelTypeConfig) []string {
+	aliases := make([]string, 0, len(typeConfigs))
+	for alias := range typeConfigs {
+		aliases = append(aliases, alias)
+	}
+	sort.Slice(aliases, func(i, j int) bool {
+		return len(aliases[i]) > len(aliases[j])
+	})
+	return aliases
+}
+

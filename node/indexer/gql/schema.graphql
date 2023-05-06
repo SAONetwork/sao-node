@@ -142,6 +142,18 @@ type PurchaseOrder {
     ExpireTime: Uint64!
 }
 
+type VerseComment {
+    ID: ID!
+    DataId: String!
+    CreatedAt: Uint64!
+    UpdatedAt: Uint64!
+    VerseID: String!
+    Owner: String!
+    Comment: String!
+    ParentID: String!
+    likeCount: Int!
+}
+
 type RootQuery {
     """Get Job by ID"""
     job(id: ID!): Job
@@ -184,4 +196,11 @@ type RootQuery {
 
     """Get all PurchaseOrders"""
     purchaseOrders(itemDataID: String): PurchaseOrderList!
+
+    """Get Verse Comments by Verse ID"""
+    verseComments(
+        verseID: String!
+        limit: Int
+        offset: Int
+    ): [VerseComment!]!
 }

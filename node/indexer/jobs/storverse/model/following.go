@@ -17,7 +17,17 @@ type UserFollowing struct {
 	Alias 	  string
 }
 
+type UserFollowingInsertionStrategy struct{}
+
 func (uf UserFollowing) InsertValues() string {
 	return fmt.Sprintf("('%s','%s','%s', %d, %d, %d, '%s', '%s', %s)",
 		uf.CommitID, uf.DataID, uf.Alias, uf.CreatedAt, uf.UpdatedAt, uf.ExpiredAt, uf.Follower, uf.Following, uf.Status)
+}
+
+func (s UserFollowingInsertionStrategy) Convert(item interface{}) BatchInserter {
+	return item.(UserFollowing)
+}
+
+func (s UserFollowingInsertionStrategy) TableName() string {
+	return "USER_FOLLOWING"
 }

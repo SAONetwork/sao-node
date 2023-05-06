@@ -20,7 +20,17 @@ type PurchaseOrder struct {
 	Alias       string
 }
 
+type PurchaseOrderInsertionStrategy struct{}
+
 func (p PurchaseOrder) InsertValues() string {
 	return fmt.Sprintf("('%s','%s','%s', %d, '%s','%s','%s','%s','%s', %d, %d, '%d')",
 		p.CommitID, p.DataID, p.Alias, p.OrderID, p.ItemDataID, p.BuyerDataID, p.OrderTxHash, p.ChainType, p.Price, p.Time, p.Type, p.ExpireTime)
+}
+
+func (s PurchaseOrderInsertionStrategy) Convert(item interface{}) BatchInserter {
+	return item.(PurchaseOrder)
+}
+
+func (s PurchaseOrderInsertionStrategy) TableName() string {
+	return "PURCHASE_ORDER"
 }
