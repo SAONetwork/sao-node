@@ -56,6 +56,9 @@ var createVerseCommentDBSQL string
 //go:embed sqls/create_verse_comment_like_table.sql
 var createVerseCommentLikeDBSQL string
 
+//go:embed sqls/create_verse_like_table.sql
+var createVerseLikeDBSQL string
+
 type InsertionMap map[string]storverse.InsertionStrategy
 
 var insertionStrategies = InsertionMap{
@@ -67,6 +70,7 @@ var insertionStrategies = InsertionMap{
 	"PURCHASE_ORDER":  storverse.PurchaseOrderInsertionStrategy{},
 	"VERSE_COMMENT":   storverse.VerseCommentInsertionStrategy{},
 	"VERSE_COMMENT_LIKE": storverse.VerseCommentLikeInsertionStrategy{},
+	"VERSE_LIKE":      storverse.VerseLikeInsertionStrategy{},
 }
 
 func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, platFormIds string, log *logging.ZapEventLogger) *types.Job {
@@ -133,6 +137,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var verseCommentsToCreate []storverse.VerseComment
 		//var verseCommentLikesToUpdate []storverse.VerseCommentLike
 		var verseCommentLikesToCreate []storverse.VerseCommentLike
+		//var verseLikesToUpdate []storverse.VerseLike
+		var verseLikesToCreate []storverse.VerseLike
 		commitIds := make(map[string]bool)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
@@ -153,6 +159,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					"PURCHASE_ORDER": convertToInterfaceSlice(purchaseOrdersToCreate),
 					"VERSE_COMMENT":  convertToInterfaceSlice(verseCommentsToCreate),
 					"VERSE_COMMENT_LIKE": convertToInterfaceSlice(verseCommentLikesToCreate),
+					"VERSE_LIKE":     convertToInterfaceSlice(verseLikesToCreate),
 				}
 
 				// Iterate over the strategies and call performBatchInsert for each type
@@ -182,6 +189,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				purchaseOrdersToCreate = nil
 				verseCommentsToCreate = nil
 				verseCommentLikesToCreate = nil
+				verseLikesToCreate = nil
 				commitIds = make(map[string]bool)
 
 				continue
@@ -311,6 +319,12 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 								verseCommentLikesToCreate = append(verseCommentLikesToCreate, r)
 								commitIds[r.CommitID] = true
 							}
+						case storverse.VerseLike:
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to verseLikesToCreate: %v", r)
+								verseLikesToCreate = append(verseLikesToCreate, r)
+								commitIds[r.CommitID] = true
+							}
 						default:
 							log.Warnf("unsupported record type: %T", r)
 						}
@@ -394,6 +408,13 @@ func InitializeStorverseTables(ctx context.Context, log *logging.ZapEventLogger,
 		log.Errorf("failed to create tables: %w", err)
 	}
 	log.Info("creating verse_comment_like tables done.")
+
+	// initialize the verse_like database tables
+	log.Info("creating verse_like tables...")
+	if _, err := db.ExecContext(ctx, createVerseLikeDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating verse_like tables done.")
 }
 
 // // Define your function that accepts a context.Context as a parameter

@@ -34,6 +34,7 @@ func TestGetTableNameForAlias(t *testing.T) {
 		{"verse_comment_like_xxx", "VERSE_COMMENT_LIKE", true},
 		{"verse_comment_xxx", "VERSE_COMMENT", true},
 		{"verse_xxx", "VERSE", true},
+		{"verse_like_xxx", "VERSE_LIKE", true},
 	}
 
 	for _, testCase := range testCases {

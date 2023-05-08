@@ -83,6 +83,8 @@ type Verse {
     NftTokenID: String!
     IsPaid: Boolean!
     NotInScope: Int!
+    CommentCount: Int!
+    LikeCount: Int!
 }
 
 type FileInfo {

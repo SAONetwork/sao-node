@@ -24,7 +24,9 @@ type verse struct {
 	Status     string
 	NftTokenID string
 	IsPaid     bool
-	NotInScope int32
+	NotInScope     int32
+	CommentCount int32
+	LikeCount    int32
 }
 
 type VerseArgs struct {
@@ -53,7 +55,7 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 		return nil, fmt.Errorf("either ID or nftTokenId must be provided")
 	}
 
-	v, err := verseFromRow(row)
+	v, err := verseFromRow(row, ctx, r.indexSvc.Db)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +125,7 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 
 	var verses []*verse
 	for rows.Next() {
-		v, err := verseFromRow(rows)
+		v, err := verseFromRow(rows, ctx, r.indexSvc.Db)
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +157,7 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 	return verses, nil
 }
 
-func verseFromRow(rowScanner interface{}) (*verse, error) {
+func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*verse, error) {
 	var v verse
 
 	var err error
@@ -196,8 +198,23 @@ func verseFromRow(rowScanner interface{}) (*verse, error) {
 		return nil, err
 	}
 
+	// Fetch the comment count for the verse
+	commentCountQuery := "SELECT COUNT(*) FROM verse_comment WHERE VerseID = ?"
+	err = db.QueryRowContext(ctx, commentCountQuery, v.DataId).Scan(&v.CommentCount)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fetch the like count for the verse
+	likeCountQuery := "SELECT COUNT(*) FROM verse_like WHERE VerseID = ?"
+	err = db.QueryRowContext(ctx, likeCountQuery, v.DataId).Scan(&v.LikeCount)
+	if err != nil {
+		return nil, err
+	}
+
 	return &v, nil
 }
+
 
 func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId string) (*verse, error) {
 	// Check verse scope conditions and modify the verse accordingly

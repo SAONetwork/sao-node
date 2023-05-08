@@ -30,6 +30,10 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 		TableNameFunc: VerseInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(Verse{}),
 	},
+	"verse_like": {
+		TableNameFunc: VerseLikeInsertionStrategy{}.TableName,
+		RecordType: reflect.TypeOf(VerseLike{}),
+	},
 	"fileinfo": {
 		TableNameFunc: FileInfoInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(FileInfo{}),
