@@ -1,6 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Bug Fixes
+- fetch replica mode content, handle invalid cid, model cache evict ([#13](https://github.com/SAONetwork/sao-node.git/issues/13))
+
 
 <a name="v0.1.4"></a>
 ## [v0.1.4](https://github.com/SAONetwork/sao-node.git/compare/v0.1.3...v0.1.4) (2023-04-21)
