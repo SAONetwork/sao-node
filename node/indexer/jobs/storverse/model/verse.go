@@ -1,9 +1,12 @@
 package storverse
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type Verse struct {
@@ -44,4 +47,17 @@ func (s VerseInsertionStrategy) TableName() string {
 
 func escapeSingleQuotes(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
+}
+
+func GetVerseOwnerByVerseID(db *sql.DB, verseID string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var owner string
+	err := db.QueryRowContext(ctx, "SELECT OWNER FROM VERSE WHERE DATAID = ?", verseID).Scan(&owner)
+	if err != nil {
+		return "", err
+	}
+
+	return owner, nil
 }

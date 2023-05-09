@@ -62,6 +62,10 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 		TableNameFunc: VerseCommentLikeInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(VerseCommentLike{}),
 	},
+	"read_notifications": {
+		TableNameFunc: ReadNotificationsInsertionStrategy{}.TableName,
+		RecordType: reflect.TypeOf(ReadNotifications{}),
+	},
 }
 
 func AliasInTypeConfigs(metaAlias string, typeConfigs map[string]DataModelTypeConfig) bool {

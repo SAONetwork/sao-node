@@ -15,6 +15,7 @@ func TestAliasInTypeConfigs(t *testing.T) {
 		{"verse_comment_xxx", true},
 		{"verse_comment_like_comment_xxx", true},
 		{"verse_xxxx", true},
+		{"xxxxx_verse_xxx", false},
 	}
 
 	for _, testCase := range testCases {
@@ -35,6 +36,7 @@ func TestGetTableNameForAlias(t *testing.T) {
 		{"verse_comment_xxx", "VERSE_COMMENT", true},
 		{"verse_xxx", "VERSE", true},
 		{"verse_like_xxx", "VERSE_LIKE", true},
+		{"read_notifications_5xxxxxx", "READ_NOTIFICATIONS", true},
 	}
 
 	for _, testCase := range testCases {

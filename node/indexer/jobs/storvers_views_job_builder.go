@@ -59,6 +59,12 @@ var createVerseCommentLikeDBSQL string
 //go:embed sqls/create_verse_like_table.sql
 var createVerseLikeDBSQL string
 
+//go:embed sqls/create_notification_table.sql
+var createNotificationDBSQL string
+
+//go:embed sqls/create_read_notifications_table.sql
+var createReadNotificationsDBSQL string
+
 type InsertionMap map[string]storverse.InsertionStrategy
 
 var insertionStrategies = InsertionMap{
@@ -71,6 +77,8 @@ var insertionStrategies = InsertionMap{
 	"VERSE_COMMENT":   storverse.VerseCommentInsertionStrategy{},
 	"VERSE_COMMENT_LIKE": storverse.VerseCommentLikeInsertionStrategy{},
 	"VERSE_LIKE":      storverse.VerseLikeInsertionStrategy{},
+	"NOTIFICATION":    storverse.NotificationInsertionStrategy{},
+	"READ_NOTIFICATIONS": storverse.ReadNotificationsInsertionStrategy{},
 }
 
 func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, platFormIds string, log *logging.ZapEventLogger) *types.Job {
@@ -120,25 +128,18 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 		var offset uint64 = 0
 		var limit uint64 = 100
-		// Create slice to store the user data
-		//var usersToUpdate []storverse.UserProfile
+		// Create slice to store the data
 		var usersToCreate []storverse.UserProfile
-		//var versesToUpdate []storverse.Verse
 		var versesToCreate []storverse.Verse
-		//var fileInfosToUpdate []storverse.FileInfo
 		var fileInfosToCreate []storverse.FileInfo
-		//var userFollowingToUpdate []storverse.UserFollowing
 		var userFollowingToCreate []storverse.UserFollowing
-		//var listingInfosToUpdate []storverse.ListingInfo
 		var listingInfosToCreate []storverse.ListingInfo
-		//var purchaseOrdersToUpdate []storverse.PurchaseOrder
 		var purchaseOrdersToCreate []storverse.PurchaseOrder
-		//var verseCommentsToUpdate []storverse.VerseComment
 		var verseCommentsToCreate []storverse.VerseComment
-		//var verseCommentLikesToUpdate []storverse.VerseCommentLike
 		var verseCommentLikesToCreate []storverse.VerseCommentLike
-		//var verseLikesToUpdate []storverse.VerseLike
 		var verseLikesToCreate []storverse.VerseLike
+		var notificationsToCreate []storverse.Notification
+		var readNotificationsToCreate []storverse.ReadNotifications
 		commitIds := make(map[string]bool)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
@@ -151,15 +152,17 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 			} else {
 				// Create the items map
 				var itemsMap = map[string][]interface{}{
-					"USER_PROFILE":   convertToInterfaceSlice(usersToCreate),
-					"VERSE":          convertToInterfaceSlice(versesToCreate),
-					"FILE_INFO":      convertToInterfaceSlice(fileInfosToCreate),
-					"USER_FOLLOWING": convertToInterfaceSlice(userFollowingToCreate),
-					"LISTING_INFO":   convertToInterfaceSlice(listingInfosToCreate),
-					"PURCHASE_ORDER": convertToInterfaceSlice(purchaseOrdersToCreate),
-					"VERSE_COMMENT":  convertToInterfaceSlice(verseCommentsToCreate),
+					"USER_PROFILE":       convertToInterfaceSlice(usersToCreate),
+					"VERSE":              convertToInterfaceSlice(versesToCreate),
+					"FILE_INFO":          convertToInterfaceSlice(fileInfosToCreate),
+					"USER_FOLLOWING":     convertToInterfaceSlice(userFollowingToCreate),
+					"LISTING_INFO":       convertToInterfaceSlice(listingInfosToCreate),
+					"PURCHASE_ORDER":     convertToInterfaceSlice(purchaseOrdersToCreate),
+					"VERSE_COMMENT":      convertToInterfaceSlice(verseCommentsToCreate),
 					"VERSE_COMMENT_LIKE": convertToInterfaceSlice(verseCommentLikesToCreate),
-					"VERSE_LIKE":     convertToInterfaceSlice(verseLikesToCreate),
+					"VERSE_LIKE":         convertToInterfaceSlice(verseLikesToCreate),
+					"NOTIFICATION":       convertToInterfaceSlice(notificationsToCreate),
+					"READ_NOTIFICATIONS": convertToInterfaceSlice(readNotificationsToCreate),
 				}
 
 				// Iterate over the strategies and call performBatchInsert for each type
@@ -170,11 +173,19 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					}
 				}
 
-				rowsAffected, err := UpdateUserFollowingStatus(ctx, db)
+				rowsAffected, err := storverse.UpdateUserFollowingStatus(ctx, db)
 				if err != nil {
 					log.Errorf("Error updating USER_FOLLOWING records: %v", err)
 				} else {
 					log.Infof("Updated %d rows in USER_FOLLOWING", rowsAffected)
+				}
+
+				// update notification read status
+				rowsAffected, err = storverse.UpdateNotificationReadStatus(ctx, db)
+				if err != nil {
+					log.Errorf("Error updating NOTIFICATION records: %v", err)
+				} else {
+					log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
 				}
 
 				time.Sleep(1 * time.Minute)
@@ -190,6 +201,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				verseCommentsToCreate = nil
 				verseCommentLikesToCreate = nil
 				verseLikesToCreate = nil
+				notificationsToCreate = nil
+				readNotificationsToCreate = nil
 				commitIds = make(map[string]bool)
 
 				continue
@@ -291,6 +304,17 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							}
 						case storverse.UserFollowing:
 							if _, ok := commitIds[r.CommitID]; !ok {
+								// Create a notification for the user being followed
+								notification, err, skip := storverse.CreateNotification(db, record)
+								if err != nil {
+									log.Errorf("Error creating notification: %v", err)
+								} else {
+									notificationsToCreate = append(notificationsToCreate, *notification)
+								}
+								if skip {
+									continue
+								}
+
 								log.Infof("add to userFollowingToCreate: %v", r)
 								userFollowingToCreate = append(userFollowingToCreate, r)
 								commitIds[r.CommitID] = true
@@ -303,26 +327,76 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							}
 						case storverse.PurchaseOrder:
 							if _, ok := commitIds[r.CommitID]; !ok {
+								// Create a notification for the purchase order
+								notification, err, skip := storverse.CreateNotification(db, record)
+								if err != nil {
+									log.Errorf("Error creating notification: %v", err)
+								} else {
+									notificationsToCreate = append(notificationsToCreate, *notification)
+								}
+								if skip {
+									continue
+								}
+
 								log.Infof("add to purchaseOrdersToCreate: %v", r)
 								purchaseOrdersToCreate = append(purchaseOrdersToCreate, r)
 								commitIds[r.CommitID] = true
 							}
 						case storverse.VerseComment:
 							if _, ok := commitIds[r.CommitID]; !ok {
+								// Create a notification for the verse comment
+								notification, err, skip := storverse.CreateNotification(db, record)
+								if err != nil {
+									log.Errorf("Error creating notification: %v", err)
+								} else {
+									notificationsToCreate = append(notificationsToCreate, *notification)
+								}
+								if skip {
+									continue
+								}
+
 								log.Infof("add to verseCommentsToCreate: %v", r)
 								verseCommentsToCreate = append(verseCommentsToCreate, r)
 								commitIds[r.CommitID] = true
 							}
 						case storverse.VerseCommentLike:
 							if _, ok := commitIds[r.CommitID]; !ok {
+								// Create a notification for the verse comment like
+								notification, err, skip := storverse.CreateNotification(db, record)
+								if err != nil {
+									log.Errorf("Error creating notification: %v", err)
+								} else {
+									notificationsToCreate = append(notificationsToCreate, *notification)
+								}
+								if skip {
+									continue
+								}
+
 								log.Infof("add to verseCommentLikesToCreate: %v", r)
 								verseCommentLikesToCreate = append(verseCommentLikesToCreate, r)
 								commitIds[r.CommitID] = true
 							}
 						case storverse.VerseLike:
 							if _, ok := commitIds[r.CommitID]; !ok {
+								// Create a notification for the verse like
+								notification, err, skip := storverse.CreateNotification(db, record)
+								if err != nil {
+									log.Errorf("Error creating notification: %v", err)
+								} else {
+									notificationsToCreate = append(notificationsToCreate, *notification)
+								}
+								if skip {
+									continue
+								}
+
 								log.Infof("add to verseLikesToCreate: %v", r)
 								verseLikesToCreate = append(verseLikesToCreate, r)
+								commitIds[r.CommitID] = true
+							}
+						case storverse.ReadNotifications:
+							if _, ok := commitIds[r.CommitID]; !ok {
+								log.Infof("add to readNotificationsToCreate: %v", r)
+								readNotificationsToCreate = append(readNotificationsToCreate, r)
 								commitIds[r.CommitID] = true
 							}
 						default:
@@ -415,6 +489,20 @@ func InitializeStorverseTables(ctx context.Context, log *logging.ZapEventLogger,
 		log.Errorf("failed to create tables: %w", err)
 	}
 	log.Info("creating verse_like tables done.")
+
+	// initialize the notification database tables
+	log.Info("creating notification tables...")
+	if _, err := db.ExecContext(ctx, createNotificationDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating notification tables done.")
+
+	// initialize the read_notifications database tables
+	log.Info("creating read_notifications tables...")
+	if _, err := db.ExecContext(ctx, createReadNotificationsDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating read_notifications tables done.")
 }
 
 // // Define your function that accepts a context.Context as a parameter
@@ -629,26 +717,4 @@ func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter
 		}
 	}
 	return nil
-}
-
-func UpdateUserFollowingStatus(ctx context.Context, db *sql.DB) (int64, error) {
-	updateQuery := `UPDATE USER_FOLLOWING
-                SET status = 1
-                WHERE EXISTS (
-                  SELECT 1 FROM PURCHASE_ORDER
-                  WHERE PURCHASE_ORDER.TYPE=2 AND PURCHASE_ORDER.ITEMDATAID = USER_FOLLOWING.FOLLOWING
-                  AND PURCHASE_ORDER.BUYERDATAID = USER_FOLLOWING.FOLLOWER
-                );`
-
-	result, err := db.ExecContext(ctx, updateQuery)
-	if err != nil {
-		return 0, fmt.Errorf("Error updating USER_FOLLOWING records: %v", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("Error getting the number of updated rows: %v", err)
-	}
-
-	return rowsAffected, nil
 }

@@ -156,6 +156,28 @@ type VerseComment {
     likeCount: Int!
 }
 
+type Notification {
+    BaseDataID: String!
+    CreatedAt: Uint64!
+    UpdatedAt: Uint64!
+    FromUser: String!
+    ToUser: String!
+    MessageType: Int!
+    Message: String!
+    Status: String!
+}
+
+type UnreadCountInfo {
+    MessageType: String!
+    UnreadCount: Int!
+}
+
+type NotificationsInfo {
+    Items: [Notification!]!
+    TotalCount: Int!
+    UnreadCounts: [UnreadCountInfo!]!
+}
+
 type RootQuery {
     """Get Job by ID"""
     job(id: ID!): Job
@@ -205,4 +227,12 @@ type RootQuery {
         limit: Int
         offset: Int
     ): [VerseComment!]!
+
+    """Get Notifications by MessageType and toUser"""
+    notifications(
+        messageType: String!
+        toUser: String!
+        limit: Int
+        offset: Int
+    ): NotificationsInfo!
 }
