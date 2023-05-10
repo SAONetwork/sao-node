@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 type Notification struct {
@@ -49,7 +50,7 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		fromUser = r.BuyerDataID
 		// if r.Type = 1, it means the purchase order is for a verse, so fetch the verse owner
 		if r.Type == 1 {
-			verseOwner, err := GetVerseOwnerByVerseID(db, r.ItemDataID)
+			verseOwner, _, err := GetVerseOwnerAndDigestByVerseID(db, r.ItemDataID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, errors.New("verse not found"), true
@@ -69,7 +70,7 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 	case VerseComment:
 		fromUser = r.Owner
 		// Fetch the verse owner
-		verseOwner, err := GetVerseOwnerByVerseID(db, r.VerseId)
+		verseOwner, digest, err := GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
 		if err != nil {
 			return nil, err, true
 		}
@@ -77,11 +78,13 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		baseDataID = r.DataID
 		messageType = 4
 		notificationTime = r.CreatedAt
+		digest = truncateDigest(digest)
+		message = fmt.Sprintf("Replied your verse(%s)", digest)
 	case VerseLike:
 		// Add similar logic for VerseLike
 		fromUser = r.Owner
 		// Fetch the verse owner
-		verseOwner, err := GetVerseOwnerByVerseID(db, r.VerseId)
+		verseOwner, _, err := GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
 		if err != nil {
 			return nil, err, true
 		}
@@ -146,5 +149,25 @@ func UpdateNotificationReadStatus(ctx context.Context, db *sql.DB) (int64, error
 	}
 
 	return rowsAffected, nil
+}
+
+func truncateDigest(digest string) string {
+	words := strings.Fields(digest)
+	truncatedWords := []string{}
+	charCount := 0
+
+	for i, word := range words {
+		if i >= 4 || charCount+len(word) > 10 {
+			break
+		}
+		truncatedWords = append(truncatedWords, word)
+		charCount += len(word)
+	}
+
+	truncatedDigest := strings.Join(truncatedWords, " ")
+	if len(truncatedDigest) < len(digest) {
+		truncatedDigest += "..."
+	}
+	return truncatedDigest
 }
 
