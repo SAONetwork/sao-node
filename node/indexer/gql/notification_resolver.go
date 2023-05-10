@@ -60,11 +60,11 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 			&n.BaseDataID,
 			&n.CreatedAt,
 			&n.UpdatedAt,
-			&n.FromUser,
-			&n.ToUser,
-			&n.MessageType,
 			&n.Message,
 			&n.Status,
+			&n.MessageType,
+			&n.FromUser,
+			&n.ToUser,
 		)
 		if err != nil {
 			return nil, err
