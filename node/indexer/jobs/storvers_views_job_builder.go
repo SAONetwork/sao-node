@@ -592,7 +592,6 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 		err = json.Unmarshal(updatedData, recordPtr.Interface())
 		if err != nil {
 			log.Errorf("Unmarshal error: %v", err)
-			//cannot unmarshal xxx(string or int or any) into Go struct, if err contains this string, it means the data is not a json
 			if !strings.Contains(err.Error(), "cannot unmarshal") || !strings.Contains(err.Error(), "into Go struct field") {
 				return nil, err
 			}
