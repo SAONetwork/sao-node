@@ -37,7 +37,7 @@ func (s UserFollowingInsertionStrategy) TableName() string {
 func UpdateUserFollowingStatus(ctx context.Context, db *sql.DB) (int64, error) {
 	updateQuery := `UPDATE USER_FOLLOWING
                 SET status = 1
-                WHERE EXISTS (
+                WHERE status !=2 AND EXISTS (
                   SELECT 1 FROM PURCHASE_ORDER
                   WHERE PURCHASE_ORDER.TYPE=2 AND PURCHASE_ORDER.ITEMDATAID = USER_FOLLOWING.FOLLOWING
                   AND PURCHASE_ORDER.BUYERDATAID = USER_FOLLOWING.FOLLOWER

@@ -79,7 +79,7 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		messageType = 4
 		notificationTime = r.CreatedAt
 		digest = truncateDigest(digest)
-		message = fmt.Sprintf("Replied your verse(%s)", digest)
+		message = digest
 	case VerseLike:
 		// Add similar logic for VerseLike
 		fromUser = r.Owner
@@ -157,7 +157,7 @@ func truncateDigest(digest string) string {
 	charCount := 0
 
 	for i, word := range words {
-		if i >= 4 || charCount+len(word) > 10 {
+		if i >= 4 || charCount+len(word) > 30 {
 			break
 		}
 		truncatedWords = append(truncatedWords, word)
