@@ -68,6 +68,7 @@ type UserProfile {
     Bio: String!
     Banner: String!
     FollowingDataId: String!
+    IsFollowing: Boolean!
 }
 
 type Verse {
@@ -81,6 +82,7 @@ type Verse {
     Scope: Int!
     Status: String!
     NftTokenID: String!
+    FileType: String!
     IsPaid: Boolean!
     NotInScope: Int!
     CommentCount: Int!

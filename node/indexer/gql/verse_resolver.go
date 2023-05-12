@@ -23,6 +23,7 @@ type verse struct {
 	Scope      int32
 	Status     string
 	NftTokenID string
+	FileType  string
 	IsPaid     bool
 	NotInScope     int32
 	CommentCount int32
@@ -175,6 +176,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*ver
 			&v.Scope,
 			&v.Status,
 			&v.NftTokenID,
+			&v.FileType,
 		)
 	case *sql.Rows:
 		err = scanner.Scan(
@@ -189,6 +191,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*ver
 			&v.Scope,
 			&v.Status,
 			&v.NftTokenID,
+			&v.FileType,
 		)
 	default:
 		return nil, fmt.Errorf("unsupported row scanner type")

@@ -14,11 +14,12 @@ type Verse struct {
 	CreatedAt  int64    `json:"createdAt"`
 	FileIDs    []string `json:"fileIds"`
 	Owner      string   `json:"owner"`
-	Price      int64   `json:"price"`
+	Price      int64    `json:"price"`
 	Digest     string   `json:"digest"`
 	Scope      int      `json:"scope"`
 	Status     int      `json:"status"`
 	NftTokenID string   `json:"nftTokenId"`
+	FileType   string   `json:"fileType"`
 	CommitID   string
 	DataID     string
 	Alias      string
@@ -33,8 +34,8 @@ func (v Verse) InsertValues() string {
 		// handle error
 	}
 
-	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%d,'%s',%d,%d,'%s')",
-		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, v.Price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID)
+	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%d,'%s',%d,%d,'%s','%s')",
+		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, v.Price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID, v.FileType)
 }
 
 func (s VerseInsertionStrategy) Convert(item interface{}) BatchInserter {

@@ -24,7 +24,9 @@ type userProfile struct {
 	Bio             string       `json:"Bio"`
 	Banner          string       `json:"Banner"`
 	FollowingDataId string       `json:"FollowingDataId"`
+	IsFollowing bool `json:"IsFollowing"`
 }
+
 
 type userProfileArgs struct {
 	ID        *graphql.ID
@@ -147,6 +149,20 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 		if err != nil {
 			return nil, err
 		}
+
+		// New query to check if the user specified by args.UserDataId is following the suggested user
+		isFollowingQuery := `SELECT COUNT(*) 
+							 FROM USER_FOLLOWING 
+							 WHERE FOLLOWER = ? AND FOLLOWING = ?`
+		var count int
+		err = r.indexSvc.Db.QueryRowContext(ctx, isFollowingQuery, args.UserDataId, profile.DataId).Scan(&count)
+		if err != nil {
+			return nil, err
+		}
+
+		// If count is greater than 0, it means the user is following the suggested user
+		profile.IsFollowing = count > 0
+
 		suggestedProfiles = append(suggestedProfiles, &profile)
 	}
 
@@ -156,6 +172,7 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 
 	return suggestedProfiles, nil
 }
+
 
 func (m *userProfile) ID() graphql.ID {
 	return graphql.ID(m.CommitId)
