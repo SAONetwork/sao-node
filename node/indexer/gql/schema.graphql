@@ -212,6 +212,11 @@ type RootQuery {
     """Get Verses with multiple filtering options"""
     verses(owner: String, price: String, createdAt: Uint64, status: String, userDataId: String): [Verse!]!
 
+    """Get suggested Verses for user"""
+    subscribedVerses(userDataId: String
+        limit: Int
+        offset: Int): [Verse!]!
+
     """Get FileInfo by ID"""
     fileInfo(id: ID!, userDataId: String): FileInfo
 

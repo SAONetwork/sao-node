@@ -40,6 +40,12 @@ type VerseArgs struct {
 	NftTokenId *string
 }
 
+type subscribedVersesArgs struct {
+	UserDataId *string
+	Limit      *int
+	Offset     *int
+}
+
 // query: verse(id) Verse
 func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 	var row *sql.Row
@@ -49,9 +55,9 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 		if err != nil {
 			return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 		}
-		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE DATAID = ?", dataId)
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE DATAID = ? AND STATUS !=2 ", dataId)
 	} else if args.NftTokenId != nil {
-		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE NFTTOKENID = ?", *args.NftTokenId)
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE NFTTOKENID = ? AND STATUS !=2 ", *args.NftTokenId)
 	} else {
 		return nil, fmt.Errorf("either ID or nftTokenId must be provided")
 	}
@@ -116,7 +122,7 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 		query = query + " WHERE " + strings.Join(filters, " AND ")
 	}
 
-	query = query + " ORDER BY CREATEDAT DESC"
+	query = query + "AND STATUS !=2 ORDER BY CREATEDAT DESC"
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, query)
 	if err != nil {
@@ -152,6 +158,72 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 	}
 
 	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return verses, nil
+}
+
+func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesArgs) ([]*verse, error) {
+	if args.UserDataId == nil {
+		return nil, fmt.Errorf("UserDataId must be provided")
+	}
+
+	// Query to get a list of users the given user is following
+	queryFollowing := "SELECT FOLLOWING FROM USER_FOLLOWING WHERE FOLLOWER = ? AND STATUS != 2"
+	rowsFollowing, err := r.indexSvc.Db.QueryContext(ctx, queryFollowing, args.UserDataId)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsFollowing.Close()
+
+	// Collect the ids of the followed users
+	var followedUsers []string
+	for rowsFollowing.Next() {
+		var followedUser string
+		if err := rowsFollowing.Scan(&followedUser); err != nil {
+			return nil, err
+		}
+		followedUsers = append(followedUsers, followedUser)
+	}
+
+	if len(followedUsers) == 0 {
+		return []*verse{}, nil
+	}
+
+	// Prepare the query for the verses
+	queryVerses := "SELECT * FROM VERSE WHERE OWNER IN (?" + strings.Repeat(", ?", len(followedUsers)-1) + ") AND STATUS != 2 ORDER BY CREATEDAT DESC"
+	if args.Limit != nil {
+		queryVerses += fmt.Sprintf(" LIMIT %d", *args.Limit)
+	}
+	if args.Offset != nil {
+		queryVerses += fmt.Sprintf(" OFFSET %d", *args.Offset)
+	}
+
+	// Convert followedUsers to an interface slice for the db query
+	followedUsersInterface := make([]interface{}, len(followedUsers))
+	for i, v := range followedUsers {
+		followedUsersInterface[i] = v
+	}
+
+	// Execute the query
+	rowsVerses, err := r.indexSvc.Db.QueryContext(ctx, queryVerses, followedUsersInterface...)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsVerses.Close()
+
+	var verses []*verse
+	for rowsVerses.Next() {
+		v, err := verseFromRow(rowsVerses, ctx, r.indexSvc.Db)
+		if err != nil {
+			return nil, err
+		}
+
+		verses = append(verses, v)
+	}
+
+	if err = rowsVerses.Err(); err != nil {
 		return nil, err
 	}
 
