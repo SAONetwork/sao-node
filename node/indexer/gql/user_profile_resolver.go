@@ -32,6 +32,10 @@ type userProfileArgs struct {
 	EthAddress *string
 }
 
+type suggestedUsersArgs struct {
+	UserDataId *string
+}
+
 // query: userProfile(id) UserProfile
 func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*userProfile, error) {
 	var dataId uuid.UUID
@@ -100,6 +104,57 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 	}
 
 	return &profile, nil
+}
+
+// query: suggestedUsers(userDataId) [UserProfile!]!
+func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) ([]*userProfile, error) {
+	query := `SELECT USER_PROFILE.* 
+              FROM USER_PROFILE 
+              LEFT JOIN (
+                SELECT FOLLOWING, COUNT(*) as COUNT 
+                FROM USER_FOLLOWING 
+                GROUP BY FOLLOWING
+              ) as FOLLOWING_COUNTS ON USER_PROFILE.DATAID = FOLLOWING_COUNTS.FOLLOWING
+              ORDER BY FOLLOWING_COUNTS.COUNT DESC 
+              LIMIT 5`
+
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var suggestedProfiles []*userProfile
+	for rows.Next() {
+		var profile userProfile
+		err = rows.Scan(
+			&profile.CommitId,
+			&profile.DataId,
+			&profile.Alias,
+			&profile.CreatedAt,
+			&profile.UpdatedAt,
+			&profile.Did,
+			&profile.EthAddr,
+			&profile.Avatar,
+			&profile.Username,
+			&profile.FollowingCount,
+			&profile.Twitter,
+			&profile.Youtube,
+			&profile.Bio,
+			&profile.Banner,
+			&profile.FollowingDataId,
+		)
+		if err != nil {
+			return nil, err
+		}
+		suggestedProfiles = append(suggestedProfiles, &profile)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return suggestedProfiles, nil
 }
 
 func (m *userProfile) ID() graphql.ID {

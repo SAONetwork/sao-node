@@ -201,6 +201,9 @@ type RootQuery {
     """Get UserProfile by ID or DID or EthAddress"""
     userProfile(id: ID, did: String, ethAddress: String): UserProfile
 
+    """Get most followed users"""
+    suggestedUsers(userDataId: String): [UserProfile!]!
+
     """Get Verse by ID"""
     verse(id: ID, nftTokenID: String, userDataId: String): Verse
 
