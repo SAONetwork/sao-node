@@ -374,7 +374,12 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*ver
 	row := db.QueryRowContext(ctx, query, v.Owner)
 	err = row.Scan(&v.OwnerEthAddr, &v.OwnerAvatar, &v.OwnerUsername, &v.OwnerBio)
 	if err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			// No rows found, skipping.
+			fmt.Println("No rows found, skipping.")
+		} else {
+			fmt.Println("Error scanning row: ", err)
+		}
 	}
 
 
