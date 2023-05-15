@@ -13,7 +13,7 @@ type UserFollowing struct {
 	ExpiredAt int64  `json:"expiredAt"`
 	Follower  string `json:"follower"`
 	Following string `json:"following"`
-	Status    string    `json:"status"`
+	Status    int32    `json:"status"`
 	CommitID  string
 	DataID    string
 	Alias 	  string
@@ -22,7 +22,7 @@ type UserFollowing struct {
 type UserFollowingInsertionStrategy struct{}
 
 func (uf UserFollowing) InsertValues() string {
-	return fmt.Sprintf("('%s','%s','%s', %d, %d, %d, '%s', '%s', %s)",
+	return fmt.Sprintf("('%s','%s','%s', %d, %d, %d, '%s', '%s', %d)",
 		uf.CommitID, uf.DataID, uf.Alias, uf.CreatedAt, uf.UpdatedAt, uf.ExpiredAt, uf.Follower, uf.Following, uf.Status)
 }
 

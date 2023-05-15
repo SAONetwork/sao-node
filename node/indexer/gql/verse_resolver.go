@@ -28,6 +28,7 @@ type verse struct {
 	NotInScope     int32
 	CommentCount int32
 	LikeCount    int32
+	HasFollowedOwner bool
 }
 
 type VerseArgs struct {
@@ -231,6 +232,16 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 			return nil, err
 		}
 
+		if args.UserDataId != nil {
+			var count int
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+
+			v.HasFollowedOwner = count > 0
+		}
+
 		verses = append(verses, v)
 	}
 
@@ -241,7 +252,8 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 	return verses, nil
 }
 
-func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string }) ([]*verse, error) {
+func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string
+	UserDataId *string}) ([]*verse, error) {
 	// Prepare the base query
 	query := "SELECT * FROM VERSE"
 
@@ -274,6 +286,16 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string })
 		v, err := verseFromRow(rows, ctx, r.indexSvc.Db)
 		if err != nil {
 			return nil, err
+		}
+
+		if args.UserDataId != nil {
+			var count int
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+
+			v.HasFollowedOwner = count > 0
 		}
 
 		verses = append(verses, v)
@@ -348,22 +370,29 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*ver
 
 
 func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId string) (*verse, error) {
+	// Check if the user follows the owner of the verse
+	var count int
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ? AND FOLLOWING = ?", userDataId, v.Owner).Scan(&count)
+	if err != nil {
+		return nil, err
+	}
+	v.HasFollowedOwner = count > 0
+
 	// Check verse scope conditions and modify the verse accordingly
 	switch v.Scope {
 	case 2:
+		if !v.HasFollowedOwner {
+			v.NotInScope = 2
+		}
+	case 3:
 		var count int
 		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ? AND FOLLOWER = ?", v.Owner, userDataId).Scan(&count)
 		if err != nil {
 			return nil, err
 		}
-		v.NotInScope = 2
-	case 3:
-		var count int
-		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ? AND FOLLOWER = ?", userDataId, v.Owner).Scan(&count)
-		if err != nil {
-			return nil, err
+		if count == 0 {
+			v.NotInScope = 3
 		}
-		v.NotInScope = 3
 	case 5:
 		if userDataId != v.Owner {
 			return nil, fmt.Errorf("verse is private")
@@ -372,6 +401,7 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 
 	return v, nil
 }
+
 
 func (v *verse) ID() graphql.ID {
 	return graphql.ID(v.CommitId)

@@ -87,6 +87,7 @@ type Verse {
     NotInScope: Int!
     CommentCount: Int!
     LikeCount: Int!
+    HasFollowedOwner: Boolean!
 }
 
 type FileInfo {
@@ -219,7 +220,7 @@ type RootQuery {
         offset: Int): [Verse!]!
 
     """Get Verses by verse ID list"""
-    versesByIds(ids: [String!]!): [Verse!]!
+    versesByIds(ids: [String!]!, userDataId: String): [Verse!]!
 
     """Get FileInfo by ID"""
     fileInfo(id: ID!, userDataId: String): FileInfo
