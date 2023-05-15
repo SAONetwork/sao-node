@@ -88,6 +88,10 @@ type Verse {
     CommentCount: Int!
     LikeCount: Int!
     HasFollowedOwner: Boolean!
+    OwnerEthAddr: String!
+    OwnerAvatar: String!
+    OwnerUsername: String!
+    OwnerBio: String!
 }
 
 type FileInfo {

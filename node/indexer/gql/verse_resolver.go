@@ -29,6 +29,10 @@ type verse struct {
 	CommentCount int32
 	LikeCount    int32
 	HasFollowedOwner bool
+	OwnerEthAddr string
+	OwnerAvatar  string
+	OwnerUsername string
+	OwnerBio    string
 }
 
 type VerseArgs struct {
@@ -364,6 +368,15 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*ver
 	if err != nil {
 		return nil, err
 	}
+
+	// Query owner information from USER_PROFILE
+	query := `SELECT ETHADDR, AVATAR, USERNAME, BIO FROM USER_PROFILE WHERE DATAID = ?`
+	row := db.QueryRowContext(ctx, query, v.Owner)
+	err = row.Scan(&v.OwnerEthAddr, &v.OwnerAvatar, &v.OwnerUsername, &v.OwnerBio)
+	if err != nil {
+		return nil, err
+	}
+
 
 	return &v, nil
 }
