@@ -21,6 +21,12 @@ type userFollowing struct {
 	Following string       `json:"Following"`
 	Status    string       `json:"Status"`
 	ToPay     bool         `json:"ToPay"`
+
+	// user profile fields
+	EthAddr  string `json:"EthAddr"`
+	Avatar   string `json:"Avatar"`
+	Username string `json:"Username"`
+	Bio      string `json:"Bio"`
 }
 
 type followingResult struct {
@@ -38,7 +44,10 @@ func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID
 
 	// query the database for the user following with the given id
 	var uf userFollowing
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM USER_FOLLOWING WHERE DATAID = ? AND STATUS = 1", id)
+	row := r.indexSvc.Db.QueryRowContext(ctx, `SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+                                                FROM USER_FOLLOWING UF
+                                                JOIN USER_PROFILE UP ON UF.FOLLOWER = UP.DATAID
+                                                WHERE UF.DATAID = ? AND UF.STATUS = 1`, id)
 	err = row.Scan(
 		&uf.CommitId,
 		&uf.DataId,
@@ -49,6 +58,11 @@ func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID
 		&uf.Follower,
 		&uf.Following,
 		&uf.Status,
+		// user profile fields
+		&uf.EthAddr,
+		&uf.Avatar,
+		&uf.Username,
+		&uf.Bio,
 	)
 	if err != nil {
 		return nil, err // return error if query failed
@@ -58,27 +72,44 @@ func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID
 	return &uf, nil
 }
 
-func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId string
-	MutualWithId *string }) (*followingResult, error) {
-
+func (r *resolver) Followings(ctx context.Context, args struct {
+	FollowingDataId string
+	MutualWithId    *string
+	Limit           *int32
+	Offset          *int32
+}) (*followingResult, error) {
 	var rows *sql.Rows
 	var err error
+	limit := 10 // default limit
+	offset := 0 // default offset
+
+	if args.Limit != nil {
+		limit = int(*args.Limit)
+	}
+	if args.Offset != nil {
+		offset = int(*args.Offset)
+	}
 
 	if args.MutualWithId != nil {
-		query := `SELECT UF1.* 
+		query := `SELECT UF1.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 			  FROM USER_FOLLOWING UF1
-			  JOIN USER_FOLLOWING UF2
-			  ON UF1.FOLLOWER = UF2.FOLLOWER
+			  JOIN USER_FOLLOWING UF2 ON UF1.FOLLOWER = UF2.FOLLOWER
+			  JOIN USER_PROFILE UP ON UF1.FOLLOWER = UP.DATAID
 			  WHERE UF1.FOLLOWING = ? 
 			  AND UF2.FOLLOWING = ?
 			  AND UF1.STATUS = 1
-			  AND UF2.STATUS = 1`
+			  AND UF2.STATUS = 1
+			  LIMIT ? OFFSET ?`
 
-		rows, err = r.indexSvc.Db.QueryContext(ctx, query, args.FollowingDataId, *args.MutualWithId)
+		rows, err = r.indexSvc.Db.QueryContext(ctx, query, args.FollowingDataId, *args.MutualWithId, limit, offset)
 
 	} else {
-		query := `SELECT * FROM USER_FOLLOWING WHERE FOLLOWING = ? AND STATUS = 1`
-		rows, err = r.indexSvc.Db.QueryContext(ctx, query, args.FollowingDataId)
+		query := `SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		FROM USER_FOLLOWING UF
+		JOIN USER_PROFILE UP ON UF.FOLLOWER = UP.DATAID
+		WHERE UF.FOLLOWING = ? AND UF.STATUS = 1
+		LIMIT ? OFFSET ?`
+		rows, err = r.indexSvc.Db.QueryContext(ctx, query, args.FollowingDataId, limit, offset)
 	}
 
 	if err != nil {
@@ -99,6 +130,11 @@ func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId 
 			&uf.Follower,
 			&uf.Following,
 			&uf.Status,
+			// New fields
+			&uf.EthAddr,
+			&uf.Avatar,
+			&uf.Username,
+			&uf.Bio,
 		)
 		if err != nil {
 			return nil, err
@@ -119,16 +155,43 @@ func (r *resolver) Followings(ctx context.Context, args struct{ FollowingDataId 
 	return result, nil
 }
 
-func (r *resolver) FollowedList(ctx context.Context, args struct{ Follower string; IsExpired bool }) (*followingResult, error) {
+func (r *resolver) FollowedList(ctx context.Context, args struct {
+	Follower  string
+	IsExpired bool
+	Limit     *int32
+	Offset    *int32
+}) (*followingResult, error) {
 	var query string
+	limit := 10 // default limit
+	offset := 0 // default offset
+
+	if args.Limit != nil {
+		limit = int(*args.Limit)
+	}
+	if args.Offset != nil {
+		offset = int(*args.Offset)
+	}
+
 	if args.IsExpired {
-		query = "SELECT * FROM USER_FOLLOWING WHERE FOLLOWER = ? AND EXPIREDAT < ? AND EXPIREDAT != 0 AND STATUS = 1"
+		query = `
+		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		FROM USER_FOLLOWING UF
+		INNER JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
+		WHERE UF.FOLLOWER = ? AND UF.EXPIREDAT < ? AND UF.EXPIREDAT != 0 AND UF.STATUS = 1
+		LIMIT ? OFFSET ?
+		`
 	} else {
-		query = "SELECT * FROM USER_FOLLOWING WHERE FOLLOWER = ? AND (EXPIREDAT > ? OR EXPIREDAT = 0) AND STATUS = 1"
+		query = `
+		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		FROM USER_FOLLOWING UF
+		INNER JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
+		WHERE UF.FOLLOWER = ? AND (UF.EXPIREDAT > ? OR UF.EXPIREDAT = 0) AND UF.STATUS = 1
+		LIMIT ? OFFSET ?
+		`
 	}
 
 	currentTime := time.Now().Unix()
-	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.Follower, currentTime)
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.Follower, currentTime, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +210,12 @@ func (r *resolver) FollowedList(ctx context.Context, args struct{ Follower strin
 			&uf.Follower,
 			&uf.Following,
 			&uf.Status,
+			&uf.ToPay,
+			// user profile fields
+			&uf.EthAddr,
+			&uf.Avatar,
+			&uf.Username,
+			&uf.Bio,
 		)
 		if err != nil {
 			return nil, err
@@ -166,7 +235,6 @@ func (r *resolver) FollowedList(ctx context.Context, args struct{ Follower strin
 
 	return result, nil
 }
-
 
 func (m *userFollowing) ID() graphql.ID {
 	return graphql.ID(m.CommitId)

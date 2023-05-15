@@ -112,6 +112,10 @@ type UserFollowing {
     Following: String!
     Status: String!
     ToPay: Boolean!
+    EthAddr: String!
+    Avatar: String!
+    Username: String!
+    Bio: String!
 }
 
 type ListingInfo {
@@ -232,10 +236,10 @@ type RootQuery {
     file(id: ID!, userDataId: String): String
 
     """Get Followings by FollowingDataId"""
-    followings(followingDataId: String!, mutualWithId: String): FollowingResult!
+    followings(followingDataId: String!, mutualWithId: String, limit: Int, offset: Int): FollowingResult!
 
     """Get Followed List by FOLLOWER"""
-    followedList(follower: String!, isExpired: Boolean!): FollowingResult!
+    followedList(follower: String!, isExpired: Boolean!, limit: Int, offset: Int): FollowingResult!
 
     """Get ListingInfo by DataId or TokenId"""
     listingInfo(dataId: String, tokenId: String): ListingInfo
