@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ type fileInfo struct {
 	Owner        string
 	Filename     string
 	FileCategory string
+	VerseId      string
 }
 
 type fileContent struct {
@@ -38,14 +40,14 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 	ID         graphql.ID
 	UserDataId *string
 }) (*fileInfo, error) {
-	var commitId uuid.UUID
-	err := commitId.UnmarshalText([]byte(args.ID))
+	var dataId uuid.UUID
+	err := dataId.UnmarshalText([]byte(args.ID))
 	if err != nil {
 		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 	}
 
 	var fi fileInfo
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM FILE_INFO WHERE COMMITID = ?", commitId)
+	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM FILE_INFO WHERE DATAID = ?", dataId)
 	err = row.Scan(
 		&fi.CommitId,
 		&fi.DataID,
@@ -85,6 +87,9 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 		return &fi, nil
 	}
 
+	// Set the VerseId
+	fi.VerseId = v.DataId
+
 	if args.UserDataId != nil {
 		// Process verse scope
 		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)
@@ -114,6 +119,82 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 	}
 
 	return &fi, nil
+}
+
+func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
+	VerseIds []string
+	UserDataId *string
+}) ([]*fileInfo, error) {
+	var fileInfos []*fileInfo
+
+	// Fetch the fileIDs for each verseId in the order of verseIds
+	orderedFileIDs := make([]string, 0)
+	orderedVerseIDs := make([]string, 0) // To keep track of verseId for each fileId
+	for _, verseId := range args.VerseIds {
+		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS FROM VERSE WHERE DATAID = ?", verseId)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var fileIDsJSON string
+		if rows.Next() {
+			err = rows.Scan(&fileIDsJSON)
+			if err != nil {
+				return nil, err
+			}
+
+			var fileIDs []string
+			err = json.Unmarshal([]byte(fileIDsJSON), &fileIDs)
+			if err != nil {
+				return nil, fmt.Errorf("parsing FILEIDS '%s' as JSON: %w", fileIDsJSON, err)
+			}
+
+			orderedFileIDs = append(orderedFileIDs, fileIDs...)
+			for range fileIDs {
+				orderedVerseIDs = append(orderedVerseIDs, verseId)
+			}
+		}
+	}
+
+	// Fetch the fileInfo for each fileID and create a map of fileID to fileInfo
+	fileInfoMap := make(map[string]*fileInfo)
+	for i, fileID := range orderedFileIDs {
+		row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM FILE_INFO WHERE DATAID = ?", fileID)
+
+		var fi fileInfo
+		err := row.Scan(
+			&fi.CommitId,
+			&fi.DataID,
+			&fi.Alias,
+			&fi.CreatedAt,
+			&fi.FileDataID,
+			&fi.ContentType,
+			&fi.Owner,
+			&fi.Filename,
+			&fi.FileCategory,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		// Add verseId field to fileInfo
+		fi.VerseId = orderedVerseIDs[i]
+		fileInfoMap[fileID] = &fi
+	}
+
+	// Order the fileInfos according to the order of fileIDs in orderedFileIDs and limit the size to 10
+	for _, fileID := range orderedFileIDs {
+		if len(fileInfos) >= 10 {
+			break
+		}
+
+		if fi, ok := fileInfoMap[fileID]; ok {
+			fileInfos = append(fileInfos, fi)
+		}
+	}
+
+	return fileInfos, nil
 }
 
 // query: file(id, userDataId) String
@@ -155,5 +236,5 @@ func (r *resolver) File(ctx context.Context, args struct {
 }
 
 func (fi *fileInfo) ID() graphql.ID {
-	return graphql.ID(fi.CommitId)
+	return graphql.ID(fi.DataID)
 }

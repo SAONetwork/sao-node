@@ -98,6 +98,7 @@ type FileInfo {
     FileDataID: String!
     Owner: String!
     FileCategory: String!
+    VerseId: String!
 }
 
 type UserFollowing {
@@ -210,15 +211,21 @@ type RootQuery {
     verse(id: ID, nftTokenID: String, userDataId: String): Verse
 
     """Get Verses with multiple filtering options"""
-    verses(owner: String, price: String, createdAt: Uint64, status: String, userDataId: String): [Verse!]!
+    verses(owner: String, price: String, createdAt: Uint64, status: String, userDataId: String, limit: Int, offset: Int): [Verse!]!
 
     """Get suggested Verses for user"""
     subscribedVerses(userDataId: String
         limit: Int
         offset: Int): [Verse!]!
 
+    """Get Verses by verse ID list"""
+    versesByIds(ids: [String!]!): [Verse!]!
+
     """Get FileInfo by ID"""
     fileInfo(id: ID!, userDataId: String): FileInfo
+
+    """Get FileInfos by verse ID list"""
+    fileInfosByVerseIds(verseIds: [String!]!, userDataId: String): [FileInfo!]!
 
     """Get File by ID"""
     file(id: ID!, userDataId: String): String

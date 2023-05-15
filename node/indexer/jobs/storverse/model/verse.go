@@ -31,7 +31,8 @@ func (v Verse) InsertValues() string {
 	// Serialize the FileIDs into a JSON string
 	fileIDsJSON, err := json.Marshal(v.FileIDs)
 	if err != nil {
-		// handle error
+		// handle error, log the error
+		fmt.Println(err)
 	}
 
 	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%d,'%s',%d,%d,'%s','%s')",

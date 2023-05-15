@@ -38,6 +38,8 @@ type VerseArgs struct {
 	CreatedAt  *types.Uint64
 	Status     *string
 	NftTokenId *string
+	Limit      *int
+	Offset     *int
 }
 
 type subscribedVersesArgs struct {
@@ -122,7 +124,15 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 		query = query + " WHERE " + strings.Join(filters, " AND ")
 	}
 
-	query = query + "AND STATUS !=2 ORDER BY CREATEDAT DESC"
+	query = query + " AND STATUS !=2 ORDER BY CREATEDAT DESC"
+
+	// Add limit and offset if provided
+	if args.Limit != nil {
+		query = query + fmt.Sprintf(" LIMIT %d", *args.Limit)
+	}
+	if args.Offset != nil {
+		query = query + fmt.Sprintf(" OFFSET %d", *args.Offset)
+	}
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, query)
 	if err != nil {
@@ -163,6 +173,7 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 
 	return verses, nil
 }
+
 
 func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesArgs) ([]*verse, error) {
 	if args.UserDataId == nil {
@@ -224,6 +235,51 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 	}
 
 	if err = rowsVerses.Err(); err != nil {
+		return nil, err
+	}
+
+	return verses, nil
+}
+
+func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string }) ([]*verse, error) {
+	// Prepare the base query
+	query := "SELECT * FROM VERSE"
+
+	// Add filters if provided
+	var filters []string
+	if len(args.Ids) > 0 {
+		// Create a list of '?' placeholders, one for each id
+		placeholders := strings.Repeat("?,", len(args.Ids) - 1) + "?"
+
+		// Add the filter for id
+		filters = append(filters, fmt.Sprintf("ID IN (%s)", placeholders))
+	} else {
+		// If no ids provided, return an empty result
+		return []*verse{}, nil
+	}
+
+	// Combine the base query with filters
+	query = query + " WHERE " + strings.Join(filters, " AND ")
+
+	query = query + " AND STATUS !=2 ORDER BY CREATEDAT DESC"
+
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.Ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var verses []*verse
+	for rows.Next() {
+		v, err := verseFromRow(rows, ctx, r.indexSvc.Db)
+		if err != nil {
+			return nil, err
+		}
+
+		verses = append(verses, v)
+	}
+
+	if err = rows.Err(); err != nil {
 		return nil, err
 	}
 
