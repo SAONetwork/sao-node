@@ -372,11 +372,13 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 
 	if userDataId != nil {
 		// Query HasLiked from verse_like table
+		var count int
 		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE VerseID = ? AND OWNER = ?"
-		err = db.QueryRowContext(ctx, likeQuery, v.DataId, v.Owner).Scan(&v.HasLiked)
+		err = db.QueryRowContext(ctx, likeQuery, v.DataId, v.Owner).Scan(count)
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 		}
+		v.HasLiked = count > 0
 	}
 
 	// Query owner information from USER_PROFILE
