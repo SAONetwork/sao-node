@@ -53,6 +53,19 @@ type ShardList {
   more: Boolean!
 }
 
+type NFTMetaInfo {
+	Id: ID!
+	NftId: String!
+	TraitType: String!
+	Value: String!
+}
+
+type NFTMetaInfoList {
+  totalCount: Int!
+  NFTMetaInfo: [Shard]!
+  more: Boolean!
+}
+
 type RootQuery {
   """Get Job by ID"""
   job(id: ID!): Job

@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS NFT_TRAIT (
+    ID INT,
+    NFTID TEXT,
+    TRAIT_TYPE TEXT,
+    Value TEXT,
+    PRIMARY KEY(ID)
+) WITHOUT ROWID;
+
+CREATE INDEX IF NOT EXISTS index_nft_trait_id_nftid_traittype on METADATA(ID);

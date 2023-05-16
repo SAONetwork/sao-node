@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sao-node/chain"
+	"sao-node/node/indexer/jobs"
 	"sao-node/node/queue"
 	"sao-node/types"
 	"sao-node/utils"
@@ -83,6 +84,13 @@ func NewIndexSvc(
 	// is.schedQueue.Push(&queue.WorkRequest{
 	// 	Job: job2,
 	// })
+
+	dataIds := make([]string, 0)
+	job3 := jobs.BuildNFTMetaInfoIndexJob(ctx, is.ChainSvc, is.Db, dataIds)
+	is.JobsMap[job3.ID] = job3
+	is.schedQueue.Push(&queue.WorkRequest{
+		Job: job3,
+	})
 
 	return is
 }
