@@ -202,7 +202,7 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 func (r *resolver) File(ctx context.Context, args struct {
 	ID              graphql.ID
 	UserDataId      *string
-	GetFromFileInfo bool
+	GetFromFileInfo *bool
 }) (*string, error) {
 	var dataId uuid.UUID
 	err := dataId.UnmarshalText([]byte(args.ID))
@@ -214,7 +214,7 @@ func (r *resolver) File(ctx context.Context, args struct {
 	var fileDataID uuid.UUID
 	var row *sql.Row
 
-	if args.GetFromFileInfo {
+	if args.GetFromFileInfo != nil && *args.GetFromFileInfo {
 		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT FILEDATAID FROM FILE_INFO WHERE DATAID = ?", dataId)
 		err = row.Scan(&fileDataID)
 		if err != nil {
