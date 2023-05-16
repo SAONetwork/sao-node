@@ -77,6 +77,7 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 		&v.Scope,
 		&v.Status,
 		&v.NftTokenID,
+		&v.FileType,
 	)
 
 	if err != nil && err != sql.ErrNoRows {
