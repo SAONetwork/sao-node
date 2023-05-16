@@ -176,7 +176,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		query = `
 		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 		FROM USER_FOLLOWING UF
-		INNER JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
+		LEFT JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
 		WHERE UF.FOLLOWER = ? AND UF.EXPIREDAT < ? AND UF.EXPIREDAT != 0 AND UF.STATUS = 1
 		LIMIT ? OFFSET ?
 		`
@@ -184,7 +184,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		query = `
 		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 		FROM USER_FOLLOWING UF
-		INNER JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
+		LEFT JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
 		WHERE UF.FOLLOWER = ? AND (UF.EXPIREDAT > ? OR UF.EXPIREDAT = 0) AND UF.STATUS = 1
 		LIMIT ? OFFSET ?
 		`
@@ -210,7 +210,6 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 			&uf.Follower,
 			&uf.Following,
 			&uf.Status,
-			&uf.ToPay,
 			// user profile fields
 			&uf.EthAddr,
 			&uf.Avatar,
