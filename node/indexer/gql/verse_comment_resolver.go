@@ -7,16 +7,20 @@ import (
 )
 
 type verseComment struct {
-	CommitId  string       `json:"CommitId"`
-	DataId    string       `json:"DataId"`
-	Alias     string       `json:"Alias"`
-	CreatedAt types.Uint64 `json:"CreatedAt"`
-	UpdatedAt types.Uint64 `json:"UpdatedAt"`
-	VerseID   string       `json:"VerseID"`
-	Owner     string       `json:"Owner"`
-	Comment   string       `json:"Comment"`
-	ParentID  string       `json:"ParentID"`
-	LikeCount int32        `json:"LikeCount"`
+	CommitId      string       `json:"CommitId"`
+	DataId        string       `json:"DataId"`
+	Alias         string       `json:"Alias"`
+	CreatedAt     types.Uint64 `json:"CreatedAt"`
+	UpdatedAt     types.Uint64 `json:"UpdatedAt"`
+	VerseID       string       `json:"VerseID"`
+	Owner         string       `json:"Owner"`
+	Comment       string       `json:"Comment"`
+	ParentID      string       `json:"ParentID"`
+	LikeCount     int32        `json:"LikeCount"`
+	OwnerEthAddr  string       `json:"OwnerEthAddr"`
+	OwnerAvatar   string       `json:"OwnerAvatar"`
+	OwnerUsername string       `json:"OwnerUsername"`
+	OwnerBio      string       `json:"OwnerBio"`
 }
 
 type verseCommentsArgs struct {
@@ -37,7 +41,13 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 		offset = int(*args.Offset)
 	}
 
-	rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM VERSE_COMMENT WHERE VERSEID = ? LIMIT ? OFFSET ?", args.VerseID, limit, offset)
+	rows, err := r.indexSvc.Db.QueryContext(ctx, `
+			SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+			FROM VERSE_COMMENT VC
+			LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
+			WHERE VC.VERSEID = ? 
+			LIMIT ? OFFSET ?`,
+		args.VerseID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -56,6 +66,10 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 			&c.ParentID,
 			&c.VerseID,
 			&c.Owner,
+			&c.OwnerEthAddr,
+			&c.OwnerAvatar,
+			&c.OwnerUsername,
+			&c.OwnerBio,
 		)
 		if err != nil {
 			return nil, err

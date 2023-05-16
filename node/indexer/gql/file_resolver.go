@@ -200,17 +200,31 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 
 // query: file(id, userDataId) String
 func (r *resolver) File(ctx context.Context, args struct {
-	ID         graphql.ID
-	UserDataId *string
+	ID              graphql.ID
+	UserDataId      *string
+	GetFromFileInfo bool
 }) (*string, error) {
-	var commitId uuid.UUID
-	err := commitId.UnmarshalText([]byte(args.ID))
+	var dataId uuid.UUID
+	err := dataId.UnmarshalText([]byte(args.ID))
 	if err != nil {
 		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
 	}
 
 	var fc fileContent
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM FILE_CONTENT WHERE COMMITID = ?", commitId)
+	var fileDataID uuid.UUID
+	var row *sql.Row
+
+	if args.GetFromFileInfo {
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT FILEDATAID FROM FILE_INFO WHERE DATAID = ?", dataId)
+		err = row.Scan(&fileDataID)
+		if err != nil {
+			return nil, err
+		}
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM FILE_CONTENT WHERE DATAID = ?", fileDataID)
+	} else {
+		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM FILE_CONTENT WHERE DATAID = ?", dataId)
+	}
+
 	err = row.Scan(
 		&fc.CommitId,
 		&fc.DataID,
@@ -235,6 +249,7 @@ func (r *resolver) File(ctx context.Context, args struct {
 	fileContentString := string(fileContentBytes)
 	return &fileContentString, nil
 }
+
 
 func (fi *fileInfo) ID() graphql.ID {
 	return graphql.ID(fi.DataID)

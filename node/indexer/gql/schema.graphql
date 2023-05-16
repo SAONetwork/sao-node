@@ -88,6 +88,7 @@ type Verse {
     CommentCount: Int!
     LikeCount: Int!
     HasFollowedOwner: Boolean!
+    HasLiked: Boolean!
     OwnerEthAddr: String!
     OwnerAvatar: String!
     OwnerUsername: String!
@@ -167,6 +168,10 @@ type VerseComment {
     Comment: String!
     ParentID: String!
     likeCount: Int!
+    OwnerEthAddr: String!
+    OwnerAvatar: String!
+    OwnerUsername: String!
+    OwnerBio: String!
 }
 
 type Notification {
@@ -237,7 +242,7 @@ type RootQuery {
     fileInfosByVerseIds(verseIds: [String!]!, userDataId: String): [FileInfo!]!
 
     """Get File by ID"""
-    file(id: ID!, userDataId: String): String
+    file(id: ID!, userDataId: String, getFromFileInfo:Boolean): String
 
     """Get Followings by FollowingDataId"""
     followings(followingDataId: String!, mutualWithId: String, limit: Int, offset: Int): FollowingResult!

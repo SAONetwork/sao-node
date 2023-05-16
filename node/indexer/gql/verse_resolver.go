@@ -29,6 +29,7 @@ type verse struct {
 	CommentCount int32
 	LikeCount    int32
 	HasFollowedOwner bool
+	HasLiked bool
 	OwnerEthAddr string
 	OwnerAvatar  string
 	OwnerUsername string
@@ -69,7 +70,7 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 		return nil, fmt.Errorf("either ID or nftTokenId must be provided")
 	}
 
-	v, err := verseFromRow(row, ctx, r.indexSvc.Db)
+	v, err := verseFromRow(row, ctx, r.indexSvc.Db, args.UserDataId)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +148,7 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 
 	var verses []*verse
 	for rows.Next() {
-		v, err := verseFromRow(rows, ctx, r.indexSvc.Db)
+		v, err := verseFromRow(rows, ctx, r.indexSvc.Db, args.UserDataId)
 		if err != nil {
 			return nil, err
 		}
@@ -231,7 +232,7 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 
 	var verses []*verse
 	for rowsVerses.Next() {
-		v, err := verseFromRow(rowsVerses, ctx, r.indexSvc.Db)
+		v, err := verseFromRow(rowsVerses, ctx, r.indexSvc.Db, args.UserDataId)
 		if err != nil {
 			return nil, err
 		}
@@ -287,7 +288,7 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string
 
 	var verses []*verse
 	for rows.Next() {
-		v, err := verseFromRow(rows, ctx, r.indexSvc.Db)
+		v, err := verseFromRow(rows, ctx, r.indexSvc.Db, args.UserDataId)
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +313,7 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string
 	return verses, nil
 }
 
-func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*verse, error) {
+func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userDataId *string) (*verse, error) {
 	var v verse
 
 	var err error
@@ -367,6 +368,15 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB) (*ver
 	err = db.QueryRowContext(ctx, likeCountQuery, v.DataId).Scan(&v.LikeCount)
 	if err != nil {
 		return nil, err
+	}
+
+	if userDataId != nil {
+		// Query HasLiked from verse_like table
+		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE VerseID = ? AND OWNER = ?"
+		err = db.QueryRowContext(ctx, likeQuery, v.DataId, v.Owner).Scan(&v.HasLiked)
+		if err != nil {
+			fmt.Println("Error scanning row: ", err)
+		}
 	}
 
 	// Query owner information from USER_PROFILE
