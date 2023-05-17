@@ -116,6 +116,7 @@ type UserFollowing {
     ExpiredAt: Uint64!
     Follower: String!
     Following: String!
+    HasFollowed: Boolean!
     Status: String!
     ToPay: Boolean!
     EthAddr: String!
