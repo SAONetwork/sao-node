@@ -106,13 +106,13 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 	}
 
 	// Get the FollowingCount
-	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ?", profile.DataId).Scan(&profile.FollowingCount)
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWER = ?", profile.DataId).Scan(&profile.FollowingCount)
 	if err != nil {
 		return nil, err
 	}
 
 	// Get the FollowerCount
-	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWING = ?", profile.DataId).Scan(&profile.FollowerCount)
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ?", profile.DataId).Scan(&profile.FollowerCount)
 	if err != nil {
 		return nil, err
 	}
@@ -176,13 +176,13 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 		profile.IsFollowing = count > 0
 
 		// Get the FollowingCount
-		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ?", profile.DataId).Scan(&profile.FollowingCount)
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWER = ?", profile.DataId).Scan(&profile.FollowingCount)
 		if err != nil {
 			return nil, err
 		}
 
 		// Get the FollowerCount
-		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWING = ?", profile.DataId).Scan(&profile.FollowerCount)
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ?", profile.DataId).Scan(&profile.FollowerCount)
 		if err != nil {
 			return nil, err
 		}

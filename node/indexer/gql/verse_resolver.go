@@ -239,7 +239,7 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 
 		if args.UserDataId != nil {
 			var count int
-			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
 			if err != nil {
 				return nil, err
 			}
@@ -295,7 +295,7 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string
 
 		if args.UserDataId != nil {
 			var count int
-			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
 			if err != nil {
 				return nil, err
 			}
@@ -401,7 +401,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId string) (*verse, error) {
 	// Check if the user follows the owner of the verse
 	var count int
-	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ? AND FOLLOWING = ?", userDataId, v.Owner).Scan(&count)
+	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWER = ? AND FOLLOWING = ?", userDataId, v.Owner).Scan(&count)
 	if err != nil {
 		return nil, err
 	}
