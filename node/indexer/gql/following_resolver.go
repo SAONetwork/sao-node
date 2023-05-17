@@ -91,6 +91,7 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 	}
 
 	var countQuery string
+	var totalCount int
 	if args.MutualWithId != nil {
 		countQuery = `SELECT COUNT(*) 
 				  FROM USER_FOLLOWING UF1
@@ -99,14 +100,15 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 				  AND UF2.FOLLOWING = ?
 				  AND UF1.STATUS = 1
 				  AND UF2.STATUS = 1`
+		err = r.indexSvc.Db.QueryRowContext(ctx, countQuery, args.FollowingDataId, *args.MutualWithId).Scan(&totalCount)
 	} else {
 		countQuery = `SELECT COUNT(*) 
 			FROM USER_FOLLOWING UF
 			WHERE UF.FOLLOWING = ? AND UF.STATUS = 1`
+		err = r.indexSvc.Db.QueryRowContext(ctx, countQuery, args.FollowingDataId).Scan(&totalCount)
+
 	}
 
-	var totalCount int
-	err = r.indexSvc.Db.QueryRowContext(ctx, countQuery, args.FollowingDataId, *args.MutualWithId).Scan(&totalCount)
 	if err != nil {
 		return nil, err
 	}
