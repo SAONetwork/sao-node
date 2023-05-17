@@ -19,6 +19,7 @@ type userFollowing struct {
 	ExpiredAt types.Uint64 `json:"ExpiredAt"`
 	Follower  string       `json:"Follower"`
 	Following string       `json:"Following"`
+	HasFollowed bool       `json:"HasFollowed"`
 	Status    string       `json:"Status"`
 	ToPay     bool         `json:"ToPay"`
 
@@ -77,6 +78,7 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 	MutualWithId    *string
 	Limit           *int32
 	Offset          *int32
+	UserDataId      *string
 }) (*followingResult, error) {
 	var rows *sql.Rows
 	var err error
@@ -162,6 +164,22 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 		if err != nil {
 			return nil, err
 		}
+
+		// Check if the current user has followed this user
+		if args.UserDataId != nil {
+			if *args.UserDataId == uf.Follower {
+				uf.HasFollowed = true
+			} else {
+				var followStatus int
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM USER_FOLLOWING WHERE FOLLOWING = ? AND FOLLOWER = ?", uf.Follower, *args.UserDataId).Scan(&followStatus)
+				if err != nil && err != sql.ErrNoRows {
+					// If the error is something other than 'no rows', return the error
+					return nil, err
+				}
+				// If a following relationship exists (status = 1), set HasFollowed to true
+				uf.HasFollowed = followStatus == 1
+			}
+		}
 		followings = append(followings, &uf)
 	}
 
@@ -182,6 +200,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 	IsExpired bool
 	Limit     *int32
 	Offset    *int32
+	UserDataId *string
 }) (*followingResult, error) {
 	var query, countQuery string
 	limit := 10 // default limit
@@ -258,6 +277,21 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		)
 		if err != nil {
 			return nil, err
+		}
+
+		// Check if the current user has followed this user
+		if args.UserDataId != nil {
+			if *args.UserDataId == uf.Following {
+				uf.HasFollowed = true
+			} else {
+				var followStatus int
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM USER_FOLLOWING WHERE FOLLOWING = ? AND FOLLOWER = ?", uf.Following, *args.UserDataId).Scan(&followStatus)
+				if err != nil && err != sql.ErrNoRows {
+					fmt.Printf("error: %v\n", err)
+				}
+				// If a following relationship exists (status = 1), set HasFollowed to true
+				uf.HasFollowed = followStatus == 1
+			}
 		}
 		followedList = append(followedList, &uf)
 	}

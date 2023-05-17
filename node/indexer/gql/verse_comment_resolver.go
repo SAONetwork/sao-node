@@ -2,6 +2,8 @@ package gql
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"github.com/graph-gophers/graphql-go"
 	"sao-node/node/indexer/gql/types"
 )
@@ -25,9 +27,10 @@ type verseComment struct {
 }
 
 type verseCommentsArgs struct {
-	VerseID string
-	Limit   *int32
-	Offset  *int32
+	VerseID    string
+	Limit      *int32
+	Offset     *int32
+	UserDataId *string
 }
 
 func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([]*verseComment, error) {
@@ -76,10 +79,21 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 			return nil, err
 		}
 
-		// Add a query to get the like count from the VERSE_COMMENT_LIKE table
+		// Get the like count
 		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM VERSE_COMMENT_LIKE WHERE COMMENTID = ? AND STATUS = 1", c.DataId).Scan(&c.LikeCount)
 		if err != nil {
 			return nil, err
+		}
+
+		// Check if the current user has liked this comment
+		if args.UserDataId != nil {
+			var likeStatus int
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM VERSE_COMMENT_LIKE WHERE COMMENTID = ? AND OWNER = ?", c.DataId, *args.UserDataId).Scan(&likeStatus)
+			if err != nil && err != sql.ErrNoRows {
+				fmt.Printf("Error checking if user has liked comment: %s\n", err.Error())
+			}
+			// If a like exists (status = 1), set HasLiked to true
+			c.HasLiked = likeStatus == 1
 		}
 
 		comments = append(comments, &c)

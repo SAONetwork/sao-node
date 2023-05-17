@@ -169,6 +169,7 @@ type VerseComment {
     Comment: String!
     ParentID: String!
     likeCount: Int!
+    HasLiked: Boolean!
     OwnerEthAddr: String!
     OwnerAvatar: String!
     OwnerUsername: String!
@@ -246,10 +247,10 @@ type RootQuery {
     file(id: ID!, userDataId: String, getFromFileInfo:Boolean): String
 
     """Get Followings by FollowingDataId"""
-    followings(followingDataId: String!, mutualWithId: String, limit: Int, offset: Int): FollowingResult!
+    followings(followingDataId: String!, mutualWithId: String, limit: Int, offset: Int, userDataId: String): FollowingResult!
 
     """Get Followed List by FOLLOWER"""
-    followedList(follower: String!, isExpired: Boolean!, limit: Int, offset: Int): FollowingResult!
+    followedList(follower: String!, isExpired: Boolean!, limit: Int, offset: Int, userDataId: String): FollowingResult!
 
     """Get ListingInfo by DataId or TokenId"""
     listingInfo(dataId: String, tokenId: String): ListingInfo
@@ -262,6 +263,7 @@ type RootQuery {
         verseID: String!
         limit: Int
         offset: Int
+        userDataId: String
     ): [VerseComment!]!
 
     """Get Notifications by MessageType and toUser"""

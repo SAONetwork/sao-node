@@ -12,28 +12,28 @@ import (
 )
 
 type verse struct {
-	CommitId   string `json:"CommitId"`
-	DataId     string `json:"DataId"`
-	Alias      string `json:"Alias"`
-	CreatedAt  types.Uint64
-	FileIDs    string
-	Owner      string
-	Price      string
-	Digest     string
-	Scope      int32
-	Status     string
-	NftTokenID string
-	FileType  string
-	IsPaid     bool
-	NotInScope     int32
-	CommentCount int32
-	LikeCount    int32
+	CommitId         string `json:"CommitId"`
+	DataId           string `json:"DataId"`
+	Alias            string `json:"Alias"`
+	CreatedAt        types.Uint64
+	FileIDs          string
+	Owner            string
+	Price            string
+	Digest           string
+	Scope            int32
+	Status           string
+	NftTokenID       string
+	FileType         string
+	IsPaid           bool
+	NotInScope       int32
+	CommentCount     int32
+	LikeCount        int32
 	HasFollowedOwner bool
-	HasLiked bool
-	OwnerEthAddr string
-	OwnerAvatar  string
-	OwnerUsername string
-	OwnerBio    string
+	HasLiked         bool
+	OwnerEthAddr     string
+	OwnerAvatar      string
+	OwnerUsername    string
+	OwnerBio         string
 }
 
 type VerseArgs struct {
@@ -180,7 +180,6 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 	return verses, nil
 }
 
-
 func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesArgs) ([]*verse, error) {
 	if args.UserDataId == nil {
 		return nil, fmt.Errorf("UserDataId must be provided")
@@ -257,8 +256,10 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 	return verses, nil
 }
 
-func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string
-	UserDataId *string}) ([]*verse, error) {
+func (r *resolver) VersesByIds(ctx context.Context, args struct {
+	Ids        []string
+	UserDataId *string
+}) ([]*verse, error) {
 	// Prepare the base query
 	query := "SELECT * FROM VERSE"
 
@@ -266,7 +267,7 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct{ Ids []string
 	var filters []string
 	if len(args.Ids) > 0 {
 		// Create a list of '?' placeholders, one for each id
-		placeholders := strings.Repeat("?,", len(args.Ids) - 1) + "?"
+		placeholders := strings.Repeat("?,", len(args.Ids)-1) + "?"
 
 		// Add the filter for id
 		filters = append(filters, fmt.Sprintf("ID IN (%s)", placeholders))
@@ -374,7 +375,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 		// Query HasLiked from verse_like table
 		var count int
 		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE VerseID = ? AND OWNER = ?"
-		err = db.QueryRowContext(ctx, likeQuery, v.DataId, v.Owner).Scan(&count)
+		err = db.QueryRowContext(ctx, likeQuery, v.DataId, userDataId).Scan(&count)
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 		}
@@ -393,10 +394,8 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 		}
 	}
 
-
 	return &v, nil
 }
-
 
 func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId string) (*verse, error) {
 	// Check if the user follows the owner of the verse
@@ -430,7 +429,6 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 
 	return v, nil
 }
-
 
 func (v *verse) ID() graphql.ID {
 	return graphql.ID(v.CommitId)
