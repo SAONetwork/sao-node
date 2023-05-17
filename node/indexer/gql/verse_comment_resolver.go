@@ -17,6 +17,7 @@ type verseComment struct {
 	Comment       string       `json:"Comment"`
 	ParentID      string       `json:"ParentID"`
 	LikeCount     int32        `json:"LikeCount"`
+	HasLiked      bool         `json:"HasLiked"`
 	OwnerEthAddr  string       `json:"OwnerEthAddr"`
 	OwnerAvatar   string       `json:"OwnerAvatar"`
 	OwnerUsername string       `json:"OwnerUsername"`

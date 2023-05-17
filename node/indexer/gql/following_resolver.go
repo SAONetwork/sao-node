@@ -90,6 +90,27 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 		offset = int(*args.Offset)
 	}
 
+	var countQuery string
+	if args.MutualWithId != nil {
+		countQuery = `SELECT COUNT(*) 
+				  FROM USER_FOLLOWING UF1
+				  JOIN USER_FOLLOWING UF2 ON UF1.FOLLOWER = UF2.FOLLOWER
+				  WHERE UF1.FOLLOWING = ? 
+				  AND UF2.FOLLOWING = ?
+				  AND UF1.STATUS = 1
+				  AND UF2.STATUS = 1`
+	} else {
+		countQuery = `SELECT COUNT(*) 
+			FROM USER_FOLLOWING UF
+			WHERE UF.FOLLOWING = ? AND UF.STATUS = 1`
+	}
+
+	var totalCount int
+	err = r.indexSvc.Db.QueryRowContext(ctx, countQuery, args.FollowingDataId, *args.MutualWithId).Scan(&totalCount)
+	if err != nil {
+		return nil, err
+	}
+
 	if args.MutualWithId != nil {
 		query := `SELECT UF1.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 			  FROM USER_FOLLOWING UF1
@@ -146,10 +167,9 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 		return nil, err
 	}
 
-	count := len(followings)
 	result := &followingResult{
 		Followings: followings,
-		Count:      int32(count),
+		Count:      int32(totalCount),
 	}
 
 	return result, nil
@@ -161,7 +181,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 	Limit     *int32
 	Offset    *int32
 }) (*followingResult, error) {
-	var query string
+	var query, countQuery string
 	limit := 10 // default limit
 	offset := 0 // default offset
 
@@ -180,6 +200,12 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		WHERE UF.FOLLOWER = ? AND UF.EXPIREDAT < ? AND UF.EXPIREDAT != 0 AND UF.STATUS = 1
 		LIMIT ? OFFSET ?
 		`
+
+		countQuery = `
+		SELECT COUNT(*) 
+		FROM USER_FOLLOWING UF
+		WHERE UF.FOLLOWER = ? AND UF.EXPIREDAT < ? AND UF.EXPIREDAT != 0 AND UF.STATUS = 1
+		`
 	} else {
 		query = `
 		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
@@ -188,9 +214,21 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		WHERE UF.FOLLOWER = ? AND (UF.EXPIREDAT > ? OR UF.EXPIREDAT = 0) AND UF.STATUS = 1
 		LIMIT ? OFFSET ?
 		`
+
+		countQuery = `
+		SELECT COUNT(*) 
+		FROM USER_FOLLOWING UF
+		WHERE UF.FOLLOWER = ? AND (UF.EXPIREDAT > ? OR UF.EXPIREDAT = 0) AND UF.STATUS = 1
+		`
 	}
 
 	currentTime := time.Now().Unix()
+	var totalCount int
+	err := r.indexSvc.Db.QueryRowContext(ctx, countQuery, args.Follower, currentTime).Scan(&totalCount)
+	if err != nil {
+		return nil, err
+	}
+
 	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.Follower, currentTime, limit, offset)
 	if err != nil {
 		return nil, err
@@ -226,10 +264,9 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		return nil, err
 	}
 
-	count := len(followedList)
 	result := &followingResult{
 		Followings: followedList,
-		Count:      int32(count),
+		Count:      int32(totalCount),
 	}
 
 	return result, nil

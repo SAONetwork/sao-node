@@ -44,14 +44,14 @@ type VerseArgs struct {
 	CreatedAt  *types.Uint64
 	Status     *string
 	NftTokenId *string
-	Limit      *int
-	Offset     *int
+	Limit      *int32
+	Offset     *int32
 }
 
 type subscribedVersesArgs struct {
 	UserDataId *string
-	Limit      *int
-	Offset     *int
+	Limit      *int32
+	Offset     *int32
 }
 
 // query: verse(id) Verse

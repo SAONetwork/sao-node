@@ -19,6 +19,7 @@ type userProfile struct {
 	Avatar          string       `json:"Avatar"`
 	Username        string       `json:"Username"`
 	FollowingCount  int32        `json:"FollowingCount"`
+	FollowerCount   int32        `json:"FollowerCount"`
 	Twitter         string       `json:"Twitter"`
 	Youtube         string       `json:"Youtube"`
 	Bio             string       `json:"Bio"`
@@ -26,7 +27,6 @@ type userProfile struct {
 	FollowingDataId string       `json:"FollowingDataId"`
 	IsFollowing bool `json:"IsFollowing"`
 }
-
 
 type userProfileArgs struct {
 	ID        *graphql.ID
@@ -105,6 +105,18 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		return nil, err
 	}
 
+	// Get the FollowingCount
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ?", profile.DataId).Scan(&profile.FollowingCount)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the FollowerCount
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWING = ?", profile.DataId).Scan(&profile.FollowerCount)
+	if err != nil {
+		return nil, err
+	}
+
 	return &profile, nil
 }
 
@@ -162,6 +174,18 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 
 		// If count is greater than 0, it means the user is following the suggested user
 		profile.IsFollowing = count > 0
+
+		// Get the FollowingCount
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWER = ?", profile.DataId).Scan(&profile.FollowingCount)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get the FollowerCount
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE FOLLOWING = ?", profile.DataId).Scan(&profile.FollowerCount)
+		if err != nil {
+			return nil, err
+		}
 
 		suggestedProfiles = append(suggestedProfiles, &profile)
 	}

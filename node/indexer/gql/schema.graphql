@@ -63,6 +63,7 @@ type UserProfile {
     Avatar: String!
     Username: String!
     FollowingCount: Int!
+    FollowerCount: Int!
     Twitter: String!
     Youtube: String!
     Bio: String!
