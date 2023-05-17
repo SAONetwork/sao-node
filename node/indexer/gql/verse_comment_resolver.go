@@ -17,7 +17,7 @@ type verseComment struct {
 	VerseID       string       `json:"VerseID"`
 	Owner         string       `json:"Owner"`
 	Comment       string       `json:"Comment"`
-	ParentID      string       `json:"ParentID"`
+	Parent *verseComment `json:"Parent"`
 	LikeCount     int32        `json:"LikeCount"`
 	HasLiked      bool         `json:"HasLiked"`
 	OwnerEthAddr  string       `json:"OwnerEthAddr"`
@@ -49,7 +49,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 			SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 			FROM VERSE_COMMENT VC
 			LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
-			WHERE VC.VERSEID = ? 
+			WHERE VC.VERSEID = ? ORDER BY VC.CREATEDAT DESC
 			LIMIT ? OFFSET ?`,
 		args.VerseID, limit, offset)
 	if err != nil {
@@ -59,6 +59,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 
 	var comments []*verseComment
 	for rows.Next() {
+		var parentID string
 		var c verseComment
 		err := rows.Scan(
 			&c.CommitId,
@@ -67,7 +68,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 			&c.CreatedAt,
 			&c.UpdatedAt,
 			&c.Comment,
-			&c.ParentID,
+			&parentID,
 			&c.VerseID,
 			&c.Owner,
 			&c.OwnerEthAddr,
@@ -77,6 +78,13 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 		)
 		if err != nil {
 			return nil, err
+		}
+
+		if parentID != "" {
+			c.Parent, err = r.getCommentByID(ctx, parentID)
+			if err != nil {
+				fmt.Printf("Error getting parent comment: %s\n", err.Error())
+			}
 		}
 
 		// Get the like count
@@ -104,6 +112,37 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 	}
 
 	return comments, nil
+}
+
+func (r *resolver) getCommentByID(ctx context.Context, id string) (*verseComment, error) {
+	row := r.indexSvc.Db.QueryRowContext(ctx, `
+		SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		FROM VERSE_COMMENT VC
+		LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
+		WHERE VC.DATAID = ?`, id)
+
+	var c verseComment
+	var parentID string
+	err := row.Scan(
+		&c.CommitId,
+		&c.DataId,
+		&c.Alias,
+		&c.CreatedAt,
+		&c.UpdatedAt,
+		&c.Comment,
+		&parentID,
+		&c.VerseID,
+		&c.Owner,
+		&c.OwnerEthAddr,
+		&c.OwnerAvatar,
+		&c.OwnerUsername,
+		&c.OwnerBio,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &c, nil
 }
 
 func (vc *verseComment) ID() graphql.ID {

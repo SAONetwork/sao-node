@@ -168,8 +168,8 @@ type VerseComment {
     VerseID: String!
     Owner: String!
     Comment: String!
-    ParentID: String!
-    likeCount: Int!
+    Parent: VerseComment
+    LikeCount: Int!
     HasLiked: Boolean!
     OwnerEthAddr: String!
     OwnerAvatar: String!
