@@ -174,7 +174,7 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM USER_FOLLOWING WHERE FOLLOWING = ? AND FOLLOWER = ?", uf.Follower, *args.UserDataId).Scan(&followStatus)
 				if err != nil && err != sql.ErrNoRows {
 					// If the error is something other than 'no rows', return the error
-					return nil, err
+					fmt.Printf("Error checking follow status: %v\n", err)
 				}
 				// If a following relationship exists (status = 1), set HasFollowed to true
 				uf.HasFollowed = followStatus == 1
@@ -287,7 +287,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 				var followStatus int
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM USER_FOLLOWING WHERE FOLLOWING = ? AND FOLLOWER = ?", uf.Following, *args.UserDataId).Scan(&followStatus)
 				if err != nil && err != sql.ErrNoRows {
-					fmt.Printf("error: %v\n", err)
+					fmt.Printf("Error checking follow status: %v\n", err)
 				}
 				// If a following relationship exists (status = 1), set HasFollowed to true
 				uf.HasFollowed = followStatus == 1
