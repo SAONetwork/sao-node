@@ -365,7 +365,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 	}
 
 	// Fetch the like count for the verse
-	likeCountQuery := "SELECT COUNT(*) FROM verse_like WHERE VerseID = ?"
+	likeCountQuery := "SELECT COUNT(*) FROM verse_like WHERE STATUS = 1 AND VerseID = ?"
 	err = db.QueryRowContext(ctx, likeCountQuery, v.DataId).Scan(&v.LikeCount)
 	if err != nil {
 		return nil, err
@@ -374,7 +374,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 	if userDataId != nil {
 		// Query HasLiked from verse_like table
 		var count int
-		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE VerseID = ? AND OWNER = ?"
+		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE STATUS = 1 AND  VerseID = ? AND OWNER = ?"
 		err = db.QueryRowContext(ctx, likeQuery, v.DataId, userDataId).Scan(&count)
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
