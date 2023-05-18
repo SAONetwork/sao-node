@@ -117,6 +117,7 @@ type UserFollowing {
     Follower: String!
     Following: String!
     HasFollowed: Boolean!
+    NeedToPay: Boolean!
     Status: String!
     ToPay: Boolean!
     EthAddr: String!
