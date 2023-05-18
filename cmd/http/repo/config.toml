@@ -1,0 +1,5 @@
+GroupId = "e9c121ba-0930-4aa4-9add-6be413577434"
+KeyName = "client"
+ChainAddress = "http://localhost:26657"
+Gateway = "/ip4/127.0.0.1/tcp/5151/http"
+Token = ""

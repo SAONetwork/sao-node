@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sao-node/api"
@@ -96,6 +97,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 	// prepare Gateway api
 	var gatewayApi api.SaoApi = nil
 	var closer = func() {}
+	fmt.Println("opt.gateway", opt.Gateway)
 	if opt.Gateway != "none" {
 		if opt.Gateway == "" {
 			opt.Gateway = cfg.Gateway
