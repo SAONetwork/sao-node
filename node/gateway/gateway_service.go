@@ -379,6 +379,12 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 
 func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error) {
 	contentList := make(map[uint64][]byte)
+
+	var res *FetchResult
+	var content []byte
+	var contentCid cid.Cid
+	var err error
+
 	for key, shard := range meta.Shards {
 		if contentList[shard.ShardId] != nil {
 			continue
@@ -421,10 +427,14 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}, shard.Peer, true)
 		if resp.Code == 0 {
 			if meta.Cid == shard.Cid {
-				return &FetchResult{
+				contentCid = shardCid
+				content = resp.Content
+				// replica mode res
+				res = &FetchResult{
 					Cid:     meta.Cid,
 					Content: resp.Content,
-				}, nil
+				}
+				break
 			}
 			contentList[shard.ShardId] = resp.Content
 		} else {
@@ -432,18 +442,25 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}
 	}
 
-	var content []byte
-	for _, c := range contentList {
-		content = append(content, c...)
-	}
+	if res == nil {
+		for _, c := range contentList {
+			content = append(content, c...)
+		}
 
-	contentCid, err := utils.CalculateCid(content)
-	if err != nil {
-		return nil, err
-	}
-	if contentCid.String() != meta.Cid {
-		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
-		return nil, types.Wrapf(types.ErrInvalidCid, "%s", contentCid.String())
+		contentCid, err = utils.CalculateCid(content)
+		if err != nil {
+			return nil, err
+		}
+		if contentCid.String() != meta.Cid {
+			log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
+			return nil, types.Wrapf(types.ErrInvalidCid, "%s", contentCid.String())
+		}
+
+		// fragmentation mode res
+		res = &FetchResult{
+			Cid:     contentCid.String(),
+			Content: content,
+		}
 	}
 
 	match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(meta.Alias))
@@ -464,7 +481,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			return nil, types.Wrap(types.ErrInvalidPath, err)
 		}
 
-		_, err = file.Write([]byte(content))
+		_, err = file.Write(content)
 		if err != nil {
 			return nil, types.Wrap(types.ErrWriteFileFailed, err)
 		}
@@ -481,10 +498,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}
 	}
 
-	return &FetchResult{
-		Cid:     contentCid.String(),
-		Content: content,
-	}, nil
+	return res, nil
 }
 
 func (gs *GatewaySvc) buildRelayProposal(ctx context.Context, gp GatewayProtocol, peerInfos string) types.RelayProposalCbor {
