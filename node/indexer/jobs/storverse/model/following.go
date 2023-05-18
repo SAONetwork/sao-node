@@ -22,8 +22,12 @@ type UserFollowing struct {
 type UserFollowingInsertionStrategy struct{}
 
 func (uf UserFollowing) InsertValues() string {
+	status := uf.Status
+	if uf.Following == "" {
+		status = 99
+	}
 	return fmt.Sprintf("('%s','%s','%s', %d, %d, %d, '%s', '%s', %d)",
-		uf.CommitID, uf.DataID, uf.Alias, uf.CreatedAt, uf.UpdatedAt, uf.ExpiredAt, uf.Follower, uf.Following, uf.Status)
+		uf.CommitID, uf.DataID, uf.Alias, uf.CreatedAt, uf.UpdatedAt, uf.ExpiredAt, uf.Follower, uf.Following, status)
 }
 
 func (s UserFollowingInsertionStrategy) Convert(item interface{}) BatchInserter {
