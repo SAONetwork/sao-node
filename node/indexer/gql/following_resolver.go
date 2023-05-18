@@ -20,7 +20,6 @@ type userFollowing struct {
 	Follower  string       `json:"Follower"`
 	Following string       `json:"Following"`
 	HasFollowed bool       `json:"HasFollowed"`
-	NeedToPay bool         `json:"NeedToPay"`
 	Status    string       `json:"Status"`
 	ToPay     bool         `json:"ToPay"`
 
@@ -188,8 +187,8 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 						// If the error is something other than 'no rows', return the error
 						fmt.Printf("Error checking listing info: %v\n", err)
 					}
-					// If count is more than 1, set NeedToPay to true
-					uf.NeedToPay = count > 1
+					// If count is more than 1, set ToPay to true
+					uf.ToPay = count > 1
 				}
 			}
 		}
@@ -314,8 +313,8 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 						// If the error is something other than 'no rows', return the error
 						fmt.Printf("Error checking listing info: %v\n", err)
 					}
-					// If count is more than 1, set NeedToPay to true
-					uf.NeedToPay = count > 1
+					// If count is more than 1, set ToPay to true
+					uf.ToPay = count > 1
 				}
 			}
 		}
