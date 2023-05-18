@@ -257,7 +257,11 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	if cfg.Module.GatewayEnable {
-		serverPath := path.Join(repo.Path, "http-files")
+		serverPath := cfg.SaoHttpFileServer.HttpFileServerPath
+		if serverPath == "" {
+			serverPath = path.Join(repo.Path, "http-files")
+		}
+
 		status = status | NODE_STATUS_SERVE_GATEWAY
 		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)

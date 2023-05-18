@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path"
+	"regexp"
 	"strings"
 	"time"
 
@@ -12,7 +14,6 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 
 	"sao-node/chain"
@@ -33,10 +34,11 @@ const (
 var secret = []byte("SAO Network")
 
 type HttpFileServer struct {
-	Cfg     *config.SaoHttpFileServer
-	NodeCFG *config.Node
-	Server  *echo.Echo
-	cctx    *cli.Context
+	Cfg        *config.SaoHttpFileServer
+	NodeCFG    *config.Node
+	Server     *echo.Echo
+	cctx       *cli.Context
+	ServerPath string
 }
 
 type jwtClaims struct {
@@ -48,8 +50,7 @@ func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg 
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
-	log.Info("start http server")
-	fmt.Println("start http server")
+	log.Infof("start http server server path: %s", serverPath)
 
 	if cfg.EnableHttpFileServerLog {
 		// Middleware
@@ -60,27 +61,28 @@ func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg 
 	// Unauthenticated entry
 	e.GET("/test", test)
 
-	path, err := homedir.Expand(serverPath)
-	if err != nil {
-		return nil, types.Wrap(types.ErrInvalidPath, err)
-	}
+	/*
+		path, err := homedir.Expand(serverPath)
+		if err != nil {
+			return nil, types.Wrap(types.ErrInvalidPath, err)
+		}
 
-	handler := http.FileServer(http.Dir(path))
+			handler := http.FileServer(http.Dir(path))
 
-	// Configure middleware with the custom claims type
-	config := middleware.JWTConfig{
-		Claims:     &jwtClaims{},
-		SigningKey: secret,
-	}
+			// Configure middleware with the custom claims type
+			config := middleware.JWTConfig{
+				Claims:     &jwtClaims{},
+				SigningKey: secret,
+			}
+	*/
 
 	s := &HttpFileServer{
-		Cfg:     cfg,
-		NodeCFG: ncfg,
-		Server:  e,
-		cctx:    cctx,
+		Cfg:        cfg,
+		NodeCFG:    ncfg,
+		Server:     e,
+		cctx:       cctx,
+		ServerPath: serverPath,
 	}
-	e.GET("/saonetwork/*", echo.WrapHandler(http.StripPrefix("/saonetwork/", handler)), middleware.JWTWithConfig(config))
-	//e.GET("/v1/^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$", s.load)
 	e.GET("/v1/*", s.load)
 
 	go func() {
@@ -201,8 +203,6 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 
 func (h *HttpFileServer) load(ec echo.Context) error {
 
-	fmt.Println("aaaaaaa")
-
 	keyringHome := "~/.sao"
 	keyName := "client"
 	opt := client.SaoClientOptions{
@@ -216,23 +216,42 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 	ctx := context.Background()
 	c, closer, err := client.NewSaoClient(ctx, opt)
 	if err != nil {
-		fmt.Println("1")
 		return err
 	}
 
 	defer closer()
 
-	didManager, _, err := GetDidManager(ctx, c.Cfg.KeyName)
-	if err != nil {
-		fmt.Println("2")
-		return err
+	req := ec.Request()
+	uri := strings.TrimLeft(req.URL.String(), "/v1/")
+
+	re, _ := regexp.Compile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
+	uuid := re.FindString(uri)
+	var keyword string
+	var groupId string
+	if uuid != "" {
+		keyword = uuid
+	} else {
+		params := strings.SplitN(uri, "/", 2)
+		if len(params) == 2 {
+			groupId = params[0]
+			keyword = params[1]
+		}
 	}
 
-	keyword := "6f0041a4-efdf-11ed-b99a-8930faeb97d0"
+	if keyword == "" && groupId == "" {
+		ec.String(http.StatusNotFound, "invalid keyword and group")
+		return nil
+	}
+
+	didManager, _, err := GetDidManager(ctx, c.Cfg.KeyName)
+	if err != nil {
+		return err
+	}
 
 	proposal := saotypes.QueryProposal{
 		Owner:   didManager.Id,
 		Keyword: keyword,
+		GroupId: groupId,
 	}
 
 	if !utils.IsDataId(keyword) {
@@ -241,23 +260,24 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 
 	gatewayAddress, err := c.GetNodeAddress(ctx)
 	if err != nil {
-		fmt.Println("3")
 		return err
 	}
 
 	request, err := buildQueryRequest(ctx, didManager, proposal, c, gatewayAddress)
 	if err != nil {
-		fmt.Println("4")
 		return err
 	}
 
 	resp, err := c.ModelLoad(ctx, request)
 	if err != nil {
-		fmt.Println("5", err)
+		if strings.Index(err.Error(), "NotFound") > 0 {
+			ec.String(http.StatusNotFound, "invalid keyword and group")
+			return nil
+		}
 		return err
 	}
 
-	fmt.Println(resp)
+	cacheFile := path.Join(h.ServerPath, resp.DataId)
 
-	return ec.String(http.StatusOK, "Accessible")
+	return ec.File(cacheFile)
 }
