@@ -21,7 +21,7 @@ type userFollowing struct {
 	Following string       `json:"Following"`
 	HasFollowed bool       `json:"HasFollowed"`
 	Status    string       `json:"Status"`
-	ToPay     bool         `json:"ToPay"`
+	ToPay     string         `json:"ToPay"`
 
 	// user profile fields
 	EthAddr  string `json:"EthAddr"`
@@ -181,15 +181,18 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 
 				if !uf.HasFollowed {
 					sixMonthsAgo := time.Now().AddDate(0, -6, 0).Unix() // 6 months ago in Unix time
-					var count int
-					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ?", uf.Follower, sixMonthsAgo).Scan(&count)
+					var price sql.NullString
+					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", uf.Follower, sixMonthsAgo).Scan(&price)
 					if err != nil && err != sql.ErrNoRows {
 						// If the error is something other than 'no rows', return the error
-						fmt.Printf("Error checking listing info: %v\n", err)
+						fmt.Printf("Error fetching listing price: %v\n", err)
 					}
-					// If count is more than 1, set ToPay to true
-					uf.ToPay = count > 1
+					// If the price exists, set ToPay to the fetched price
+					if price.Valid {
+						uf.ToPay = price.String
+					}
 				}
+
 			}
 		}
 		followings = append(followings, &uf)
@@ -307,14 +310,16 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 				// Check if the current user needs to pay to follow this user
 				if !uf.HasFollowed {
 					sixMonthsAgo := time.Now().AddDate(0, -6, 0).Unix() // 6 months ago in Unix time
-					var count int
-					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ?", uf.Following, sixMonthsAgo).Scan(&count)
+					var price sql.NullString
+					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", uf.Following, sixMonthsAgo).Scan(&price)
 					if err != nil && err != sql.ErrNoRows {
 						// If the error is something other than 'no rows', return the error
-						fmt.Printf("Error checking listing info: %v\n", err)
+						fmt.Printf("Error fetching listing price: %v\n", err)
 					}
-					// If count is more than 1, set ToPay to true
-					uf.ToPay = count > 1
+					// If the price exists, set ToPay to the fetched price
+					if price.Valid {
+						uf.ToPay = price.String
+					}
 				}
 			}
 		}
