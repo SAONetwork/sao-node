@@ -188,7 +188,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
 				}
 
-				time.Sleep(1 * time.Second)
+				time.Sleep(5 * time.Second)
 				offset = 0
 				limit = 100
 				// Clear the slices
