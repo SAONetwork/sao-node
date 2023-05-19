@@ -159,11 +159,10 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 
 	key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
-	if strings.HasSuffix(peerInfos, ",") {
-		peerInfos = strings.TrimRight(peerInfos, ",")
-	}
 	tds.Put(ctx, key, []byte(peerInfos))
-
+	if err != nil {
+		return nil, err
+	}
 	ods, err := repo.Datastore(ctx, "/order")
 	if err != nil {
 		return nil, err
@@ -196,9 +195,19 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	if err != nil {
 		return nil, types.Wrap(types.ErrGetFailed, err)
 	}
-	log.Info("Node Peer Information: ", string(peerInfosBytes))
 
-	for _, ma := range strings.Split(string(peerInfosBytes), ",") {
+	peerInfos = string(peerInfosBytes)
+	if strings.HasSuffix(peerInfos, ",") {
+		peerInfos = strings.TrimRight(peerInfos, ",")
+		tds.Put(ctx, key, []byte(peerInfos))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	log.Info("Node Peer Information: ", string(peerInfos))
+
+	for _, ma := range strings.Split(peerInfos, ",") {
 		_, err := multiaddr.NewMultiaddr(ma)
 		if err != nil {
 			return nil, types.Wrap(types.ErrInvalidServerAddress, err)
