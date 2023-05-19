@@ -159,6 +159,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 
 	key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
+	if strings.HasSuffix(peerInfos, ",") {
+		peerInfos = strings.TrimRight(peerInfos, ",")
+	}
 	tds.Put(ctx, key, []byte(peerInfos))
 
 	ods, err := repo.Datastore(ctx, "/order")
