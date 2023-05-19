@@ -141,6 +141,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		var notificationsToCreate []storverse.Notification
 		var readNotificationsToCreate []storverse.ReadNotifications
 		commitIds := make(map[string]bool)
+
+		errorMap := make(map[string]int)
+		filterMap := make(map[string]time.Time)
+
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
 			log.Infof("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
@@ -209,6 +213,11 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 			}
 
 			for _, meta := range metaList {
+				// Check if meta.DataId is in filterMap and if less than an hour has passed
+				if filterTime, ok := filterMap[meta.DataId]; ok && time.Since(filterTime) < time.Hour {
+					continue
+				}
+
 				var count int
 				var qry string
 
@@ -247,8 +256,20 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					if strings.Contains(platFormIds, meta.GroupId) && (storverse.AliasInTypeConfigs(meta.Alias, storverse.TypeConfigs) || strings.Contains(meta.Alias, "filecontent")) {
 						resp, err := getDataModel(ctx, didManager, meta.DataId, meta.Commit, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
 						if err != nil {
+							// Increment error count for meta.DataId
+							errorMap[meta.DataId]++
+
+							// If error count reaches 20, add meta.DataId to filterMap and reset error count
+							if errorMap[meta.DataId] >= 20 {
+								filterMap[meta.DataId] = time.Now()
+								errorMap[meta.DataId] = 0
+							}
+
 							continue
 						}
+
+						// Reset error count if getDataModel is successful
+						errorMap[meta.DataId] = 0
 
 						//if meta.Alias contains filecontent, save the resp content to a file under keyringHome/tmp folder
 						if strings.Contains(meta.Alias, "filecontent") {
