@@ -16,6 +16,7 @@ type verseComment struct {
 	UpdatedAt     types.Uint64 `json:"UpdatedAt"`
 	VerseID       string       `json:"VerseID"`
 	Owner         string       `json:"Owner"`
+	Status		int32        `json:"Status"`
 	Comment       string       `json:"Comment"`
 	Parent *verseComment `json:"Parent"`
 	LikeCount     int32        `json:"LikeCount"`
@@ -49,7 +50,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 			SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 			FROM VERSE_COMMENT VC
 			LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
-			WHERE VC.VERSEID = ? ORDER BY VC.CREATEDAT DESC
+			WHERE VC.STATUS !=2 AND VC.VERSEID = ? ORDER BY VC.CREATEDAT DESC
 			LIMIT ? OFFSET ?`,
 		args.VerseID, limit, offset)
 	if err != nil {
@@ -71,6 +72,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 			&parentID,
 			&c.VerseID,
 			&c.Owner,
+			&c.Status,
 			&c.OwnerEthAddr,
 			&c.OwnerAvatar,
 			&c.OwnerUsername,
@@ -119,7 +121,7 @@ func (r *resolver) getCommentByID(ctx context.Context, id string) (*verseComment
 		SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 		FROM VERSE_COMMENT VC
 		LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
-		WHERE VC.DATAID = ?`, id)
+		WHERE VC.STATUS !=2 AND VC.DATAID = ?`, id)
 
 	var c verseComment
 	var parentID string
@@ -133,6 +135,7 @@ func (r *resolver) getCommentByID(ctx context.Context, id string) (*verseComment
 		&parentID,
 		&c.VerseID,
 		&c.Owner,
+		&c.Status,
 		&c.OwnerEthAddr,
 		&c.OwnerAvatar,
 		&c.OwnerUsername,

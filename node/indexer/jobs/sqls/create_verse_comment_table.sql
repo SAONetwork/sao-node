@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS VERSE_COMMENT (
                                              PARENTID  TEXT,
                                              VERSEID   TEXT,
                                              OWNER      TEXT,
+                                             STATUS      INTEGER,
                                              PRIMARY KEY(COMMITID)
     ) WITHOUT ROWID;
 

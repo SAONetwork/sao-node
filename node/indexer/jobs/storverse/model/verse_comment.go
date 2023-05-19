@@ -15,6 +15,7 @@ type VerseComment struct {
 	ParentId  string `json:"parentId"`
 	VerseId   string `json:"verseId"`
 	Owner     string `json:"owner"`
+	Status    int    `json:"status"`
 	CommitID  string
 	DataID    string
 	Alias 	  string
@@ -23,8 +24,8 @@ type VerseComment struct {
 type VerseCommentInsertionStrategy struct{}
 
 func (vc VerseComment) InsertValues() string {
-	return fmt.Sprintf("('%s', '%s','%s', '%d', '%d', '%s', '%s', '%s', '%s')",
-		vc.CommitID, vc.DataID, vc.Alias, vc.CreatedAt, vc.UpdatedAt, vc.Comment, vc.ParentId, vc.VerseId, vc.Owner)
+	return fmt.Sprintf("('%s', '%s','%s', '%d', '%d', '%s', '%s', '%s', '%s', %d)",
+		vc.CommitID, vc.DataID, vc.Alias, vc.CreatedAt, vc.UpdatedAt, vc.Comment, vc.ParentId, vc.VerseId, vc.Owner, vc.Status)
 }
 
 func (s VerseCommentInsertionStrategy) Convert(item interface{}) BatchInserter {

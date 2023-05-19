@@ -168,6 +168,7 @@ type VerseComment {
     UpdatedAt: Uint64!
     VerseID: String!
     Owner: String!
+    Status: Int!
     Comment: String!
     Parent: VerseComment
     LikeCount: Int!

@@ -215,7 +215,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				found := false
 				tableName, found := storverse.GetTableNameForAlias(meta.Alias, storverse.TypeConfigs)
 				if found {
-					log.Infof("tableName: %s", tableName)
+					log.Debugf("tableName: %s", tableName)
 					// Delete the row if the DATAID exists but the COMMITID does not match,
 					// and return the COMMITID of the deleted row
 					qry = fmt.Sprintf("DELETE FROM %s WHERE DATAID=? AND COMMITID<>? RETURNING COMMITID", tableName)
