@@ -21,11 +21,13 @@ import (
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/dvsekhvalnov/jose2go/base64url"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 
 	"fmt"
 	apitypes "sao-node/api/types"
@@ -77,7 +79,7 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, error) {
+func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli.Context) (*Node, error) {
 	c, err := repo.Config()
 	if err != nil {
 		return nil, err
@@ -267,7 +269,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		if cfg.SaoHttpFileServer.Enable {
 			log.Info("initialize http file server")
 
-			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer)
+			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx)
 			if err != nil {
 				return nil, err
 			}
@@ -716,6 +718,10 @@ func (n *Node) GetIpfsUrl(ctx context.Context, cid string) (apitypes.GetUrlResp,
 
 func (n *Node) GetNodeAddress(ctx context.Context) (string, error) {
 	return n.address, nil
+}
+
+func (n *Node) GetModel(ctx context.Context, key string) (modeltypes.QueryGetModelResponse, error) {
+	return modeltypes.QueryGetModelResponse{}, nil
 }
 
 func (n *Node) GetNetPeers(context.Context) ([]types.PeerInfo, error) {

@@ -70,6 +70,7 @@ type ChainSvcApi interface {
 	Create(ctx context.Context, creator string) (string, error)
 	Reset(ctx context.Context, creator string, peerInfo string, status uint32, txAddresses []string, description *nodetypes.Description) (string, error)
 	GetNodePeer(ctx context.Context, creator string) (string, error)
+	GetModel(ctx context.Context, key string) (*modeltypes.QueryGetModelResponse, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
 	ListNodes(ctx context.Context) ([]nodetypes.Node, error)
 	StartStatusReporter(ctx context.Context, creator string, status uint32)
