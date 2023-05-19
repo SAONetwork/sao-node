@@ -86,6 +86,7 @@ type Verse {
     FileType: String!
     IsPaid: Boolean!
     NotInScope: Int!
+    PayToFollow: String!
     CommentCount: Int!
     LikeCount: Int!
     HasFollowedOwner: Boolean!

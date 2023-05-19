@@ -45,7 +45,7 @@ func (r *resolver) UserFollowing(ctx context.Context, args struct{ ID graphql.ID
 
 	// query the database for the user following with the given id
 	var uf userFollowing
-	row := r.indexSvc.Db.QueryRowContext(ctx, `SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+	row := r.indexSvc.Db.QueryRowContext(ctx, `SELECT UF.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '')
                                                 FROM USER_FOLLOWING UF
                                                 JOIN USER_PROFILE UP ON UF.FOLLOWER = UP.DATAID
                                                 WHERE UF.DATAID = ? AND UF.STATUS = 1`, id)
@@ -116,7 +116,7 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 	}
 
 	if args.MutualWithId != nil {
-		query := `SELECT UF1.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		query := `SELECT UF1.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '') 
 			  FROM USER_FOLLOWING UF1
 			  JOIN USER_FOLLOWING UF2 ON UF1.FOLLOWER = UF2.FOLLOWER
 			  JOIN USER_PROFILE UP ON UF1.FOLLOWER = UP.DATAID
@@ -129,7 +129,7 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 		rows, err = r.indexSvc.Db.QueryContext(ctx, query, args.FollowingDataId, *args.MutualWithId, limit, offset)
 
 	} else {
-		query := `SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		query := `SELECT UF.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '')
 		FROM USER_FOLLOWING UF
 		JOIN USER_PROFILE UP ON UF.FOLLOWER = UP.DATAID
 		WHERE UF.FOLLOWING = ? AND UF.STATUS = 1
@@ -230,7 +230,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 
 	if args.IsExpired {
 		query = `
-		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		SELECT UF.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '')
 		FROM USER_FOLLOWING UF
 		LEFT JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
 		WHERE UF.FOLLOWER = ? AND UF.EXPIREDAT < ? AND UF.EXPIREDAT != 0 AND UF.STATUS = 1
@@ -244,7 +244,7 @@ func (r *resolver) FollowedList(ctx context.Context, args struct {
 		`
 	} else {
 		query = `
-		SELECT UF.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		SELECT UF.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '')
 		FROM USER_FOLLOWING UF
 		LEFT JOIN USER_PROFILE UP ON UF.FOLLOWING = UP.DATAID
 		WHERE UF.FOLLOWER = ? AND (UF.EXPIREDAT > ? OR UF.EXPIREDAT = 0) AND UF.STATUS = 1

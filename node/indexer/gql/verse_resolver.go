@@ -9,6 +9,7 @@ import (
 	"sao-node/node/indexer/gql/types"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type verse struct {
@@ -26,6 +27,7 @@ type verse struct {
 	FileType         string
 	IsPaid           bool
 	NotInScope       int32
+	PayToFollow      string
 	CommentCount     int32
 	LikeCount        int32
 	HasFollowedOwner bool
@@ -411,6 +413,17 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 	case 2:
 		if !v.HasFollowedOwner {
 			v.NotInScope = 2
+			sixMonthsAgo := time.Now().AddDate(0, -6, 0).Unix() // 6 months ago in Unix time
+			var price sql.NullString
+			err = db.QueryRowContext(ctx, "SELECT PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", v.Owner, sixMonthsAgo).Scan(&price)
+			if err != nil && err != sql.ErrNoRows {
+				// If the error is something other than 'no rows', return the error
+				fmt.Printf("Error fetching listing price: %v\n", err)
+			}
+			// If the price exists, set NeedToPay to the fetched price
+			if price.Valid {
+				v.PayToFollow = price.String
+			}
 		}
 	case 3:
 		var count int
