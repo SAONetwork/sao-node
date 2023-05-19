@@ -188,7 +188,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
 				}
 
-				time.Sleep(5 * time.Second)
+				time.Sleep(2 * time.Second)
 				offset = 0
 				limit = 100
 				// Clear the slices
@@ -245,7 +245,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				} else {
 					log.Info("no existing record found, get data from gateway")
 					if strings.Contains(platFormIds, meta.GroupId) && (storverse.AliasInTypeConfigs(meta.Alias, storverse.TypeConfigs) || strings.Contains(meta.Alias, "filecontent")) {
-						resp, err := getDataModel(ctx, didManager, meta.DataId, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
+						resp, err := getDataModel(ctx, didManager, meta.DataId, meta.Commit, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
 						if err != nil {
 							continue
 						}
@@ -533,12 +533,13 @@ func GetDidManager(ctx context.Context, keyName string, keyringHome string) (*di
 	return &didManager, address, nil
 }
 
-func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string, platFormIds string,
+func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string, commitId string, platFormIds string,
 	chainSvc *chain.ChainSvc, gatewayAddress string, gatewayApi api.SaoApi, log *logging.ZapEventLogger) (apitypes.LoadResp, error) {
 	proposal := saotypes.QueryProposal{
 		Owner:   didManager.Id,
 		Keyword: dataId,
 		GroupId: platFormIds,
+		CommitId:  commitId,
 	}
 
 	request, err := buildQueryRequest(ctx, didManager, proposal, chainSvc, gatewayAddress)
