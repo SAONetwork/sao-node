@@ -269,7 +269,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						}
 
 						// Reset error count if getDataModel is successful
-						errorMap[meta.DataId] = 0
+						delete(errorMap, meta.DataId)
 
 						//if meta.Alias contains filecontent, save the resp content to a file under keyringHome/tmp folder
 						if strings.Contains(meta.Alias, "filecontent") {
@@ -281,8 +281,11 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							}
 							log.Info("file path: ", filePath)
 
+							// Remove leading and trailing quotation marks from resp.Content
+							content := strings.Trim(resp.Content, "\"")
+
 							// write file
-							err := ioutil.WriteFile(filePath, []byte(resp.Content), 0644)
+							err := ioutil.WriteFile(filePath, []byte(content), 0644)
 							if err != nil {
 								log.Errorf("failed to write file: %w", err)
 								continue
