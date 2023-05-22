@@ -265,25 +265,20 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct {
 	// Prepare the base query
 	query := "SELECT * FROM VERSE"
 
-	// Add filters if provided
-	var filters []string
-	if len(args.Ids) > 0 {
-		// Create a list of '?' placeholders, one for each id
-		placeholders := strings.Repeat("?,", len(args.Ids)-1) + "?"
-
-		// Add the filter for id
-		filters = append(filters, fmt.Sprintf("ID IN (%s)", placeholders))
-	} else {
+	if len(args.Ids) <= 0 {
 		// If no ids provided, return an empty result
 		return []*verse{}, nil
 	}
 
-	// Combine the base query with filters
-	query = query + " WHERE " + strings.Join(filters, " AND ")
-
-	query = query + " AND STATUS !=2 ORDER BY CREATEDAT DESC"
-
-	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.Ids)
+	placeholders := strings.Repeat("?,", len(args.Ids)-1) + "?"
+	query += " WHERE DATAID IN (" + placeholders + ")"
+	query += " AND STATUS !=2 ORDER BY CREATEDAT DESC"
+	// convert []string to []interface{}
+	argsInterface := make([]interface{}, len(args.Ids))
+	for i, v := range args.Ids {
+		argsInterface[i] = v
+	}
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, argsInterface...)
 	if err != nil {
 		return nil, err
 	}
