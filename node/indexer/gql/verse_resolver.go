@@ -259,9 +259,9 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 }
 
 func (r *resolver) VersesByIds(ctx context.Context, args struct {
-	Ids        []string
-	onlyFollowed bool
-	UserDataId *string
+	Ids          []string
+	OnlyFollowed *bool
+	UserDataId   *string
 }) ([]*verse, error) {
 	// Prepare the base query
 	query := "SELECT * FROM VERSE"
@@ -302,11 +302,9 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct {
 			v.HasFollowedOwner = count > 0
 		}
 
-		if !args.onlyFollowed || (args.onlyFollowed && v.HasFollowedOwner) {
+		if args.OnlyFollowed == nil || !*args.OnlyFollowed || (*args.OnlyFollowed && v.HasFollowedOwner) {
 			verses = append(verses, v)
 		}
-
-		verses = append(verses, v)
 	}
 
 	if err = rows.Err(); err != nil {
