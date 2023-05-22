@@ -238,7 +238,7 @@ type RootQuery {
         offset: Int): [Verse!]!
 
     """Get Verses by verse ID list"""
-    versesByIds(ids: [String!]!, userDataId: String): [Verse!]!
+    versesByIds(ids: [String!]!, onlyFollowed:Boolean, userDataId: String): [Verse!]!
 
     """Get FileInfo by ID"""
     fileInfo(id: ID!, userDataId: String): FileInfo
