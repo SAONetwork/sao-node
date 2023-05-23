@@ -286,4 +286,7 @@ type RootQuery {
         limit: Int
         offset: Int
     ): NotificationsInfo!
+
+    """Get Coin Price by symbol"""
+    coinPrice(symbol: String!): String!
 }

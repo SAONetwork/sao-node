@@ -148,7 +148,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
-			log.Infof("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
+			log.Debugf("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
 			if err != nil {
 				return nil, err
 			}

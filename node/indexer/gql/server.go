@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"sao-node/node/indexer"
 	"sync"
+	"time"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
+	"github.com/patrickmn/go-cache"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -22,7 +24,8 @@ type Server struct {
 }
 
 func NewGraphqlServer(listenAddr string, indexSvc *indexer.IndexSvc) *Server {
-	return &Server{listenAddr: listenAddr, resolver: &resolver{indexSvc}}
+	c := cache.New(1*time.Minute, 10*time.Minute)
+	return &Server{listenAddr: listenAddr, resolver: &resolver{indexSvc: indexSvc, cache: c}}
 }
 
 //go:embed schema.graphql
