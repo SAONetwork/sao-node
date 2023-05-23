@@ -36,6 +36,7 @@ type verse struct {
 	OwnerAvatar      string
 	OwnerUsername    string
 	OwnerBio         string
+	OwnerNftTokenID  string
 }
 
 type VerseArgs struct {
@@ -465,6 +466,31 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 		}
 	}
 
+	sixMonthsAgo := time.Now().AddDate(0, -6, 0).Unix() // 6 months ago in Unix time
+
+	// Fetch the token ID and the price
+	var tokenID, price sql.NullString
+	err = db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", v.Owner, sixMonthsAgo).Scan(&tokenID, &price)
+	if err != nil && err != sql.ErrNoRows {
+		// If the error is something other than 'no rows', return the error
+		fmt.Printf("Error fetching token ID and price: %v\n", err)
+	} else {
+		if tokenID.Valid {
+			v.OwnerNftTokenID = tokenID.String
+		}
+		// If the price exists, check if verse is already purchased
+		if price.Valid {
+			var count int
+			err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.Owner, userDataId).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+			if count == 0 { // not purchased yet
+				v.PayToFollow = price.String
+			}
+		}
+	}
+
 	return &v, nil
 }
 
@@ -495,25 +521,6 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 	case 5:
 		if userDataId != v.Owner {
 			return nil, fmt.Errorf("verse is private")
-		}
-	}
-
-	sixMonthsAgo := time.Now().AddDate(0, -6, 0).Unix() // 6 months ago in Unix time
-	var price sql.NullString
-	err = db.QueryRowContext(ctx, "SELECT PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", v.Owner, sixMonthsAgo).Scan(&price)
-	if err != nil && err != sql.ErrNoRows {
-		// If the error is something other than 'no rows', return the error
-		fmt.Printf("Error fetching listing price: %v\n", err)
-	}
-	// If the price exists, check if verse is already purchased
-	if price.Valid {
-		var count int
-		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.Owner, userDataId).Scan(&count)
-		if err != nil {
-			return nil, err
-		}
-		if count == 0 { // not purchased yet
-			v.PayToFollow = price.String
 		}
 	}
 

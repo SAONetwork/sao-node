@@ -95,6 +95,7 @@ type Verse {
     OwnerAvatar: String!
     OwnerUsername: String!
     OwnerBio: String!
+    OwnerNftTokenID: String!
 }
 
 type FileInfo {
