@@ -142,16 +142,17 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 // query: suggestedUsers(userDataId) [UserProfile!]!
 func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) ([]*userProfile, error) {
 	query := `SELECT USER_PROFILE.* 
-              FROM USER_PROFILE 
-              LEFT JOIN (
-                SELECT FOLLOWING, COUNT(*) as COUNT 
-                FROM USER_FOLLOWING 
-                GROUP BY FOLLOWING
-              ) as FOLLOWING_COUNTS ON USER_PROFILE.DATAID = FOLLOWING_COUNTS.FOLLOWING
-              ORDER BY FOLLOWING_COUNTS.COUNT DESC 
-              LIMIT 5`
+          FROM USER_PROFILE 
+          LEFT JOIN (
+            SELECT FOLLOWING, COUNT(*) as COUNT 
+            FROM USER_FOLLOWING 
+            GROUP BY FOLLOWING
+          ) as FOLLOWING_COUNTS ON USER_PROFILE.DATAID = FOLLOWING_COUNTS.FOLLOWING
+          WHERE USER_PROFILE.DATAID != ? AND USER_PROFILE.DATAID NOT IN (SELECT ITEMDATAID FROM LISTING_INFO)
+          ORDER BY FOLLOWING_COUNTS.COUNT DESC 
+          LIMIT 5`
 
-	rows, err := r.indexSvc.Db.QueryContext(ctx, query)
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, *args.UserDataId)
 	if err != nil {
 		return nil, err
 	}
