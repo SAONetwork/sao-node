@@ -58,8 +58,8 @@ type subscribedVersesArgs struct {
 
 type likedVersesArgs struct {
 	UserDataId *string
-	Limit      *int
-	Offset     *int
+	Limit      *int32
+	Offset     *int32
 }
 
 // query: verse(id) Verse
