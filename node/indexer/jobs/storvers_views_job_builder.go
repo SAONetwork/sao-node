@@ -144,6 +144,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 		errorMap := make(map[string]int)
 		filterMap := make(map[string]time.Time)
+		filterCountMap := make(map[string]int)
 
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
@@ -213,8 +214,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 			}
 
 			for _, meta := range metaList {
-				// Check if meta.DataId is in filterMap and if less than an hour has passed
-				if filterTime, ok := filterMap[meta.DataId]; ok && time.Since(filterTime) < time.Hour {
+				// Check if meta.DataId is in filterMap and if the timeout has not passed
+				if filterTime, ok := filterMap[meta.DataId]; ok && time.Since(filterTime) < getTimeoutDuration(filterCountMap[meta.DataId]) {
 					continue
 				}
 
@@ -259,9 +260,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							// Increment error count for meta.DataId
 							errorMap[meta.DataId]++
 
-							// If error count reaches 20, add meta.DataId to filterMap and reset error count
-							if errorMap[meta.DataId] >= 20 {
+							// If error count reaches 10, add meta.DataId to filterMap, increment filter count, and reset error count
+							if errorMap[meta.DataId] >= 10 {
 								filterMap[meta.DataId] = time.Now()
+								filterCountMap[meta.DataId]++
 								errorMap[meta.DataId] = 0
 							}
 
@@ -744,4 +746,15 @@ func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter
 		}
 	}
 	return nil
+}
+
+// Returns the timeout duration based on the filter count
+func getTimeoutDuration(filterCount int) time.Duration {
+	if filterCount == 1 {
+		return 2 * time.Minute
+	} else if filterCount >= 2 && filterCount <= 10 {
+		return 5 * time.Minute
+	} else {
+		return time.Hour
+	}
 }
