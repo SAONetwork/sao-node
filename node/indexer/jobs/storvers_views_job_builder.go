@@ -272,6 +272,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 						// Reset error count if getDataModel is successful
 						delete(errorMap, meta.DataId)
+						delete(filterMap, meta.DataId)
 
 						//if meta.Alias contains filecontent, save the resp content to a file under keyringHome/tmp folder
 						if strings.Contains(meta.Alias, "filecontent") {

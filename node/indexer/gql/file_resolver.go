@@ -200,17 +200,17 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 
 func (r *resolver) FileInfos(ctx context.Context, args struct {
 	UserDataId string
-	Limit      *int
-	Offset     *int
+	Limit      *int32
+	Offset     *int32
 }) ([]*fileInfo, error) {
 	// Default limit is 10 and offset is 0
 	limit := 10
 	offset := 0
 	if args.Limit != nil {
-		limit = *args.Limit
+		limit = int(*args.Limit)
 	}
 	if args.Offset != nil {
-		offset = *args.Offset
+		offset = int(*args.Offset)
 	}
 
 	// Prepare the base query
