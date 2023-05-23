@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
@@ -25,12 +26,14 @@ type userProfile struct {
 	Bio             string       `json:"Bio"`
 	Banner          string       `json:"Banner"`
 	FollowingDataId string       `json:"FollowingDataId"`
-	IsFollowing bool `json:"IsFollowing"`
+	IsFollowing     bool         `json:"IsFollowing"`
+	NftTokenID      string       `json:"NftTokenId"`
+	PayToFollow     string       `json:"PayToFollow"`
 }
 
 type userProfileArgs struct {
-	ID        *graphql.ID
-	Did       *string
+	ID         *graphql.ID
+	Did        *string
 	EthAddress *string
 }
 
@@ -117,6 +120,22 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		return nil, err
 	}
 
+	// Fetch the NFT token ID and price
+	var tokenID, price sql.NullString
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", profile.DataId).Scan(&tokenID, &price)
+	if err != nil && err != sql.ErrNoRows {
+		// If the error is something other than 'no rows', return the error
+		fmt.Printf("Error fetching token ID and price: %v\n", err)
+	} else {
+		if tokenID.Valid {
+			profile.NftTokenID = tokenID.String
+		}
+		// If the price exists, set PayToFollow to the fetched price
+		if price.Valid {
+			profile.PayToFollow = price.String
+		}
+	}
+
 	return &profile, nil
 }
 
@@ -187,6 +206,22 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 			return nil, err
 		}
 
+		// Fetch the NFT token ID and price
+		var tokenID, price sql.NullString
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", profile.DataId).Scan(&tokenID, &price)
+		if err != nil && err != sql.ErrNoRows {
+			// If the error is something other than 'no rows', return the error
+			fmt.Printf("Error fetching token ID and price: %v\n", err)
+		} else {
+			if tokenID.Valid {
+				profile.NftTokenID = tokenID.String
+			}
+			// If the price exists, set PayToFollow to the fetched price
+			if price.Valid {
+				profile.PayToFollow = price.String
+			}
+		}
+
 		suggestedProfiles = append(suggestedProfiles, &profile)
 	}
 
@@ -196,7 +231,6 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 
 	return suggestedProfiles, nil
 }
-
 
 func (m *userProfile) ID() graphql.ID {
 	return graphql.ID(m.CommitId)

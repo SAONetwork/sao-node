@@ -11,17 +11,18 @@ import (
 )
 
 type userFollowing struct {
-	CommitId  string       `json:"CommitId"`
-	DataId    string       `json:"DataId"`
-	Alias     string       `json:"Alias"`
-	CreatedAt types.Uint64 `json:"CreatedAt"`
-	UpdatedAt types.Uint64 `json:"UpdatedAt"`
-	ExpiredAt types.Uint64 `json:"ExpiredAt"`
-	Follower  string       `json:"Follower"`
-	Following string       `json:"Following"`
-	HasFollowed bool       `json:"HasFollowed"`
-	Status    string       `json:"Status"`
-	ToPay     string         `json:"ToPay"`
+	CommitId    string       `json:"CommitId"`
+	DataId      string       `json:"DataId"`
+	Alias       string       `json:"Alias"`
+	CreatedAt   types.Uint64 `json:"CreatedAt"`
+	UpdatedAt   types.Uint64 `json:"UpdatedAt"`
+	ExpiredAt   types.Uint64 `json:"ExpiredAt"`
+	Follower    string       `json:"Follower"`
+	Following   string       `json:"Following"`
+	HasFollowed bool         `json:"HasFollowed"`
+	Status      string       `json:"Status"`
+	ToPay       string       `json:"ToPay"`
+	NftTokenID  string       `json:"NftTokenID"`
 
 	// user profile fields
 	EthAddr  string `json:"EthAddr"`
@@ -181,15 +182,28 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 
 				if !uf.HasFollowed {
 					sixMonthsAgo := time.Now().AddDate(0, -6, 0).Unix() // 6 months ago in Unix time
-					var price sql.NullString
-					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", uf.Follower, sixMonthsAgo).Scan(&price)
+
+					// Fetch the token ID and the price
+					var tokenID, price sql.NullString
+					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? AND TIME >= ? ORDER BY TIME DESC LIMIT 1", uf.Follower, sixMonthsAgo).Scan(&tokenID, &price)
 					if err != nil && err != sql.ErrNoRows {
 						// If the error is something other than 'no rows', return the error
-						fmt.Printf("Error fetching listing price: %v\n", err)
-					}
-					// If the price exists, set ToPay to the fetched price
-					if price.Valid {
-						uf.ToPay = price.String
+						fmt.Printf("Error fetching token ID and price: %v\n", err)
+					} else {
+						if tokenID.Valid {
+							uf.NftTokenID = tokenID.String
+						}
+						// If the price exists, check if user follow is already purchased
+						if price.Valid {
+							var count int
+							err := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", uf.Follower, *args.UserDataId).Scan(&count)
+							if err != nil {
+								fmt.Printf("Error fetching purchase count: %v\n", err)
+							}
+							if count == 0 { // not purchased yet
+								uf.ToPay = price.String
+							}
+						}
 					}
 				}
 
@@ -211,10 +225,10 @@ func (r *resolver) Followings(ctx context.Context, args struct {
 }
 
 func (r *resolver) FollowedList(ctx context.Context, args struct {
-	Follower  string
-	IsExpired bool
-	Limit     *int32
-	Offset    *int32
+	Follower   string
+	IsExpired  bool
+	Limit      *int32
+	Offset     *int32
 	UserDataId *string
 }) (*followingResult, error) {
 	var query, countQuery string

@@ -70,6 +70,8 @@ type UserProfile {
     Banner: String!
     FollowingDataId: String!
     IsFollowing: Boolean!
+    NftTokenID: String!
+    PayToFollow: String!
 }
 
 type Verse {
@@ -121,6 +123,7 @@ type UserFollowing {
     HasFollowed: Boolean!
     Status: String!
     ToPay: String!
+    NftTokenID: String!
     EthAddr: String!
     Avatar: String!
     Username: String!
