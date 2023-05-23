@@ -198,6 +198,60 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 	return fileInfos, nil
 }
 
+func (r *resolver) FileInfos(ctx context.Context, args struct {
+	UserDataId string
+	Limit      *int
+	Offset     *int
+}) ([]*fileInfo, error) {
+	// Default limit is 10 and offset is 0
+	limit := 10
+	offset := 0
+	if args.Limit != nil {
+		limit = *args.Limit
+	}
+	if args.Offset != nil {
+		offset = *args.Offset
+	}
+
+	// Prepare the base query
+	query := "SELECT * FROM FILE_INFO WHERE OWNER = ? LIMIT ? OFFSET ?"
+
+	// Execute the query
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.UserDataId, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var fileInfos []*fileInfo
+	for rows.Next() {
+		var fi fileInfo
+		err := rows.Scan(
+			&fi.CommitId,
+			&fi.DataID,
+			&fi.Alias,
+			&fi.CreatedAt,
+			&fi.FileDataID,
+			&fi.ContentType,
+			&fi.Owner,
+			&fi.Filename,
+			&fi.FileCategory,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		fileInfos = append(fileInfos, &fi)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return fileInfos, nil
+}
+
+
 // query: file(id, userDataId) String
 func (r *resolver) File(ctx context.Context, args struct {
 	ID              graphql.ID

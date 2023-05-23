@@ -56,6 +56,12 @@ type subscribedVersesArgs struct {
 	Offset     *int32
 }
 
+type likedVersesArgs struct {
+	UserDataId *string
+	Limit      *int
+	Offset     *int
+}
+
 // query: verse(id) Verse
 func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 	var row *sql.Row
@@ -248,6 +254,71 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 			v.HasFollowedOwner = count > 0
 		}
 
+		verses = append(verses, v)
+	}
+
+	if err = rowsVerses.Err(); err != nil {
+		return nil, err
+	}
+
+	return verses, nil
+}
+
+func (r *resolver) LikedVerses(ctx context.Context, args likedVersesArgs) ([]*verse, error) {
+	if args.UserDataId == nil {
+		return nil, fmt.Errorf("UserDataId must be provided")
+	}
+
+	// Query to get a list of verses the given user has liked
+	queryLiked := "SELECT VERSEID FROM VERSE_LIKE WHERE OWNER = ? AND STATUS = 1"
+	rowsLiked, err := r.indexSvc.Db.QueryContext(ctx, queryLiked, args.UserDataId)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsLiked.Close()
+
+	// Collect the ids of the liked verses
+	var likedVerses []string
+	for rowsLiked.Next() {
+		var likedVerse string
+		if err := rowsLiked.Scan(&likedVerse); err != nil {
+			return nil, err
+		}
+		likedVerses = append(likedVerses, likedVerse)
+	}
+
+	if len(likedVerses) == 0 {
+		return []*verse{}, nil
+	}
+
+	// Prepare the query for the verses
+	queryVerses := "SELECT * FROM VERSE WHERE DATAID IN (?" + strings.Repeat(", ?", len(likedVerses)-1) + ") AND STATUS != 2 ORDER BY CREATEDAT DESC"
+	if args.Limit != nil {
+		queryVerses += fmt.Sprintf(" LIMIT %d", *args.Limit)
+	}
+	if args.Offset != nil {
+		queryVerses += fmt.Sprintf(" OFFSET %d", *args.Offset)
+	}
+
+	// Convert likedVerses to an interface slice for the db query
+	likedVersesInterface := make([]interface{}, len(likedVerses))
+	for i, v := range likedVerses {
+		likedVersesInterface[i] = v
+	}
+
+	// Execute the query
+	rowsVerses, err := r.indexSvc.Db.QueryContext(ctx, queryVerses, likedVersesInterface...)
+	if err != nil {
+		return nil, err
+	}
+	defer rowsVerses.Close()
+
+	var verses []*verse
+	for rowsVerses.Next() {
+		v, err := verseFromRow(rowsVerses, ctx, r.indexSvc.Db, args.UserDataId)
+		if err != nil {
+			return nil, err
+		}
 		verses = append(verses, v)
 	}
 

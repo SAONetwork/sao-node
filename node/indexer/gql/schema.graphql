@@ -237,6 +237,11 @@ type RootQuery {
         limit: Int
         offset: Int): [Verse!]!
 
+    """Get liked Verse for user"""
+    likedVerses(userDataId: String
+        limit: Int
+        offset: Int): [Verse!]!
+
     """Get Verses by verse ID list"""
     versesByIds(ids: [String!]!, onlyFollowed:Boolean, userDataId: String): [Verse!]!
 
@@ -245,6 +250,11 @@ type RootQuery {
 
     """Get FileInfos by verse ID list"""
     fileInfosByVerseIds(verseIds: [String!]!, userDataId: String): [FileInfo!]!
+
+    """Get FileInfos by userDataId"""
+    fileInfos(userDataId: String!
+        limit: Int
+        offset: Int): [FileInfo!]!
 
     """Get File by ID"""
     file(id: ID!, userDataId: String, getFromFileInfo:Boolean): String
