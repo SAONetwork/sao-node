@@ -21,6 +21,7 @@ import (
 	apitypes "sao-node/api/types"
 	"sao-node/chain"
 	"sao-node/node/indexer/jobs/storverse/model"
+	"sao-node/node/indexer/jobs/storverse/sync"
 	"sao-node/types"
 	"sao-node/utils"
 	"strings"
@@ -202,7 +203,9 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
 				}
 
-				time.Sleep(2 * time.Second)
+				sync.UpdateEthAddresses(db, log)
+
+				time.Sleep(60 * time.Second)
 				offset = 0
 				limit = 100
 				// Clear the slices

@@ -6,7 +6,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type AccountListResponse struct {
@@ -25,7 +24,13 @@ type AccountIdResponse struct {
 }
 
 func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
-	// Fetch all DIDs and ETHADDR from the USER_PROFILE table
+	type PendingUpdate struct {
+		did      string
+		ethAddrs string
+	}
+
+	var updates []PendingUpdate
+
 	rows, err := db.Query("SELECT DID, ETHADDR FROM USER_PROFILE")
 	if err != nil {
 		log.Errorf("Error while querying DID and ETHADDR from USER_PROFILE: %v", err)
@@ -33,7 +38,6 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 	}
 	defer rows.Close()
 
-	// Loop through all rows
 	for rows.Next() {
 		var did, currentEthAddr string
 		if err := rows.Scan(&did, &currentEthAddr); err != nil {
@@ -43,7 +47,6 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 
 		log.Infof("Processing DID %s with current ETHADDR %s", did, currentEthAddr)
 
-		// Fetch the list of account DIDs associated with the current DID
 		accountListResp, err := getAccountList(did)
 		if err != nil {
 			log.Errorf("Error while fetching account list: %v", err)
@@ -51,13 +54,10 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 		}
 
 		var ethAddrs []string
-		hasError := false
 		for _, accountDid := range accountListResp.AccountList.AccountDids {
-			// Fetch the account ID for the current account DID
 			accountIdResp, err := getAccountId(accountDid)
 			if err != nil {
 				log.Errorf("Error while fetching account ID: %v", err)
-				hasError = true
 				break
 			}
 
@@ -67,28 +67,28 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 			}
 		}
 
-		if hasError {
-			continue
-		}
-
-		// Join the ETH addresses with a comma
 		newEthAddr := strings.Join(ethAddrs, ",")
-
-		// If the ETHADDR fetched from the API is different from the ETHADDR in the USER_PROFILE table, update it
 		if newEthAddr != currentEthAddr {
-			log.Infof("Updating ETHADDR for DID %s from %s to %s", did, currentEthAddr, newEthAddr)
-			_, err = db.Exec("UPDATE USER_PROFILE SET ETHADDR = ? WHERE DID = ?", newEthAddr, did)
-			if err != nil {
-				log.Errorf("Error while updating ETHADDR in USER_PROFILE: %v", err)
-				continue
-			}
-			time.Sleep(3 * time.Second)
+			updates = append(updates, PendingUpdate{did, newEthAddr})
 		}
 	}
 
-	return rows.Err()
-}
+	if err := rows.Err(); err != nil {
+		log.Errorf("Error while iterating over rows: %v", err)
+		return err
+	}
 
+	for _, update := range updates {
+		log.Infof("Updating ETHADDR for DID %s to %s", update.did, update.ethAddrs)
+		_, err = db.Exec("UPDATE USER_PROFILE SET ETHADDR = ? WHERE DID = ?", update.ethAddrs, update.did)
+		if err != nil {
+			log.Errorf("Error while updating ETHADDR in USER_PROFILE: %v", err)
+			continue
+		}
+	}
+
+	return nil
+}
 
 func getAccountList(did string) (*AccountListResponse, error) {
 	resp, err := http.Get("http://127.0.0.1:1317/SaoNetwork/sao/did/account_list/" + did + ":")
