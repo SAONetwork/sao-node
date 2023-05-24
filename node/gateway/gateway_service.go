@@ -15,13 +15,13 @@ import (
 	"sao-node/utils"
 	"time"
 
-	ordertypes "github.com/SaoNetwork/sao/x/order/types"
-
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
 
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -890,6 +890,33 @@ func lockname(orderId uint64) string {
 
 func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 	var latestHeight uint64 = 0
+	height, _ := gs.chainSvc.GetLastHeight(ctx)
+
+	orderIdx, err := utils.GetOrderIndex(ctx, gs.orderDs)
+	metaSet := make(map[string]struct{})
+	if err == nil {
+		for _, orderKey := range orderIdx.Alls {
+			if _, ok := metaSet[orderKey.DataId]; !ok {
+				metaSet[orderKey.DataId] = struct{}{}
+				orderInfo, err := gs.OrderStatus(ctx, orderKey.DataId)
+				if err == nil {
+					meta, err := gs.chainSvc.GetMeta(ctx, orderKey.DataId)
+					if err == nil && meta.Metadata.Status != modeltypes.MetaComplete {
+						order, err := gs.chainSvc.GetOrder(ctx, meta.Metadata.OrderId)
+						if err == nil {
+							timeoutAt := (uint64(height)-order.CreatedAt)/order.Timeout*order.Timeout + order.CreatedAt
+							orderInfo.OrderId = meta.Metadata.OrderId
+							gs.locks.Lock("timeout")
+							gs.timeoutMap[timeoutAt] = append(gs.timeoutMap[timeoutAt], orderInfo)
+							gs.locks.Unlock("timeout")
+						}
+					}
+				}
+			}
+		}
+	}
+	log.Warnf("timeout map %#v\n", gs.timeoutMap)
+
 	for {
 		height, err := gs.chainSvc.GetLastHeight(ctx)
 		newHeight := uint64(height)
@@ -940,13 +967,7 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 					gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
 
 					gs.locks.Lock("timeout")
-					updateOrderInfoList, ok := gs.timeoutMap[orderInfo.ExpireHeight]
-					if ok {
-						orderInfoList = append(updateOrderInfoList, orderInfo)
-						gs.timeoutMap[orderInfo.ExpireHeight] = updateOrderInfoList
-					} else {
-						gs.timeoutMap[orderInfo.ExpireHeight] = []types.OrderInfo{orderInfo}
-					}
+					gs.timeoutMap[orderInfo.ExpireHeight] = append(gs.timeoutMap[orderInfo.ExpireHeight], orderInfo)
 					gs.locks.Unlock("timeout")
 				}
 			}
@@ -959,5 +980,4 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 			gs.locks.Unlock("timeout")
 		}
 	}
-
 }
