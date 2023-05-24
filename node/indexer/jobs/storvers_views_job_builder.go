@@ -21,7 +21,6 @@ import (
 	apitypes "sao-node/api/types"
 	"sao-node/chain"
 	"sao-node/node/indexer/jobs/storverse/model"
-	"sao-node/node/indexer/jobs/storverse/sync"
 	"sao-node/types"
 	"sao-node/utils"
 	"strings"
