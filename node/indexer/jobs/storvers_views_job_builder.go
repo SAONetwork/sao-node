@@ -157,6 +157,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		filterCountMap := make(map[string]int)
 
 		for {
+			sync.UpdateEthAddresses(db, log)
+
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
 			log.Debugf("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
 			if err != nil {
@@ -203,9 +205,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
 				}
 
-				sync.UpdateEthAddresses(db, log)
-
-				time.Sleep(60 * time.Second)
+				time.Sleep(5 * time.Second)
 				offset = 0
 				limit = 100
 				// Clear the slices

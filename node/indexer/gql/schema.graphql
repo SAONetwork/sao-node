@@ -165,6 +165,11 @@ type PurchaseOrder {
     ExpireTime: Uint64!
 }
 
+type EarningsByMonth {
+    Month: String!
+    Total: Float!
+}
+
 type VerseComment {
     ID: ID!
     DataId: String!
@@ -276,6 +281,9 @@ type RootQuery {
 
     """Get all PurchaseOrders"""
     purchaseOrders(itemDataID: String): PurchaseOrderList!
+
+    """Get total earnings by month for the last six months"""
+    earningsByMonth(userDataID: String!): [EarningsByMonth!]!
 
     """Get Verse Comments by Verse ID"""
     verseComments(

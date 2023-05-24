@@ -32,6 +32,15 @@ type purchaseOrderArgs struct {
 	ItemDataID *string
 }
 
+type totalEarningsArgs struct {
+	UserDataId string
+}
+
+type earningsByMonth struct {
+	Month  string
+	Total  float64
+}
+
 // query: purchaseOrders(query) PurchaseOrderList
 func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (*purchaseOrderList, error) {
 	var rows *sql.Rows
@@ -89,6 +98,41 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 		PurchaseOrders: orders,
 		More:           more,
 	}, nil
+}
+
+func (r *resolver) EarningsByMonth(ctx context.Context, args totalEarningsArgs) ([]*earningsByMonth, error) {
+	rows, err := r.indexSvc.Db.QueryContext(ctx, `
+        SELECT 
+            strftime('%Y-%m', datetime(TIME, 'unixepoch')) AS Month, 
+            SUM(CAST(PRICE as REAL)) AS Total 
+        FROM PURCHASE_ORDER
+        WHERE ((TYPE = 2 AND ITEMDATAID = ?) OR (TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?)))
+            AND TIME >= strftime('%s', date('now', '-6 months'))
+        GROUP BY Month
+        ORDER BY Month DESC`,
+		args.UserDataId, args.UserDataId)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var earnings []*earningsByMonth
+
+	for rows.Next() {
+		var e earningsByMonth
+		err := rows.Scan(&e.Month, &e.Total)
+		if err != nil {
+			return nil, err
+		}
+		earnings = append(earnings, &e)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return earnings, nil
 }
 
 func (l *purchaseOrder) ID() graphql.ID {
