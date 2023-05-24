@@ -6,6 +6,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type AccountListResponse struct {
@@ -81,6 +82,7 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 				log.Errorf("Error while updating ETHADDR in USER_PROFILE: %v", err)
 				continue
 			}
+			time.Sleep(3 * time.Second)
 		}
 	}
 
