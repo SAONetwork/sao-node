@@ -11,7 +11,6 @@ import (
 	saokey "github.com/SaoNetwork/sao-did/key"
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
-	"github.com/go-co-op/gocron"
 	logging "github.com/ipfs/go-log/v2"
 	"io/ioutil"
 	"os"
@@ -22,7 +21,6 @@ import (
 	apitypes "sao-node/api/types"
 	"sao-node/chain"
 	"sao-node/node/indexer/jobs/storverse/model"
-	"sao-node/node/indexer/jobs/storverse/sync"
 	"sao-node/types"
 	"sao-node/utils"
 	"strings"
@@ -128,14 +126,14 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 			return nil, errors.New("failed to get gateway address")
 		}
 
-		s := gocron.NewScheduler(time.UTC)
+		//s := gocron.NewScheduler(time.UTC)
 
 		// Schedule the function to run every 1 hour
-		_, err = s.Every(1).Seconds().Do(sync.UpdateEthAddresses(db, log))
-		if err != nil {
-			log.Errorf("failed to schedule job: %w", err)
-			return nil, errors.New("failed to schedule job")
-		}
+		//_, err = s.Every(1).Seconds().Do(sync.UpdateEthAddresses(db, log))
+		//if err != nil {
+		//	log.Errorf("failed to schedule job: %w", err)
+		//	return nil, errors.New("failed to schedule job")
+		//}
 
 		var offset uint64 = 0
 		var limit uint64 = 100
