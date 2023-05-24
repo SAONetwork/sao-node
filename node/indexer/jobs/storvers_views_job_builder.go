@@ -148,8 +148,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		filterCountMap := make(map[string]int)
 
 		for {
-			sync.UpdateEthAddresses(db, log)
-			time.Sleep(20 * time.Second)
+			//sync.UpdateEthAddresses(db, log)
+			//time.Sleep(20 * time.Second)
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
 			log.Debugf("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
 			if err != nil {
