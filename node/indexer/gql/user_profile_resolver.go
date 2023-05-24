@@ -39,6 +39,8 @@ type userProfileArgs struct {
 
 type suggestedUsersArgs struct {
 	UserDataId *string
+	Limit      *int32
+	Offset     *int32
 }
 
 // query: userProfile(id) UserProfile
@@ -75,8 +77,8 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		if argsCount > 0 {
 			query += " OR"
 		}
-		query += " ETHADDR = ?"
-		queryParams = append(queryParams, *args.EthAddress)
+		query += " ',' || ETHADDR || ',' LIKE ?"
+		queryParams = append(queryParams, "%," + *args.EthAddress + ",%")
 		argsCount++
 	}
 
@@ -150,9 +152,20 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
           ) as FOLLOWING_COUNTS ON USER_PROFILE.DATAID = FOLLOWING_COUNTS.FOLLOWING
           WHERE USER_PROFILE.DATAID != ? AND USER_PROFILE.DATAID NOT IN (SELECT ITEMDATAID FROM LISTING_INFO)
           ORDER BY FOLLOWING_COUNTS.COUNT DESC 
-          LIMIT 5`
+          LIMIT ? OFFSET ?`
 
-	rows, err := r.indexSvc.Db.QueryContext(ctx, query, *args.UserDataId)
+	limit := 4
+	offset := 0
+
+	if args.Limit != nil {
+		limit = int(*args.Limit)
+	}
+
+	if args.Offset != nil {
+		offset = int(*args.Offset)
+	}
+
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, *args.UserDataId, limit, offset)
 	if err != nil {
 		return nil, err
 	}

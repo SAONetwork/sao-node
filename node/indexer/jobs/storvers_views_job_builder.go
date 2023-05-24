@@ -21,6 +21,7 @@ import (
 	apitypes "sao-node/api/types"
 	"sao-node/chain"
 	"sao-node/node/indexer/jobs/storverse/model"
+	"sao-node/node/indexer/jobs/storverse/sync"
 	"sao-node/types"
 	"sao-node/utils"
 	"strings"
@@ -147,6 +148,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 		filterCountMap := make(map[string]int)
 
 		for {
+			sync.UpdateEthAddresses(db, log)
+			time.Sleep(20 * time.Second)
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
 			log.Debugf("offset: %d, limit: %d, total: %d", offset*limit, limit, total)
 			if err != nil {

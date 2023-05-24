@@ -228,7 +228,9 @@ type RootQuery {
     userProfile(id: ID, did: String, ethAddress: String): UserProfile
 
     """Get most followed users"""
-    suggestedUsers(userDataId: String): [UserProfile!]!
+    suggestedUsers(userDataId: String
+        limit: Int
+        offset: Int): [UserProfile!]!
 
     """Get Verse by ID"""
     verse(id: ID, nftTokenID: String, userDataId: String): Verse
