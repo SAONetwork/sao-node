@@ -915,7 +915,13 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 			}
 		}
 	}
-	log.Warnf("timeout map %#v\n", gs.timeoutMap)
+	log.Info("restored timeout map")
+	for height, infoList := range gs.timeoutMap {
+		log.Info("timeout Height ", height)
+		for _, info := range infoList {
+			log.Info("    order ", info.OrderId)
+		}
+	}
 
 	for {
 		height, err := gs.chainSvc.GetLastHeight(ctx)
