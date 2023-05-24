@@ -148,7 +148,6 @@ type FollowingResult {
 type PurchaseOrderList {
     totalCount: Int!
     PurchaseOrders: [PurchaseOrder!]!
-    more: Boolean!
 }
 
 type PurchaseOrder {
@@ -280,10 +279,10 @@ type RootQuery {
     listingInfo(dataId: String, tokenId: String): ListingInfo
 
     """Get all PurchaseOrders"""
-    purchaseOrders(itemDataID: String): PurchaseOrderList!
+    purchaseOrders(itemDataId: String, userDataId: String, limit: Int, offset: Int): PurchaseOrderList!
 
     """Get total earnings by month for the last six months"""
-    earningsByMonth(userDataID: String!): [EarningsByMonth!]!
+    earningsByMonth(userDataId: String!): [EarningsByMonth!]!
 
     """Get Verse Comments by Verse ID"""
     verseComments(

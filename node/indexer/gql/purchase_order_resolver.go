@@ -10,7 +10,6 @@ import (
 type purchaseOrderList struct {
 	TotalCount     int32            `json:"totalCount"`
 	PurchaseOrders []*purchaseOrder `json:"purchaseOrders"`
-	More           bool             `json:"more"`
 }
 
 type purchaseOrder struct {
@@ -29,7 +28,10 @@ type purchaseOrder struct {
 }
 
 type purchaseOrderArgs struct {
-	ItemDataID *string
+	ItemDataId *string
+	UserDataId *string
+	Limit      *int32
+	Offset     *int32
 }
 
 type totalEarningsArgs struct {
@@ -45,11 +47,28 @@ type earningsByMonth struct {
 func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (*purchaseOrderList, error) {
 	var rows *sql.Rows
 	var err error
+	limit := 10
+	offset := 0
 
-	if args.ItemDataID != nil {
-		rows, err = r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM PURCHASE_ORDER WHERE ITEMDATAID = ?", *args.ItemDataID)
+	if args.Limit != nil {
+		limit = int(*args.Limit)
+	}
+	if args.Offset != nil {
+		offset = int(*args.Offset)
+	}
+
+	if args.UserDataId != nil {
+		rows, err = r.indexSvc.Db.QueryContext(ctx, `
+			SELECT * 
+			FROM PURCHASE_ORDER 
+			WHERE ((TYPE = 2 AND ITEMDATAID = ?) OR 
+			(TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?))) 
+			LIMIT ? OFFSET ?`,
+			*args.UserDataId, *args.UserDataId, limit, offset)
+	} else if args.ItemDataId != nil {
+		rows, err = r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM PURCHASE_ORDER WHERE ITEMDATAID = ? LIMIT ? OFFSET ?", *args.ItemDataId, limit, offset)
 	} else {
-		rows, err = r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM PURCHASE_ORDER")
+		rows, err = r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM PURCHASE_ORDER LIMIT ? OFFSET ?", limit, offset)
 	}
 
 	if err != nil {
@@ -91,12 +110,9 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 		return nil, err
 	}
 
-	more := false
-
 	return &purchaseOrderList{
 		TotalCount:     totalCount,
 		PurchaseOrders: orders,
-		More:           more,
 	}, nil
 }
 
