@@ -162,6 +162,9 @@ type PurchaseOrder {
     Time: Uint64!
     Type: Int!
     ExpireTime: Uint64!
+    VerseDigest: String!
+    UserName: String!
+    Avatar: String!
 }
 
 type EarningsByMonth {

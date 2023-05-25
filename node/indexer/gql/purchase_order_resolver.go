@@ -25,6 +25,9 @@ type purchaseOrder struct {
 	Time        types.Uint64 `json:"time"`
 	Type        int32        `json:"type"`
 	ExpireTime  types.Uint64 `json:"expireTime"`
+	VerseDigest string       `json:"verseDigest"`
+	UserName    string       `json:"userName"`
+	Avatar      string       `json:"avatar"`
 }
 
 type purchaseOrderArgs struct {
@@ -97,6 +100,21 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 		if err != nil {
 			return nil, err
 		}
+
+		// Fetching avatar and username from the user_profile table
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
+		if err != nil {
+			return nil, err
+		}
+
+		// If order type is 1, fetch owner and digest from the verse table
+		if order.Type == 1 {
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&order.UserName, &order.VerseDigest)
+			if err != nil {
+				return nil, err
+			}
+		}
+
 		orders = append(orders, &order)
 	}
 
