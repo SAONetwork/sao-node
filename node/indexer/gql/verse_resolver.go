@@ -110,6 +110,13 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
+			v.NotInScope = v.Scope
+		}
+		if v.Scope == 5 {
+			return nil, fmt.Errorf("verse is private")
+		}
 	}
 
 	return v, nil
@@ -174,6 +181,14 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
 			if err != nil {
 				// print error and continue
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
+			}
+		} else {
+			if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
+				v.NotInScope = v.Scope
+			}
+			if v.Scope == 5 {
 				fmt.Printf("error processing verse scope: %s\n", err)
 				continue
 			}
@@ -265,6 +280,14 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
 			if err != nil {
 				// print error and continue
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
+			}
+		} else {
+			if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
+				v.NotInScope = v.Scope
+			}
+			if v.Scope == 5 {
 				fmt.Printf("error processing verse scope: %s\n", err)
 				continue
 			}

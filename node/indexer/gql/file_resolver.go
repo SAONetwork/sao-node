@@ -137,6 +137,13 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 				}
 			}
 		}
+	} else {
+		if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
+			return nil, errors.New("you are not authorized to access the file")
+		}
+		if v.Scope == 5 {
+			return nil, errors.New("the file is private")
+		}
 	}
 
 	return &fi, nil
