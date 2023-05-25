@@ -598,9 +598,18 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 		// Fetching the NftTokenID and price for the verse
 		var tokenID, price sql.NullString
 		err = db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", v.DataId).Scan(&tokenID, &price)
-		if err != nil && err != sql.ErrNoRows {
-			// If the error is something other than 'no rows', return the error
-			fmt.Printf("Error fetching token ID and price: %v\n", err)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// No rows in the result set
+				// Check if v.CreatedAt is older than 5 minutes
+				currentTime := types.Uint64(time.Now().UnixNano() / 1e6) // Convert to Unix milliseconds
+				if currentTime - v.CreatedAt > 5*60*1000 {
+					v.NftTokenID = "failed"
+				}
+			} else {
+				// If the error is something other than 'no rows', return the error
+				fmt.Printf("Error fetching token ID and price: %v\n", err)
+			}
 		} else {
 			if tokenID.Valid {
 				v.NftTokenID = tokenID.String
@@ -609,6 +618,7 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 				v.Price = price.String
 			}
 		}
+
 		if v.IsPaid == false && v.Owner != userDataId {
 			v.NotInScope = 4
 		}
