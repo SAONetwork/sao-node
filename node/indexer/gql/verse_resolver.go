@@ -253,6 +253,21 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 			}
 
 			v.HasFollowedOwner = count > 0
+
+			count = 0
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+			v.IsPaid = count > 0
+
+			// Process verse scope
+			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+			if err != nil {
+				// print error and continue
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
+			}
 		}
 
 		verses = append(verses, v)
@@ -320,6 +335,29 @@ func (r *resolver) LikedVerses(ctx context.Context, args likedVersesArgs) ([]*ve
 		if err != nil {
 			return nil, err
 		}
+
+		var count int
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWER = ? AND FOLLOWING = ?", args.UserDataId, v.Owner).Scan(&count)
+		if err != nil {
+			return nil, err
+		}
+
+		v.HasFollowedOwner = count > 0
+
+		count = 0
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+		if err != nil {
+			return nil, err
+		}
+		v.IsPaid = count > 0
+
+		// Process verse scope
+		v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+		if err != nil {
+			// print error and continue
+			fmt.Printf("error processing verse scope: %s\n", err)
+			continue
+		}
 		verses = append(verses, v)
 	}
 
@@ -375,6 +413,21 @@ func (r *resolver) VersesByIds(ctx context.Context, args struct {
 		}
 
 		if args.OnlyFollowed == nil || !*args.OnlyFollowed || (*args.OnlyFollowed && v.HasFollowedOwner) {
+			count := 0
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+			v.IsPaid = count > 0
+
+			// Process verse scope
+			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+			if err != nil {
+				// print error and continue
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
+			}
+
 			verses = append(verses, v)
 		}
 	}
@@ -519,6 +572,20 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 			v.NotInScope = 3
 		}
 	case 4:
+		// Fetching the NftTokenID and price for the verse
+		var tokenID, price sql.NullString
+		err = db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", v.DataId).Scan(&tokenID, &price)
+		if err != nil && err != sql.ErrNoRows {
+			// If the error is something other than 'no rows', return the error
+			fmt.Printf("Error fetching token ID and price: %v\n", err)
+		} else {
+			if tokenID.Valid {
+				v.NftTokenID = tokenID.String
+			}
+			if price.Valid {
+				v.Price = price.String
+			}
+		}
 		if v.IsPaid == false && v.Owner != userDataId {
 			v.NotInScope = 4
 		}
