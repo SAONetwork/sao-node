@@ -91,6 +91,26 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 	// Set the VerseId
 	fi.VerseId = v.DataId
 
+	// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
+	if v.Price != "" {
+		price, err := strconv.ParseFloat(v.Price, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		if price > 0 {
+			var count int
+			if args.UserDataId != nil {
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+			}
+			if err != nil {
+				return nil, err
+			}
+
+			v.IsPaid = count > 0
+		}
+	}
+
 	if args.UserDataId != nil {
 		// Process verse scope
 		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)

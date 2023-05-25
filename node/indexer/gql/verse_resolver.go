@@ -518,6 +518,10 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 		if count == 0 {
 			v.NotInScope = 3
 		}
+	case 4:
+		if v.IsPaid == false && v.Owner != userDataId {
+			v.NotInScope = 4
+		}
 	case 5:
 		if userDataId != v.Owner {
 			return nil, fmt.Errorf("verse is private")
