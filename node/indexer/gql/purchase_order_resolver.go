@@ -105,7 +105,13 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 		if order.BuyerDataID == *args.UserDataId {
 			if order.Type == 1 {
 				// User bought a verse, fetch owner and digest from the verse table
-				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&order.UserName, &order.VerseDigest)
+				var verseOwner string
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&verseOwner, &order.VerseDigest)
+				if err != nil {
+					return nil, err
+				}
+				// Fetch the avatar and username of the buyer
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", verseOwner).Scan(&order.Avatar, &order.UserName)
 				if err != nil {
 					return nil, err
 				}
@@ -118,7 +124,7 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 				}
 				order.Type = 4
 			}
-		} else { // User is not the buyer (i.e., the user is the seller)
+		} else { // the user is the seller
 			// Fetch avatar and username from the user_profile table using the BuyerDataID
 			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
 			if err != nil {
@@ -127,12 +133,18 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 
 			// If the order type is 1, fetch owner and digest from the verse table
 			if order.Type == 1 {
-				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&order.UserName, &order.VerseDigest)
+				var verseOwner string
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&verseOwner, &order.VerseDigest)
+				if err != nil {
+					return nil, err
+				}
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
 				if err != nil {
 					return nil, err
 				}
 			}
 		}
+
 
 		orders = append(orders, &order)
 	}
