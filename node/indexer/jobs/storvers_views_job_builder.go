@@ -188,6 +188,25 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					if err := performBatchInsert(db, strategy, items, 500, log); err != nil {
 						log.Errorf("Error inserting %s: %v", typeName, err)
 					}
+
+					// Check if the current typeName is "LISTING_INFO"
+					if typeName == "LISTING_INFO" {
+						for _, item := range items {
+							if listingInfo, ok := item.(storverse.ListingInfo); ok {
+								// Prepare update statement
+								stmt, err := db.Prepare(`UPDATE USER_FOLLOWING SET STATUS = 3, UPDATEDAT = ? WHERE FOLLOWING = ? AND CREATEDAT < ?`)
+								if err != nil {
+									log.Errorf("Error preparing statement: %v", err)
+								}
+
+								// Execute the update statement
+								_, err = stmt.Exec(listingInfo.Time * 1000, listingInfo.ItemDataId, listingInfo.Time * 1000)
+								if err != nil {
+									log.Errorf("Error updating USER_FOLLOWING: %v", err)
+								}
+							}
+						}
+					}
 				}
 
 				rowsAffected, err := storverse.UpdateUserFollowingStatus(ctx, db)

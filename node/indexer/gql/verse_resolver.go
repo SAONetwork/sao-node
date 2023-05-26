@@ -210,7 +210,7 @@ func (r *resolver) SubscribedVerses(ctx context.Context, args subscribedVersesAr
 	}
 
 	// Query to get a list of users the given user is following
-	queryFollowing := "SELECT FOLLOWING FROM USER_FOLLOWING WHERE FOLLOWER = ? AND STATUS != 2"
+	queryFollowing := "SELECT FOLLOWING FROM USER_FOLLOWING WHERE FOLLOWER = ? AND STATUS = 1"
 	rowsFollowing, err := r.indexSvc.Db.QueryContext(ctx, queryFollowing, args.UserDataId)
 	if err != nil {
 		return nil, err

@@ -109,14 +109,14 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 				if err != nil {
 					return nil, err
 				}
-				order.Type = 4
+				order.Type = 5
 			} else if order.Type == 2 {
 				// User paid to follow another user, fetch avatar and username from the user_profile table using the ItemDataID
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.ItemDataID).Scan(&order.Avatar, &order.UserName)
 				if err != nil {
 					return nil, err
 				}
-				order.Type = 5
+				order.Type = 4
 			}
 		} else { // User is not the buyer (i.e., the user is the seller)
 			// Fetch avatar and username from the user_profile table using the BuyerDataID
