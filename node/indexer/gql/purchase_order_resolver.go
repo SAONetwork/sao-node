@@ -65,9 +65,9 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 			SELECT * 
 			FROM PURCHASE_ORDER 
 			WHERE ((TYPE = 2 AND ITEMDATAID = ?) OR 
-			(TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?))) 
+			(TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?)) OR BUYERDATAID = ?) 
 			LIMIT ? OFFSET ?`,
-			*args.UserDataId, *args.UserDataId, limit, offset)
+			*args.UserDataId, *args.UserDataId, *args.UserDataId, limit, offset)
 	} else if args.ItemDataId != nil {
 		rows, err = r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM PURCHASE_ORDER WHERE ITEMDATAID = ? LIMIT ? OFFSET ?", *args.ItemDataId, limit, offset)
 	} else {
@@ -101,17 +101,36 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 			return nil, err
 		}
 
-		// Fetching avatar and username from the user_profile table
-		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
-		if err != nil {
-			return nil, err
-		}
-
-		// If order type is 1, fetch owner and digest from the verse table
-		if order.Type == 1 {
-			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&order.UserName, &order.VerseDigest)
+		// If the user is the buyer
+		if order.BuyerDataID == *args.UserDataId {
+			if order.Type == 1 {
+				// User bought a verse, fetch owner and digest from the verse table
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&order.UserName, &order.VerseDigest)
+				if err != nil {
+					return nil, err
+				}
+				order.Type = 4
+			} else if order.Type == 2 {
+				// User paid to follow another user, fetch avatar and username from the user_profile table using the ItemDataID
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.ItemDataID).Scan(&order.Avatar, &order.UserName)
+				if err != nil {
+					return nil, err
+				}
+				order.Type = 5
+			}
+		} else { // User is not the buyer (i.e., the user is the seller)
+			// Fetch avatar and username from the user_profile table using the BuyerDataID
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
 			if err != nil {
 				return nil, err
+			}
+
+			// If the order type is 1, fetch owner and digest from the verse table
+			if order.Type == 1 {
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&order.UserName, &order.VerseDigest)
+				if err != nil {
+					return nil, err
+				}
 			}
 		}
 
