@@ -200,7 +200,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 								}
 
 								// Execute the update statement
-								_, err = stmt.Exec(listingInfo.Time * 1000, listingInfo.ItemDataId, listingInfo.Time * 1000)
+								_, err = stmt.Exec(listingInfo.Time, listingInfo.ItemDataId, listingInfo.Time)
 								if err != nil {
 									log.Errorf("Error updating USER_FOLLOWING: %v", err)
 								}
