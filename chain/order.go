@@ -299,6 +299,16 @@ func (c *ChainSvc) GetOrder(ctx context.Context, orderId uint64) (*ordertypes.Fu
 	return &queryResp.Order, nil
 }
 
+func (c *ChainSvc) GetShard(ctx context.Context, shardId uint64) (*ordertypes.Shard, error) {
+	queryResp, err := c.orderClient.Shard(ctx, &ordertypes.QueryGetShardRequest{
+		Id: shardId,
+	})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryShardFailed, err)
+	}
+	return &queryResp.Shard, nil
+}
+
 func (c *ChainSvc) ListShards(ctx context.Context, offset uint64, limit uint64) ([]ordertypes.Shard, uint64, error) {
 	resp, err := c.orderClient.ShardAll(ctx, &ordertypes.QueryAllShardRequest{
 		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false, CountTotal: true}})

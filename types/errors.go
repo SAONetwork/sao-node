@@ -64,6 +64,7 @@ var (
 	ErrInconsistentAddress = errors.Register(ModuleChain, 11027, "inconsistent address")
 
 	ErrGenerateMnemonicFailed = errors.Register(ModuleChain, 11028, "failed to generate mnemonic")
+	ErrQueryShardFailed       = errors.Register(ModuleChain, 11029, "failed to query the shard information")
 )
 
 var (
