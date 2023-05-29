@@ -191,12 +191,12 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		orderProposal.Alias = orderProposal.Cid
 	}
 
-	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId)
+	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId+orderProposal.DataId)
 	if oldModel != nil {
 		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	oldModel = mm.loadModel(orderProposal.Owner, orderProposal.Alias)
+	oldModel = mm.loadModel(orderProposal.Owner, orderProposal.Alias+orderProposal.DataId)
 	if oldModel != nil {
 		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
@@ -259,7 +259,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, err
 	}
 
-	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword)
+	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword+commitIds[1])
 	if orgModel != nil {
 		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
 			if meta.CommitId == orgModel.CommitId {
@@ -592,15 +592,9 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 		// large size content should go through P2P channel
 		model.Content = make([]byte, 0)
 	}
-	mm.CacheSvc.Put(account, model.DataId, model)
-	mm.CacheSvc.Put(account, model.Alias, model)
+	mm.CacheSvc.Put(account, model.DataId+model.CommitId, model)
+	mm.CacheSvc.Put(account, model.Alias+model.CommitId, model)
 
 	buf, _ := json.Marshal(model)
 	log.Debug("model: ", string(buf), " CACHED!!!")
-
-	// mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
-	// Reserved for open data model search feature...
-	// for _, k := range model.Tags {
-	// 	mm.CacheSvc.Put(account, k, model.DataId)
-	// }
 }

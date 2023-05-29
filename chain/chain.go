@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"sao-node/types"
 	"time"
 
@@ -27,6 +28,7 @@ import (
 var log = logging.Logger("chain")
 
 const ADDRESS_PREFIX = "sao"
+const CURRENT_NET_VERSION = "1.5.0"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
@@ -103,6 +105,15 @@ func NewChainSvc(
 	)
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
+	}
+
+	saoClient := saotypes.NewQueryClient(cosmos.Context())
+	resp, err := saoClient.NetVersion(ctx, nil)
+	if err != nil {
+		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
+	}
+	if CURRENT_NET_VERSION != resp.Version {
+		return nil, fmt.Errorf("invalid net version, saonode has to be upgrade to adapt to the net verion %s", resp.Version)
 	}
 
 	accountRetriever := authtypes.AccountRetriever{}
