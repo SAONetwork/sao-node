@@ -172,7 +172,7 @@ func (r *resolver) EarningsByMonth(ctx context.Context, args totalEarningsArgs) 
 			SUM(CAST(PRICE as REAL)) AS Total 
 		FROM PURCHASE_ORDER
 		WHERE ((TYPE = 2 AND ITEMDATAID = ?) OR (TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?)))
-			AND TIME / 1000 >= strftime('%s', date('now', '-6 months'))
+			AND TIME >= strftime('%s', date('now', '-6 months')) * 1000
 		GROUP BY Month
 		ORDER BY Month DESC
 		`,
