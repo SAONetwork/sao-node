@@ -47,7 +47,7 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 	}
 
 	// Fetch Notification items
-	rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM NOTIFICATION WHERE MESSAGETYPE = ? AND TOUSER = ? LIMIT ? OFFSET ?", args.MessageType, args.ToUser, limit, offset)
+	rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM NOTIFICATION WHERE MESSAGETYPE = ? AND TOUSER = ? ORDER BY CREATEDAT DESC LIMIT ? OFFSET ?", args.MessageType, args.ToUser, limit, offset)
 	if err != nil {
 		return nil, err
 	}

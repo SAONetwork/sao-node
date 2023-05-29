@@ -168,13 +168,14 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 func (r *resolver) EarningsByMonth(ctx context.Context, args totalEarningsArgs) ([]*earningsByMonth, error) {
 	rows, err := r.indexSvc.Db.QueryContext(ctx, `
         SELECT 
-            strftime('%Y-%m', datetime(TIME, 'unixepoch')) AS Month, 
-            SUM(CAST(PRICE as REAL)) AS Total 
-        FROM PURCHASE_ORDER
-        WHERE ((TYPE = 2 AND ITEMDATAID = ?) OR (TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?)))
-            AND TIME >= strftime('%s', date('now', '-6 months'))
-        GROUP BY Month
-        ORDER BY Month DESC`,
+			strftime('%Y-%m', datetime(TIME / 1000, 'unixepoch')) AS Month, 
+			SUM(CAST(PRICE as REAL)) AS Total 
+		FROM PURCHASE_ORDER
+		WHERE ((TYPE = 2 AND ITEMDATAID = ?) OR (TYPE = 1 AND ITEMDATAID IN (SELECT DATAID FROM VERSE WHERE OWNER = ?)))
+			AND TIME / 1000 >= strftime('%s', date('now', '-6 months'))
+		GROUP BY Month
+		ORDER BY Month DESC
+		`,
 		args.UserDataId, args.UserDataId)
 
 	if err != nil {
