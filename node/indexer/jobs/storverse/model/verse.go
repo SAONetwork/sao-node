@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -14,7 +15,7 @@ type Verse struct {
 	CreatedAt  int64    `json:"createdAt"`
 	FileIDs    []string `json:"fileIds"`
 	Owner      string   `json:"owner"`
-	Price      int64    `json:"price"`
+	Price      string    `json:"price"`
 	Digest     string   `json:"digest"`
 	Scope      int      `json:"scope"`
 	Status     int      `json:"status"`
@@ -35,8 +36,18 @@ func (v Verse) InsertValues() string {
 		fmt.Println(err)
 	}
 
-	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%d,'%s',%d,%d,'%s','%s')",
-		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, v.Price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID, v.FileType)
+	price := 0.0
+	if v.Price != "" {
+		var err error
+		price, err = strconv.ParseFloat(v.Price, 64)
+		if err != nil {
+			// handle error, log the error
+			fmt.Println(err)
+		}
+	}
+
+	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%f,'%s',%d,%d,'%s','%s')",
+		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID, v.FileType)
 }
 
 func (s VerseInsertionStrategy) Convert(item interface{}) BatchInserter {
