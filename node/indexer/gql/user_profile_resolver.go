@@ -198,7 +198,7 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 		// New query to check if the user specified by args.UserDataId is following the suggested user
 		isFollowingQuery := `SELECT COUNT(*) 
 							 FROM USER_FOLLOWING 
-							 WHERE FOLLOWER = ? AND FOLLOWING = ?`
+							 WHERE STATUS =1 AND  FOLLOWER = ? AND FOLLOWING = ?`
 		var count int
 		err = r.indexSvc.Db.QueryRowContext(ctx, isFollowingQuery, args.UserDataId, profile.DataId).Scan(&count)
 		if err != nil {
