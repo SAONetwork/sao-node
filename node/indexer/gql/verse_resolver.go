@@ -586,8 +586,11 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 			v.NotInScope = 2
 		}
 	case 3:
+		if userDataId == v.Owner {
+			break
+		}
 		var count int
-		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ? AND FOLLOWER = ?", v.Owner, userDataId).Scan(&count)
+		err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM USER_FOLLOWING WHERE STATUS =1 AND FOLLOWING = ? AND FOLLOWER = ?", userDataId, v.Owner).Scan(&count)
 		if err != nil {
 			return nil, err
 		}
