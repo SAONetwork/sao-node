@@ -108,19 +108,23 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 				var verseOwner string
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&verseOwner, &order.VerseDigest)
 				if err != nil {
-					return nil, err
+					// log the error and continue
+					log.Error(err)
+					continue
 				}
 				// Fetch the avatar and username of the buyer
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", verseOwner).Scan(&order.Avatar, &order.UserName)
 				if err != nil {
-					return nil, err
+					log.Error(err)
+					continue
 				}
 				order.Type = 5
 			} else if order.Type == 2 {
 				// User paid to follow another user, fetch avatar and username from the user_profile table using the ItemDataID
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.ItemDataID).Scan(&order.Avatar, &order.UserName)
 				if err != nil {
-					return nil, err
+					log.Error(err)
+					continue
 				}
 				order.Type = 4
 			}
@@ -128,7 +132,8 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 			// Fetch avatar and username from the user_profile table using the BuyerDataID
 			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
 			if err != nil {
-				return nil, err
+				log.Error(err)
+				continue
 			}
 
 			// If the order type is 1, fetch owner and digest from the verse table
@@ -136,11 +141,13 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 				var verseOwner string
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT OWNER, DIGEST FROM VERSE WHERE DATAID = ?", order.ItemDataID).Scan(&verseOwner, &order.VerseDigest)
 				if err != nil {
-					return nil, err
+					log.Error(err)
+					continue
 				}
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT AVATAR, USERNAME FROM USER_PROFILE WHERE DATAID = ?", order.BuyerDataID).Scan(&order.Avatar, &order.UserName)
 				if err != nil {
-					return nil, err
+					log.Error(err)
+					continue
 				}
 			}
 		}
