@@ -15,7 +15,7 @@ func TestAliasInTypeConfigs(t *testing.T) {
 		{"verse_comment_xxx", true},
 		{"verse_comment_like_comment_xxx", true},
 		{"verse_xxxx", true},
-		{"xxxxx_verse_xxx", false},
+		{"purchase_order_xxxx", false},
 	}
 
 	for _, testCase := range testCases {
