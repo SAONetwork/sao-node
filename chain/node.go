@@ -3,16 +3,19 @@ package chain
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"sao-node/types"
 	"strings"
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 )
 
-func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
+func (c *ChainSvc) Create(ctx context.Context, creator string, validator string) (string, error) {
 	msg := &nodetypes.MsgCreate{
-		Creator: creator,
+		Creator:   creator,
+		Validator: validator,
 	}
 
 	resultChan := make(chan BroadcastTxJobResult)
@@ -89,6 +92,36 @@ func (c *ChainSvc) GetNodeStatus(ctx context.Context, creator string) (uint32, e
 		return 0, types.Wrap(types.ErrQueryNodeFailed, err)
 	}
 	return resp.Node.Status, nil
+}
+
+func (c *ChainSvc) ValidDelegatorForValidator(ctx context.Context, address string, operatorAddress string) error {
+	validatorResp, err := c.stakingClient.Validator(ctx, &stakingtypes.QueryValidatorRequest{
+		ValidatorAddr: operatorAddress,
+	})
+	if err != nil {
+		return types.Wrapf(types.ErrInvalidValidator, err.Error())
+	}
+	// only unjailed and bonded validator can be attached.
+	if validatorResp.Validator.Jailed || validatorResp.Validator.Status != stakingtypes.Bonded {
+		return types.Wrapf(types.ErrInvalidValidator, "")
+	}
+	// validators' total shares
+	totalShares := validatorResp.Validator.DelegatorShares
+
+	delegateResp, err := c.stakingClient.Delegation(ctx, &stakingtypes.QueryDelegationRequest{
+		DelegatorAddr: address,
+		ValidatorAddr: operatorAddress,
+	})
+	if err != nil {
+		return types.Wrap(types.ErrQueryNodeFailed, err)
+	}
+	// delegator's share
+	share := delegateResp.DelegationResponse.Delegation.Shares
+
+	if new(big.Int).Div(totalShares.BigInt(), share.BigInt()).Cmp(big.NewInt(nodetypes.SHARE_THRESHOLD)) <= 0 {
+		return nil
+	}
+	return types.Wrapf(types.ErrInvalidValidator, "your delegation shares doesn't meet super node's threshold")
 }
 
 func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {

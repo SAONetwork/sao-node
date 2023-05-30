@@ -243,6 +243,11 @@ var initCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.StringFlag{
+			Name:     "validator",
+			Usage:    "validator this sp wants to attach",
+			Required: false,
+		},
+		&cli.StringFlag{
 			Name:     "multiaddr",
 			Usage:    "nodes' multiaddr",
 			Value:    "/ip4/127.0.0.1/tcp/5153/",
@@ -266,6 +271,19 @@ var initCmd = &cli.Command{
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
 		txPoolSize := cctx.Uint("tx-pool-size")
+		validator := cctx.String("validator")
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+		if validator != "" {
+			err = chainSvc.ValidDelegatorForValidator(ctx, creator, validator)
+			if err != nil {
+				return err
+			}
+		}
+		fmt.Println("validator:", validator)
 
 		if txPoolSize <= 0 {
 			return types.Wrapf(types.ErrInvalidParameters, "tx-pool-size should greater than 0")
@@ -292,11 +310,6 @@ var initCmd = &cli.Command{
 
 		log.Info("initialize libp2p identity")
 
-		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
-		if err != nil {
-			return err
-		}
-
 		for {
 			fmt.Printf("Please make sure there is enough SAO tokens in the account %s. Confirm with 'yes' :", creator)
 
@@ -314,13 +327,13 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
+				fmt.Println("coins: ", coins)
 				if coins.AmountOf("sao").LT(math.NewInt(int64(110000000))) {
 					continue
 				} else {
 					break
 				}
 			}
-
 		}
 
 		err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
@@ -328,7 +341,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		if tx, err := chainSvc.Create(ctx, creator); err != nil {
+		if tx, err := chainSvc.Create(ctx, creator, validator); err != nil {
 			// TODO: clear dir
 			return err
 		} else {
@@ -419,7 +432,7 @@ var joinCmd = &cli.Command{
 			return types.Wrap(types.ErrGetFailed, err)
 		}
 
-		tx, err := chain.Create(ctx, creator)
+		tx, err := chain.Create(ctx, creator, "")
 		if err != nil {
 			return err
 		} else {

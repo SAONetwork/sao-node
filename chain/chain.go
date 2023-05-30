@@ -18,6 +18,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -37,6 +38,7 @@ type ChainSvc struct {
 	nodeClient       nodetypes.QueryClient
 	didClient        didtypes.QueryClient
 	modelClient      modeltypes.QueryClient
+	stakingClient    stakingtypes.QueryClient
 	listener         *http.HTTP
 	accountRetriever authtypes.AccountRetriever
 	ap               *AddressPool
@@ -67,7 +69,7 @@ type ChainSvcApi interface {
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
-	Create(ctx context.Context, creator string) (string, error)
+	Create(ctx context.Context, creator string, validator string) (string, error)
 	Reset(ctx context.Context, creator string, peerInfo string, status uint32, txAddresses []string, description *nodetypes.Description) (string, error)
 	GetNodePeer(ctx context.Context, creator string) (string, error)
 	GetNodeStatus(ctx context.Context, creator string) (uint32, error)
@@ -111,6 +113,7 @@ func NewChainSvc(
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	didClient := didtypes.NewQueryClient(cosmos.Context())
 	modelClient := modeltypes.NewQueryClient(cosmos.Context())
+	stakingClient := stakingtypes.NewQueryClient(cosmos.Context())
 
 	log.Debugf("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
@@ -126,6 +129,7 @@ func NewChainSvc(
 		nodeClient:       nodeClient,
 		didClient:        didClient,
 		modelClient:      modelClient,
+		stakingClient:    stakingClient,
 		listener:         http,
 		accountRetriever: accountRetriever,
 		broadcastChanMap: make(map[string]chan BroadcastTxJob),

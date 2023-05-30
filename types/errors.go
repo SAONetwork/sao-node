@@ -64,6 +64,7 @@ var (
 	ErrInconsistentAddress = errors.Register(ModuleChain, 11027, "inconsistent address")
 
 	ErrGenerateMnemonicFailed = errors.Register(ModuleChain, 11028, "failed to generate mnemonic")
+	ErrInvalidValidator       = errors.Register(ModuleChain, 11029, "invalid validator")
 )
 
 var (
