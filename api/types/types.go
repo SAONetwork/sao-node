@@ -1,5 +1,7 @@
 package apitypes
 
+import saotypes "github.com/SaoNetwork/sao/x/sao/types"
+
 type LoadReq struct {
 	User      string
 	KeyWord   string
@@ -68,4 +70,12 @@ type GenerateTokenResp struct {
 
 type GetUrlResp struct {
 	Url string
+}
+
+type FileFaultsReportResp struct {
+	Faults map[string][]*saotypes.Fault
+}
+
+type FileRecoverReportResp struct {
+	Faults []*saotypes.Fault
 }

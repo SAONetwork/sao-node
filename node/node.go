@@ -15,6 +15,7 @@ import (
 	"sao-node/node/indexer/gql"
 	"sao-node/node/transport"
 	"sao-node/store"
+	"sao-node/utils"
 	"sort"
 	"time"
 
@@ -808,4 +809,157 @@ func (n *Node) ModelMigrate(ctx context.Context, dataIds []string) (apitypes.Mig
 
 func (n *Node) MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) {
 	return n.storeSvc.MigrateList(ctx)
+}
+
+func (n *Node) FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.FileFaultsReportResp, error) {
+	fishmen, err := n.chainSvc.GetFishmen(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.Contains(fishmen, n.address) {
+		return nil, types.Wrapf(types.ErrInvalidParameters, "i am not a fishmen")
+	}
+
+	faultsMap := make(map[string][]*saotypes.Fault, 0)
+	for _, dataId := range dataIds {
+		meta, err := n.chainSvc.GetMeta(ctx, dataId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		for provider, shard := range meta.Shards {
+			resp := n.gatewaySvc.FetchShard(ctx, provider, shard.Cid, shard.Peer, meta.Metadata.DataId, meta.Metadata.OrderId)
+
+			passCheck := false
+			if resp.Code == 0 {
+				cid, err := utils.CalculateCid(resp.Content)
+				if err != nil {
+					log.Error(err.Error())
+					continue
+				}
+
+				if cid.String() == meta.Metadata.Cid {
+					passCheck = true
+				}
+			}
+			if !passCheck {
+				faults := faultsMap[provider]
+				if faults == nil {
+					faultsMap[provider] = make([]*saotypes.Fault, 0)
+					faults = faultsMap[provider]
+				}
+				faultsMap[provider] = append(faults, &saotypes.Fault{
+					DataId:   meta.Metadata.DataId,
+					OrderId:  meta.Metadata.OrderId,
+					ShardId:  shard.ShardId,
+					CommitId: meta.Metadata.Commits[len(meta.Metadata.Commits)-1],
+					Provider: provider,
+					Reporter: n.address,
+				})
+			}
+		}
+	}
+
+	for provider, faults := range faultsMap {
+		if len(faults) > 0 {
+			_, err = n.chainSvc.ReportFaults(ctx, n.address, provider, faults)
+			if err != nil {
+				log.Error(err.Error())
+				delete(faultsMap, provider)
+				continue
+			}
+		}
+	}
+
+	if len(faultsMap) > 0 {
+		return &apitypes.FileFaultsReportResp{
+			Faults: faultsMap,
+		}, nil
+	} else {
+		return nil, types.Wrapf(types.ErrInvalidParameters, "no faults found")
+	}
+}
+
+func (n *Node) RecoverCheck(ctx context.Context, provider string, faultIds []string) (*apitypes.FileRecoverReportResp, error) {
+	fishmen, err := n.chainSvc.GetFishmen(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.Contains(fishmen, n.address) {
+		return nil, types.Wrapf(types.ErrInvalidParameters, "i am not a fishmen")
+	}
+
+	recoverableFaults := make([]*saotypes.Fault, 0)
+	for _, faultId := range faultIds {
+		fault, err := n.chainSvc.GetFault(ctx, faultId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		meta, err := n.chainSvc.GetMeta(ctx, fault.DataId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		shardMeta, err := n.chainSvc.GetShard(ctx, fault.ShardId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		peer := ""
+		for provider, shard := range meta.Shards {
+			if shard.ShardId == fault.ShardId && provider == fault.Provider {
+				peer = shard.Peer
+				break
+			}
+		}
+		if peer == "" {
+			log.Error("invalid shard ", fault.ShardId)
+			continue
+		}
+
+		resp := n.gatewaySvc.FetchShard(ctx, fault.Provider, shardMeta.Cid, peer, meta.Metadata.DataId, meta.Metadata.OrderId)
+
+		passCheck := false
+		if resp.Code == 0 {
+			cid, err := utils.CalculateCid(resp.Content)
+			if err != nil {
+				log.Error(err.Error())
+				continue
+			}
+
+			if cid.String() == meta.Metadata.Cid {
+				passCheck = true
+			}
+		}
+		if passCheck {
+			recoverableFaults = append(recoverableFaults, &saotypes.Fault{
+				DataId:   meta.Metadata.DataId,
+				OrderId:  meta.Metadata.OrderId,
+				ShardId:  fault.ShardId,
+				CommitId: meta.Metadata.Commits[len(meta.Metadata.Commits)-1],
+				Provider: fault.Provider,
+				Reporter: n.address,
+			})
+		}
+	}
+
+	if len(recoverableFaults) > 0 {
+		_, err = n.chainSvc.ReportFaults(ctx, n.address, provider, recoverableFaults)
+		if err != nil {
+			return nil, err
+		}
+
+		return &apitypes.FileRecoverReportResp{
+			Faults: recoverableFaults,
+		}, nil
+	}
+
+	return nil, types.Wrapf(types.ErrInvalidParameters, "no recoverable faults found")
 }

@@ -65,6 +65,8 @@ var (
 
 	ErrGenerateMnemonicFailed = errors.Register(ModuleChain, 11028, "failed to generate mnemonic")
 	ErrQueryShardFailed       = errors.Register(ModuleChain, 11029, "failed to query the shard information")
+	ErrQueryFaultFailed       = errors.Register(ModuleChain, 11030, "failed to query the fault")
+	ErrQueryFaultsFailed      = errors.Register(ModuleChain, 11030, "failed to query the faults")
 )
 
 var (
@@ -145,6 +147,7 @@ var (
 	ErrProcessOrderFailed = errors.Register(ModuleModel, 14028, "failed to process the order")
 	ErrExpiredOrder       = errors.Register(ModuleModel, 14029, "expired order")
 	ErrRetriesExceed      = errors.Register(ModuleModel, 14030, "shard retries too many times")
+	ErrInvalidProvider    = errors.Register(ModuleModel, 14031, "invalid provider")
 )
 
 var (

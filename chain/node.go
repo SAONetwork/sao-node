@@ -70,6 +70,24 @@ func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, err
 	return result.resp.TxResponse.TxHash, nil
 }
 
+func (c *ChainSvc) GetFault(ctx context.Context, faultId string) (*nodetypes.Fault, error) {
+	resp, err := c.nodeClient.Fault(ctx, &nodetypes.QueryFaultRequest{FaultId: faultId})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryFaultFailed, err)
+	}
+
+	return resp.Fault, nil
+}
+
+func (c *ChainSvc) GetMyFaults(ctx context.Context, provider string) ([]*nodetypes.Fault, error) {
+	resp, err := c.nodeClient.AllFaults(ctx, &nodetypes.QueryAllFaultsRequest{Provider: provider})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryFaultsFailed, err)
+	}
+
+	return resp.Faults, nil
+}
+
 func (c *ChainSvc) ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) (string, error) {
 	msg := &saotypes.MsgReportFaults{
 		Creator:  creator,
@@ -179,6 +197,18 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 				txHash, err := c.Reset(ctx, creator, "", status, make([]string, 0), nil)
 				if err != nil {
 					log.Error(err.Error())
+				}
+
+				faults, err := c.GetMyFaults(ctx, creator)
+				if err != nil {
+					log.Error(err.Error())
+				} else {
+					for _, fault := range faults {
+						log.Errorf("!!!STORAGE FAULTS DETECTED!!!: %s on shard[%d]", fault.FaultId, fault.ShardId)
+					}
+					if len(faults) > 0 {
+						log.Errorf("!!!RECOVER THE STORAGE FAULTS ASAP, OR YOU MIGHT LOSS THE PLEDGED ASSETS!!!")
+					}
 				}
 
 				log.Infof("Reported node status[%b] to SAO network, txHash=%s", status, txHash)

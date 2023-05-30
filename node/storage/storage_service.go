@@ -339,52 +339,21 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string)
 		}
 	}
 
-	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
-	if err != nil {
-		return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("invalid did: %v", err))
-	}
-
-	p := saotypes.QueryProposal{
-		Owner:           req.Proposal.Proposal.Owner,
-		Keyword:         req.Proposal.Proposal.Keyword,
-		GroupId:         req.Proposal.Proposal.GroupId,
-		KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
-		LastValidHeight: req.Proposal.Proposal.LastValidHeight,
-		Gateway:         req.Proposal.Proposal.Gateway,
-		CommitId:        req.Proposal.Proposal.CommitId,
-		Version:         req.Proposal.Proposal.Version,
-	}
-
-	proposalBytes, err := p.Marshal()
-	if err != nil {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("marshal error: %v", err),
-		)
-	}
-
-	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
-		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saodidtypes.JwsSignature{
-			saodidtypes.JwsSignature(req.Proposal.JwsSignature),
-		},
-	})
-
-	if err != nil {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("verify client order proposal signature failed: %v", err),
-		)
-	}
-
-	log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, remotePeerId)
-	if !strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
-		if len(req.RelayProposal.Signature) > 0 && strings.Contains(req.RelayProposal.Proposal.RelayPeerIds, remotePeerId) {
+	if req.Owner == req.Proposal.Proposal.Gateway && req.Proposal.Proposal.Owner == req.Owner {
+		fishmen, err := ss.chainSvc.GetFishmen(ss.ctx)
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("failed to get fishmen info: %v", err),
+			)
+		}
+		if len(req.RelayProposal.Signature) > 0 && strings.Contains(fishmen, req.RelayProposal.Proposal.NodeAddress) && strings.Contains(fishmen, remotePeerId) {
+			// storage charlange form fishmen via relay protocol
 			account, err := ss.chainSvc.GetAccount(ss.ctx, req.RelayProposal.Proposal.NodeAddress)
 			if err != nil {
 				return logAndRespond(
 					types.ErrorCodeInternalErr,
-					fmt.Sprintf("failed to get gateway account info: %v", err),
+					fmt.Sprintf("failed to get fishmen account info: %v", err),
 				)
 			}
 			buf := new(bytes.Buffer)
@@ -402,21 +371,86 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string)
 				fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", remotePeerId, req.Proposal.Proposal.Gateway),
 			)
 		}
-	}
+	} else {
+		didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
+		if err != nil {
+			return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("invalid did: %v", err))
+		}
 
-	lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
-	if err != nil {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("get chain height error: %v", err),
-		)
-	}
+		p := saotypes.QueryProposal{
+			Owner:           req.Proposal.Proposal.Owner,
+			Keyword:         req.Proposal.Proposal.Keyword,
+			GroupId:         req.Proposal.Proposal.GroupId,
+			KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
+			LastValidHeight: req.Proposal.Proposal.LastValidHeight,
+			Gateway:         req.Proposal.Proposal.Gateway,
+			CommitId:        req.Proposal.Proposal.CommitId,
+			Version:         req.Proposal.Proposal.Version,
+		}
 
-	if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight),
-		)
+		proposalBytes, err := p.Marshal()
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("marshal error: %v", err),
+			)
+		}
+
+		_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
+			Payload: base64url.Encode(proposalBytes),
+			Signatures: []saodidtypes.JwsSignature{
+				saodidtypes.JwsSignature(req.Proposal.JwsSignature),
+			},
+		})
+
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("verify client order proposal signature failed: %v", err),
+			)
+		}
+
+		log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, remotePeerId)
+		if !strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
+			if len(req.RelayProposal.Signature) > 0 && strings.Contains(req.RelayProposal.Proposal.RelayPeerIds, remotePeerId) {
+				account, err := ss.chainSvc.GetAccount(ss.ctx, req.RelayProposal.Proposal.NodeAddress)
+				if err != nil {
+					return logAndRespond(
+						types.ErrorCodeInternalErr,
+						fmt.Sprintf("failed to get gateway account info: %v", err),
+					)
+				}
+				buf := new(bytes.Buffer)
+				err = req.RelayProposal.Proposal.MarshalCBOR(buf)
+				if err != nil {
+					return logAndRespond(
+						types.ErrorCodeInternalErr,
+						fmt.Sprintf("failed marshal relay proposal: %v", err),
+					)
+				}
+				account.GetPubKey().VerifySignature(buf.Bytes(), req.RelayProposal.Signature)
+			} else {
+				return logAndRespond(
+					types.ErrorCodeInternalErr,
+					fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", remotePeerId, req.Proposal.Proposal.Gateway),
+				)
+			}
+		}
+
+		lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("get chain height error: %v", err),
+			)
+		}
+
+		if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight),
+			)
+		}
 	}
 
 	log.Debugf("Get %v", req.Cid)
