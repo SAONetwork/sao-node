@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS VERSE (
      CREATEDAT   INTEGER,
      FILEIDS     TEXT,
      OWNER       TEXT,
-     PRICE       REAL,
+     PRICE       TEXT,
      DIGEST      TEXT,
      `SCOPE`     INTEGER,
      STATUS      INTEGER,
