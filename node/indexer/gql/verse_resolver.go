@@ -579,6 +579,36 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 	}
 	v.HasFollowedOwner = count > 0
 
+	// Fetching the NftTokenID and price for the verse if v.Scope = 4
+	if v.Scope == 4 {
+		var tokenID, price sql.NullString
+		err = db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", v.DataId).Scan(&tokenID, &price)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				// No rows in the result set
+				// Check if v.CreatedAt is older than 5 minutes
+				currentTime := types.Uint64(time.Now().UnixNano() / 1e6) // Convert to Unix milliseconds
+				if currentTime-v.CreatedAt > 5*60*1000 {
+					v.NftTokenID = "failed"
+				}
+			} else {
+				// If the error is something other than 'no rows', return the error
+				fmt.Printf("Error fetching token ID and price: %v\n", err)
+			}
+
+			if userDataId != v.Owner {
+				return nil, fmt.Errorf("verse %s is not ready", v.DataId)
+			}
+		} else {
+			if tokenID.Valid {
+				v.NftTokenID = tokenID.String
+			}
+			if price.Valid {
+				v.Price = price.String
+			}
+		}
+	}
+
 	// Check verse scope conditions and modify the verse accordingly
 	if userDataId != v.Owner {
 		switch v.Scope {
@@ -596,42 +626,17 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 				v.NotInScope = 3
 			}
 		case 4:
-			// Fetching the NftTokenID and price for the verse
-			var tokenID, price sql.NullString
-			err = db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", v.DataId).Scan(&tokenID, &price)
-			if err != nil {
-				if err == sql.ErrNoRows {
-					// No rows in the result set
-					// Check if v.CreatedAt is older than 5 minutes
-					currentTime := types.Uint64(time.Now().UnixNano() / 1e6) // Convert to Unix milliseconds
-					if currentTime-v.CreatedAt > 5*60*1000 {
-						v.NftTokenID = "failed"
-					}
-				} else {
-					// If the error is something other than 'no rows', return the error
-					fmt.Printf("Error fetching token ID and price: %v\n", err)
-				}
-			} else {
-				if tokenID.Valid {
-					v.NftTokenID = tokenID.String
-				}
-				if price.Valid {
-					v.Price = price.String
-				}
-			}
-
-			if v.IsPaid == false && v.Owner != userDataId {
+			if !v.IsPaid {
 				v.NotInScope = 4
 			}
 		case 5:
-			if userDataId != v.Owner {
-				return nil, fmt.Errorf("verse is private")
-			}
+			return nil, fmt.Errorf("verse is private")
 		}
 	}
 
 	return v, nil
 }
+
 
 func (v *verse) ID() graphql.ID {
 	return graphql.ID(v.CommitId)
