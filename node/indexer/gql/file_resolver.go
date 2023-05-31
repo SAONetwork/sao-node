@@ -196,6 +196,11 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 				fmt.Printf("error processing verse scope: %s\n", err)
 				continue
 			}
+			if v.Scope > 0 {
+				// verse is not accessible
+				fmt.Printf("verse is not accessible: %s\n", verseId)
+				continue
+			}
 
 			var fileIDs []string
 			err = json.Unmarshal([]byte(fileIDsJSON), &fileIDs)
