@@ -159,7 +159,7 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 	orderedFileIDs := make([]string, 0)
 	orderedVerseIDs := make([]string, 0) // To keep track of verseId for each fileId
 	for _, verseId := range args.VerseIds {
-		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS, SCOPE, OWNER, CREATED_AT FROM VERSE WHERE DATAID = ?", verseId)
+		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS, SCOPE, OWNER, CREATEDAT FROM VERSE WHERE DATAID = ?", verseId)
 		if err != nil {
 			return nil, err
 		}
