@@ -155,21 +155,46 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 }) ([]*fileInfo, error) {
 	var fileInfos []*fileInfo
 
-	// Fetch the fileIDs for each verseId in the order of verseIds
+	// Fetch the fileIDs, Scope, Owner, CreatedAt for each verseId in the order of verseIds
 	orderedFileIDs := make([]string, 0)
 	orderedVerseIDs := make([]string, 0) // To keep track of verseId for each fileId
 	for _, verseId := range args.VerseIds {
-		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS FROM VERSE WHERE DATAID = ?", verseId)
+		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS, SCOPE, OWNER, CREATED_AT FROM VERSE WHERE DATAID = ?", verseId)
 		if err != nil {
 			return nil, err
 		}
 		defer rows.Close()
 
 		var fileIDsJSON string
+		var scope int32
+		var owner string
+		var createdAt types.Uint64
 		if rows.Next() {
-			err = rows.Scan(&fileIDsJSON)
+			err = rows.Scan(&fileIDsJSON, &scope, &owner, &createdAt)
 			if err != nil {
 				return nil, err
+			}
+
+			var count int
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", verseId, *args.UserDataId).Scan(&count)
+			if err != nil {
+				return nil, err
+			}
+
+			v := &verse{
+				DataId:    verseId,
+				Scope:     scope,
+				Owner:     owner,
+				CreatedAt: createdAt,
+				IsPaid:    count > 0,
+			}
+
+			// Process verse scope
+			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+			if err != nil {
+				// print error and continue
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
 			}
 
 			var fileIDs []string
