@@ -636,4 +636,3 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 func (v *verse) ID() graphql.ID {
 	return graphql.ID(v.CommitId)
 }
-580d21f0-ed47-
