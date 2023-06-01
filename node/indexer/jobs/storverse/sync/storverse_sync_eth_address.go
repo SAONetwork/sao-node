@@ -45,7 +45,7 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 			continue
 		}
 
-		log.Infof("Processing DID %s with current ETHADDR %s", did, currentEthAddr)
+		log.Debugf("Processing DID %s with current ETHADDR %s", did, currentEthAddr)
 
 		accountListResp, err := getAccountList(did)
 		if err != nil {

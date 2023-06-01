@@ -213,7 +213,9 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				if err != nil {
 					log.Errorf("Error updating USER_FOLLOWING records: %v", err)
 				} else {
-					log.Infof("Updated %d rows in USER_FOLLOWING", rowsAffected)
+					if rowsAffected > 0 {
+						log.Infof("Updated %d rows in USER_FOLLOWING", rowsAffected)
+					}
 				}
 
 				// update notification read status
@@ -221,7 +223,9 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				if err != nil {
 					log.Errorf("Error updating NOTIFICATION records: %v", err)
 				} else {
-					log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
+					if rowsAffected > 0 {
+						log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
+					}
 				}
 
 				time.Sleep(5 * time.Second)
