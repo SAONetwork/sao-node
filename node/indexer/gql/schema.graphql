@@ -72,6 +72,7 @@ type UserProfile {
     IsFollowing: Boolean!
     NftTokenID: String!
     PayToFollow: String!
+    NftListingTime: Uint64!
 }
 
 type Verse {

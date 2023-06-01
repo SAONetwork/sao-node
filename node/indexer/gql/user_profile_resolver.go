@@ -29,6 +29,7 @@ type userProfile struct {
 	IsFollowing     bool         `json:"IsFollowing"`
 	NftTokenID      string       `json:"NftTokenId"`
 	PayToFollow     string       `json:"PayToFollow"`
+	NftListingTime  types.Uint64 `json:"NftListingTime"`
 }
 
 type userProfileArgs struct {
@@ -122,12 +123,13 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		return nil, err
 	}
 
-	// Fetch the NFT token ID and price
+	// Fetch the NFT token ID, price and listing time
 	var tokenID, price sql.NullString
-	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", profile.DataId).Scan(&tokenID, &price)
+	var listingTime sql.NullInt64
+	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT TOKENID, PRICE, TIME FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", profile.DataId).Scan(&tokenID, &price, &listingTime)
 	if err != nil && err != sql.ErrNoRows {
 		// If the error is something other than 'no rows', return the error
-		fmt.Printf("Error fetching token ID and price: %v\n", err)
+		fmt.Printf("Error fetching token ID, price, and listing time: %v\n", err)
 	} else {
 		if tokenID.Valid {
 			profile.NftTokenID = tokenID.String
@@ -135,6 +137,10 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 		// If the price exists, set PayToFollow to the fetched price
 		if price.Valid {
 			profile.PayToFollow = price.String
+		}
+		// If the listing time exists, set NftListingTime to the fetched listing time
+		if listingTime.Valid {
+			profile.NftListingTime = types.Uint64(listingTime.Int64)
 		}
 	}
 
