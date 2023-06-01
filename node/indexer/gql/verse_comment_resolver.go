@@ -98,7 +98,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 		// Check if the current user has liked this comment
 		if args.UserDataId != nil {
 			var likeStatus int
-			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM VERSE_COMMENT_LIKE WHERE COMMENTID = ? AND OWNER = ? AND STATUS = 1", c.DataId, *args.UserDataId).Scan(&likeStatus)
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM VERSE_COMMENT_LIKE WHERE COMMENTID = ? AND OWNER = ? AND STATUS != 2", c.DataId, *args.UserDataId).Scan(&likeStatus)
 			if err != nil && err != sql.ErrNoRows {
 				fmt.Printf("Error checking if user has liked comment: %s\n", err.Error())
 			}
