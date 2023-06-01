@@ -83,7 +83,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 		}
 
 		if parentID != "" {
-			c.Parent, err = r.getCommentByID(ctx, parentID)
+			c.Parent, err = r.getParentCommentByID(ctx, parentID)
 			if err != nil {
 				fmt.Printf("Error getting parent comment: %s\n", err.Error())
 			}
@@ -98,7 +98,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 		// Check if the current user has liked this comment
 		if args.UserDataId != nil {
 			var likeStatus int
-			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM VERSE_COMMENT_LIKE WHERE COMMENTID = ? AND OWNER = ?", c.DataId, *args.UserDataId).Scan(&likeStatus)
+			err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT STATUS FROM VERSE_COMMENT_LIKE WHERE COMMENTID = ? AND OWNER = ? AND STATUS = 1", c.DataId, *args.UserDataId).Scan(&likeStatus)
 			if err != nil && err != sql.ErrNoRows {
 				fmt.Printf("Error checking if user has liked comment: %s\n", err.Error())
 			}
@@ -116,12 +116,12 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 	return comments, nil
 }
 
-func (r *resolver) getCommentByID(ctx context.Context, id string) (*verseComment, error) {
+func (r *resolver) getParentCommentByID(ctx context.Context, id string) (*verseComment, error) {
 	row := r.indexSvc.Db.QueryRowContext(ctx, `
 		SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
 		FROM VERSE_COMMENT VC
 		LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
-		WHERE VC.STATUS !=2 AND VC.DATAID = ?`, id)
+		WHERE VC.DATAID = ?`, id)
 
 	var c verseComment
 	var parentID string
@@ -141,6 +141,11 @@ func (r *resolver) getCommentByID(ctx context.Context, id string) (*verseComment
 		&c.OwnerUsername,
 		&c.OwnerBio,
 	)
+
+	if c.Status == 2 {
+		c.Comment = "This comment has been deleted"
+	}
+
 	if err != nil {
 		return nil, err
 	}

@@ -506,7 +506,7 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 	}
 
 	// Fetch the comment count for the verse
-	commentCountQuery := "SELECT COUNT(*) FROM verse_comment WHERE VerseID = ?"
+	commentCountQuery := "SELECT COUNT(*) FROM verse_comment WHERE VerseID = ? AND STATUS = 1"
 	err = db.QueryRowContext(ctx, commentCountQuery, v.DataId).Scan(&v.CommentCount)
 	if err != nil {
 		return nil, err
