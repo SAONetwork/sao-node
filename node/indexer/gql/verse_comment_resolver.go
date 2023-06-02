@@ -47,7 +47,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 	}
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, `
-			SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+			SELECT VC.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '') 
 			FROM VERSE_COMMENT VC
 			LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
 			WHERE VC.STATUS !=2 AND VC.VERSEID = ? ORDER BY VC.CREATEDAT DESC
@@ -118,7 +118,7 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 
 func (r *resolver) getParentCommentByID(ctx context.Context, id string) (*verseComment, error) {
 	row := r.indexSvc.Db.QueryRowContext(ctx, `
-		SELECT VC.*, UP.ETHADDR, UP.AVATAR, UP.USERNAME, UP.BIO 
+		SELECT VC.*, COALESCE(UP.ETHADDR, ''), COALESCE(UP.AVATAR, ''), COALESCE(UP.USERNAME, ''), COALESCE(UP.BIO, '') 
 		FROM VERSE_COMMENT VC
 		LEFT JOIN USER_PROFILE UP ON VC.OWNER = UP.DATAID
 		WHERE VC.DATAID = ?`, id)

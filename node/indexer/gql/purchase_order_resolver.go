@@ -160,14 +160,8 @@ func (r *resolver) PurchaseOrders(ctx context.Context, args purchaseOrderArgs) (
 		return nil, err
 	}
 
-	var totalCount int32
-	err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER").Scan(&totalCount)
-	if err != nil {
-		return nil, err
-	}
-
 	return &purchaseOrderList{
-		TotalCount:     totalCount,
+		TotalCount:     0,
 		PurchaseOrders: orders,
 	}, nil
 }

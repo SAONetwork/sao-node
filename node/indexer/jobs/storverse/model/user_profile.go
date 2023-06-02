@@ -34,7 +34,7 @@ func (u UserProfile) InsertValues() string {
 
 	return fmt.Sprintf("('%s','%s','%s',%d,%d,'%s','%s','%s','%s',%d,'%s','%s','%s','%s','%s')",
 		u.CommitID, u.DataID, u.Alias, u.CreatedAt, u.UpdatedAt, u.DID, u.EthAddr, u.Avatar, u.Username,
-		u.FollowingCount, u.Twitter, u.Youtube, u.Bio, u.Banner, followingDataID)
+		u.FollowingCount, u.Twitter, u.Youtube, strings.Replace(u.Bio, "'", "''", -1), u.Banner, followingDataID)
 }
 
 func (s UserProfileInsertionStrategy) Convert(item interface{}) BatchInserter {
