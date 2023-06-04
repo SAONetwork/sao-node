@@ -270,32 +270,21 @@ var reportFaultsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
+		fmt.Println("FaultsCheck 1")
 
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-
-		creator, err := client.GetNodeAddress(ctx)
-		if err != nil {
-			return err
-		}
-
-		fishmen, err := client.GetFishmen(ctx)
-		if err != nil {
-			return err
-		}
-
-		if !strings.Contains(fishmen, creator) {
-			return types.Wrapf(types.ErrInvalidParameters, "curren gateway is not a fishmen")
-		}
+		fmt.Println("FaultsCheck 2")
 
 		dataIds := cctx.StringSlice("data-ids")
 		if len(dataIds) == 0 {
 			return types.Wrapf(types.ErrInvalidParameters, "data-ids is required")
 		}
 
+		fmt.Println("FaultsCheck.")
 		if tx, err := client.FaultsCheck(ctx, dataIds); err != nil {
 			return err
 		} else {

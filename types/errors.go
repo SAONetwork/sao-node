@@ -66,7 +66,7 @@ var (
 	ErrGenerateMnemonicFailed = errors.Register(ModuleChain, 11028, "failed to generate mnemonic")
 	ErrQueryShardFailed       = errors.Register(ModuleChain, 11029, "failed to query the shard information")
 	ErrQueryFaultFailed       = errors.Register(ModuleChain, 11030, "failed to query the fault")
-	ErrQueryFaultsFailed      = errors.Register(ModuleChain, 11030, "failed to query the faults")
+	ErrQueryFaultsFailed      = errors.Register(ModuleChain, 11031, "failed to query the faults")
 )
 
 var (

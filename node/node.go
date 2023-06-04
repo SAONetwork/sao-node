@@ -812,14 +812,17 @@ func (n *Node) MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) 
 }
 
 func (n *Node) FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.FileFaultsReportResp, error) {
+	log.Info("FaultsCheck...")
 	fishmen, err := n.chainSvc.GetFishmen(ctx)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("1 FaultsCheck...")
 
 	if !strings.Contains(fishmen, n.address) {
 		return nil, types.Wrapf(types.ErrInvalidParameters, "i am not a fishmen")
 	}
+	log.Info("2 FaultsCheck...")
 
 	faultsMap := make(map[string][]*saotypes.Fault, 0)
 	for _, dataId := range dataIds {
@@ -828,22 +831,38 @@ func (n *Node) FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.Fil
 			log.Error(err.Error())
 			continue
 		}
+		log.Info("3 FaultsCheck...")
 
 		for provider, shard := range meta.Shards {
-			resp := n.gatewaySvc.FetchShard(ctx, provider, shard.Cid, shard.Peer, meta.Metadata.DataId, meta.Metadata.OrderId)
 
 			passCheck := false
-			if resp.Code == 0 {
-				cid, err := utils.CalculateCid(resp.Content)
-				if err != nil {
-					log.Error(err.Error())
-					continue
+
+			result := make(chan types.ShardLoadResp)
+
+			go func(result chan types.ShardLoadResp) {
+				result <- n.gatewaySvc.FetchShard(ctx, provider, shard.Cid, shard.Peer, meta.Metadata.DataId, meta.Metadata.OrderId)
+			}(result)
+
+			select {
+			case resp := <-result:
+				if resp.Code == 0 {
+					cid, err := utils.CalculateCid(resp.Content)
+					if err != nil {
+						log.Error(err.Error())
+						continue
+					}
+
+					if cid.String() == meta.Metadata.Cid {
+						passCheck = true
+					}
 				}
 
-				if cid.String() == meta.Metadata.Cid {
-					passCheck = true
-				}
+			case <-time.After(10 * time.Second):
+				fmt.Println("Timeout")
 			}
+
+			log.Info("4 FaultsCheck...")
+
 			if !passCheck {
 				faults := faultsMap[provider]
 				if faults == nil {
@@ -861,8 +880,11 @@ func (n *Node) FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.Fil
 			}
 		}
 	}
+	log.Info("5 FaultsCheck...")
 
 	for provider, faults := range faultsMap {
+		log.Info("6 FaultsCheck...")
+
 		if len(faults) > 0 {
 			_, err = n.chainSvc.ReportFaults(ctx, n.address, provider, faults)
 			if err != nil {
@@ -872,6 +894,8 @@ func (n *Node) FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.Fil
 			}
 		}
 	}
+
+	log.Info("7 FaultsCheck...")
 
 	if len(faultsMap) > 0 {
 		return &apitypes.FileFaultsReportResp{

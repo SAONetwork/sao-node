@@ -28,7 +28,7 @@ import (
 var log = logging.Logger("chain")
 
 const ADDRESS_PREFIX = "sao"
-const CURRENT_NET_VERSION = "1.5.0"
+const CURRENT_NET_VERSION = "v1.5.0"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
@@ -112,7 +112,7 @@ func NewChainSvc(
 	}
 
 	saoClient := saotypes.NewQueryClient(cosmos.Context())
-	resp, err := saoClient.NetVersion(ctx, nil)
+	resp, err := saoClient.NetVersion(ctx, &saotypes.QueryNetVersionRequest{})
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
@@ -258,7 +258,9 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 }
 
 func (c *ChainSvc) GetFishmen(ctx context.Context) (string, error) {
-	resp, err := c.nodeClient.Fishmen(ctx, nil)
+	log.Info("FaultsCheck....")
+
+	resp, err := c.nodeClient.Fishmen(ctx, &nodetypes.QueryFishmenRequest{})
 	if err != nil {
 		return "", types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
