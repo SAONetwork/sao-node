@@ -60,11 +60,19 @@ func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, err
 	resultChan := make(chan BroadcastTxJobResult)
 	c.broadcastMsg(creator, msg, resultChan)
 	result := <-resultChan
+
 	if result.err != nil {
 		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
 	if result.resp.TxResponse.Code != 0 {
 		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgClaimReward tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+	}
+	var claimResp nodetypes.MsgClaimRewardResponse
+	err := result.resp.Decode(&claimResp)
+	if err != nil {
+		fmt.Println("decode claim resp err: ", err)
+	} else {
+		fmt.Println("total claim:", claimResp.ClaimedReward)
 	}
 	return result.resp.TxResponse.TxHash, nil
 }

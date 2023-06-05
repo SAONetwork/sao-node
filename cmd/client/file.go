@@ -70,6 +70,10 @@ var createFileCmd = &cli.Command{
 			Required: true,
 		},
 		&cli.IntFlag{
+			Name:     "size",
+			Required: true,
+		},
+		&cli.IntFlag{
 			Name:     "replica",
 			Usage:    "how many copies to store.",
 			Value:    DEFAULT_REPLICA,
@@ -97,6 +101,7 @@ var createFileCmd = &cli.Command{
 		duration := cctx.Int("duration")
 		replicas := cctx.Int("replica")
 		delay := cctx.Int("delay")
+		size := cctx.Uint64("size")
 
 		extendInfo := cctx.String("extend-info")
 		if len(extendInfo) > 1024 {
@@ -143,8 +148,9 @@ var createFileCmd = &cli.Command{
 			Cid:        contentCid.String(),
 			CommitId:   dataId,
 			Rule:       cctx.String("rule"),
-			Operation:  0,
+			Operation:  1,
 			ExtendInfo: extendInfo,
+			Size_:      size,
 		}
 
 		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)

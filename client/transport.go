@@ -10,7 +10,7 @@ import (
 	"sao-node/types"
 	"sao-node/utils"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/mitchellh/go-homedir"
@@ -147,6 +147,11 @@ func DoTransport(ctx context.Context, repo string, remoteAddr string, remotePeer
 		err = json.Unmarshal(buf, &resp)
 		if err != nil {
 			log.Error(err)
+			return cid.Undef
+		}
+
+		if resp.Error != "" {
+			log.Error("resp err: ", resp.Error)
 			return cid.Undef
 		}
 

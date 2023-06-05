@@ -410,13 +410,6 @@ var joinCmd = &cli.Command{
 			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
-		tx, err := chain.Create(ctx, creator)
-		if err != nil {
-			return err
-		} else {
-			fmt.Println(tx)
-		}
-
 		// update metadata datastore
 		mds, err := repo.Datastore(ctx, "/metadata")
 		if err != nil {
@@ -424,6 +417,13 @@ var joinCmd = &cli.Command{
 		}
 		if err := mds.Put(ctx, datastore.NewKey("node-address"), []byte(creator)); err != nil {
 			return types.Wrap(types.ErrGetFailed, err)
+		}
+
+		tx, err := chain.Create(ctx, creator)
+		if err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
 		}
 
 		return nil

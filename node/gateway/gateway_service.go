@@ -15,13 +15,13 @@ import (
 	"sao-node/utils"
 	"time"
 
-	ordertypes "github.com/SaoNetwork/sao/x/order/types"
-
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/mitchellh/go-homedir"
 
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
+	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -381,6 +381,12 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 
 func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error) {
 	contentList := make(map[uint64][]byte)
+
+	var res *FetchResult
+	var content []byte
+	var contentCid cid.Cid
+	var err error
+
 	for key, shard := range meta.Shards {
 		if contentList[shard.ShardId] != nil {
 			continue
@@ -423,10 +429,14 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}, shard.Peer, true)
 		if resp.Code == 0 {
 			if meta.Cid == shard.Cid {
-				return &FetchResult{
+				contentCid = shardCid
+				content = resp.Content
+				// replica mode res
+				res = &FetchResult{
 					Cid:     meta.Cid,
 					Content: resp.Content,
-				}, nil
+				}
+				break
 			}
 			contentList[shard.ShardId] = resp.Content
 		} else {
@@ -434,18 +444,25 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}
 	}
 
-	var content []byte
-	for _, c := range contentList {
-		content = append(content, c...)
-	}
+	if res == nil {
+		for _, c := range contentList {
+			content = append(content, c...)
+		}
 
-	contentCid, err := utils.CalculateCid(content)
-	if err != nil {
-		return nil, err
-	}
-	if contentCid.String() != meta.Cid {
-		log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
-		return nil, types.Wrapf(types.ErrInvalidCid, "%s", contentCid.String())
+		contentCid, err = utils.CalculateCid(content)
+		if err != nil {
+			return nil, err
+		}
+		if contentCid.String() != meta.Cid {
+			log.Errorf("cid mismatch, expected %s, but got %s", meta.Cid, contentCid.String())
+			return nil, types.Wrapf(types.ErrInvalidCid, "%s", contentCid.String())
+		}
+
+		// fragmentation mode res
+		res = &FetchResult{
+			Cid:     contentCid.String(),
+			Content: content,
+		}
 	}
 
 	match, err := regexp.Match("^"+types.Type_Prefix_File, []byte(meta.Alias))
@@ -466,7 +483,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			return nil, types.Wrap(types.ErrInvalidPath, err)
 		}
 
-		_, err = file.Write([]byte(content))
+		_, err = file.Write(content)
 		if err != nil {
 			return nil, types.Wrap(types.ErrWriteFileFailed, err)
 		}
@@ -483,10 +500,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 		}
 	}
 
-	return &FetchResult{
-		Cid:     contentCid.String(),
-		Content: content,
-	}, nil
+	return res, nil
 }
 
 func (gs *GatewaySvc) buildRelayProposal(ctx context.Context, gp GatewayProtocol, peerInfos string) types.RelayProposalCbor {
@@ -878,6 +892,39 @@ func lockname(orderId uint64) string {
 
 func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 	var latestHeight uint64 = 0
+	height, _ := gs.chainSvc.GetLastHeight(ctx)
+
+	orderIdx, err := utils.GetOrderIndex(ctx, gs.orderDs)
+	metaSet := make(map[string]struct{})
+	if err == nil {
+		for _, orderKey := range orderIdx.Alls {
+			if _, ok := metaSet[orderKey.DataId]; !ok {
+				metaSet[orderKey.DataId] = struct{}{}
+				orderInfo, err := gs.OrderStatus(ctx, orderKey.DataId)
+				if err == nil {
+					meta, err := gs.chainSvc.GetMeta(ctx, orderKey.DataId)
+					if err == nil && meta.Metadata.Status != modeltypes.MetaComplete {
+						order, err := gs.chainSvc.GetOrder(ctx, meta.Metadata.OrderId)
+						if err == nil {
+							timeoutAt := (uint64(height)-order.CreatedAt)/order.Timeout*order.Timeout + order.CreatedAt
+							orderInfo.OrderId = meta.Metadata.OrderId
+							gs.locks.Lock("timeout")
+							gs.timeoutMap[timeoutAt] = append(gs.timeoutMap[timeoutAt], orderInfo)
+							gs.locks.Unlock("timeout")
+						}
+					}
+				}
+			}
+		}
+	}
+	log.Info("restored timeout map")
+	for height, infoList := range gs.timeoutMap {
+		log.Info("timeout Height ", height)
+		for _, info := range infoList {
+			log.Info("    order ", info.OrderId)
+		}
+	}
+
 	for {
 		height, err := gs.chainSvc.GetLastHeight(ctx)
 		newHeight := uint64(height)
@@ -928,13 +975,7 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 					gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
 
 					gs.locks.Lock("timeout")
-					updateOrderInfoList, ok := gs.timeoutMap[orderInfo.ExpireHeight]
-					if ok {
-						orderInfoList = append(updateOrderInfoList, orderInfo)
-						gs.timeoutMap[orderInfo.ExpireHeight] = updateOrderInfoList
-					} else {
-						gs.timeoutMap[orderInfo.ExpireHeight] = []types.OrderInfo{orderInfo}
-					}
+					gs.timeoutMap[orderInfo.ExpireHeight] = append(gs.timeoutMap[orderInfo.ExpireHeight], orderInfo)
 					gs.locks.Unlock("timeout")
 				}
 			}
@@ -947,5 +988,4 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 			gs.locks.Unlock("timeout")
 		}
 	}
-
 }

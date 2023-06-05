@@ -211,23 +211,32 @@ func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
 	err := json.Unmarshal([]byte(params[0]), &req)
 	if err != nil {
 		log.Error(err.Error())
-		return "", nil
+		return "", err
 	}
 
 	localCid, err := utils.CalculateCid(req.Content)
 	if err != nil {
-		return "", nil
+		return "", err
 	}
 
 	if len(req.Content) > 0 {
 		stagingPath, err := homedir.Expand(rs.StagingPath)
 		if err != nil {
-			return "", nil
+			return "", err
 		}
 
 		info, err := os.Stat(stagingPath)
-		if err != nil {
-			return "", nil
+		if os.IsNotExist(err) {
+			err = os.MkdirAll(stagingPath, 0700)
+			if err != nil {
+				return "", err
+			}
+
+			if int64(len(req.Content)) > rs.StagingSapceSize {
+				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSapceSize-info.Size())
+			}
+		} else if err != nil {
+			return "", err
 		} else {
 			if info.Size()+int64(len(req.Content)) > rs.StagingSapceSize {
 				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSapceSize-info.Size())
