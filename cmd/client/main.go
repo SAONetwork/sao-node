@@ -270,21 +270,18 @@ var reportFaultsCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
-		fmt.Println("FaultsCheck 1")
 
 		client, closer, err := getSaoClient(cctx)
 		if err != nil {
 			return err
 		}
 		defer closer()
-		fmt.Println("FaultsCheck 2")
 
 		dataIds := cctx.StringSlice("data-ids")
 		if len(dataIds) == 0 {
 			return types.Wrapf(types.ErrInvalidParameters, "data-ids is required")
 		}
 
-		fmt.Println("FaultsCheck.")
 		if tx, err := client.FaultsCheck(ctx, dataIds); err != nil {
 			return err
 		} else {

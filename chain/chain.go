@@ -29,6 +29,7 @@ var log = logging.Logger("chain")
 
 const ADDRESS_PREFIX = "sao"
 const CURRENT_NET_VERSION = "v1.5.0"
+const DOWNLOAD_URL = "https://github.com/SAONetwork/sao-node/releases"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
@@ -89,8 +90,8 @@ type ChainSvcApi interface {
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
 	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error)
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
-	ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) (string, error)
-	RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) (string, error)
+	ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error)
+	RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error)
 }
 
 func NewChainSvc(
@@ -117,7 +118,7 @@ func NewChainSvc(
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
 	}
 	if CURRENT_NET_VERSION != resp.Version {
-		return nil, fmt.Errorf("invalid net version, saonode has to be upgrade to adapt to the net verion %s", resp.Version)
+		return nil, fmt.Errorf("invalid net version, saonode has to be upgrade to adapt to the net verion %s. Download the the lastest saonode binary at %s", resp.Version, DOWNLOAD_URL)
 	}
 
 	accountRetriever := authtypes.AccountRetriever{}
@@ -258,8 +259,6 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 }
 
 func (c *ChainSvc) GetFishmen(ctx context.Context) (string, error) {
-	log.Info("FaultsCheck....")
-
 	resp, err := c.nodeClient.Fishmen(ctx, &nodetypes.QueryFishmenRequest{})
 	if err != nil {
 		return "", types.Wrap(types.ErrCreateChainServiceFailed, err)

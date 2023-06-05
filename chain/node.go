@@ -88,7 +88,7 @@ func (c *ChainSvc) GetMyFaults(ctx context.Context, provider string) ([]*nodetyp
 	return resp.Faults, nil
 }
 
-func (c *ChainSvc) ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) (string, error) {
+func (c *ChainSvc) ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error) {
 	msg := &saotypes.MsgReportFaults{
 		Creator:  creator,
 		Provider: provider,
@@ -98,15 +98,21 @@ func (c *ChainSvc) ReportFaults(ctx context.Context, creator string, provider st
 	c.broadcastMsg(creator, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
+		return nil, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
 	if result.resp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgReportFaults tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+		return nil, types.Wrapf(types.ErrTxProcessFailed, "MsgReportFaults tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return result.resp.TxResponse.TxHash, nil
+	var resp saotypes.MsgReportFaultsResponse
+	err := result.resp.Decode(&resp)
+	if err != nil {
+		return nil, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgReportFaultsResponse, due to %v", err)
+	}
+
+	return resp.FaultIds, nil
 }
 
-func (c *ChainSvc) RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) (string, error) {
+func (c *ChainSvc) RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error) {
 	msg := &saotypes.MsgRecoverFaults{
 		Creator:  creator,
 		Provider: provider,
@@ -116,12 +122,12 @@ func (c *ChainSvc) RecoverFaults(ctx context.Context, creator string, provider s
 	c.broadcastMsg(creator, msg, resultChan)
 	result := <-resultChan
 	if result.err != nil {
-		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
+		return nil, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
 	if result.resp.TxResponse.Code != 0 {
-		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgRecoverFaults tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+		return nil, types.Wrapf(types.ErrTxProcessFailed, "MsgRecoverFaults tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
 	}
-	return result.resp.TxResponse.TxHash, nil
+	return nil, nil
 }
 
 func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, error) {
