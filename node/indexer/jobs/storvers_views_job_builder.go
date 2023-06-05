@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"sao-node/api"
 	apiclient "sao-node/api/client"
 	apitypes "sao-node/api/types"
@@ -24,7 +25,6 @@ import (
 	"sao-node/node/indexer/jobs/storverse/sync"
 	"sao-node/types"
 	"sao-node/utils"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -626,7 +626,10 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 		recordPtr := reflect.New(config.RecordType)
 
 		var raw map[string]interface{}
-		jsonStr := strconv.Quote(resp.Content)
+		re := regexp.MustCompile(`"([^"\\]*(\\.[^"\\]*)*)"\s*:`)
+		jsonStr := re.ReplaceAllStringFunc(resp.Content, func(match string) string {
+			return strings.ReplaceAll(match, "\n", "\\n")
+		})
 		if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
 			return nil, err
 		}
