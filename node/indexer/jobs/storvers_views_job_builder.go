@@ -24,6 +24,7 @@ import (
 	"sao-node/node/indexer/jobs/storverse/sync"
 	"sao-node/types"
 	"sao-node/utils"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -625,7 +626,8 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 		recordPtr := reflect.New(config.RecordType)
 
 		var raw map[string]interface{}
-		if err := json.Unmarshal([]byte(resp.Content), &raw); err != nil {
+		jsonStr := strconv.Quote(resp.Content)
+		if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
 			return nil, err
 		}
 
