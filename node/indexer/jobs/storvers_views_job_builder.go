@@ -628,7 +628,7 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 
 		jsonStr := resp.Content
 		jsonStr = strings.Replace(jsonStr, "\n", "\\n", -1)
-		jsonStr = strings.Replace(jsonStr, "\v", "\\v", -1)
+		jsonStr = strings.Replace(jsonStr, "\v", " ", -1)
 
 		if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
 			return nil, err
