@@ -16,7 +16,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sao-node/api"
 	apiclient "sao-node/api/client"
 	apitypes "sao-node/api/types"
@@ -626,10 +625,7 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 		recordPtr := reflect.New(config.RecordType)
 
 		var raw map[string]interface{}
-		re := regexp.MustCompile(`"([^"\\]*(\\.[^"\\]*)*)"\s*:`)
-		jsonStr := re.ReplaceAllStringFunc(resp.Content, func(match string) string {
-			return strings.ReplaceAll(match, "\n", "\\n")
-		})
+		jsonStr := strings.Replace(resp.Content, "\n", "\\n", -1)
 		if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
 			return nil, err
 		}
