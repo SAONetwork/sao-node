@@ -295,7 +295,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		sn.indexSvc = indexSvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.indexSvc.Stop)
 
-		graphqlServer := gql.NewGraphqlServer(cfg.Indexer.ListenAddress, indexSvc)
+		graphqlServer := gql.NewGraphqlServer(cfg.Indexer.ListenAddress, indexSvc, chainSvc)
 		err = graphqlServer.Start(ctx)
 		if err != nil {
 			return nil, err

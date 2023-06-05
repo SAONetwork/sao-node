@@ -1,14 +1,16 @@
 package gql
 
 import (
-	"sao-node/node/indexer"
 	"github.com/patrickmn/go-cache"
+	"sao-node/chain"
+	"sao-node/node/indexer"
 	"time"
 )
 
 type resolver struct {
 	indexSvc *indexer.IndexSvc
 	cache    *cache.Cache
+	chainSvc *chain.ChainSvc
 }
 
 func NewResolver(indexSvc *indexer.IndexSvc) *resolver {

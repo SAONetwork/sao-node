@@ -4,14 +4,15 @@ import (
 	"context"
 	_ "embed"
 	"net/http"
+	"sao-node/chain"
 	"sao-node/node/indexer"
 	"sync"
 	"time"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"
-	"github.com/patrickmn/go-cache"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/patrickmn/go-cache"
 )
 
 var log = logging.Logger("graphql")
@@ -23,9 +24,9 @@ type Server struct {
 	wg         sync.WaitGroup
 }
 
-func NewGraphqlServer(listenAddr string, indexSvc *indexer.IndexSvc) *Server {
+func NewGraphqlServer(listenAddr string, indexSvc *indexer.IndexSvc, svc *chain.ChainSvc) *Server {
 	c := cache.New(1*time.Minute, 10*time.Minute)
-	return &Server{listenAddr: listenAddr, resolver: &resolver{indexSvc: indexSvc, cache: c}}
+	return &Server{listenAddr: listenAddr, resolver: &resolver{indexSvc: indexSvc, cache: c, chainSvc: svc}}
 }
 
 //go:embed schema.graphql
@@ -47,7 +48,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.srv = &http.Server{Addr: s.listenAddr, Handler: mux}
 	log.Infof("graphql server listening on %s", s.listenAddr)
-	mux.Handle("/graphql/query", &corsHandler{queryHandler})
+	mux.Handle("/graphql/query", authenticate(&corsHandler{queryHandler}, s.resolver))
 
 	s.wg.Add(1)
 	go func() {
