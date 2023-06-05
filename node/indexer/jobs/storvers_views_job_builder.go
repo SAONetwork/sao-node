@@ -625,7 +625,11 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 		recordPtr := reflect.New(config.RecordType)
 
 		var raw map[string]interface{}
-		jsonStr := strings.Replace(resp.Content, "\n", "\\n", -1)
+
+		jsonStr := resp.Content
+		jsonStr = strings.Replace(jsonStr, "\n", "\\n", -1)
+		jsonStr = strings.Replace(jsonStr, "\v", "\\v", -1)
+
 		if err := json.Unmarshal([]byte(jsonStr), &raw); err != nil {
 			return nil, err
 		}
