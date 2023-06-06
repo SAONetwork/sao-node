@@ -949,10 +949,7 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 					}
 					newShards := make(map[string]types.OrderShardInfo)
 					for sp, shard := range order.Shards {
-						peer, err := gs.chainSvc.GetNodePeer(ctx, sp)
-						if err != nil {
-							return
-						}
+						peer, _ := gs.chainSvc.GetNodePeer(ctx, sp)
 						newShard := types.OrderShardInfo{
 							ShardId:  shard.Id,
 							Peer:     peer,
