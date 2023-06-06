@@ -363,6 +363,6 @@ require (
 
 replace github.com/SaoNetwork/sao => ../../sao-consensus
 
-//replace github.com/whyrusleeping/cbor-gen => ../cbor-gen
+replace github.com/whyrusleeping/cbor-gen => ../cbor-gen
 
 replace github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
