@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"time"
 )
 
@@ -24,8 +25,13 @@ type VerseComment struct {
 type VerseCommentInsertionStrategy struct{}
 
 func (vc VerseComment) InsertValues() string {
+	decodedComment, err := url.QueryUnescape(vc.Comment)
+	if err != nil {
+		// log
+		fmt.Println(err)
+	}
 	return fmt.Sprintf("('%s', '%s','%s', '%d', '%d', '%s', '%s', '%s', '%s', %d)",
-		vc.CommitID, vc.DataID, vc.Alias, vc.CreatedAt, vc.UpdatedAt, vc.Comment, vc.ParentId, vc.VerseId, vc.Owner, vc.Status)
+		vc.CommitID, vc.DataID, vc.Alias, vc.CreatedAt, vc.UpdatedAt, decodedComment, vc.ParentId, vc.VerseId, vc.Owner, vc.Status)
 }
 
 func (s VerseCommentInsertionStrategy) Convert(item interface{}) BatchInserter {
