@@ -937,26 +937,40 @@ func (n *Node) RecoverCheck(ctx context.Context, provider string, faultIds []str
 			continue
 		}
 
-		resp := n.gatewaySvc.FetchShard(ctx, fault.Provider, shardMeta.Cid, peer, meta.Metadata.DataId, meta.Metadata.OrderId)
-
 		passCheck := false
-		if resp.Code == 0 {
-			cid, err := utils.CalculateCid(resp.Content)
-			if err != nil {
-				log.Error(err.Error())
-				continue
+
+		result := make(chan types.ShardLoadResp)
+
+		go func(result chan types.ShardLoadResp) {
+			result <- n.gatewaySvc.FetchShard(ctx, provider, shardMeta.Cid, peer, meta.Metadata.DataId, meta.Metadata.OrderId)
+		}(result)
+
+		select {
+		case resp := <-result:
+			if resp.Code == 0 {
+				cid, err := utils.CalculateCid(resp.Content)
+				if err != nil {
+					log.Error(err.Error())
+					continue
+				}
+
+				if cid.String() == meta.Metadata.Cid {
+					passCheck = true
+				}
 			}
 
-			if cid.String() == meta.Metadata.Cid {
-				passCheck = true
-			}
+		case <-time.After(10 * time.Second):
+			fmt.Println("Timeout")
 		}
+
 		if passCheck {
+			commit := meta.Metadata.Commits[len(meta.Metadata.Commits)-1]
+			commitId := strings.Split(commit, "\032")[0]
 			recoverableFaults = append(recoverableFaults, &saotypes.Fault{
 				DataId:   meta.Metadata.DataId,
 				OrderId:  meta.Metadata.OrderId,
 				ShardId:  fault.ShardId,
-				CommitId: meta.Metadata.Commits[len(meta.Metadata.Commits)-1],
+				CommitId: commitId,
 				Provider: fault.Provider,
 				Reporter: n.address,
 			})
@@ -964,7 +978,7 @@ func (n *Node) RecoverCheck(ctx context.Context, provider string, faultIds []str
 	}
 
 	if len(recoverableFaults) > 0 {
-		_, err = n.chainSvc.ReportFaults(ctx, n.address, provider, recoverableFaults)
+		_, err = n.chainSvc.RecoverFaults(ctx, n.address, provider, recoverableFaults)
 		if err != nil {
 			return nil, err
 		}

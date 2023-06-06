@@ -872,7 +872,7 @@ var declareFaultsRecoverCmd = &cli.Command{
 				DataId:   order.DataId,
 				OrderId:  order.Id,
 				ShardId:  shardId,
-				CommitId: strings.Split(order.Commit, "|")[1],
+				CommitId: strings.Split(order.Commit, "\032")[0],
 				Provider: creator,
 				Reporter: creator,
 			})

@@ -79,13 +79,13 @@ func (c *ChainSvc) GetFault(ctx context.Context, faultId string) (*nodetypes.Fau
 	return resp.Fault, nil
 }
 
-func (c *ChainSvc) GetMyFaults(ctx context.Context, provider string) ([]*nodetypes.Fault, error) {
+func (c *ChainSvc) GetMyFaults(ctx context.Context, provider string) ([]string, error) {
 	resp, err := c.nodeClient.AllFaults(ctx, &nodetypes.QueryAllFaultsRequest{Provider: provider})
 	if err != nil {
 		return nil, types.Wrap(types.ErrQueryFaultsFailed, err)
 	}
 
-	return resp.Faults, nil
+	return resp.FaultIds, nil
 }
 
 func (c *ChainSvc) ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error) {
@@ -205,14 +205,14 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 					log.Error(err.Error())
 				}
 
-				faults, err := c.GetMyFaults(ctx, creator)
+				faultIds, err := c.GetMyFaults(ctx, creator)
 				if err != nil {
 					log.Error(err.Error())
 				} else {
-					for _, fault := range faults {
-						log.Errorf("!!!STORAGE FAULTS DETECTED!!!: %s on shard[%d]", fault.FaultId, fault.ShardId)
+					for _, faultId := range faultIds {
+						log.Errorf("!!!STORAGE FAULTS DETECTED!!!: %s", faultId)
 					}
-					if len(faults) > 0 {
+					if len(faultIds) > 0 {
 						log.Errorf("!!!RECOVER THE STORAGE FAULTS ASAP, OR YOU MIGHT LOSS THE PLEDGED ASSETS!!!")
 					}
 				}
