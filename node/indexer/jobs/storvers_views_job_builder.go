@@ -599,10 +599,10 @@ func GetDidManager(ctx context.Context, keyName string, keyringHome string) (*di
 func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string, commitId string, platFormIds string,
 	chainSvc *chain.ChainSvc, gatewayAddress string, gatewayApi api.SaoApi, log *logging.ZapEventLogger) (apitypes.LoadResp, error) {
 	proposal := saotypes.QueryProposal{
-		Owner:   didManager.Id,
-		Keyword: dataId,
-		GroupId: platFormIds,
-		CommitId:  commitId,
+		Owner:    didManager.Id,
+		Keyword:  dataId,
+		GroupId:  platFormIds,
+		CommitId: commitId,
 	}
 
 	request, err := buildQueryRequest(ctx, didManager, proposal, chainSvc, gatewayAddress)
