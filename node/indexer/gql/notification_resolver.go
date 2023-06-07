@@ -64,8 +64,16 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 			n.FromUser,
 			n.ToUser
 		FROM NOTIFICATION n
-		WHERE n.MessageType = ? AND n.ToUser = ? ORDER BY n.CreatedAt DESC LIMIT ? OFFSET ?
-	`, args.MessageType, args.ToUser, limit, offset)
+		WHERE 
+			CASE 
+				WHEN ? = 2 THEN n.MessageType IN (2, 3)
+				WHEN ? = 4 THEN n.MessageType IN (4, 7)
+				WHEN ? = 5 THEN n.MessageType IN (5, 6)
+				ELSE n.MessageType = ?
+			END 
+			AND n.ToUser = ? 
+		ORDER BY n.CreatedAt DESC LIMIT ? OFFSET ?
+	`, args.MessageType, args.MessageType, args.MessageType, args.MessageType, args.ToUser, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +111,19 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 	}
 
 	// Fetch UnreadCounts
-	unreadCountsRows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT MESSAGETYPE, COUNT(*) as unreadCount FROM NOTIFICATION WHERE TOUSER = ? AND STATUS = 0 GROUP BY MESSAGETYPE", args.ToUser)
+	unreadCountsRows, err := r.indexSvc.Db.QueryContext(ctx, `
+        SELECT 
+            CASE 
+                WHEN MESSAGETYPE IN (2, 3) THEN 2
+                WHEN MESSAGETYPE IN (4, 7) THEN 4
+                WHEN MESSAGETYPE IN (5, 6) THEN 5
+                ELSE MESSAGETYPE
+            END as MessageType,
+            COUNT(*) as UnreadCount 
+        FROM NOTIFICATION 
+        WHERE TOUSER = ? AND STATUS = 0 
+        GROUP BY MessageType`, args.ToUser)
+
 	if err != nil {
 		return nil, err
 	}

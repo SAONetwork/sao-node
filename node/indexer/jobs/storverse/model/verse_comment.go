@@ -36,15 +36,16 @@ func (s VerseCommentInsertionStrategy) TableName() string {
 	return "VERSE_COMMENT"
 }
 
-func GetVerseCommentOwnerByCommentID(db *sql.DB, commentID string) (string, error) {
+func GetVerseCommentAndOwnerByCommentID(db *sql.DB, commentID string) (string, string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	var comment string
 	var owner string
-	err := db.QueryRowContext(ctx, "SELECT OWNER FROM VERSE_COMMENT WHERE DATAID = ?", commentID).Scan(&owner)
+	err := db.QueryRowContext(ctx, "SELECT COMMENT, OWNER FROM VERSE_COMMENT WHERE DATAID = ?", commentID).Scan(&comment, &owner)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return owner, nil
+	return comment, owner, nil
 }

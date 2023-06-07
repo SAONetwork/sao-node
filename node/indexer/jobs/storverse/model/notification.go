@@ -50,7 +50,7 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		fromUser = r.BuyerDataID
 		// if r.Type = 1, it means the purchase order is for a verse, so fetch the verse owner
 		if r.Type == 1 {
-			verseOwner, _, err := GetVerseOwnerAndDigestByVerseID(db, r.ItemDataID)
+			verseOwner, digest, err := GetVerseOwnerAndDigestByVerseID(db, r.ItemDataID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, errors.New("verse not found"), true
@@ -59,15 +59,42 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 			}
 			toUser = verseOwner
 			messageType = 2
+			digest = truncateMessageContent(digest)
+			message = digest
 		} else {
 			// if r.Type = 2, it means the purchase order is for a user, so fetch the user
 			toUser = r.ItemDataID
 			messageType = 3
+			message = r.Price
 		}
 		baseDataID = r.DataID
-		message = r.Price
 		notificationTime = int64(r.Time)
 	case VerseComment:
+		fromUser = r.Owner
+		var recipient, messageContent string
+		var err error
+
+		if r.ParentId == "" {
+			// Fetch the verse owner
+			recipient, messageContent, err = GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
+			messageType = 4
+		} else {
+			// Fetch the parent comment
+			messageContent, recipient, err = GetVerseCommentAndOwnerByCommentID(db, r.ParentId)
+			messageType = 7
+		}
+
+		if err != nil {
+			return nil, err, true
+		}
+
+		toUser = recipient
+		baseDataID = r.DataID
+		notificationTime = r.CreatedAt
+		messageContent = truncateMessageContent(messageContent)
+		message = messageContent
+	case VerseLike:
+		// Add similar logic for VerseLike
 		fromUser = r.Owner
 		// Fetch the verse owner
 		verseOwner, digest, err := GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
@@ -76,26 +103,14 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		}
 		toUser = verseOwner
 		baseDataID = r.DataID
-		messageType = 4
-		notificationTime = r.CreatedAt
-		digest = truncateDigest(digest)
-		message = digest
-	case VerseLike:
-		// Add similar logic for VerseLike
-		fromUser = r.Owner
-		// Fetch the verse owner
-		verseOwner, _, err := GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
-		if err != nil {
-			return nil, err, true
-		}
-		toUser = verseOwner
-		baseDataID = r.DataID
 		messageType = 5
 		notificationTime = r.CreatedAt
+		digest = truncateMessageContent(digest)
+		message = digest
 	case VerseCommentLike:
 		fromUser = r.Owner
 		// Fetch the verse comment owner
-		verseCommentOwner, err := GetVerseCommentOwnerByCommentID(db, r.CommentId)
+		commentContent, verseCommentOwner, err := GetVerseCommentAndOwnerByCommentID(db, r.CommentId)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, errors.New("verse comment not found"), true
@@ -106,6 +121,8 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		baseDataID = r.DataID
 		messageType = 6
 		notificationTime = r.CreatedAt
+		commentContent = truncateMessageContent(commentContent)
+		message = commentContent
 	default:
 		return nil, errors.New("unsupported record type for creating notifications"), false
 	}
@@ -151,13 +168,13 @@ func UpdateNotificationReadStatus(ctx context.Context, db *sql.DB) (int64, error
 	return rowsAffected, nil
 }
 
-func truncateDigest(digest string) string {
+func truncateMessageContent(digest string) string {
 	words := strings.Fields(digest)
 	truncatedWords := []string{}
 	charCount := 0
 
 	for i, word := range words {
-		if i >= 4 || charCount+len(word) > 30 {
+		if i >= 4 || charCount+len(word) > 20 {
 			break
 		}
 		truncatedWords = append(truncatedWords, word)
