@@ -6,8 +6,8 @@ import (
 )
 
 type NotificationsInfo struct {
-	Items       []*Notification     `json:"items"`
-	TotalCount  int32               `json:"totalCount"`
+	Items        []*Notification    `json:"items"`
+	TotalCount   int32              `json:"totalCount"`
 	UnreadCounts []*UnreadCountInfo `json:"unreadCounts"`
 }
 
@@ -47,7 +47,25 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 	}
 
 	// Fetch Notification items
-	rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT * FROM NOTIFICATION WHERE MESSAGETYPE = ? AND TOUSER = ? ORDER BY CREATEDAT DESC LIMIT ? OFFSET ?", args.MessageType, args.ToUser, limit, offset)
+	rows, err := r.indexSvc.Db.QueryContext(ctx, `
+		SELECT 
+			CASE
+				WHEN n.MessageType = 2 THEN COALESCE((SELECT ITEMDATAID FROM PURCHASE_ORDER WHERE DATAID = n.BaseDataID), n.BaseDataID)
+				WHEN n.MessageType = 4 THEN COALESCE((SELECT VERSEID FROM VERSE_COMMENT WHERE DATAID = n.BaseDataID), n.BaseDataID)
+				WHEN n.MessageType = 5 THEN COALESCE((SELECT VERSEID FROM VERSE_LIKE WHERE DATAID = n.BaseDataID), n.BaseDataID)
+				WHEN n.MessageType = 6 THEN COALESCE((SELECT VERSEID FROM VERSE_COMMENT WHERE DATAID = (SELECT COMMENTID FROM VERSE_COMMENT_LIKE WHERE DATAID = n.BaseDataID)), n.BaseDataID)
+				ELSE n.BaseDataID
+			END,
+			n.CreatedAt,
+			n.UpdatedAt,
+			n.Message,
+			n.Status,
+			n.MessageType,
+			n.FromUser,
+			n.ToUser
+		FROM NOTIFICATION n
+		WHERE n.MessageType = ? AND n.ToUser = ? ORDER BY n.CreatedAt DESC LIMIT ? OFFSET ?
+	`, args.MessageType, args.ToUser, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +125,8 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 
 	// Return a NotificationsInfo object containing the fetched data
 	return &NotificationsInfo{
-		Items:       items,
-		TotalCount:  totalCount,
+		Items:        items,
+		TotalCount:   totalCount,
 		UnreadCounts: unreadCounts,
 	}, nil
 }

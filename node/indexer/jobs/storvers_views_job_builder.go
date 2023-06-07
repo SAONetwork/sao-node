@@ -292,10 +292,6 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							continue
 						}
 
-						// Reset error count if getDataModel is successful
-						delete(errorMap, meta.DataId)
-						delete(filterMap, meta.DataId)
-
 						// Delete the row if the DATAID exists but the COMMITID does not match,
 						// and return the COMMITID of the deleted row
 						qry = fmt.Sprintf("DELETE FROM %s WHERE DATAID=? AND COMMITID<>? RETURNING COMMITID", tableName)
@@ -342,8 +338,13 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						record, err := processMeta(meta, &resp, log)
 						if err != nil {
 							log.Errorf("failed to process meta: %w", err)
+							filterMap[meta.DataId] = time.Now()
 							continue
 						}
+
+						// Reset error count if getDataModel and processMeta are successful
+						delete(errorMap, meta.DataId)
+						delete(filterMap, meta.DataId)
 
 						log.Infof("record: %v", record)
 						switch r := record.(type) {
