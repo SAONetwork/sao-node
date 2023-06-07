@@ -771,15 +771,18 @@ func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter
 				_, err := db.Exec(stmt)
 
 				if err != nil {
-					log.Errorf("Error occurred during batch insert, inserting one by one: %v", err)
+					log.Errorf("Error occurred during batch insert: %v", err)
 
-					for _, rec := range records[index-batchSize : index] {
-						_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, rec.InsertValues()))
+					if tableName != "NOTIFICATION" {
+						log.Info("Inserting one by one...")
+						for _, rec := range records[index-batchSize : index] {
+							_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, rec.InsertValues()))
 
-						if err != nil {
-							log.Errorf("Error inserting record %v: %v", rec, err)
-							secondColumn := GetSecondColumnFromInsertValues(rec.InsertValues())
-							filterMap[secondColumn] = time.Now()
+							if err != nil {
+								log.Errorf("Error inserting record %v: %v", rec, err)
+								secondColumn := GetSecondColumnFromInsertValues(rec.InsertValues())
+								filterMap[secondColumn] = time.Now()
+							}
 						}
 					}
 
@@ -799,15 +802,20 @@ func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter
 			_, err := db.Exec(stmt)
 
 			if err != nil {
-				log.Errorf("Error occurred during final batch insert, inserting one by one: %v", err)
+				log.Errorf("Error occurred during final batch insert: %v", err)
 
-				for _, rec := range records[(len(records)/batchSize)*batchSize:] {
-					_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, rec.InsertValues()))
+				if tableName != "NOTIFICATION" {
+					log.Info("Inserting one by one...")
+					for _, rec := range records[(len(records)/batchSize)*batchSize:] {
+						_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, rec.InsertValues()))
 
-					if err != nil {
-						log.Errorf("Error inserting record %v: %v", rec, err)
-						secondColumn := GetSecondColumnFromInsertValues(rec.InsertValues())
-						filterMap[secondColumn] = time.Now()
+						if err != nil {
+							log.Errorf("Error inserting record %v: %v", rec, err)
+							secondColumn := GetSecondColumnFromInsertValues(rec.InsertValues())
+							filterMap[secondColumn] = time.Now()
+						}
+						// add log, single insert, print values
+						log.Infof("Insert done, %s saved.", rec.InsertValues())
 					}
 				}
 			} else {

@@ -47,7 +47,7 @@ func (v Verse) InsertValues() string {
 	}
 
 	return fmt.Sprintf("('%s','%s','%s',%d,'%s','%s',%f,'%s',%d,%d,'%s','%s')",
-		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, price, escapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID, v.FileType)
+		v.CommitID, v.DataID, v.Alias, v.CreatedAt, string(fileIDsJSON), v.Owner, price, EscapeSingleQuotes(v.Digest), v.Scope, v.Status, v.NftTokenID, v.FileType)
 }
 
 func (s VerseInsertionStrategy) Convert(item interface{}) BatchInserter {
@@ -58,7 +58,7 @@ func (s VerseInsertionStrategy) TableName() string {
 	return "VERSE"
 }
 
-func escapeSingleQuotes(s string) string {
+func EscapeSingleQuotes(s string) string {
 	return strings.ReplaceAll(s, "'", "''")
 }
 

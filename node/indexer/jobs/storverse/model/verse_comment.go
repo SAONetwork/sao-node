@@ -25,7 +25,7 @@ type VerseCommentInsertionStrategy struct{}
 
 func (vc VerseComment) InsertValues() string {
 	return fmt.Sprintf("('%s', '%s','%s', '%d', '%d', '%s', '%s', '%s', '%s', %d)",
-		vc.CommitID, vc.DataID, vc.Alias, vc.CreatedAt, vc.UpdatedAt, vc.Comment, vc.ParentId, vc.VerseId, vc.Owner, vc.Status)
+		vc.CommitID, vc.DataID, vc.Alias, vc.CreatedAt, vc.UpdatedAt, EscapeSingleQuotes(vc.Comment), vc.ParentId, vc.VerseId, vc.Owner, vc.Status)
 }
 
 func (s VerseCommentInsertionStrategy) Convert(item interface{}) BatchInserter {
