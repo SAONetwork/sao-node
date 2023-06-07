@@ -185,7 +185,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				// Iterate over the strategies and call performBatchInsert for each type
 				for typeName, strategy := range insertionStrategies {
 					items := itemsMap[typeName]
-					if err := performBatchInsert(db, strategy, items, 500, log); err != nil {
+					if err := performBatchInsert(db, strategy, items, 500, log, filterMap); err != nil {
 						log.Errorf("Error inserting %s: %v", typeName, err)
 					}
 
@@ -602,7 +602,6 @@ func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string
 		Owner:    didManager.Id,
 		Keyword:  dataId,
 		GroupId:  platFormIds,
-		CommitId: commitId,
 	}
 
 	request, err := buildQueryRequest(ctx, didManager, proposal, chainSvc, gatewayAddress)
@@ -745,16 +744,16 @@ func convertToInterfaceSlice(slice interface{}) []interface{} {
 	return result
 }
 
-func performBatchInsert(db *sql.DB, strategy storverse.InsertionStrategy, items []interface{}, batchSize int, log *logging.ZapEventLogger) error {
+func performBatchInsert(db *sql.DB, strategy storverse.InsertionStrategy, items []interface{}, batchSize int, log *logging.ZapEventLogger, filterMap map[string]time.Time) error {
 	batchInserters := make([]storverse.BatchInserter, len(items))
 	for i, item := range items {
 		batchInserters[i] = strategy.Convert(item)
 	}
 
-	return BatchInsert(db, strategy.TableName(), batchInserters, batchSize, log)
+	return BatchInsert(db, strategy.TableName(), batchInserters, batchSize, log, filterMap)
 }
 
-func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter, batchSize int, log *logging.ZapEventLogger) error {
+func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter, batchSize int, log *logging.ZapEventLogger, filterMap map[string]time.Time) error {
 	if len(records) > 0 {
 		valueArgs := ""
 		log.Infof("Batch prepare, %d records to be created.", len(records))
@@ -763,15 +762,31 @@ func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter
 			if valueArgs != "" {
 				valueArgs += ", "
 			}
+
 			valueArgs += record.InsertValues()
 
 			if index > 0 && index%batchSize == 0 {
 				log.Infof("Sub batch prepare, %d records to be saved.", batchSize)
 				stmt := fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, valueArgs)
 				_, err := db.Exec(stmt)
+
 				if err != nil {
-					return err
+					log.Errorf("Error occurred during batch insert, inserting one by one: %v", err)
+
+					for _, rec := range records[index-batchSize : index] {
+						_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, rec.InsertValues()))
+
+						if err != nil {
+							log.Errorf("Error inserting record %v: %v", rec, err)
+							secondColumn := GetSecondColumnFromInsertValues(rec.InsertValues())
+							filterMap[secondColumn] = time.Now()
+						}
+					}
+
+					valueArgs = ""
+					continue
 				}
+
 				valueArgs = ""
 				log.Infof("Sub batch done, %d records saved.", batchSize)
 			}
@@ -780,15 +795,45 @@ func BatchInsert(db *sql.DB, tableName string, records []storverse.BatchInserter
 		if len(valueArgs) > 0 {
 			stmt := fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, valueArgs)
 			log.Info(stmt)
+
 			_, err := db.Exec(stmt)
+
 			if err != nil {
-				return err
+				log.Errorf("Error occurred during final batch insert, inserting one by one: %v", err)
+
+				for _, rec := range records[(len(records)/batchSize)*batchSize:] {
+					_, err := db.Exec(fmt.Sprintf("INSERT INTO %s VALUES %s", tableName, rec.InsertValues()))
+
+					if err != nil {
+						log.Errorf("Error inserting record %v: %v", rec, err)
+						secondColumn := GetSecondColumnFromInsertValues(rec.InsertValues())
+						filterMap[secondColumn] = time.Now()
+					}
+				}
+			} else {
+				log.Infof("Batch done, %d records saved.", len(records))
 			}
-			log.Infof("Batch done, %d records saved.", len(records))
 		}
 	}
 	return nil
 }
+
+func GetSecondColumnFromInsertValues(insertValues string) string {
+	// Remove enclosing parentheses
+	trimmed := strings.Trim(insertValues, "()")
+
+	// Split by commas
+	values := strings.Split(trimmed, ",")
+
+	// Get second value if it exists, and trim leading and trailing quotes
+	if len(values) > 1 {
+		return strings.Trim(values[1], " '")
+	}
+
+	// If no second value, return an empty string
+	return ""
+}
+
 
 // Returns the timeout duration based on the filter count
 func getTimeoutDuration(filterCount int) time.Duration {
