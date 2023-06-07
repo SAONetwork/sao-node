@@ -95,6 +95,7 @@ func main() {
 			modelCmd,
 			fileCmd,
 			didCmd,
+			loanCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},

@@ -118,6 +118,7 @@ func main() {
 			claimCmd,
 			jobsCmd,
 			initTxAddressPoolCmd,
+			loanStrategyCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -844,6 +845,73 @@ var authCmd = &cli.Command{
 		}
 		fmt.Print(" Admin permission token  : ")
 		console.Println(string(ab))
+
+		return nil
+	},
+}
+
+var loanStrategyCmd = &cli.Command{
+	Name:  "set-loan-strategy",
+	Usage: "set loan strategy",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: false,
+		},
+		&cli.IntFlag{
+			Name:     "strategy",
+			Usage:    "loan strategy, 0 - disable loan, 1 - use balance as pledge first, 2 - use loaned out coins as pledge first",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		creator := cctx.String("creator")
+		if creator == "" {
+			apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
+			if err != nil {
+				return types.Wrap(types.ErrCreateClientFailed, err)
+			}
+			defer closer()
+
+			creator, err = apiClient.GetNodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		strategy := cctx.Int("strategy")
+
+		if strategy < 0 || strategy > 2 {
+			return types.ErrInvalidChainAddress
+		}
+
+		if tx, err := chain.SetLoanStrategy(ctx, creator, strategy); err != nil {
+			return err
+		} else {
+			var s string
+			if strategy == 0 {
+				s = "disable"
+			} else if strategy == 1 {
+				s = "balance first"
+			} else if strategy == 2 {
+				s = "loan first"
+			}
+			fmt.Println(creator, " loan strategy is set to ", strategy, " ", s)
+			fmt.Println(tx)
+		}
 
 		return nil
 	},

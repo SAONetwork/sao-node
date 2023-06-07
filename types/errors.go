@@ -81,6 +81,7 @@ var (
 	ErrOpenDataStoreFailed    = errors.Register(ModuleClient, 12013, "failed to open the data store")
 	ErrInvalidParameters      = errors.Register(ModuleClient, 12014, "invalid parameters")
 	ErrCreateClientFailed     = errors.Register(ModuleClient, 12015, "failed to create client")
+	ErrInsufficientFunds      = errors.Register(ModuleClient, 12016, "insufficient funds")
 )
 
 var (

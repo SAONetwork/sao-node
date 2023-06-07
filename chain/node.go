@@ -151,3 +151,21 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 		}
 	}()
 }
+
+func (c *ChainSvc) SetLoanStrategy(ctx context.Context, creator string, strategy int) (string, error) {
+
+	msg := &nodetypes.MsgSetLoanStrategy{
+		Creator:      creator,
+		LoanStrategy: int32(strategy),
+	}
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
+	}
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgSetLoanStrategy tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+	}
+	return result.resp.TxResponse.TxHash, nil
+}

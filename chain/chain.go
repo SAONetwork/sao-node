@@ -11,6 +11,7 @@ import (
 
 	"github.com/SaoNetwork/sao-did/sid"
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
+	loantypes "github.com/SaoNetwork/sao/x/loan/types"
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
@@ -37,6 +38,7 @@ type ChainSvc struct {
 	nodeClient       nodetypes.QueryClient
 	didClient        didtypes.QueryClient
 	modelClient      modeltypes.QueryClient
+	loanClient       loantypes.QueryClient
 	listener         *http.HTTP
 	accountRetriever authtypes.AccountRetriever
 	ap               *AddressPool
@@ -85,6 +87,9 @@ type ChainSvcApi interface {
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
 	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error)
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
+	GetCredit(ctx context.Context, account string) (sdktypes.Coin, error)
+	Deposit(ctx context.Context, creator string, amount sdktypes.Coin) (string, error)
+	Withdraw(ctx context.Context, creator string, amount sdktypes.Coin) (string, error)
 }
 
 func NewChainSvc(
@@ -111,6 +116,7 @@ func NewChainSvc(
 	nodeClient := nodetypes.NewQueryClient(cosmos.Context())
 	didClient := didtypes.NewQueryClient(cosmos.Context())
 	modelClient := modeltypes.NewQueryClient(cosmos.Context())
+	loanClient := loantypes.NewQueryClient(cosmos.Context())
 
 	log.Debugf("initialize chain listener")
 	http, err := http.New(chainAddress, wsEndpoint)
@@ -126,6 +132,7 @@ func NewChainSvc(
 		nodeClient:       nodeClient,
 		didClient:        didClient,
 		modelClient:      modelClient,
+		loanClient:       loanClient,
 		listener:         http,
 		accountRetriever: accountRetriever,
 		broadcastChanMap: make(map[string]chan BroadcastTxJob),
