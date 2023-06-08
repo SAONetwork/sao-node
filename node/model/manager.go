@@ -89,8 +89,8 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 				log.Debugf("the local cached model is out of date")
 			}
 		} else {
-			log.Debugf("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
-			log.Debugf("local version model is %s:%s.", model.DataId, model.CommitId)
+			log.Infof("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
+			log.Infof("local version model is %s:%s.", model.DataId, model.CommitId)
 		}
 	}
 
