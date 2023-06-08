@@ -359,6 +359,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	}
 
 	mm.cacheModel(clientProposal.Proposal.Owner, model)
+	log.Infof("model[%s]-%s cached", model.DataId, model.Alias)
 
 	return model, nil
 }
