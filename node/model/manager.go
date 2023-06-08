@@ -76,7 +76,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		return nil, err
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
+	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword + strings.Split(meta.CommitId, "\032")[0])
 	if model != nil {
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
@@ -191,12 +191,12 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		orderProposal.Alias = orderProposal.Cid
 	}
 
-	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId)
+	oldModel := mm.loadModel(orderProposal.Owner, orderProposal.DataId+orderProposal.DataId)
 	if oldModel != nil {
 		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	oldModel = mm.loadModel(orderProposal.Owner, orderProposal.Alias)
+	oldModel = mm.loadModel(orderProposal.Owner, orderProposal.Alias+orderProposal.DataId)
 	if oldModel != nil {
 		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
@@ -261,7 +261,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, err
 	}
 
-	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword)
+	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword+lastCommitId)
 	if orgModel != nil {
 		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
 			if meta.CommitId == orgModel.CommitId {
