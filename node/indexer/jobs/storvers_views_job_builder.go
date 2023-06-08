@@ -292,20 +292,6 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							continue
 						}
 
-						// Delete the row if the DATAID exists but the COMMITID does not match,
-						// and return the COMMITID of the deleted row
-						qry = fmt.Sprintf("DELETE FROM %s WHERE DATAID=? AND COMMITID<>? RETURNING COMMITID", tableName)
-						row := db.QueryRowContext(ctx, qry, meta.DataId, meta.Commit)
-						var commitIdToDelete string
-						if err := row.Scan(&commitIdToDelete); err != nil {
-							if err != sql.ErrNoRows {
-								return nil, err
-							}
-						} else {
-							// Log the number of rows deleted and proceed with the insert operation
-							log.Infof("Deleted 1 row with COMMITID=%s from table %s", commitIdToDelete, tableName)
-						}
-
 						//if meta.Alias contains filecontent, save the resp content to a file under keyringHome/tmp folder
 						if strings.Contains(meta.Alias, "filecontent") {
 							log.Info("save file content to a file")
@@ -345,6 +331,20 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 						// Reset error count if getDataModel and processMeta are successful
 						delete(errorMap, meta.DataId)
 						delete(filterMap, meta.DataId)
+
+						// Delete the row if the DATAID exists but the COMMITID does not match,
+						// and return the COMMITID of the deleted row
+						qry = fmt.Sprintf("DELETE FROM %s WHERE DATAID=? AND COMMITID<>? RETURNING COMMITID", tableName)
+						row := db.QueryRowContext(ctx, qry, meta.DataId, meta.Commit)
+						var commitIdToDelete string
+						if err := row.Scan(&commitIdToDelete); err != nil {
+							if err != sql.ErrNoRows {
+								return nil, err
+							}
+						} else {
+							// Log the number of rows deleted and proceed with the insert operation
+							log.Infof("Deleted 1 row with COMMITID=%s from table %s", commitIdToDelete, tableName)
+						}
 
 						log.Infof("record: %v", record)
 						switch r := record.(type) {

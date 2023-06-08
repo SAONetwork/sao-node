@@ -41,6 +41,9 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 
 	switch r := record.(type) {
 	case UserFollowing:
+		if r.Status == 0 {
+			return nil, errors.New("cancel follow, no need to notification"), false
+		}
 		fromUser = r.Follower
 		toUser = r.Following
 		baseDataID = r.DataID
