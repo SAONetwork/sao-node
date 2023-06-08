@@ -316,7 +316,7 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(110000000))) {
+				if coins.AmountOf("sao").LT(math.NewInt(int64(11000000))) {
 					continue
 				} else {
 					break
