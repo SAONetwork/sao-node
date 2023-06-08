@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 )
 
@@ -172,7 +173,12 @@ func UpdateNotificationReadStatus(ctx context.Context, db *sql.DB) (int64, error
 }
 
 func truncateMessageContent(digest string) string {
-	words := strings.Fields(digest)
+	decodedDigest, err := url.QueryUnescape(digest)
+	if err != nil {
+		decodedDigest = digest // Use the original string if decoding fails
+	}
+
+	words := strings.Fields(decodedDigest)
 	truncatedWords := []string{}
 	charCount := 0
 
@@ -184,10 +190,10 @@ func truncateMessageContent(digest string) string {
 		charCount += len(word)
 	}
 
-	truncatedDigest := strings.Join(truncatedWords, " ")
-	if len(truncatedDigest) < len(digest) {
-		truncatedDigest += "..."
+	truncated := strings.Join(truncatedWords, " ")
+	if len(truncated) < len(decodedDigest) {
+		truncated += "..."
 	}
-	return truncatedDigest
+	return truncated
 }
 
