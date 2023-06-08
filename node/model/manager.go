@@ -594,8 +594,8 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 		// large size content should go through P2P channel
 		model.Content = make([]byte, 0)
 	}
-	mm.CacheSvc.Put(account, model.DataId, model)
-	mm.CacheSvc.Put(account, model.Alias, model)
+	mm.CacheSvc.Put(account, model.DataId + model.CommitId, model)
+	mm.CacheSvc.Put(account, model.Alias + model.CommitId, model)
 
 	buf, _ := json.Marshal(model)
 	log.Debug("model: ", string(buf), " CACHED!!!")
