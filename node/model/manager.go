@@ -76,7 +76,14 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		return nil, err
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword + strings.Split(meta.CommitId, "\032")[0])
+	var queryCommitId string
+	if req.Proposal.CommitId != "" {
+		queryCommitId = req.Proposal.CommitId
+	} else {
+		queryCommitId = strings.Split(meta.CommitId, "\032")[0]
+	}
+
+	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword + queryCommitId)
 	if model != nil {
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
