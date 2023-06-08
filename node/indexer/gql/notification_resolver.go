@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 	"sao-node/node/indexer/gql/types"
+	"strconv"
 )
 
 type NotificationsInfo struct {
@@ -46,6 +47,11 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 		offset = int(*args.Offset)
 	}
 
+	messageType, err := strconv.Atoi(args.MessageType)
+	if err != nil {
+		return nil, err
+	}
+
 	// Fetch Notification items
 	rows, err := r.indexSvc.Db.QueryContext(ctx, `
 		SELECT 
@@ -55,7 +61,7 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 				WHEN n.MessageType = 5 THEN COALESCE((SELECT VERSEID FROM VERSE_LIKE WHERE DATAID = n.BaseDataID), n.BaseDataID)
 				WHEN n.MessageType = 6 THEN COALESCE((SELECT VERSEID FROM VERSE_COMMENT WHERE DATAID = (SELECT COMMENTID FROM VERSE_COMMENT_LIKE WHERE DATAID = n.BaseDataID)), n.BaseDataID)
 				ELSE n.BaseDataID
-			END,
+			END as BASEDATAID,
 			n.CreatedAt,
 			n.UpdatedAt,
 			n.Message,
@@ -73,7 +79,7 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 			END 
 			AND n.ToUser = ? 
 		ORDER BY n.CreatedAt DESC LIMIT ? OFFSET ?
-	`, args.MessageType, args.MessageType, args.MessageType, args.MessageType, args.ToUser, limit, offset)
+	`, messageType, messageType, messageType, messageType, args.ToUser, limit, offset)
 	if err != nil {
 		return nil, err
 	}
