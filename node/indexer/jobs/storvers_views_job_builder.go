@@ -603,6 +603,7 @@ func getDataModel(ctx context.Context, didManager *did.DidManager, dataId string
 		Owner:    didManager.Id,
 		Keyword:  dataId,
 		GroupId:  platFormIds,
+		CommitId: commitId,
 	}
 
 	request, err := buildQueryRequest(ctx, didManager, proposal, chainSvc, gatewayAddress)

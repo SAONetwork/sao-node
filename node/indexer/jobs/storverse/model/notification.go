@@ -54,7 +54,7 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		fromUser = r.BuyerDataID
 		// if r.Type = 1, it means the purchase order is for a verse, so fetch the verse owner
 		if r.Type == 1 {
-			verseOwner, digest, err := GetVerseOwnerAndDigestByVerseID(db, r.ItemDataID)
+			verseOwner, digest, fileType, err := GetVerseOwnerAndDigestAndFiletypeByVerseID(db, r.ItemDataID)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
 					return nil, errors.New("verse not found"), true
@@ -63,8 +63,12 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 			}
 			toUser = verseOwner
 			messageType = 2
-			digest = truncateMessageContent(digest)
-			message = digest
+			if digest != "" {
+				digest = truncateMessageContent(digest)
+				message = digest
+			} else {
+				message = fmt.Sprintf("[%s]", fileType)
+			}
 		} else {
 			// if r.Type = 2, it means the purchase order is for a user, so fetch the user
 			toUser = r.ItemDataID
@@ -75,12 +79,15 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		notificationTime = int64(r.Time)
 	case VerseComment:
 		fromUser = r.Owner
-		var recipient, messageContent string
+		var recipient, messageContent, fileType string
 		var err error
 
 		if r.ParentId == "" {
 			// Fetch the verse owner
-			recipient, messageContent, err = GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
+			recipient, messageContent, fileType, err = GetVerseOwnerAndDigestAndFiletypeByVerseID(db, r.VerseId)
+			if messageContent == "" {
+				messageContent = fmt.Sprintf("[%s]", fileType)
+			}
 			messageType = 4
 		} else {
 			// Fetch the parent comment
@@ -101,7 +108,7 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		// Add similar logic for VerseLike
 		fromUser = r.Owner
 		// Fetch the verse owner
-		verseOwner, digest, err := GetVerseOwnerAndDigestByVerseID(db, r.VerseId)
+		verseOwner, digest, fileType, err := GetVerseOwnerAndDigestAndFiletypeByVerseID(db, r.VerseId)
 		if err != nil {
 			return nil, err, true
 		}
@@ -109,8 +116,12 @@ func CreateNotification(db *sql.DB, record BatchInserter) (*Notification, error,
 		baseDataID = r.DataID
 		messageType = 5
 		notificationTime = r.CreatedAt
-		digest = truncateMessageContent(digest)
-		message = digest
+		if digest != "" {
+			digest = truncateMessageContent(digest)
+			message = digest
+		} else {
+			message = fmt.Sprintf("[%s]", fileType)
+		}
 	case VerseCommentLike:
 		fromUser = r.Owner
 		// Fetch the verse comment owner
