@@ -80,7 +80,11 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	if req.Proposal.CommitId != "" {
 		queryCommitId = req.Proposal.CommitId
 	} else {
-		queryCommitId = strings.Split(meta.CommitId, "\032")[0]
+		if meta.CommitId != "" {
+			queryCommitId = strings.Split(meta.CommitId, "\032")[0]
+		} else {
+			queryCommitId = meta.DataId
+		}
 	}
 
 	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
