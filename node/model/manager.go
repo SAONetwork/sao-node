@@ -248,6 +248,7 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 	}
 
 	mm.cacheModel(orderProposal.Owner, model)
+	log.Infof("create model[%s, %s]-%s cached", model.DataId, model.CommitId, model.Alias)
 
 	return model, nil
 }
@@ -363,7 +364,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	}
 
 	mm.cacheModel(clientProposal.Proposal.Owner, model)
-	log.Infof("model[%s, %s]-%s cached", model.DataId, model.CommitId, model.Alias)
+	log.Infof("update model[%s, %s]-%s cached", model.DataId, model.CommitId, model.Alias)
 
 	return model, nil
 }
