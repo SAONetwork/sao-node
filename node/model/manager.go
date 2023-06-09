@@ -83,19 +83,15 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		queryCommitId = strings.Split(meta.CommitId, "\032")[0]
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword + queryCommitId)
+	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
 	if model != nil {
 		log.Infof("Cache hit, model[%s, %s]-%s", model.DataId, model.CommitId, model.Alias)
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
-			if meta.CommitId == model.CommitId {
-				// found latest data model in local cache already
-				log.Debugf("load the model[%s]-%s from cache", model.DataId, model.Alias)
-				log.Debug("model: ", string(model.Content))
-				return model, nil
-			} else {
-				log.Debugf("the local cached model is out of date")
-			}
+			// found latest data model in local cache already
+			log.Debugf("load the model[%s]-%s from cache", model.DataId, model.Alias)
+			log.Debug("model: ", string(model.Content))
+			return model, nil
 		} else {
 			log.Infof("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
 			log.Infof("local version model is %s:%s.", model.DataId, model.CommitId)
