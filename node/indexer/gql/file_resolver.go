@@ -40,11 +40,11 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 	ID         graphql.ID
 	UserDataId *string
 }) (*fileInfo, error) {
-	//claims, ok := ctx.Value("claims").(string)
-	//// If UserDataId is not nil, require it to match the claims
-	//if args.UserDataId != nil && (!ok || claims != *args.UserDataId) {
-	//	return nil, errors.New("Unauthorized")
-	//}
+	claims, ok := ctx.Value("claims").(string)
+	// If UserDataId is not nil, require it to match the claims
+	if args.UserDataId != nil && (!ok || claims != *args.UserDataId) {
+		return nil, errors.New("Unauthorized")
+	}
 
 	var dataId uuid.UUID
 	err := dataId.UnmarshalText([]byte(args.ID))
@@ -321,6 +321,12 @@ func (r *resolver) File(ctx context.Context, args struct {
 	UserDataId      *string
 	GetFromFileInfo *bool
 }) (*string, error) {
+	claims, ok := ctx.Value("claims").(string)
+	// If UserDataId is not nil, require it to match the claims
+	if args.UserDataId != nil && (!ok || claims != *args.UserDataId) {
+		return nil, errors.New("Unauthorized")
+	}
+
 	var dataId uuid.UUID
 	err := dataId.UnmarshalText([]byte(args.ID))
 	if err != nil {
