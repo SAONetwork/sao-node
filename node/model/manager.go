@@ -76,7 +76,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		return nil, err
 	}
 
-	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword)
+	model := mm.loadModel(meta.Owner, req.Proposal.Keyword+strings.Split(meta.CommitId, "\032")[0])
 	if model != nil {
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
@@ -259,7 +259,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, err
 	}
 
-	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword+commitIds[1])
+	orgModel := mm.loadModel(meta.Owner, req.Proposal.Keyword+lastCommitId)
 	if orgModel != nil {
 		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
 			if meta.CommitId == orgModel.CommitId {
