@@ -85,6 +85,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 
 	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword + queryCommitId)
 	if model != nil {
+		log.Infof("Cache hit, model[%s, %s]-%s", model.DataId, model.CommitId, model.Alias)
 		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
 			log.Debug("model", model)
 			if meta.CommitId == model.CommitId {
