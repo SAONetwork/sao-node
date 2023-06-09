@@ -26,6 +26,7 @@ type verse struct {
 	NftTokenID       string
 	FileType         string
 	IsPaid           bool
+	PaidTime         types.Uint64
 	NotInScope       int32
 	PayToFollow      string
 	CommentCount     int32
@@ -93,14 +94,16 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 
 		if price > 0 {
 			var count int
+			var paidTime types.Uint64
 			if args.UserDataId != nil {
-				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*), MAX(TIME) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count, &paidTime)
 			}
 			if err != nil {
 				return nil, err
 			}
 
 			v.IsPaid = count > 0
+			v.PaidTime = paidTime
 		}
 	}
 
@@ -121,6 +124,7 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 
 	return v, nil
 }
+
 
 func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error) {
 	// Prepare the base query
@@ -636,7 +640,6 @@ func processVerseScope(ctx context.Context, db *sql.DB, v *verse, userDataId str
 
 	return v, nil
 }
-
 
 func (v *verse) ID() graphql.ID {
 	return graphql.ID(v.CommitId)
