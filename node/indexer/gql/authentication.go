@@ -31,11 +31,11 @@ func authenticate(next http.Handler, resolver *resolver) http.Handler {
 		}
 		signatures := tokenParts[4]
 
-		// Try to get the validity from the cache
-		cached, found := resolver.cache.Get(signatures)
-		if found && cached == true {
-			// If the signatures is cached as valid, proceed with the request
-			ctx := context.WithValue(r.Context(), "claims", token)
+		// Try to get the claims from the cache
+		cachedClaims, found := resolver.cache.Get(signatures)
+		if found && cachedClaims != nil {
+			// If the signatures is cached, proceed with the request and pass the cached claims
+			ctx := context.WithValue(r.Context(), "claims", cachedClaims)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
@@ -43,8 +43,8 @@ func authenticate(next http.Handler, resolver *resolver) http.Handler {
 		// If not found in cache, validate the token
 		claims, valid := validateToken(token, r.Context(), resolver)
 		if valid {
-			// Store the valid signatures in cache for 10 minutes
-			resolver.cache.Set(signatures, true, 10*time.Minute)
+			// Store the valid claims in cache for 10 minutes
+			resolver.cache.Set(signatures, claims, 10*time.Minute)
 
 			// Pass the claims to the request context and proceed
 			ctx := context.WithValue(r.Context(), "claims", claims)
@@ -54,6 +54,7 @@ func authenticate(next http.Handler, resolver *resolver) http.Handler {
 		}
 	})
 }
+
 
 func validateToken(tokenString string, ctx context.Context, resolver *resolver) (string, bool) {
 	if len(strings.Split(tokenString, " ")) == 2 {
