@@ -194,9 +194,16 @@ func truncateMessageContent(digest string) string {
 	charCount := 0
 
 	for i, word := range words {
+		// If the first word is longer than 20 characters, return the first 20 characters followed by '...'
+		if i == 0 && len(word) > 20 {
+			return word[:20] + "..."
+			break
+		}
+
 		if i >= 4 || charCount+len(word) > 20 {
 			break
 		}
+
 		truncatedWords = append(truncatedWords, word)
 		charCount += len(word)
 	}
@@ -207,4 +214,3 @@ func truncateMessageContent(digest string) string {
 	}
 	return truncated
 }
-

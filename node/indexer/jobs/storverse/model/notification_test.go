@@ -12,6 +12,8 @@ func TestTruncateMessageContent(t *testing.T) {
 		{"This%20is%20a%20very%20long%20sentence.", "This is a very..."},
 		{"short", "short"},
 		{"%3Chtml%3E", "<html>"},
+		{"alongwordthatexceedsthetwentychars", "alongwordthatexceeds..."},
+		{"alongwordthatexceedsthetwentychars dfasfdwsfwe", "alongwordthatexceeds..."},
 	}
 
 	for _, test := range tests {
