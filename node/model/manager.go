@@ -87,6 +87,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
+	log.Infof("load model, account: %s, key: %s", req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
 	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
 	if model != nil {
 		log.Infof("Cache hit, model[%s, %s]-%s", model.DataId, model.CommitId, model.Alias)

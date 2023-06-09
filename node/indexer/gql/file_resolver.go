@@ -249,7 +249,7 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 
 	// Order the fileInfos according to the order of fileIDs in orderedFileIDs and limit the size to 10
 	for _, fileID := range orderedFileIDs {
-		if len(fileInfos) >= 10 {
+		if len(fileInfos) >= 12 {
 			break
 		}
 
