@@ -71,20 +71,11 @@ func (mm *ModelManager) Stop(ctx context.Context) error {
 func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
 	log.Info("KeyWord:", req.Proposal.Keyword)
 
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
-	if err != nil {
-		return nil, err
-	}
-
 	var queryCommitId string
 	if req.Proposal.CommitId != "" {
 		queryCommitId = req.Proposal.CommitId
 	} else {
-		if meta.CommitId != "" {
-			queryCommitId = strings.Split(meta.CommitId, "\032")[0]
-		} else {
-			queryCommitId = meta.DataId
-		}
+		queryCommitId = req.Proposal.Keyword
 	}
 
 	log.Infof("load model, account: %s, key: %s", req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
@@ -101,6 +92,11 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 			log.Infof("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
 			log.Infof("local version model is %s:%s.", model.DataId, model.CommitId)
 		}
+	}
+
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	if err != nil {
+		return nil, err
 	}
 
 	version := req.Proposal.Version
