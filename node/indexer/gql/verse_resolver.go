@@ -94,7 +94,7 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 
 		if price > 0 {
 			var count int
-			var paidTime types.Uint64
+			var paidTime sql.NullInt64
 			if args.UserDataId != nil {
 				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*), MAX(TIME) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count, &paidTime)
 			}
@@ -103,7 +103,9 @@ func (r *resolver) Verse(ctx context.Context, args VerseArgs) (*verse, error) {
 			}
 
 			v.IsPaid = count > 0
-			v.PaidTime = paidTime
+			if paidTime.Valid {
+				v.PaidTime = types.Uint64(paidTime.Int64)
+			}
 		}
 	}
 
