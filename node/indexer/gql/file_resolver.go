@@ -41,6 +41,7 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 	UserDataId *string
 }) (*fileInfo, error) {
 	claims, ok := ctx.Value("claims").(string)
+	fmt.Printf("claims: %s\n", claims)
 	// If UserDataId is not nil, require it to match the claims
 	if args.UserDataId != nil && (!ok || claims != *args.UserDataId) {
 		return nil, errors.New("Unauthorized")
@@ -322,6 +323,7 @@ func (r *resolver) File(ctx context.Context, args struct {
 	GetFromFileInfo *bool
 }) (*string, error) {
 	claims, ok := ctx.Value("claims").(string)
+	fmt.Printf("claims: %s\n", claims)
 	// If UserDataId is not nil, require it to match the claims
 	if args.UserDataId != nil && (!ok || claims != *args.UserDataId) {
 		return nil, errors.New("Unauthorized")
