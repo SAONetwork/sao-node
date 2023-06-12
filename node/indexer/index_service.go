@@ -51,7 +51,7 @@ func NewIndexSvc(
 	jobsDs datastore.Batching,
 	dbPath string,
 ) *IndexSvc {
-	db, err := sql.Open("sqlite3", dbPath+"/indexer.db")
+	db, err := sql.Open("sqlite3", dbPath+"/indexer2.db")
 	if err != nil {
 		log.Error("failed to open database, %v", err)
 		return nil
@@ -71,7 +71,7 @@ func NewIndexSvc(
 	go is.processPendingJobs(ctx)
 
 	log.Info("building storverse views job...")
-	job1 := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "30293f0f-3e0f-4b3c-aff1-890a2fdf063b", log)
+	job1 := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "storverse-sao", log)
 	is.JobsMap[job1.ID] = job1
 	is.schedQueue.Push(&queue.WorkRequest{
 		Job: job1,
