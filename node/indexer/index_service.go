@@ -71,10 +71,10 @@ func NewIndexSvc(
 	go is.processPendingJobs(ctx)
 
 	log.Info("building storverse views job...")
-	job1 := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "storverse-sao", log)
-	is.JobsMap[job1.ID] = job1
+	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "storverse-sao", log)
+	is.JobsMap[job.ID] = job
 	is.schedQueue.Push(&queue.WorkRequest{
-		Job: job1,
+		Job: job,
 	})
 
 	return is

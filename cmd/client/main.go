@@ -90,6 +90,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
+			initDidCmd,
 			recoverCmd,
 			netCmd,
 			modelCmd,
@@ -189,6 +190,91 @@ var initCmd = &cli.Command{
 		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
 		fmt.Println()
 		fmt.Println("sao client initialized.")
+		return nil
+	},
+}
+
+var initDidCmd = &cli.Command{
+	Name:  "initDid",
+	Usage: "initialize a Decentralized Identifier (DID) on the sao client",
+	UsageText: "To use sao CLI with Decentralized Identifiers (DID), first initialize it using this command.\n " +
+		"This creates a sao chain account locally that will be used as default account in subsequent commands. \n" +
+		"In the --repo directory, you will find the client configuration file.\n" +
+		"In the --keyring directory, you will find the keystore files.",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     cliutil.FlagKeyName,
+			Usage:    "sao chain account key name",
+			Required: true,
+			Aliases:  []string{"k"},
+		},
+		&cli.StringFlag{
+			Name:     "chain-id",
+			Required: false,
+			Value:    "sao",
+		},
+		&cli.StringFlag{
+			Name:     "address",
+			Required: false,
+			Value:    "",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		repo := cctx.String(FlagClientRepo)
+
+		saoclient, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		fmt.Printf("repo %s is initialized.", repo)
+		fmt.Println()
+
+		address := cctx.String("address")
+		fmt.Println("account created: ")
+		fmt.Println("Address:", address)
+
+		for {
+			coins, err := saoclient.GetBalance(cctx.Context, address)
+			askFor := false
+			if err != nil {
+				fmt.Printf("%v", err)
+				askFor = true
+			} else {
+				if coins.AmountOf("sao").LT(math.NewInt(1000)) {
+					askFor = true
+				}
+			}
+			if askFor {
+				fmt.Print("Please deposit enough coins to pay gas. Confirm with 'yes' :")
+				reader := bufio.NewReader(os.Stdin)
+				indata, err := reader.ReadBytes('\n')
+				if err != nil {
+					return err
+				}
+				_ = strings.Replace(string(indata), "\n", "", -1)
+			} else {
+				break
+			}
+		}
+
+		didManager, address, err := cliutil.GetDidManager(cctx, saoclient.Cfg.KeyName)
+		if err != nil {
+			return err
+		}
+		fmt.Println("DID:", didManager.Id)
+
+		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:%s:%s", cctx.String("chain-id"), address))
+		if err != nil {
+			return err
+		}
+
+		err = saoclient.SaveConfig(saoclient.Cfg)
+		if err != nil {
+			return types.Wrapf(types.ErrWriteConfigFailed, "save local config failed: %v", err)
+		}
+
+		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
 		return nil
 	},
 }

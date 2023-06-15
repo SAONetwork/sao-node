@@ -275,8 +275,8 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 				if count > 0 {
 					continue
 				} else {
-					log.Info("no existing record found, get data from gateway")
 					if strings.Contains(platFormIds, meta.GroupId) && (storverse.AliasInTypeConfigs(meta.Alias, storverse.TypeConfigs) || strings.Contains(meta.Alias, "filecontent")) {
+						log.Info("no existing record found, get data from gateway")
 						resp, err := getDataModel(ctx, didManager, meta.DataId, meta.Commit, platFormIds, chainSvc, gatewayAddress, gatewayApi, log)
 						if err != nil {
 							// Increment error count for meta.DataId
@@ -476,7 +476,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 
 	return &types.Job{
 		ID:          utils.GenerateDataId("job-id"),
-		Description: "build metadata index for models with specified groupIds",
+		Description: "build storverse view for models",
 		Status:      types.JobStatusPending,
 		ExecFunc:    execFn,
 		Args:        make([]interface{}, 0),
