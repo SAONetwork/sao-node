@@ -99,21 +99,6 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		return nil, err
 	}
 
-	model = mm.loadModel(meta.Owner, req.Proposal.Keyword+queryCommitId)
-	if model != nil {
-		log.Infof("Cache hit, model[%s, %s]-%s", model.DataId, model.CommitId, model.Alias)
-		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
-			log.Debug("model", model)
-			// found latest data model in local cache already
-			log.Debugf("load the model[%s]-%s from cache", model.DataId, model.Alias)
-			log.Debug("model: ", string(model.Content))
-			return model, nil
-		} else {
-			log.Infof("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
-			log.Infof("local version model is %s:%s.", model.DataId, model.CommitId)
-		}
-	}
-
 	version := req.Proposal.Version
 	if req.Proposal.Version != "" {
 		match, err := regexp.Match(`^v\d+$`, []byte(req.Proposal.Version))

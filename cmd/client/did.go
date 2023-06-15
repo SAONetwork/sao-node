@@ -59,6 +59,8 @@ var didCreateCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Println("DID:", didManager.Id)
+
 		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:%s:%s", cctx.String("chain-id"), address))
 		if err != nil {
 			return err

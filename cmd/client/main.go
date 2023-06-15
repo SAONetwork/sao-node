@@ -269,11 +269,6 @@ var initDidCmd = &cli.Command{
 			return err
 		}
 
-		err = saoclient.SaveConfig(saoclient.Cfg)
-		if err != nil {
-			return types.Wrapf(types.ErrWriteConfigFailed, "save local config failed: %v", err)
-		}
-
 		fmt.Printf("Created DID %s. tx hash %s", didManager.Id, hash)
 		return nil
 	},

@@ -594,7 +594,8 @@ func (n *Node) ModelLoadDelegate(ctx context.Context, req *types.MetadataProposa
 	}
 
 	keyringHome := os.Getenv("SAO_KEYRING_HOME")
-	didManager, _, err := n.getDidManager(ctx, keyringHome, "markfeng")
+	keyName := os.Getenv("SAO_KEY_NAME")
+	didManager, _, err := n.getDidManager(ctx, keyringHome, keyName)
 	if err != nil {
 		return apitypes.LoadResp{}, err
 	}
