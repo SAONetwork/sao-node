@@ -52,6 +52,22 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 		return nil, err
 	}
 
+	if messageType == 0 {
+		// Fetch totalCount
+		var totalCount int32
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM NOTIFICATION WHERE TOUSER = ? AND STATUS = 0", args.ToUser).Scan(&totalCount)
+		if err != nil {
+			return nil, err
+		}
+
+		// Return a NotificationsInfo object containing only the totalCount
+		return &NotificationsInfo{
+			Items:        []*Notification{},
+			TotalCount:   totalCount,
+			UnreadCounts: []*UnreadCountInfo{},
+		}, nil
+	}
+
 	// Fetch Notification items
 	rows, err := r.indexSvc.Db.QueryContext(ctx, `
 		SELECT 
