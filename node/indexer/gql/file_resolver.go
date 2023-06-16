@@ -304,6 +304,17 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 			return nil, err
 		}
 
+		// Query for verseId
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT DATAID FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(&fi.VerseId)
+		if err != nil {
+			// If no matching verseId is found, the error will be sql.ErrNoRows.
+			// In that case, continue to the next row. For other errors, return the error.
+			if err != sql.ErrNoRows {
+				fmt.Printf("error querying for verseId: %s\n", err)
+				continue
+			}
+		}
+
 		fileInfos = append(fileInfos, &fi)
 	}
 
@@ -313,7 +324,6 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 
 	return fileInfos, nil
 }
-
 
 // query: file(id, userDataId) String
 func (r *resolver) File(ctx context.Context, args struct {
