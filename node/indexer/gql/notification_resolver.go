@@ -134,17 +134,23 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 
 	// Fetch UnreadCounts
 	unreadCountsRows, err := r.indexSvc.Db.QueryContext(ctx, `
-        SELECT 
-            CASE 
-                WHEN MESSAGETYPE IN (2, 3) THEN 2
-                WHEN MESSAGETYPE IN (4, 7) THEN 4
-                WHEN MESSAGETYPE IN (5, 6) THEN 5
-                ELSE MESSAGETYPE
-            END as MessageType,
-            COUNT(*) as UnreadCount 
-        FROM NOTIFICATION 
-        WHERE TOUSER = ? AND STATUS = 0 
-        GROUP BY MessageType`, args.ToUser)
+			SELECT 
+				CASE 
+					WHEN MESSAGETYPE IN (2, 3) THEN 2
+					WHEN MESSAGETYPE IN (4, 7) THEN 4
+					WHEN MESSAGETYPE IN (5, 6) THEN 5
+					ELSE MESSAGETYPE
+				END as MessageType,
+				COUNT(*) as UnreadCount 
+			FROM NOTIFICATION 
+			WHERE TOUSER = ? AND STATUS = 0 
+			GROUP BY 
+				CASE 
+					WHEN MESSAGETYPE IN (2, 3) THEN 2
+					WHEN MESSAGETYPE IN (4, 7) THEN 4
+					WHEN MESSAGETYPE IN (5, 6) THEN 5
+					ELSE MESSAGETYPE
+				END`, args.ToUser)
 
 	if err != nil {
 		return nil, err

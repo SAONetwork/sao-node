@@ -14,16 +14,18 @@ import (
 )
 
 type fileInfo struct {
-	CommitId     string
-	DataID       string
-	Alias        string
-	CreatedAt    types.Uint64
-	FileDataID   string
-	ContentType  string
-	Owner        string
-	Filename     string
-	FileCategory string
-	VerseId      string
+	CommitId        string
+	DataID          string
+	Alias           string
+	CreatedAt       types.Uint64
+	FileDataID      string
+	ContentType     string
+	Owner           string
+	Filename        string
+	FileCategory    string
+	ExtendInfo      string
+	ThumbnailDataId string
+	VerseId         string
 }
 
 type fileContent struct {
@@ -64,6 +66,8 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 		&fi.Owner,
 		&fi.Filename,
 		&fi.FileCategory,
+		&fi.ExtendInfo,
+		&fi.ThumbnailDataId,
 	)
 	if err != nil {
 		return nil, err
@@ -237,6 +241,8 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 			&fi.Owner,
 			&fi.Filename,
 			&fi.FileCategory,
+			&fi.ExtendInfo,
+			&fi.ThumbnailDataId,
 		)
 		if err != nil {
 			return nil, err
@@ -299,6 +305,8 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 			&fi.Owner,
 			&fi.Filename,
 			&fi.FileCategory,
+			&fi.ExtendInfo,
+			&fi.ThumbnailDataId,
 		)
 		if err != nil {
 			return nil, err
@@ -307,8 +315,6 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 		// Query for verseId
 		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT DATAID FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(&fi.VerseId)
 		if err != nil {
-			// If no matching verseId is found, the error will be sql.ErrNoRows.
-			// In that case, continue to the next row. For other errors, return the error.
 			if err != sql.ErrNoRows {
 				fmt.Printf("error querying for verseId: %s\n", err)
 				continue
