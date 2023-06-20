@@ -173,28 +173,21 @@ func (r *resolver) Notifications(ctx context.Context, args notificationsArgs) (*
 	// Check if there are unread messages for the specific messageType
 	for _, uc := range unreadCounts {
 		if uc.MessageType == args.MessageType && uc.UnreadCount > 0 {
-			// Update status to 1 for fetched notifications
+			// Update status to 1 for fetched MessageType
 			_, err = r.indexSvc.Db.ExecContext(ctx, `
 				UPDATE NOTIFICATION 
 				SET STATUS = 1
 				WHERE STATUS = 0 
 				AND TOUSER = ?
-				AND (BASEDATAID, MESSAGETYPE) IN (SELECT BASEDATAID, MESSAGETYPE FROM (
-					SELECT 
-						n.BASEDATAID,
-						n.MESSAGETYPE
-					FROM NOTIFICATION n
-					WHERE 
-						CASE 
-							WHEN ? = 2 THEN n.MessageType IN (2, 3)
-							WHEN ? = 4 THEN n.MessageType IN (4, 7)
-							WHEN ? = 5 THEN n.MessageType IN (5, 6)
-							ELSE n.MessageType = ?
-						END 
-						AND n.ToUser = ? 
-					ORDER BY n.CreatedAt DESC LIMIT ? OFFSET ?
-				))
-			`, args.ToUser, messageType, messageType, messageType, messageType, args.ToUser, limit, offset)
+				AND (
+					CASE 
+						WHEN ? = 2 THEN MessageType IN (2, 3)
+						WHEN ? = 4 THEN MessageType IN (4, 7)
+						WHEN ? = 5 THEN MessageType IN (5, 6)
+						ELSE MessageType = ?
+					END 
+				)
+			`, args.ToUser, messageType, messageType, messageType, messageType)
 			if err != nil {
 				return nil, err
 			}
