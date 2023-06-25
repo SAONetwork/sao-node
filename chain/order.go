@@ -309,6 +309,16 @@ func (c *ChainSvc) ListShards(ctx context.Context, offset uint64, limit uint64) 
 	return resp.Shard, resp.Pagination.Total, nil
 }
 
+func (c *ChainSvc) GetShard(ctx context.Context, id uint64) (*ordertypes.Shard, error) {
+	resp, err := c.orderClient.Shard(ctx, &ordertypes.QueryGetShardRequest{
+		Id: id,
+	})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryShardFailed, err)
+	}
+	return &resp.Shard, err
+}
+
 // wsevent
 //func (cs *ChainSvc) SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error {
 //	log.Debugf("SubscribeOrderComplete %s", QueryOrderComplete(orderId))
