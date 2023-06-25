@@ -104,15 +104,15 @@ var loanWithdrawCmd = &cli.Command{
 
 		creator := cctx.String("creator")
 
-		balance, err := saoclient.GetCredit(ctx, creator)
+		total, available, err := saoclient.GetAvailable(ctx, creator)
 		if err != nil {
 			return err
 		}
 
 		amount := sdktypes.NewCoin("sao", sdktypes.NewInt(cctx.Int64("amount")))
 
-		if balance.Amount.LT(amount.Amount) {
-			fmt.Println("insufficient funds, expected: ", amount.String(), ", have: ", balance.String())
+		if available.Amount.LT(amount.Amount) {
+			fmt.Println("insufficient funds, expected: ", amount.String(), ", total: ", total.String(), ", available now: ", available.String())
 			return types.ErrInsufficientFunds
 		}
 

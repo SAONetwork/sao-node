@@ -87,7 +87,7 @@ type ChainSvcApi interface {
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
 	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error)
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
-	GetCredit(ctx context.Context, account string) (sdktypes.Coin, error)
+	GetAvailable(ctx context.Context, account string) (sdktypes.Coin, sdktypes.Coin, error)
 	Deposit(ctx context.Context, creator string, amount sdktypes.Coin) (string, error)
 	Withdraw(ctx context.Context, creator string, amount sdktypes.Coin) (string, error)
 }

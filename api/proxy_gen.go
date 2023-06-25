@@ -32,7 +32,7 @@ type SaoApiStruct struct {
 
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) `perm:"read"`
 
-		MigrateJobList func(p0 context.Context) ([]types.MigrateInfo, error) ``
+		MigrateJobList func(p0 context.Context) ([]types.MigrateInfo, error) `perm:"read"`
 
 		ModelCreate func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) `perm:"write"`
 
@@ -52,11 +52,11 @@ type SaoApiStruct struct {
 
 		ModelUpdatePermission func(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) `perm:"write"`
 
-		OrderList func(p0 context.Context) ([]types.OrderInfo, error) ``
+		OrderList func(p0 context.Context) ([]types.OrderInfo, error) `perm:"read"`
 
 		OrderStatus func(p0 context.Context, p1 string) (types.OrderInfo, error) `perm:"read"`
 
-		ShardList func(p0 context.Context) ([]types.ShardInfo, error) ``
+		ShardList func(p0 context.Context) ([]types.ShardInfo, error) `perm:"read"`
 
 		ShardStatus func(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) `perm:"read"`
 	}

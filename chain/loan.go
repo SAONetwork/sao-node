@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 	loantypes "github.com/SaoNetwork/sao/x/loan/types"
-	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"sao-node/types"
 )
 
 func (c *ChainSvc) Deposit(ctx context.Context, creator string, amount sdktypes.Coin) (string, error) {
 
-	msg := &saotypes.MsgDeposit{
+	msg := &loantypes.MsgDeposit{
 		Creator: creator,
 		Amount:  amount,
 	}
@@ -29,7 +28,7 @@ func (c *ChainSvc) Deposit(ctx context.Context, creator string, amount sdktypes.
 
 func (c *ChainSvc) Withdraw(ctx context.Context, creator string, amount sdktypes.Coin) (string, error) {
 
-	msg := &saotypes.MsgWithdraw{
+	msg := &loantypes.MsgWithdraw{
 		Creator: creator,
 		Amount:  amount,
 	}
@@ -45,13 +44,13 @@ func (c *ChainSvc) Withdraw(ctx context.Context, creator string, amount sdktypes
 	return result.resp.TxResponse.TxHash, nil
 }
 
-func (c *ChainSvc) GetCredit(ctx context.Context, account string) (sdktypes.Coin, error) {
-	resp, err := c.loanClient.Credit(ctx, &loantypes.QueryGetCreditRequest{
+func (c *ChainSvc) GetAvailable(ctx context.Context, account string) (sdktypes.Coin, sdktypes.Coin, error) {
+	resp, err := c.loanClient.Available(ctx, &loantypes.QueryAvailableRequest{
 		Account: account,
 	})
 	if err != nil {
 		fmt.Println("account:", account, err)
-		return sdktypes.Coin{}, types.Wrap(types.ErrQueryNodeFailed, err)
+		return sdktypes.Coin{}, sdktypes.Coin{}, types.Wrap(types.ErrQueryNodeFailed, err)
 	}
-	return resp.Amount, nil
+	return resp.Total, resp.Available, nil
 }

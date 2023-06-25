@@ -1,6 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Features
+- add loan cmds
+
 ### Bug Fixes
 - fetch replica mode content, handle invalid cid, model cache evict ([#13](https://github.com/SAONetwork/sao-node.git/issues/13))
 
