@@ -304,7 +304,7 @@ func (gs *GatewaySvc) HandleShardComplete(req types.ShardCompleteReq) types.Shar
 		log.Warn("put order %d error: %v", orderInfo.OrderId, err)
 	}
 
-	if orderInfo.State != types.OrderStateComplete && order.Status == ordertypes.OrderCompleted {
+	if orderInfo.State != types.OrderStateComplete && allShardsCompleted(order) {
 		log.Debugf("complete channel done. order %d completes", orderInfo.OrderId)
 		orderInfo.State = types.OrderStateComplete
 		err = utils.SaveOrder(gs.ctx, gs.orderDs, orderInfo)
@@ -911,9 +911,11 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 					if err != nil {
 						continue
 					}
-					if order.Status == ordertypes.OrderCompleted || order.Status == ordertypes.OrderMigrating {
+
+					if allShardsCompleted(order) {
 						continue
 					}
+
 					newShards := make(map[string]types.OrderShardInfo)
 					for sp, shard := range order.Shards {
 						peer, err := gs.chainSvc.GetNodePeer(ctx, sp)
@@ -960,4 +962,17 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 		}
 	}
 
+}
+
+func allShardsCompleted(order *ordertypes.FullOrder) bool {
+
+	isComplete := true
+
+	for _, shard := range order.Shards {
+		if shard.Status != ordertypes.ShardCompleted {
+			isComplete = false
+			break
+		}
+	}
+	return isComplete
 }
