@@ -271,6 +271,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 	UserDataId string
 	Limit      *int32
 	Offset     *int32
+	Caller     *string
 }) ([]*fileInfo, error) {
 	// Default limit is 10 and offset is 0
 	limit := 10
@@ -293,6 +294,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 	defer rows.Close()
 
 	var fileInfos []*fileInfo
+	var v *verse
 	for rows.Next() {
 		var fi fileInfo
 		err := rows.Scan(
@@ -312,14 +314,44 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 			return nil, err
 		}
 
-		// Query for verseId
-		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT DATAID FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(&fi.VerseId)
+		v = &verse{}
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(
+			&v.CommitId,
+			&v.DataId,
+			&v.Alias,
+			&v.CreatedAt,
+			&v.FileIDs,
+			&v.Owner,
+			&v.Price,
+			&v.Digest,
+			&v.Scope,
+			&v.Status,
+			&v.NftTokenID,
+			&v.FileType,
+		)
+
 		if err != nil {
 			if err != sql.ErrNoRows {
 				fmt.Printf("error querying for verseId: %s\n", err)
 				continue
 			}
 		}
+
+		if args.Caller != nil { // Process verse scope
+			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.Caller)
+			if err != nil {
+				fmt.Printf("error processing verse scope: %s\n", err)
+				continue
+			}
+			if v.NotInScope > 1 {
+				// verse is not accessible
+				fmt.Printf("verse is not accessible: %s\n", v.DataId)
+				continue
+			}
+		}
+
+		// Set the VerseId
+		fi.VerseId = v.DataId
 
 		fileInfos = append(fileInfos, &fi)
 	}
@@ -374,11 +406,6 @@ func (r *resolver) File(ctx context.Context, args struct {
 	)
 	if err != nil {
 		return nil, err
-	}
-
-	// permission check logic
-	if args.UserDataId == nil || *args.UserDataId != fc.Owner {
-		//return nil, errors.New("access denied")
 	}
 
 	fileContentBytes, err := ioutil.ReadFile(fc.ContentPath)

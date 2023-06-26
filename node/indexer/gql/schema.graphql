@@ -271,7 +271,8 @@ type RootQuery {
     """Get FileInfos by userDataId"""
     fileInfos(userDataId: String!
         limit: Int
-        offset: Int): [FileInfo!]!
+        offset: Int
+        caller: String): [FileInfo!]!
 
     """Get File by ID"""
     file(id: ID!, userDataId: String, getFromFileInfo:Boolean): String
