@@ -294,7 +294,6 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 	defer rows.Close()
 
 	var fileInfos []*fileInfo
-	var v *verse
 	for rows.Next() {
 		var fi fileInfo
 		err := rows.Scan(
@@ -314,8 +313,8 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 			return nil, err
 		}
 
-		v = &verse{}
-		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(
+		v := &verse{}
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE STATUS != 2 AND FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(
 			&v.CommitId,
 			&v.DataId,
 			&v.Alias,
@@ -330,11 +329,12 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 			&v.FileType,
 		)
 
-		if err != nil {
-			if err != sql.ErrNoRows {
-				fmt.Printf("error querying for verseId: %s\n", err)
-				continue
-			}
+		if err == sql.ErrNoRows {
+			fileInfos = append(fileInfos, &fi)
+			continue
+		} else if err != nil {
+			fmt.Printf("error querying for verseId: %s\n", err)
+			continue
 		}
 
 		if args.Caller != nil { // Process verse scope
@@ -362,6 +362,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 
 	return fileInfos, nil
 }
+
 
 // query: file(id, userDataId) String
 func (r *resolver) File(ctx context.Context, args struct {
