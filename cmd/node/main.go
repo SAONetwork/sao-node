@@ -150,8 +150,8 @@ var initTxAddressPoolCmd = &cli.Command{
 		},
 		&cli.UintFlag{
 			Name:     "tx-pool-size",
-			Usage:    "address pool size for sending message, the default value is 10",
-			Value:    10,
+			Usage:    "address pool size for sending message, the default value is 1",
+			Value:    1,
 			Required: false,
 		},
 		&cli.UintFlag{
@@ -198,7 +198,7 @@ var initTxAddressPoolCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(poolTokenAmount + 1000000))) {
+				if coins.AmountOf("sao").LT(math.NewInt(int64(poolTokenAmount + 1000))) {
 					continue
 				} else {
 					break
@@ -250,8 +250,8 @@ var initCmd = &cli.Command{
 		},
 		&cli.UintFlag{
 			Name:     "tx-pool-size",
-			Usage:    "address pool size for sending message, the default value is 10",
-			Value:    10,
+			Usage:    "address pool size for sending message, the default value is 0",
+			Value:    0,
 			Required: false,
 		},
 	},
@@ -266,10 +266,6 @@ var initCmd = &cli.Command{
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
 		txPoolSize := cctx.Uint("tx-pool-size")
-
-		if txPoolSize <= 0 {
-			return types.Wrapf(types.ErrInvalidParameters, "tx-pool-size should greater than 0")
-		}
 
 		r, err := initRepo(repoPath, chainAddress, txPoolSize)
 		if err != nil {
@@ -314,18 +310,13 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(11000000))) {
+				if coins.AmountOf("sao").LT(math.NewInt(int64(1100))) {
 					continue
 				} else {
 					break
 				}
 			}
 
-		}
-
-		err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
-		if err != nil {
-			return err
 		}
 
 		if tx, err := chainSvc.Create(ctx, creator); err != nil {
@@ -335,18 +326,25 @@ var initCmd = &cli.Command{
 			fmt.Println(tx)
 		}
 
-		ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
-		if err != nil {
-			return err
-		}
-
-		for address := range ap.Addresses {
-			amount := int64(100000000 / txPoolSize)
-			if tx, err := chainSvc.Send(ctx, creator, address, amount); err != nil {
-				// TODO: clear dir
+		if txPoolSize > 0 {
+			err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+			if err != nil {
 				return err
-			} else {
-				fmt.Printf("Sent %d SAO from creator %s to pool address %s, txhash=%s\r", amount, creator, address, tx)
+			}
+
+			ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+			if err != nil {
+				return err
+			}
+
+			for address := range ap.Addresses {
+				amount := int64(1000 / txPoolSize)
+				if tx, err := chainSvc.Send(ctx, creator, address, amount); err != nil {
+					// TODO: clear dir
+					return err
+				} else {
+					fmt.Printf("Sent %d SAO from creator %s to pool address %s, txhash=%s\r", amount, creator, address, tx)
+				}
 			}
 		}
 

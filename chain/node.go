@@ -8,6 +8,7 @@ import (
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
@@ -129,6 +130,16 @@ func (c *ChainSvc) ListNodes(ctx context.Context) ([]nodetypes.Node, error) {
 		return make([]nodetypes.Node, 0), types.Wrap(types.ErrQueryNodeFailed, err)
 	}
 	return resp.Node, nil
+}
+
+func (c *ChainSvc) GetPledgeInfo(ctx context.Context, creator string) (*sdktypes.Coin, error) {
+	pledgeResp, err := c.nodeClient.Pledge(ctx, &nodetypes.QueryGetPledgeRequest{
+		Creator: creator,
+	})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryPledgeFailed, err)
+	}
+	return &pledgeResp.Pledge.TotalStoragePledged, nil
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {

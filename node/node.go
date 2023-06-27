@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"io"
@@ -18,6 +19,7 @@ import (
 	"sort"
 	"time"
 
+	"cosmossdk.io/math"
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
@@ -330,6 +332,53 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
+
+	hasPledged := false
+	pledgeInfo, err := chainSvc.GetPledgeInfo(ctx, nodeAddr)
+	if err != nil {
+		if !strings.Contains(err.Error(), "code = NotFound desc = not found: key not found") {
+			return nil, err
+		}
+	} else {
+		fmt.Println(pledgeInfo)
+		if pledgeInfo.Amount.GT(math.NewInt(0)) {
+			hasPledged = true
+		}
+	}
+
+	if !hasPledged {
+		for {
+			if !cfg.Module.StorageEnable && !cfg.Storage.AcceptOrder {
+				break
+			}
+
+			fmt.Printf("Please make sure there is enough SAO tokens pledged for the storage in the account %s. Confirm with 'yes' :", nodeAddr)
+
+			reader := bufio.NewReader(os.Stdin)
+			indata, err := reader.ReadBytes('\n')
+			if err != nil {
+				return nil, types.Wrap(types.ErrInvalidParameters, err)
+			}
+			if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) != "yes" {
+				continue
+			}
+
+			pledgeInfo, err := chainSvc.GetPledgeInfo(ctx, nodeAddr)
+			if err != nil {
+				if !strings.Contains(err.Error(), "code = NotFound desc = not found: key not found") {
+					return nil, err
+				} else {
+					continue
+				}
+			} else {
+				if pledgeInfo.Amount.GT(math.NewInt(0)) {
+					break
+				} else {
+					continue
+				}
+			}
+		}
+	}
 
 	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status, addresses, nil)
 	log.Infof("repo: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
