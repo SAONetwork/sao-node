@@ -335,7 +335,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 		} else if err != nil {
 			fmt.Printf("error fetching verse: %s\n", err)
 			continue
-		} else if v.Status != "2" {
+		} else if v.Status == "2" {
 			fmt.Printf("verse has been deleted: %s\n", v.DataId)
 			continue
 		}
