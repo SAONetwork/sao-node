@@ -833,6 +833,7 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 				MigrateTxHeight: height,
 				State:           types.MigrateStateTxSent,
 			}
+
 			err := utils.SaveMigrate(ctx, ss.orderDs, mi)
 			if err != nil {
 				log.Errorf("save migrate error: %v", err)
@@ -842,39 +843,41 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 			if err != nil {
 				log.Error(err)
 			}
-			order, err := ss.chainSvc.GetOrder(ctx, resp.OrderId)
-			if err != nil {
-				log.Error(err)
-			}
 
-			cid := order.Shards[ss.nodeAddress].Cid
-			for node, shard := range order.Shards {
-				if shard.Cid == cid &&
-					node != ss.nodeAddress &&
-					shard.Status == ordertypes.ShardWaiting &&
-					shard.From == ss.nodeAddress {
+			for _, orderId := range resp.Metadata.Orders {
+				order, err := ss.chainSvc.GetOrder(ctx, orderId)
+				if err != nil {
+					log.Error(err)
+				}
 
-					mi.OrderId = order.Id
-					mi.ToProvider = node
-					mi.Cid = shard.Cid
-					err = utils.SaveMigrate(ctx, ss.orderDs, mi)
-					if err != nil {
-						log.Error("save migrate error: ", err)
+				cid := order.Shards[ss.nodeAddress].Cid
+				for node, shard := range order.Shards {
+					if shard.Status == ordertypes.ShardMigrating &&
+						shard.Cid == cid &&
+						node != ss.nodeAddress &&
+						shard.From == ss.nodeAddress {
+
+						mi.OrderId = order.Id
+						mi.ToProvider = node
+						mi.Cid = shard.Cid
+						err = utils.SaveMigrate(ctx, ss.orderDs, mi)
+						if err != nil {
+							log.Error("save migrate error: ", err)
+						}
+
+						ss.migrateChan <- MigrateRequest{
+							OrderId:       order.Id,
+							FromProvider:  ss.nodeAddress,
+							DataId:        k,
+							Cid:           shard.Cid,
+							ToProvider:    node,
+							MigrateTxHash: hash,
+							MigrateHeight: height,
+						}
+						break
 					}
-
-					ss.migrateChan <- MigrateRequest{
-						OrderId:       order.Id,
-						FromProvider:  ss.nodeAddress,
-						DataId:        k,
-						Cid:           shard.Cid,
-						ToProvider:    node,
-						MigrateTxHash: hash,
-						MigrateHeight: height,
-					}
-					break
 				}
 			}
-
 		}
 	}
 	return hash, results, err
