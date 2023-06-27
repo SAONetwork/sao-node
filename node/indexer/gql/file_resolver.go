@@ -314,7 +314,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 		}
 
 		v := &verse{}
-		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE STATUS != 2 AND FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(
+		err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE FILEIDS LIKE ?", "%"+fi.CommitId+"%").Scan(
 			&v.CommitId,
 			&v.DataId,
 			&v.Alias,
@@ -333,7 +333,10 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 			fileInfos = append(fileInfos, &fi)
 			continue
 		} else if err != nil {
-			fmt.Printf("error querying for verseId: %s\n", err)
+			fmt.Printf("error fetching verse: %s\n", err)
+			continue
+		} else if v.Status != "2" {
+			fmt.Printf("verse has been deleted: %s\n", v.DataId)
 			continue
 		}
 
