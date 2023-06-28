@@ -9,6 +9,7 @@ import (
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
@@ -61,11 +62,19 @@ func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, err
 	resultChan := make(chan BroadcastTxJobResult)
 	c.broadcastMsg(creator, msg, resultChan)
 	result := <-resultChan
+
 	if result.err != nil {
 		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
 	if result.resp.TxResponse.Code != 0 {
 		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgClaimReward tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+	}
+	var claimResp nodetypes.MsgClaimRewardResponse
+	err := result.resp.Decode(&claimResp)
+	if err != nil {
+		fmt.Println("decode claim resp err: ", err)
+	} else {
+		fmt.Println("total claim:", claimResp.ClaimedReward)
 	}
 	return result.resp.TxResponse.TxHash, nil
 }
@@ -190,6 +199,16 @@ func (c *ChainSvc) ListNodes(ctx context.Context) ([]nodetypes.Node, error) {
 		return make([]nodetypes.Node, 0), types.Wrap(types.ErrQueryNodeFailed, err)
 	}
 	return resp.Node, nil
+}
+
+func (c *ChainSvc) GetPledgeInfo(ctx context.Context, creator string) (*sdktypes.Coin, error) {
+	pledgeResp, err := c.nodeClient.Pledge(ctx, &nodetypes.QueryGetPledgeRequest{
+		Creator: creator,
+	})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryPledgeFailed, err)
+	}
+	return &pledgeResp.Pledge.TotalStoragePledged, nil
 }
 
 func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, status uint32) {

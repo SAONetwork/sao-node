@@ -67,6 +67,8 @@ var (
 	ErrQueryShardFailed       = errors.Register(ModuleChain, 11029, "failed to query the shard information")
 	ErrQueryFaultFailed       = errors.Register(ModuleChain, 11030, "failed to query the fault")
 	ErrQueryFaultsFailed      = errors.Register(ModuleChain, 11031, "failed to query the faults")
+	ErrQueryPledgeFailed      = errors.Register(ModuleChain, 11032, "failed to query the pledge information")
+	ErrInvalidValidator       = errors.Register(ModuleChain, 11033, "invalid validator")
 )
 
 var (

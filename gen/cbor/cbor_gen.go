@@ -10,6 +10,9 @@ import (
 
 func main() {
 	err := gen.WriteMapEncodersToFile("./types/cbor_gen.go", "types",
+		// share expire
+		types.ShardCidKey{},
+		types.ShardCidIndex{},
 		// order state
 		types.OrderKey{},
 		types.OrderIndex{},

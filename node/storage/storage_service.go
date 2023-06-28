@@ -96,10 +96,119 @@ func NewStoreService(
 	)
 	ss.storageProtocolMap["stream"] = NewStreamStorageProtocol(host, ss)
 
+	err := ss.initShardsExpiration(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	go ss.processIncompleteShards(ctx)
 	go ss.processMigrateLoop(ctx)
+	go ss.processExpire(ctx)
 
 	return ss, nil
+}
+
+func (ss *StoreSvc) processExpire(ctx context.Context) error {
+	t := time.NewTicker(24 * 60 * time.Minute)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			myShards, err := ss.GetAllShards(ctx)
+			if err != nil {
+				log.Error("get all shards on chain failed: ", err)
+				break
+			}
+			cidList := make(map[string]interface{})
+			expireMap := make(map[uint64]uint64)
+			for _, shard := range myShards {
+				cidList[shard.Cid] = true
+				expire := shard.CreatedAt + shard.Duration
+				for _, r := range shard.RenewInfos {
+					expire += r.Duration
+				}
+				expireMap[shard.Id] = expire
+			}
+
+			index, err := utils.GetShardCidIndex(ctx, ss.orderDs)
+			if err != nil {
+				log.Error("failed to get shard expire index", err)
+				break
+			}
+			for _, key := range index.Alls {
+				log.Infof("expiration: checking shard %d...", key.ShardId)
+				if _, exists := expireMap[key.ShardId]; !exists {
+					log.Infof("shard %d is not on chain", key.ShardId)
+					shardCid, err := utils.GetShardCid(ctx, ss.orderDs, key.ShardId)
+					if err != nil {
+						log.Errorf("failed to get shard(%d) cid from local: %v", key.ShardId, err)
+						continue
+					}
+					if _, exists := cidList[shardCid]; !exists {
+						c, err := cid.Parse(shardCid)
+						if err != nil {
+							log.Errorf("failed to parse shard %d cid %s: %v", key.ShardId, shardCid, err)
+							continue
+						}
+						err = ss.storeManager.Remove(ctx, c)
+						if err != nil {
+							log.Errorf("failed to remove shard %d cid %s: %v", key.ShardId, shardCid, err)
+							if !strings.Contains(err.Error(), "not pinned or pinned indirectly") {
+								continue
+							}
+						}
+					}
+					err = utils.RemoveShardCidIndex(ctx, ss.orderDs, key.ShardId)
+					if err != nil {
+						log.Errorf("failed to remove shard %d cid %s index: %v", key.ShardId, shardCid, err)
+					}
+				}
+			}
+		}
+	}
+}
+
+func (ss *StoreSvc) GetAllShards(ctx context.Context) ([]ordertypes.Shard, error) {
+	offset := uint64(0)
+	limit := uint64(50)
+	myShards := make([]ordertypes.Shard, 0)
+	for {
+		shards, total, err := ss.chainSvc.ListShards(ctx, offset, limit)
+		if err != nil {
+			return nil, err
+		}
+		myShards = append(myShards, shards...)
+		if offset+limit >= total {
+			break
+		}
+	}
+	return myShards, nil
+}
+
+func (ss *StoreSvc) initShardsExpiration(ctx context.Context) error {
+	index, err := utils.GetShardCidIndex(ctx, ss.orderDs)
+	if err != nil {
+		return err
+	}
+	if len(index.Alls) <= 0 {
+		log.Info("No shard expiration state found, sync from chain...")
+		myShards, err := ss.GetAllShards(ctx)
+		if err != nil {
+			return nil
+		}
+
+		for _, s := range myShards {
+			err := utils.SaveShardCid(ctx, ss.orderDs, s.Id, s.Cid)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (ss *StoreSvc) processMigrateLoop(ctx context.Context) {
@@ -722,6 +831,17 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 		if err != nil {
 			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
 		}
+		order, err := ss.chainSvc.GetOrder(ctx, task.OrderId)
+		if err != nil {
+			log.Warn("failed to get order: ", err)
+		} else {
+			shard := order.Shards[ss.nodeAddress]
+			err = utils.SaveShardCid(ctx, ss.orderDs, shard.Id, shard.Cid)
+			if err != nil {
+				log.Warn("save shard expire error: ", err)
+			}
+		}
+
 	}
 
 	resp := sp.RequestShardComplete(ctx, types.ShardCompleteReq{
