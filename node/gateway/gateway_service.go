@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/mitchellh/go-homedir"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,14 +18,10 @@ import (
 	"sao-node/utils"
 	"time"
 
+	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
-
-	"github.com/cosmos/cosmos-sdk/types/tx"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/mitchellh/go-homedir"
-
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -548,11 +547,13 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 	defer gs.locks.Unlock(lockname(orderInfo.OrderId))
 
 	if orderInfo.State == types.OrderStateTerminate {
+		log.Warn("stop process, order ", orderInfo.OrderId, " has terminated")
 		return nil
 	}
 
 	if orderInfo.State == types.OrderStateComplete {
 		gs.completeResultChan <- orderInfo.DataId
+		log.Warn("stop process, order ", orderInfo.OrderId, " has completed")
 		return nil
 	}
 
@@ -567,6 +568,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 		if e != nil {
 			log.Warn("put order %d error: %v", orderInfo.OrderId, e)
 		}
+		log.Warn("stop process,", errMsg)
 		return nil
 	}
 
@@ -584,6 +586,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 			if e != nil {
 				log.Warn("put order %d error: %v", orderInfo.OrderId, e)
 			}
+			log.Warn("stop process,", errStr)
 			return nil
 		}
 	}
@@ -634,6 +637,7 @@ func (gs *GatewaySvc) process(ctx context.Context, orderInfo *types.OrderInfo) e
 		gs.locks.Unlock("complete")
 	}
 
+	log.Info("success process order", orderInfo.OrderId)
 	return nil
 }
 
@@ -890,6 +894,40 @@ func lockname(orderId uint64) string {
 
 func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 	var latestHeight uint64 = 0
+	height, _ := gs.chainSvc.GetLastHeight(ctx)
+
+	orderIdx, err := utils.GetOrderIndex(ctx, gs.orderDs)
+	metaSet := make(map[string]struct{})
+	if err == nil {
+		for _, orderKey := range orderIdx.Alls {
+			if _, ok := metaSet[orderKey.DataId]; !ok {
+				metaSet[orderKey.DataId] = struct{}{}
+				orderInfo, err := gs.OrderStatus(ctx, orderKey.DataId)
+				if err == nil {
+					meta, err := gs.chainSvc.GetMeta(ctx, orderKey.DataId)
+					if err == nil && meta.Metadata.Status != modeltypes.MetaComplete {
+						order, err := gs.chainSvc.GetOrder(ctx, meta.Metadata.OrderId)
+						if err == nil {
+							timeoutAt := (uint64(height)-order.CreatedAt)/order.Timeout*order.Timeout + order.CreatedAt
+							orderInfo.OrderId = meta.Metadata.OrderId
+							orderInfo.ExpireHeight = timeoutAt + order.Timeout
+							gs.locks.Lock("timeout")
+							gs.timeoutMap[timeoutAt] = append(gs.timeoutMap[timeoutAt], orderInfo)
+							gs.locks.Unlock("timeout")
+						}
+					}
+				}
+			}
+		}
+	}
+	log.Info("restored timeout map")
+	for height, infoList := range gs.timeoutMap {
+		log.Info("timeout Height ", height)
+		for _, info := range infoList {
+			log.Info("    order ", info.OrderId)
+		}
+	}
+
 	for {
 		height, err := gs.chainSvc.GetLastHeight(ctx)
 		newHeight := uint64(height)
@@ -916,10 +954,7 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 					}
 					newShards := make(map[string]types.OrderShardInfo)
 					for sp, shard := range order.Shards {
-						peer, err := gs.chainSvc.GetNodePeer(ctx, sp)
-						if err != nil {
-							return
-						}
+						peer, _ := gs.chainSvc.GetNodePeer(ctx, sp)
 						newShard := types.OrderShardInfo{
 							ShardId:  shard.Id,
 							Peer:     peer,
@@ -933,20 +968,15 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 						newShards[sp] = newShard
 					}
 					orderInfo.Shards = newShards
-					orderInfo.ExpireHeight += order.Timeout
+					orderInfo.ExpireHeight = orderInfo.ExpireHeight + order.Timeout
 					orderInfo.Tries = 0
+					orderInfo.State = types.OrderStateReady
 
 					log.Info("order ", order.Id, " timeout at ", latestHeight, " block, re-sched for new assigned sp")
 					gs.schedQueue.Push(&queue.WorkRequest{Order: orderInfo})
 
 					gs.locks.Lock("timeout")
-					updateOrderInfoList, ok := gs.timeoutMap[orderInfo.ExpireHeight]
-					if ok {
-						orderInfoList = append(updateOrderInfoList, orderInfo)
-						gs.timeoutMap[orderInfo.ExpireHeight] = updateOrderInfoList
-					} else {
-						gs.timeoutMap[orderInfo.ExpireHeight] = []types.OrderInfo{orderInfo}
-					}
+					gs.timeoutMap[orderInfo.ExpireHeight] = append(gs.timeoutMap[orderInfo.ExpireHeight], orderInfo)
 					gs.locks.Unlock("timeout")
 				}
 			}
@@ -959,5 +989,4 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 			gs.locks.Unlock("timeout")
 		}
 	}
-
 }
