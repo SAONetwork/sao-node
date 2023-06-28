@@ -291,7 +291,8 @@ func (ss *StoreSvc) HandleShardMigrate(req types.ShardMigrateReq) types.ShardMig
 			fmt.Sprintf("unmatched cid: expected %s, actual %s", req.Cid, shard.Cid),
 		)
 	}
-	if shard.Status != ordertypes.ShardWaiting {
+
+	if shard.Status != ordertypes.ShardMigrating {
 		return logAndRespond(
 			types.ErrorCodeInternalErr,
 			fmt.Sprintf("shard status is not invalid, expected ShardWaiting, actual %d", shard.Status),
@@ -850,7 +851,11 @@ func (ss *StoreSvc) Migrate(ctx context.Context, dataIds []string) (string, map[
 					log.Error(err)
 				}
 
-				cid := order.Shards[ss.nodeAddress].Cid
+				fromShard, ok := order.Shards[ss.nodeAddress]
+				if !ok {
+					continue
+				}
+				cid := fromShard.Cid
 				for node, shard := range order.Shards {
 					if shard.Status == ordertypes.ShardMigrating &&
 						shard.Cid == cid &&
