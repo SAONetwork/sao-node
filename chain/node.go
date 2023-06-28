@@ -139,6 +139,50 @@ func (c *ChainSvc) RecoverFaults(ctx context.Context, creator string, provider s
 	return nil, nil
 }
 
+func (c *ChainSvc) AddVstorage(ctx context.Context, creator string, size uint64) (string, error) {
+	_, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", types.Wrap(types.ErrAccountNotFound, err)
+	}
+
+	msg := &nodetypes.MsgAddVstorage{
+		Creator: creator,
+		Size_:   size,
+	}
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
+	}
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgAddVstorage tx hash=%s, code=%d", result.resp.TxHash, result.resp.TxResponse.Code)
+	}
+	return result.resp.TxResponse.TxHash, nil
+}
+
+func (c *ChainSvc) RemoveVstorage(ctx context.Context, creator string, size uint64) (string, error) {
+	_, err := c.cosmos.Account(creator)
+	if err != nil {
+		return "", types.Wrap(types.ErrAccountNotFound, err)
+	}
+
+	msg := &nodetypes.MsgRemoveVstorage{
+		Creator: creator,
+		Size_:   size,
+	}
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
+	}
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgRemoveVstorage tx hash=%s, code=%d", result.resp.TxHash, result.resp.TxResponse.Code)
+	}
+	return result.resp.TxResponse.TxHash, nil
+}
+
 func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, error) {
 	resp, err := c.nodeClient.Node(ctx, &nodetypes.QueryGetNodeRequest{
 		Creator: creator,
