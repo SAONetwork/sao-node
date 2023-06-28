@@ -64,7 +64,13 @@ var (
 	ErrInconsistentAddress = errors.Register(ModuleChain, 11027, "inconsistent address")
 
 	ErrGenerateMnemonicFailed = errors.Register(ModuleChain, 11028, "failed to generate mnemonic")
-	ErrQueryPledgeFailed      = errors.Register(ModuleChain, 11029, "failed to query the pledge information")
+
+	ErrQueryPledgeFailed      = errors.Register(ModuleChain, 11030, "failed to query the pledge information")
+
+	ErrInvalidValidator       = errors.Register(ModuleChain, 11031, "invalid validator")
+
+	ErrQueryShardFailed = errors.Register(ModuleChain, 11032, "failed to query the shard information")
+
 )
 
 var (
