@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/mitchellh/go-homedir"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -20,8 +17,12 @@ import (
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
-	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/mitchellh/go-homedir"
+
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -62,6 +63,7 @@ type GatewaySvcApi interface {
 	OrderStatus(ctx context.Context, id string) (types.OrderInfo, error)
 	OrderFix(ctx context.Context, id string) error
 	OrderList(ctx context.Context) ([]types.OrderInfo, error)
+	FetchShard(ctx context.Context, provider string, cidStr string, peer string, dataId string, orderId uint64) types.ShardLoadResp
 }
 
 type GatewaySvc struct {
@@ -374,6 +376,35 @@ func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal
 		// Content: N/a,
 		ExtendInfo: res.Metadata.ExtendInfo,
 	}, nil
+}
+
+func (gs *GatewaySvc) FetchShard(ctx context.Context, provider string, cidStr string, peer string, dataId string, orderId uint64) types.ShardLoadResp {
+	var gp GatewayProtocol
+	if provider == gs.nodeAddress {
+		gp = gs.gatewayProtocolMap["local"]
+	} else {
+		gp = gs.gatewayProtocolMap["stream"]
+	}
+
+	shardCid, err := cid.Decode(cidStr)
+	if err != nil {
+		return types.ShardLoadResp{Code: 1, Message: "invalid cid"}
+	}
+
+	return gp.RequestShardLoad(ctx, types.ShardLoadReq{
+		Owner:   gs.nodeAddress,
+		Cid:     shardCid,
+		DataId:  dataId,
+		OrderId: orderId,
+		Proposal: types.MetadataProposalCbor{
+			Proposal: types.QueryProposal{
+				Owner:   gs.nodeAddress,
+				Gateway: gs.nodeAddress,
+			},
+		},
+		RequestId:     time.Now().UnixMilli(),
+		RelayProposal: gs.buildRelayProposal(ctx, gp, peer),
+	}, peer, true)
 }
 
 func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error) {

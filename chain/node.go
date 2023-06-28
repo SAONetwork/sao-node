@@ -8,6 +8,7 @@ import (
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -76,6 +77,66 @@ func (c *ChainSvc) ClaimReward(ctx context.Context, creator string) (string, err
 		fmt.Println("total claim:", claimResp.ClaimedReward)
 	}
 	return result.resp.TxResponse.TxHash, nil
+}
+
+func (c *ChainSvc) GetFault(ctx context.Context, faultId string) (*nodetypes.Fault, error) {
+	resp, err := c.nodeClient.Fault(ctx, &nodetypes.QueryFaultRequest{FaultId: faultId})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryFaultFailed, err)
+	}
+
+	return resp.Fault, nil
+}
+
+func (c *ChainSvc) GetMyFaults(ctx context.Context, provider string) ([]string, error) {
+	resp, err := c.nodeClient.AllFaults(ctx, &nodetypes.QueryAllFaultsRequest{Provider: provider})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryFaultsFailed, err)
+	}
+
+	return resp.FaultIds, nil
+}
+
+func (c *ChainSvc) ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error) {
+	msg := &saotypes.MsgReportFaults{
+		Creator:  creator,
+		Provider: provider,
+		Faults:   faults,
+	}
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return nil, types.Wrap(types.ErrTxProcessFailed, result.err)
+	}
+	if result.resp.TxResponse.Code != 0 {
+		return nil, types.Wrapf(types.ErrTxProcessFailed, "MsgReportFaults tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+	}
+	var resp saotypes.MsgReportFaultsResponse
+	err := result.resp.Decode(&resp)
+	if err != nil {
+		return nil, types.Wrapf(types.ErrTxProcessFailed, "failed to decode MsgReportFaultsResponse, due to %v", err)
+	}
+
+	return resp.FaultIds, nil
+}
+
+func (c *ChainSvc) RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error) {
+	msg := &saotypes.MsgRecoverFaults{
+		Creator:  creator,
+		Provider: provider,
+		Faults:   faults,
+	}
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return nil, types.Wrap(types.ErrTxProcessFailed, result.err)
+	}
+	if result.resp.TxResponse.Code != 0 {
+		return nil, types.Wrapf(types.ErrTxProcessFailed, "MsgRecoverFaults tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+	}
+	return nil, nil
 }
 
 func (c *ChainSvc) GetNodePeer(ctx context.Context, creator string) (string, error) {
@@ -161,6 +222,18 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 				txHash, err := c.Reset(ctx, creator, "", status, make([]string, 0), nil)
 				if err != nil {
 					log.Error(err.Error())
+				}
+
+				faultIds, err := c.GetMyFaults(ctx, creator)
+				if err != nil {
+					log.Error(err.Error())
+				} else {
+					for _, faultId := range faultIds {
+						log.Errorf("!!!STORAGE FAULTS DETECTED!!!: %s", faultId)
+					}
+					if len(faultIds) > 0 {
+						log.Errorf("!!!RECOVER THE STORAGE FAULTS ASAP, OR YOU MIGHT LOSS THE PLEDGED ASSETS!!!")
+					}
 				}
 
 				log.Infof("Reported node status[%b] to SAO network, txHash=%s", status, txHash)

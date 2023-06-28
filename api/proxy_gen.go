@@ -20,6 +20,8 @@ type SaoApiStruct struct {
 
 		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"none"`
 
+		FaultsCheck func(p0 context.Context, p1 []string) (*apitypes.FileFaultsReportResp, error) ``
+
 		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) `perm:"read"`
 
 		GetHttpUrl func(p0 context.Context, p1 string) (apitypes.GetUrlResp, error) `perm:"read"`
@@ -56,6 +58,8 @@ type SaoApiStruct struct {
 
 		OrderStatus func(p0 context.Context, p1 string) (types.OrderInfo, error) `perm:"read"`
 
+		RecoverCheck func(p0 context.Context, p1 string, p2 []string) (*apitypes.FileRecoverReportResp, error) ``
+
 		ShardList func(p0 context.Context) ([]types.ShardInfo, error) ``
 
 		ShardStatus func(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) `perm:"read"`
@@ -85,6 +89,17 @@ func (s *SaoApiStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permiss
 
 func (s *SaoApiStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
 	return *new([]auth.Permission), ErrNotSupported
+}
+
+func (s *SaoApiStruct) FaultsCheck(p0 context.Context, p1 []string) (*apitypes.FileFaultsReportResp, error) {
+	if s.Internal.FaultsCheck == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.FaultsCheck(p0, p1)
+}
+
+func (s *SaoApiStub) FaultsCheck(p0 context.Context, p1 []string) (*apitypes.FileFaultsReportResp, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *SaoApiStruct) GenerateToken(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) {
@@ -283,6 +298,17 @@ func (s *SaoApiStruct) OrderStatus(p0 context.Context, p1 string) (types.OrderIn
 
 func (s *SaoApiStub) OrderStatus(p0 context.Context, p1 string) (types.OrderInfo, error) {
 	return *new(types.OrderInfo), ErrNotSupported
+}
+
+func (s *SaoApiStruct) RecoverCheck(p0 context.Context, p1 string, p2 []string) (*apitypes.FileRecoverReportResp, error) {
+	if s.Internal.RecoverCheck == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.RecoverCheck(p0, p1, p2)
+}
+
+func (s *SaoApiStub) RecoverCheck(p0 context.Context, p1 string, p2 []string) (*apitypes.FileRecoverReportResp, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *SaoApiStruct) ShardList(p0 context.Context) ([]types.ShardInfo, error) {

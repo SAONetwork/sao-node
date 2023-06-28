@@ -90,11 +90,13 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
-			recoverCmd,
+			recoverClietnCmd,
 			netCmd,
 			modelCmd,
 			fileCmd,
 			didCmd,
+			reportFaultsCmd,
+			recoverFaultsCheckRequestCmd,
 			account.AccountCmd,
 			cliutil.GenerateDocCmd,
 		},
@@ -193,8 +195,8 @@ var initCmd = &cli.Command{
 	},
 }
 
-var recoverCmd = &cli.Command{
-	Name:  "recover",
+var recoverClietnCmd = &cli.Command{
+	Name:  "recover-cli",
 	Usage: "recover cli sao client with a specific did",
 	UsageText: "if you have already init sao cli client, you can do recover client by did.\n " +
 		"return error if did is not exists or payment address of did is not found in keyring directory ",
@@ -252,6 +254,98 @@ var recoverCmd = &cli.Command{
 
 		fmt.Println()
 		fmt.Println("sao client recovered.")
+		return nil
+	},
+}
+
+var reportFaultsCmd = &cli.Command{
+	Name:  "report-faults",
+	Usage: "report the storage faults",
+	Flags: []cli.Flag{
+		&cli.StringSliceFlag{
+			Name:     "data-ids",
+			Usage:    "faulted data model id list to report",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		client, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		dataIds := cctx.StringSlice("data-ids")
+		if len(dataIds) == 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "data-ids is required")
+		}
+
+		if tx, err := client.FaultsCheck(ctx, dataIds); err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
+		}
+
+		return nil
+	},
+}
+
+var recoverFaultsCheckRequestCmd = &cli.Command{
+	Name:  "requst-faults-recover-check",
+	Usage: "requst the fishmen to check the recoverable storage faults",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "provider",
+			Usage:    "provider with recoverable storage faults",
+			Required: true,
+		},
+		&cli.StringSliceFlag{
+			Name:     "fault-ids",
+			Usage:    "faults id list to requst",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		client, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		creator, err := client.GetNodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		fishmen, err := client.GetFishmen(ctx)
+		if err != nil {
+			return err
+		}
+
+		if !strings.Contains(fishmen, creator) {
+			return types.Wrapf(types.ErrInvalidParameters, "curren gateway is not a fishmen")
+		}
+
+		provider := cctx.String("provider")
+		if provider == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "provider is required")
+		}
+
+		faultIds := cctx.StringSlice("fault-ids")
+		if len(faultIds) == 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "fault-ids is required")
+		}
+
+		if tx, err := client.RecoverCheck(ctx, provider, faultIds); err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
+		}
+
 		return nil
 	},
 }
