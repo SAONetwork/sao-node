@@ -110,6 +110,8 @@ func main() {
 			initCmd,
 			joinCmd,
 			cleanCmd,
+			addStorageCmd,
+			removeStorageCmd,
 			updateCmd,
 			peersCmd,
 			runCmd,
@@ -464,6 +466,102 @@ var cleanCmd = &cli.Command{
 			tds.Delete(ctx, datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX)))
 			console.Println("Peer information has been deleted!")
 		}
+
+		return nil
+	},
+}
+
+var addStorageCmd = &cli.Command{
+	Name:  "add-storage",
+	Usage: "add storage",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "creator",
+			Usage: "node's account on sao chain",
+		},
+		&cli.Uint64Flag{
+			Name:     "size",
+			Usage:    "storage size to add",
+			Value:    1000,
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+		// TODO: validate input
+		creator := cctx.String("creator")
+		if creator == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --creator")
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		size := cctx.Uint64("size")
+		if size <= 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "invalid size")
+		}
+
+		tx, err := chainSvc.AddVstorage(ctx, creator, size)
+		if err != nil {
+			return err
+		}
+		fmt.Println(tx)
+
+		return nil
+	},
+}
+
+var removeStorageCmd = &cli.Command{
+	Name:  "remove-storage",
+	Usage: "remove storage",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "creator",
+			Usage: "node's account on sao chain",
+		},
+		&cli.Uint64Flag{
+			Name:     "size",
+			Usage:    "storage size to remove",
+			Value:    1000,
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+		// TODO: validate input
+		creator := cctx.String("creator")
+		if creator == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --creator")
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		size := cctx.Uint64("size")
+		if size <= 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "invalid size")
+		}
+
+		tx, err := chainSvc.RemoveVstorage(ctx, creator, size)
+		if err != nil {
+			return err
+		}
+		fmt.Println(tx)
 
 		return nil
 	},
