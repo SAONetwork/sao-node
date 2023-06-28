@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	saokey "github.com/SaoNetwork/sao-did/key"
 	"io"
 	"net/http"
 	"os"
@@ -634,6 +635,53 @@ func (n *Node) ModelLoad(ctx context.Context, req *types.MetadataProposal) (apit
 	}, nil
 }
 
+func (n *Node) ModelLoadDelegate(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
+	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
+	if err != nil {
+		return apitypes.LoadResp{}, err
+	}
+
+	keyringHome := os.Getenv("SAO_KEYRING_HOME")
+	keyName := os.Getenv("SAO_KEY_NAME")
+	didManager, _, err := n.getDidManager(ctx, keyringHome, keyName)
+	if err != nil {
+		return apitypes.LoadResp{}, err
+	}
+
+	req.Proposal.Owner = didManager.Id
+	proposalBytes, err := req.Proposal.Marshal()
+	if err != nil {
+		return apitypes.LoadResp{}, types.Wrap(types.ErrMarshalFailed, err)
+	}
+
+	jws, err := didManager.CreateJWS(proposalBytes)
+	if err != nil {
+		return apitypes.LoadResp{}, types.Wrap(types.ErrCreateJwsFailed, err)
+	}
+
+	delegatedReq := &types.MetadataProposal{
+		Proposal: req.Proposal,
+		JwsSignature: saotypes.JwsSignature{
+			Protected: jws.Signatures[0].Protected,
+			Signature: jws.Signatures[0].Signature,
+		},
+	}
+
+	model, err := n.manager.Load(ctx, delegatedReq)
+	if err != nil {
+		return apitypes.LoadResp{}, err
+	}
+
+	return apitypes.LoadResp{
+		DataId:   model.DataId,
+		Alias:    model.Alias,
+		CommitId: model.CommitId,
+		Version:  model.Version,
+		Cid:      model.Cid,
+		Content:  string(model.Content),
+	}, nil
+}
+
 func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposal, isPublish bool) (apitypes.DeleteResp, error) {
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
@@ -822,6 +870,35 @@ func (n *Node) validSignature(ctx context.Context, proposal types.ConsensusPropo
 	}
 
 	return nil
+}
+
+func (n *Node) getDidManager(ctx context.Context, keyringHome string, keyName string) (*saodid.DidManager, string, error) {
+	fmt.Println("keyName: ", keyName)
+
+	address, err := chain.GetAddress(ctx, keyringHome, keyName)
+	if err != nil {
+		return nil, "", err
+	}
+
+	payload := fmt.Sprintf("cosmos %s allows to generate did", address)
+	secret, err := chain.SignByAccount(ctx, keyringHome, keyName, []byte(payload))
+	if err != nil {
+		return nil, "", types.Wrap(types.ErrSignedFailed, err)
+	}
+
+	provider, err := saokey.NewSecp256k1Provider(secret)
+	if err != nil {
+		return nil, "", types.Wrap(types.ErrCreateProviderFailed, err)
+	}
+	resolver := saokey.NewKeyResolver()
+
+	didManager := saodid.NewDidManager(provider, resolver)
+	_, err = didManager.Authenticate([]string{}, "")
+	if err != nil {
+		return nil, "", types.Wrap(types.ErrAuthenticateFailed, err)
+	}
+
+	return &didManager, address, nil
 }
 
 func (n *Node) OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) {
