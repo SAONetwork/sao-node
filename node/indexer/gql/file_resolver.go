@@ -289,7 +289,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 	}
 
 	// Prepare the base query
-	query := "SELECT * FROM FILE_INFO WHERE OWNER = ? LIMIT ? OFFSET ?"
+	query := "SELECT * FROM FILE_INFO WHERE OWNER = ? ORDER BY CREATEDAT DESC LIMIT ? OFFSET ?"
 
 	// Execute the query, fetch one more row than the limit
 	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.UserDataId, limit+1, offset)
