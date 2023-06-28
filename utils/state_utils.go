@@ -12,13 +12,151 @@ import (
 )
 
 const (
-	ORDER_INDEX_KEY   = "order-index"
-	ORDER_KEY         = "order-%s"
-	SHARD_INDEX_KEY   = "shard-index"
-	SHARD_KEY         = "order-%d-shard-%v"
-	MIGRATE_INDEX_KEY = "migrate-index"
-	MIGRATE_KEY       = "migrate-dataid-%s-from-%s"
+	ORDER_INDEX_KEY     = "order-index"
+	ORDER_KEY           = "order-%s"
+	SHARD_INDEX_KEY     = "shard-index"
+	SHARD_KEY           = "order-%d-shard-%v"
+	MIGRATE_INDEX_KEY   = "migrate-index"
+	MIGRATE_KEY         = "migrate-dataid-%s-from-%s"
+	SHARD_CID_INDEX_KEY = "shard-cid"
+	SHARD_CID_KEY       = "shard-cid-%d"
 )
+
+// -----
+// shard cid
+// -----
+func shardCidDatastoreKey(shardId uint64) datastore.Key {
+	return datastore.NewKey(fmt.Sprintf(SHARD_CID_KEY, shardId))
+}
+
+func SaveShardCid(ctx context.Context, ds datastore.Batching, shardId uint64, cid string) error {
+	key := shardCidDatastoreKey(shardId)
+
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return err
+	}
+
+	bytes := []byte(cid)
+
+	err = ds.Put(ctx, key, bytes)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err = AddShardCidIndex(ctx, ds, shardId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetShardCid(ctx context.Context, ds datastore.Batching, shardId uint64) (string, error) {
+	key := shardCidDatastoreKey(shardId)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return "", err
+	}
+	if !exists {
+		return "", nil
+	}
+
+	bs, err := ds.Get(ctx, key)
+	if err != nil {
+		return "", err
+	}
+
+	return string(bs), nil
+}
+
+func AddShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
+	key := datastore.NewKey(SHARD_CID_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return err
+	}
+	var index types.ShardCidIndex
+	if exists {
+		data, err := ds.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		err = index.UnmarshalCBOR(bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+	}
+	index.Alls = append(index.Alls, types.ShardCidKey{ShardId: id})
+
+	buf := new(bytes.Buffer)
+	err = index.MarshalCBOR(buf)
+	if err != nil {
+		return err
+	}
+	err = ds.Put(ctx, key, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RemoveShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
+	key := datastore.NewKey(SHARD_CID_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return err
+	}
+	var index types.ShardCidIndex
+	if exists {
+		data, err := ds.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		err = index.UnmarshalCBOR(bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+	}
+
+	for i, k := range index.Alls {
+		if k.ShardId == id {
+			index.Alls = append(index.Alls[:i], index.Alls[i+1:]...)
+			break
+		}
+	}
+
+	buf := new(bytes.Buffer)
+	err = index.MarshalCBOR(buf)
+	if err != nil {
+		return err
+	}
+	err = ds.Put(ctx, key, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetShardCidIndex(ctx context.Context, ds datastore.Batching) (types.ShardCidIndex, error) {
+	key := datastore.NewKey(SHARD_CID_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return types.ShardCidIndex{}, err
+	}
+	if !exists {
+		return types.ShardCidIndex{}, nil
+	}
+
+	data, err := ds.Get(ctx, key)
+	if err != nil {
+		return types.ShardCidIndex{}, err
+	}
+
+	var index types.ShardCidIndex
+	err = index.UnmarshalCBOR(bytes.NewReader(data))
+	return index, err
+}
 
 // -----
 // order

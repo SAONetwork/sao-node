@@ -5,6 +5,17 @@ import (
 )
 
 // ----------------
+// shard expire state
+// ----------------
+type ShardCidIndex struct {
+	Alls []ShardCidKey
+}
+
+type ShardCidKey struct {
+	ShardId uint64
+}
+
+// ----------------
 // order state
 // ----------------
 
