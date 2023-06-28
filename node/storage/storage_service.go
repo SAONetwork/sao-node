@@ -96,10 +96,119 @@ func NewStoreService(
 	)
 	ss.storageProtocolMap["stream"] = NewStreamStorageProtocol(host, ss)
 
+	err := ss.initShardsExpiration(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	go ss.processIncompleteShards(ctx)
 	go ss.processMigrateLoop(ctx)
+	go ss.processExpire(ctx)
 
 	return ss, nil
+}
+
+func (ss *StoreSvc) processExpire(ctx context.Context) error {
+	t := time.NewTicker(24 * 60 * time.Minute)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+			myShards, err := ss.GetAllShards(ctx)
+			if err != nil {
+				log.Error("get all shards on chain failed: ", err)
+				break
+			}
+			cidList := make(map[string]interface{})
+			expireMap := make(map[uint64]uint64)
+			for _, shard := range myShards {
+				cidList[shard.Cid] = true
+				expire := shard.CreatedAt + shard.Duration
+				for _, r := range shard.RenewInfos {
+					expire += r.Duration
+				}
+				expireMap[shard.Id] = expire
+			}
+
+			index, err := utils.GetShardCidIndex(ctx, ss.orderDs)
+			if err != nil {
+				log.Error("failed to get shard expire index", err)
+				break
+			}
+			for _, key := range index.Alls {
+				log.Infof("expiration: checking shard %d...", key.ShardId)
+				if _, exists := expireMap[key.ShardId]; !exists {
+					log.Infof("shard %d is not on chain", key.ShardId)
+					shardCid, err := utils.GetShardCid(ctx, ss.orderDs, key.ShardId)
+					if err != nil {
+						log.Errorf("failed to get shard(%d) cid from local: %v", key.ShardId, err)
+						continue
+					}
+					if _, exists := cidList[shardCid]; !exists {
+						c, err := cid.Parse(shardCid)
+						if err != nil {
+							log.Errorf("failed to parse shard %d cid %s: %v", key.ShardId, shardCid, err)
+							continue
+						}
+						err = ss.storeManager.Remove(ctx, c)
+						if err != nil {
+							log.Errorf("failed to remove shard %d cid %s: %v", key.ShardId, shardCid, err)
+							if !strings.Contains(err.Error(), "not pinned or pinned indirectly") {
+								continue
+							}
+						}
+					}
+					err = utils.RemoveShardCidIndex(ctx, ss.orderDs, key.ShardId)
+					if err != nil {
+						log.Errorf("failed to remove shard %d cid %s index: %v", key.ShardId, shardCid, err)
+					}
+				}
+			}
+		}
+	}
+}
+
+func (ss *StoreSvc) GetAllShards(ctx context.Context) ([]ordertypes.Shard, error) {
+	offset := uint64(0)
+	limit := uint64(50)
+	myShards := make([]ordertypes.Shard, 0)
+	for {
+		shards, total, err := ss.chainSvc.ListShards(ctx, offset, limit)
+		if err != nil {
+			return nil, err
+		}
+		myShards = append(myShards, shards...)
+		if offset+limit >= total {
+			break
+		}
+	}
+	return myShards, nil
+}
+
+func (ss *StoreSvc) initShardsExpiration(ctx context.Context) error {
+	index, err := utils.GetShardCidIndex(ctx, ss.orderDs)
+	if err != nil {
+		return err
+	}
+	if len(index.Alls) <= 0 {
+		log.Info("No shard expiration state found, sync from chain...")
+		myShards, err := ss.GetAllShards(ctx)
+		if err != nil {
+			return nil
+		}
+
+		for _, s := range myShards {
+			err := utils.SaveShardCid(ctx, ss.orderDs, s.Id, s.Cid)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (ss *StoreSvc) processMigrateLoop(ctx context.Context) {
@@ -340,52 +449,21 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string)
 		}
 	}
 
-	didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
-	if err != nil {
-		return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("invalid did: %v", err))
-	}
-
-	p := saotypes.QueryProposal{
-		Owner:           req.Proposal.Proposal.Owner,
-		Keyword:         req.Proposal.Proposal.Keyword,
-		GroupId:         req.Proposal.Proposal.GroupId,
-		KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
-		LastValidHeight: req.Proposal.Proposal.LastValidHeight,
-		Gateway:         req.Proposal.Proposal.Gateway,
-		CommitId:        req.Proposal.Proposal.CommitId,
-		Version:         req.Proposal.Proposal.Version,
-	}
-
-	proposalBytes, err := p.Marshal()
-	if err != nil {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("marshal error: %v", err),
-		)
-	}
-
-	_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
-		Payload: base64url.Encode(proposalBytes),
-		Signatures: []saodidtypes.JwsSignature{
-			saodidtypes.JwsSignature(req.Proposal.JwsSignature),
-		},
-	})
-
-	if err != nil {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("verify client order proposal signature failed: %v", err),
-		)
-	}
-
-	log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, remotePeerId)
-	if !strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
-		if len(req.RelayProposal.Signature) > 0 && strings.Contains(req.RelayProposal.Proposal.RelayPeerIds, remotePeerId) {
+	if req.Owner == req.Proposal.Proposal.Gateway && req.Proposal.Proposal.Owner == req.Owner {
+		fishmen, err := ss.chainSvc.GetFishmen(ss.ctx)
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("failed to get fishmen info: %v", err),
+			)
+		}
+		if len(req.RelayProposal.Signature) > 0 && strings.Contains(fishmen, req.RelayProposal.Proposal.NodeAddress) && strings.Contains(fishmen, remotePeerId) {
+			// storage charlange form fishmen via relay protocol
 			account, err := ss.chainSvc.GetAccount(ss.ctx, req.RelayProposal.Proposal.NodeAddress)
 			if err != nil {
 				return logAndRespond(
 					types.ErrorCodeInternalErr,
-					fmt.Sprintf("failed to get gateway account info: %v", err),
+					fmt.Sprintf("failed to get fishmen account info: %v", err),
 				)
 			}
 			buf := new(bytes.Buffer)
@@ -403,21 +481,86 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string)
 				fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", remotePeerId, req.Proposal.Proposal.Gateway),
 			)
 		}
-	}
+	} else {
+		didManager, err := saodid.NewDidManagerWithDid(req.Proposal.Proposal.Owner, ss.getSidDocFunc())
+		if err != nil {
+			return logAndRespond(types.ErrorCodeInternalErr, fmt.Sprintf("invalid did: %v", err))
+		}
 
-	lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
-	if err != nil {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("get chain height error: %v", err),
-		)
-	}
+		p := saotypes.QueryProposal{
+			Owner:           req.Proposal.Proposal.Owner,
+			Keyword:         req.Proposal.Proposal.Keyword,
+			GroupId:         req.Proposal.Proposal.GroupId,
+			KeywordType:     uint32(req.Proposal.Proposal.KeywordType),
+			LastValidHeight: req.Proposal.Proposal.LastValidHeight,
+			Gateway:         req.Proposal.Proposal.Gateway,
+			CommitId:        req.Proposal.Proposal.CommitId,
+			Version:         req.Proposal.Proposal.Version,
+		}
 
-	if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
-		return logAndRespond(
-			types.ErrorCodeInternalErr,
-			fmt.Sprintf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight),
-		)
+		proposalBytes, err := p.Marshal()
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("marshal error: %v", err),
+			)
+		}
+
+		_, err = didManager.VerifyJWS(saodidtypes.GeneralJWS{
+			Payload: base64url.Encode(proposalBytes),
+			Signatures: []saodidtypes.JwsSignature{
+				saodidtypes.JwsSignature(req.Proposal.JwsSignature),
+			},
+		})
+
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("verify client order proposal signature failed: %v", err),
+			)
+		}
+
+		log.Debugf("check peer: %s<->%s", req.Proposal.Proposal.Gateway, remotePeerId)
+		if !strings.Contains(req.Proposal.Proposal.Gateway, remotePeerId) {
+			if len(req.RelayProposal.Signature) > 0 && strings.Contains(req.RelayProposal.Proposal.RelayPeerIds, remotePeerId) {
+				account, err := ss.chainSvc.GetAccount(ss.ctx, req.RelayProposal.Proposal.NodeAddress)
+				if err != nil {
+					return logAndRespond(
+						types.ErrorCodeInternalErr,
+						fmt.Sprintf("failed to get gateway account info: %v", err),
+					)
+				}
+				buf := new(bytes.Buffer)
+				err = req.RelayProposal.Proposal.MarshalCBOR(buf)
+				if err != nil {
+					return logAndRespond(
+						types.ErrorCodeInternalErr,
+						fmt.Sprintf("failed marshal relay proposal: %v", err),
+					)
+				}
+				account.GetPubKey().VerifySignature(buf.Bytes(), req.RelayProposal.Signature)
+			} else {
+				return logAndRespond(
+					types.ErrorCodeInternalErr,
+					fmt.Sprintf("invalid query, unexpect gateway:%s, should be %s", remotePeerId, req.Proposal.Proposal.Gateway),
+				)
+			}
+		}
+
+		lastHeight, err := ss.chainSvc.GetLastHeight(ss.ctx)
+		if err != nil {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("get chain height error: %v", err),
+			)
+		}
+
+		if req.Proposal.Proposal.LastValidHeight < uint64(lastHeight) {
+			return logAndRespond(
+				types.ErrorCodeInternalErr,
+				fmt.Sprintf("invalid query, LastValidHeight:%d > now:%d", req.Proposal.Proposal.LastValidHeight, lastHeight),
+			)
+		}
 	}
 
 	log.Debugf("Get %v", req.Cid)
@@ -689,6 +832,17 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 		if err != nil {
 			log.Warnf("put shard order=%d cid=%v error: %v", task.OrderId, task.Cid, err)
 		}
+		order, err := ss.chainSvc.GetOrder(ctx, task.OrderId)
+		if err != nil {
+			log.Warn("failed to get order: ", err)
+		} else {
+			shard := order.Shards[ss.nodeAddress]
+			err = utils.SaveShardCid(ctx, ss.orderDs, shard.Id, shard.Cid)
+			if err != nil {
+				log.Warn("save shard expire error: ", err)
+			}
+		}
+
 	}
 
 	resp := sp.RequestShardComplete(ctx, types.ShardCompleteReq{
