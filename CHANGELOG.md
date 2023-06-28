@@ -2,7 +2,6 @@
 ## [Unreleased]
 
 ### Bug Fixes
-- try restore timeout map when node start
 - fetch replica mode content, handle invalid cid, model cache evict ([#13](https://github.com/SAONetwork/sao-node.git/issues/13))
 
 
