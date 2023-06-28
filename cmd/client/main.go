@@ -156,7 +156,7 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				askFor = true
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(1000)) {
+				if coins.AmountOf(chain.DENOM).LT(math.NewInt(1000)) {
 					askFor = true
 				}
 			}

@@ -202,7 +202,7 @@ var initTxAddressPoolCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(poolTokenAmount + 1000))) {
+				if coins.AmountOf(chain.DENOM).LT(math.NewInt(int64(poolTokenAmount + 1000))) {
 					continue
 				} else {
 					break
@@ -314,7 +314,7 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(1100))) {
+				if coins.AmountOf(chain.DENOM).LT(math.NewInt(int64(1100))) {
 					continue
 				} else {
 					break
