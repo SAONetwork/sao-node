@@ -37,6 +37,11 @@ type fileContent struct {
 	ContentPath string
 }
 
+type FileInfoResult struct {
+	FileInfos []*fileInfo
+	HasMore   bool
+}
+
 // query: fileInfo(id, userDataId) FileInfo
 func (r *resolver) FileInfo(ctx context.Context, args struct {
 	ID         graphql.ID
@@ -272,7 +277,7 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 	Limit      *int32
 	Offset     *int32
 	Caller     *string
-}) ([]*fileInfo, error) {
+}) (*FileInfoResult, error) {
 	// Default limit is 10 and offset is 0
 	limit := 10
 	offset := 0
@@ -286,15 +291,21 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 	// Prepare the base query
 	query := "SELECT * FROM FILE_INFO WHERE OWNER = ? LIMIT ? OFFSET ?"
 
-	// Execute the query
-	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.UserDataId, limit, offset)
+	// Execute the query, fetch one more row than the limit
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, args.UserDataId, limit+1, offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	var fileInfos []*fileInfo
+	var count int
 	for rows.Next() {
+		count++
+		// If count exceeds limit, break from loop, indicating there is more data
+		if count > limit {
+			break
+		}
 		var fi fileInfo
 		err := rows.Scan(
 			&fi.CommitId,
@@ -330,7 +341,10 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 		)
 
 		if err == sql.ErrNoRows {
-			fileInfos = append(fileInfos, &fi)
+			// if args.Caller equals to args.UserDataId, then the verse is in scope
+			if args.Caller != nil && *args.Caller == args.UserDataId {
+				fileInfos = append(fileInfos, &fi)
+			}
 			continue
 		} else if err != nil {
 			fmt.Printf("error fetching verse: %s\n", err)
@@ -363,7 +377,13 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 		return nil, err
 	}
 
-	return fileInfos, nil
+	// Prepare result
+	result := &FileInfoResult{
+		FileInfos: fileInfos,
+		HasMore:   count > limit,
+	}
+
+	return result, nil
 }
 
 

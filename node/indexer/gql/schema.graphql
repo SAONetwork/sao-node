@@ -102,6 +102,11 @@ type Verse {
     OwnerNftTokenID: String!
 }
 
+type FileInfoResult {
+    fileInfos: [FileInfo!]!
+    hasMore: Boolean!
+}
+
 type FileInfo {
     ID: ID!
     DataId: String!
@@ -272,7 +277,7 @@ type RootQuery {
     fileInfos(userDataId: String!
         limit: Int
         offset: Int
-        caller: String): [FileInfo!]!
+        caller: String): FileInfoResult!
 
     """Get File by ID"""
     file(id: ID!, userDataId: String, getFromFileInfo:Boolean): String
