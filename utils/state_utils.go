@@ -12,13 +12,167 @@ import (
 )
 
 const (
-	ORDER_INDEX_KEY   = "order-index"
-	ORDER_KEY         = "order-%s"
-	SHARD_INDEX_KEY   = "shard-index"
-	SHARD_KEY         = "order-%d-shard-%v"
-	MIGRATE_INDEX_KEY = "migrate-index"
-	MIGRATE_KEY       = "migrate-dataid-%s-from-%s"
+	ORDER_INDEX_KEY        = "order-index"
+	ORDER_KEY              = "order-%s"
+	SHARD_INDEX_KEY        = "shard-index"
+	SHARD_KEY              = "order-%d-shard-%v"
+	MIGRATE_INDEX_KEY      = "migrate-index"
+	MIGRATE_KEY            = "migrate-dataid-%s-from-%s"
+	SHARD_EXPIRE_INDEX_KEY = "shard-expire"
+	SHARD_EXPIRE_KEY       = "shard-expire-%d"
 )
+
+// -----
+// shard cid
+// -----
+func shardExpireDatastoreKey(shardId uint64) datastore.Key {
+	return datastore.NewKey(fmt.Sprintf(SHARD_EXPIRE_KEY, shardId))
+}
+
+func SaveShardExpire(ctx context.Context, ds datastore.Batching, shardId uint64, cid string, orderId uint64) error {
+	key := shardExpireDatastoreKey(shardId)
+
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return err
+	}
+
+	expireInfo := types.ShardExpireInfo{
+		ShardId: shardId,
+		Cid:     cid,
+		OrderId: orderId,
+	}
+
+	buf := new(bytes.Buffer)
+	err = expireInfo.MarshalCBOR(buf)
+	if err != nil {
+		return err
+	}
+
+	err = ds.Put(ctx, key, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	if !exists {
+		err = AddShardExpireIndex(ctx, ds, shardId)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetShardExpire(ctx context.Context, ds datastore.Batching, shardId uint64) (types.ShardExpireInfo, error) {
+	key := shardExpireDatastoreKey(shardId)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return types.ShardExpireInfo{}, err
+	}
+	if !exists {
+		return types.ShardExpireInfo{}, nil
+	}
+
+	bs, err := ds.Get(ctx, key)
+	if err != nil {
+		return types.ShardExpireInfo{}, err
+	}
+
+	var sei types.ShardExpireInfo
+	err = sei.UnmarshalCBOR(bytes.NewReader(bs))
+	if err != nil {
+		return types.ShardExpireInfo{}, err
+	}
+
+	return sei, nil
+}
+
+func AddShardExpireIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
+	key := datastore.NewKey(SHARD_EXPIRE_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return err
+	}
+	var index types.ShardExpireIndex
+	if exists {
+		data, err := ds.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		err = index.UnmarshalCBOR(bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+	}
+	index.Alls = append(index.Alls, types.ShardExpireKey{ShardId: id})
+
+	buf := new(bytes.Buffer)
+	err = index.MarshalCBOR(buf)
+	if err != nil {
+		return err
+	}
+	err = ds.Put(ctx, key, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func RemoveShardExpireIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
+	key := datastore.NewKey(SHARD_EXPIRE_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return err
+	}
+	var index types.ShardExpireIndex
+	if exists {
+		data, err := ds.Get(ctx, key)
+		if err != nil {
+			return err
+		}
+		err = index.UnmarshalCBOR(bytes.NewReader(data))
+		if err != nil {
+			return err
+		}
+	}
+
+	for i, k := range index.Alls {
+		if k.ShardId == id {
+			index.Alls = append(index.Alls[:i], index.Alls[i+1:]...)
+			break
+		}
+	}
+
+	buf := new(bytes.Buffer)
+	err = index.MarshalCBOR(buf)
+	if err != nil {
+		return err
+	}
+	err = ds.Put(ctx, key, buf.Bytes())
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetShardExpireIndex(ctx context.Context, ds datastore.Batching) (types.ShardExpireIndex, error) {
+	key := datastore.NewKey(SHARD_EXPIRE_INDEX_KEY)
+	exists, err := ds.Has(ctx, key)
+	if err != nil {
+		return types.ShardExpireIndex{}, err
+	}
+	if !exists {
+		return types.ShardExpireIndex{}, nil
+	}
+
+	data, err := ds.Get(ctx, key)
+	if err != nil {
+		return types.ShardExpireIndex{}, err
+	}
+
+	var index types.ShardExpireIndex
+	err = index.UnmarshalCBOR(bytes.NewReader(data))
+	return index, err
+}
 
 // -----
 // order

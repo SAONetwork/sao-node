@@ -1,6 +1,7 @@
 package node
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	saokey "github.com/SaoNetwork/sao-did/key"
@@ -16,9 +17,11 @@ import (
 	"sao-node/node/indexer/gql"
 	"sao-node/node/transport"
 	"sao-node/store"
+	"sao-node/utils"
 	"sort"
 	"time"
 
+	"cosmossdk.io/math"
 	saodid "github.com/SaoNetwork/sao-did"
 	"github.com/SaoNetwork/sao-did/sid"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
@@ -333,6 +336,53 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	// chainSvc.stop should be after chain listener unsubscribe
 	sn.stopFuncs = append(sn.stopFuncs, chainSvc.Stop)
+
+	hasPledged := false
+	pledgeInfo, err := chainSvc.GetPledgeInfo(ctx, nodeAddr)
+	if err != nil {
+		if !strings.Contains(err.Error(), "code = NotFound desc = not found: key not found") {
+			return nil, err
+		}
+	} else {
+		fmt.Println(pledgeInfo)
+		if pledgeInfo.Amount.GT(math.NewInt(0)) {
+			hasPledged = true
+		}
+	}
+
+	if !hasPledged {
+		for {
+			if !cfg.Module.StorageEnable && !cfg.Storage.AcceptOrder {
+				break
+			}
+
+			fmt.Printf("Please make sure there is enough SAO tokens pledged for the storage in the account %s. Confirm with 'yes' :", nodeAddr)
+
+			reader := bufio.NewReader(os.Stdin)
+			indata, err := reader.ReadBytes('\n')
+			if err != nil {
+				return nil, types.Wrap(types.ErrInvalidParameters, err)
+			}
+			if strings.ToLower(strings.Replace(string(indata), "\n", "", -1)) != "yes" {
+				continue
+			}
+
+			pledgeInfo, err := chainSvc.GetPledgeInfo(ctx, nodeAddr)
+			if err != nil {
+				if !strings.Contains(err.Error(), "code = NotFound desc = not found: key not found") {
+					return nil, err
+				} else {
+					continue
+				}
+			} else {
+				if pledgeInfo.Amount.GT(math.NewInt(0)) {
+					break
+				} else {
+					continue
+				}
+			}
+		}
+	}
 
 	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status, addresses, nil)
 	log.Infof("repo: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
@@ -887,4 +937,184 @@ func (n *Node) ModelMigrate(ctx context.Context, dataIds []string) (apitypes.Mig
 
 func (n *Node) MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) {
 	return n.storeSvc.MigrateList(ctx)
+}
+
+func (n *Node) FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.FileFaultsReportResp, error) {
+	fishmen, err := n.chainSvc.GetFishmen(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.Contains(fishmen, n.address) {
+		return nil, types.Wrapf(types.ErrInvalidParameters, "i am not a fishmen")
+	}
+
+	faultsMap := make(map[string][]*saotypes.Fault, 0)
+	for _, dataId := range dataIds {
+		meta, err := n.chainSvc.GetMeta(ctx, dataId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		for provider, shard := range meta.Shards {
+
+			passCheck := false
+
+			result := make(chan types.ShardLoadResp)
+
+			go func(result chan types.ShardLoadResp) {
+				result <- n.gatewaySvc.FetchShard(ctx, provider, shard.Cid, shard.Peer, meta.Metadata.DataId, meta.Metadata.OrderId)
+			}(result)
+
+			select {
+			case resp := <-result:
+				if resp.Code == 0 {
+					cid, err := utils.CalculateCid(resp.Content)
+					if err != nil {
+						log.Error(err.Error())
+						continue
+					}
+
+					if cid.String() == meta.Metadata.Cid {
+						passCheck = true
+					}
+				}
+
+			case <-time.After(10 * time.Second):
+				fmt.Println("Timeout")
+			}
+
+			if !passCheck {
+				faults := faultsMap[provider]
+				if faults == nil {
+					faultsMap[provider] = make([]*saotypes.Fault, 0)
+					faults = faultsMap[provider]
+				}
+				faultsMap[provider] = append(faults, &saotypes.Fault{
+					DataId:   meta.Metadata.DataId,
+					OrderId:  meta.Metadata.OrderId,
+					ShardId:  shard.ShardId,
+					CommitId: meta.Metadata.Commits[len(meta.Metadata.Commits)-1],
+					Provider: provider,
+					Reporter: n.address,
+				})
+			}
+		}
+	}
+
+	for provider, faults := range faultsMap {
+		if len(faults) > 0 {
+			_, err := n.chainSvc.ReportFaults(ctx, n.address, provider, faults)
+			if err != nil {
+				log.Error(err.Error())
+				delete(faultsMap, provider)
+				continue
+			}
+		}
+	}
+
+	if len(faultsMap) > 0 {
+		return &apitypes.FileFaultsReportResp{
+			Faults: faultsMap,
+		}, nil
+	} else {
+		return nil, types.Wrapf(types.ErrInvalidParameters, "no faults found")
+	}
+}
+
+func (n *Node) RecoverCheck(ctx context.Context, provider string, faultIds []string) (*apitypes.FileRecoverReportResp, error) {
+	fishmen, err := n.chainSvc.GetFishmen(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.Contains(fishmen, n.address) {
+		return nil, types.Wrapf(types.ErrInvalidParameters, "i am not a fishmen")
+	}
+
+	recoverableFaults := make([]*saotypes.Fault, 0)
+	for _, faultId := range faultIds {
+		fault, err := n.chainSvc.GetFault(ctx, faultId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		meta, err := n.chainSvc.GetMeta(ctx, fault.DataId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		shardMeta, err := n.chainSvc.GetShard(ctx, fault.ShardId)
+		if err != nil {
+			log.Error(err.Error())
+			continue
+		}
+
+		peer := ""
+		for provider, shard := range meta.Shards {
+			if shard.ShardId == fault.ShardId && provider == fault.Provider {
+				peer = shard.Peer
+				break
+			}
+		}
+		if peer == "" {
+			log.Error("invalid shard ", fault.ShardId)
+			continue
+		}
+
+		passCheck := false
+
+		result := make(chan types.ShardLoadResp)
+
+		go func(result chan types.ShardLoadResp) {
+			result <- n.gatewaySvc.FetchShard(ctx, provider, shardMeta.Cid, peer, meta.Metadata.DataId, meta.Metadata.OrderId)
+		}(result)
+
+		select {
+		case resp := <-result:
+			if resp.Code == 0 {
+				cid, err := utils.CalculateCid(resp.Content)
+				if err != nil {
+					log.Error(err.Error())
+					continue
+				}
+
+				if cid.String() == meta.Metadata.Cid {
+					passCheck = true
+				}
+			}
+
+		case <-time.After(10 * time.Second):
+			fmt.Println("Timeout")
+		}
+
+		if passCheck {
+			commit := meta.Metadata.Commits[len(meta.Metadata.Commits)-1]
+			commitId := strings.Split(commit, "\032")[0]
+			recoverableFaults = append(recoverableFaults, &saotypes.Fault{
+				DataId:   meta.Metadata.DataId,
+				OrderId:  meta.Metadata.OrderId,
+				ShardId:  fault.ShardId,
+				CommitId: commitId,
+				Provider: fault.Provider,
+				Reporter: n.address,
+			})
+		}
+	}
+
+	if len(recoverableFaults) > 0 {
+		_, err = n.chainSvc.RecoverFaults(ctx, n.address, provider, recoverableFaults)
+		if err != nil {
+			return nil, err
+		}
+
+		return &apitypes.FileRecoverReportResp{
+			Faults: recoverableFaults,
+		}, nil
+	}
+
+	return nil, types.Wrapf(types.ErrInvalidParameters, "no recoverable faults found")
 }

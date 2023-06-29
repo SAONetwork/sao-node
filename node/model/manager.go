@@ -282,7 +282,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 		return nil, err
 	}
 
-	orgModel := mm.loadModel(clientProposal.Proposal.Owner, req.Proposal.Keyword+lastCommitId)
+	orgModel := mm.loadModel(meta.Owner, req.Proposal.Keyword+lastCommitId)
 	if orgModel != nil {
 		if lastCommitId == orgModel.CommitId && len(orgModel.Content) > 0 {
 			if meta.CommitId == orgModel.CommitId {
@@ -624,10 +624,4 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 
 	buf, _ := json.Marshal(model)
 	log.Debug("model: ", string(buf), " CACHED!!!")
-
-	// mm.CacheSvc.Put(account, model.Alias+model.GroupId, model.DataId)
-	// Reserved for open data model search feature...
-	// for _, k := range model.Tags {
-	// 	mm.CacheSvc.Put(account, k, model.DataId)
-	// }
 }
