@@ -12,39 +12,49 @@ import (
 )
 
 const (
-	ORDER_INDEX_KEY     = "order-index"
-	ORDER_KEY           = "order-%s"
-	SHARD_INDEX_KEY     = "shard-index"
-	SHARD_KEY           = "order-%d-shard-%v"
-	MIGRATE_INDEX_KEY   = "migrate-index"
-	MIGRATE_KEY         = "migrate-dataid-%s-from-%s"
-	SHARD_CID_INDEX_KEY = "shard-cid"
-	SHARD_CID_KEY       = "shard-cid-%d"
+	ORDER_INDEX_KEY        = "order-index"
+	ORDER_KEY              = "order-%s"
+	SHARD_INDEX_KEY        = "shard-index"
+	SHARD_KEY              = "order-%d-shard-%v"
+	MIGRATE_INDEX_KEY      = "migrate-index"
+	MIGRATE_KEY            = "migrate-dataid-%s-from-%s"
+	SHARD_EXPIRE_INDEX_KEY = "shard-expire"
+	SHARD_EXPIRE_KEY       = "shard-expire-%d"
 )
 
 // -----
 // shard cid
 // -----
-func shardCidDatastoreKey(shardId uint64) datastore.Key {
-	return datastore.NewKey(fmt.Sprintf(SHARD_CID_KEY, shardId))
+func shardExpireDatastoreKey(shardId uint64) datastore.Key {
+	return datastore.NewKey(fmt.Sprintf(SHARD_EXPIRE_KEY, shardId))
 }
 
-func SaveShardCid(ctx context.Context, ds datastore.Batching, shardId uint64, cid string) error {
-	key := shardCidDatastoreKey(shardId)
+func SaveShardExpire(ctx context.Context, ds datastore.Batching, shardId uint64, cid string, orderId uint64) error {
+	key := shardExpireDatastoreKey(shardId)
 
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
 		return err
 	}
 
-	bytes := []byte(cid)
+	expireInfo := types.ShardExpireInfo{
+		ShardId: shardId,
+		Cid:     cid,
+		OrderId: orderId,
+	}
 
-	err = ds.Put(ctx, key, bytes)
+	buf := new(bytes.Buffer)
+	err = expireInfo.MarshalCBOR(buf)
+	if err != nil {
+		return err
+	}
+
+	err = ds.Put(ctx, key, buf.Bytes())
 	if err != nil {
 		return err
 	}
 	if !exists {
-		err = AddShardCidIndex(ctx, ds, shardId)
+		err = AddShardExpireIndex(ctx, ds, shardId)
 		if err != nil {
 			return err
 		}
@@ -52,31 +62,37 @@ func SaveShardCid(ctx context.Context, ds datastore.Batching, shardId uint64, ci
 	return nil
 }
 
-func GetShardCid(ctx context.Context, ds datastore.Batching, shardId uint64) (string, error) {
-	key := shardCidDatastoreKey(shardId)
+func GetShardExpire(ctx context.Context, ds datastore.Batching, shardId uint64) (types.ShardExpireInfo, error) {
+	key := shardExpireDatastoreKey(shardId)
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
-		return "", err
+		return types.ShardExpireInfo{}, err
 	}
 	if !exists {
-		return "", nil
+		return types.ShardExpireInfo{}, nil
 	}
 
 	bs, err := ds.Get(ctx, key)
 	if err != nil {
-		return "", err
+		return types.ShardExpireInfo{}, err
 	}
 
-	return string(bs), nil
+	var sei types.ShardExpireInfo
+	err = sei.UnmarshalCBOR(bytes.NewReader(bs))
+	if err != nil {
+		return types.ShardExpireInfo{}, err
+	}
+
+	return sei, nil
 }
 
-func AddShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
-	key := datastore.NewKey(SHARD_CID_INDEX_KEY)
+func AddShardExpireIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
+	key := datastore.NewKey(SHARD_EXPIRE_INDEX_KEY)
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
 		return err
 	}
-	var index types.ShardCidIndex
+	var index types.ShardExpireIndex
 	if exists {
 		data, err := ds.Get(ctx, key)
 		if err != nil {
@@ -87,7 +103,7 @@ func AddShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) err
 			return err
 		}
 	}
-	index.Alls = append(index.Alls, types.ShardCidKey{ShardId: id})
+	index.Alls = append(index.Alls, types.ShardExpireKey{ShardId: id})
 
 	buf := new(bytes.Buffer)
 	err = index.MarshalCBOR(buf)
@@ -101,13 +117,13 @@ func AddShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) err
 	return nil
 }
 
-func RemoveShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
-	key := datastore.NewKey(SHARD_CID_INDEX_KEY)
+func RemoveShardExpireIndex(ctx context.Context, ds datastore.Batching, id uint64) error {
+	key := datastore.NewKey(SHARD_EXPIRE_INDEX_KEY)
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
 		return err
 	}
-	var index types.ShardCidIndex
+	var index types.ShardExpireIndex
 	if exists {
 		data, err := ds.Get(ctx, key)
 		if err != nil {
@@ -138,22 +154,22 @@ func RemoveShardCidIndex(ctx context.Context, ds datastore.Batching, id uint64) 
 	return nil
 }
 
-func GetShardCidIndex(ctx context.Context, ds datastore.Batching) (types.ShardCidIndex, error) {
-	key := datastore.NewKey(SHARD_CID_INDEX_KEY)
+func GetShardExpireIndex(ctx context.Context, ds datastore.Batching) (types.ShardExpireIndex, error) {
+	key := datastore.NewKey(SHARD_EXPIRE_INDEX_KEY)
 	exists, err := ds.Has(ctx, key)
 	if err != nil {
-		return types.ShardCidIndex{}, err
+		return types.ShardExpireIndex{}, err
 	}
 	if !exists {
-		return types.ShardCidIndex{}, nil
+		return types.ShardExpireIndex{}, nil
 	}
 
 	data, err := ds.Get(ctx, key)
 	if err != nil {
-		return types.ShardCidIndex{}, err
+		return types.ShardExpireIndex{}, err
 	}
 
-	var index types.ShardCidIndex
+	var index types.ShardExpireIndex
 	err = index.UnmarshalCBOR(bytes.NewReader(data))
 	return index, err
 }

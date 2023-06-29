@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	cliutil "sao-node/cmd"
+	"sao-node/types"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/ipfs/go-cid"
@@ -63,6 +64,12 @@ var shardStatusCmd = &cli.Command{
 var shardListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List shards",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "include-expire",
+			Required: false,
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
@@ -76,12 +83,19 @@ var shardListCmd = &cli.Command{
 			return err
 		}
 
+		includeExpire := cctx.Bool("include-expire")
+
 		tw := tablewriter.New(
 			tablewriter.Col("OrderId"),
 			tablewriter.Col("Cid"),
 			tablewriter.Col("State"),
 		)
 		for _, shard := range shards {
+			if !includeExpire {
+				if shard.State == types.ShardStateExpired {
+					continue
+				}
+			}
 			tw.Write(map[string]interface{}{
 				"OrderId": shard.OrderId,
 				"Cid":     shard.Cid,
