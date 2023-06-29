@@ -32,6 +32,7 @@ import (
 	"sao-node/chain"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
+	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -109,6 +110,8 @@ func main() {
 			initCmd,
 			joinCmd,
 			cleanCmd,
+			addStorageCmd,
+			removeStorageCmd,
 			updateCmd,
 			peersCmd,
 			runCmd,
@@ -116,6 +119,7 @@ func main() {
 			migrateCmd,
 			infoCmd,
 			claimCmd,
+			declareFaultsRecoverCmd,
 			jobsCmd,
 			initTxAddressPoolCmd,
 			account.AccountCmd,
@@ -150,8 +154,8 @@ var initTxAddressPoolCmd = &cli.Command{
 		},
 		&cli.UintFlag{
 			Name:     "tx-pool-size",
-			Usage:    "address pool size for sending message, the default value is 10",
-			Value:    10,
+			Usage:    "address pool size for sending message, the default value is 1",
+			Value:    1,
 			Required: false,
 		},
 		&cli.UintFlag{
@@ -198,7 +202,7 @@ var initTxAddressPoolCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(poolTokenAmount + 1000000))) {
+				if coins.AmountOf(chain.DENOM).LT(math.NewInt(int64(poolTokenAmount + 1000))) {
 					continue
 				} else {
 					break
@@ -250,8 +254,8 @@ var initCmd = &cli.Command{
 		},
 		&cli.UintFlag{
 			Name:     "tx-pool-size",
-			Usage:    "address pool size for sending message, the default value is 10",
-			Value:    10,
+			Usage:    "address pool size for sending message, the default value is 0",
+			Value:    0,
 			Required: false,
 		},
 	},
@@ -266,10 +270,6 @@ var initCmd = &cli.Command{
 		repoPath := cctx.String(FlagStorageRepo)
 		creator := cctx.String("creator")
 		txPoolSize := cctx.Uint("tx-pool-size")
-
-		if txPoolSize <= 0 {
-			return types.Wrapf(types.ErrInvalidParameters, "tx-pool-size should greater than 0")
-		}
 
 		r, err := initRepo(repoPath, chainAddress, txPoolSize)
 		if err != nil {
@@ -314,18 +314,13 @@ var initCmd = &cli.Command{
 				fmt.Printf("%v", err)
 				continue
 			} else {
-				if coins.AmountOf("sao").LT(math.NewInt(int64(110000000))) {
+				if coins.AmountOf(chain.DENOM).LT(math.NewInt(int64(1100))) {
 					continue
 				} else {
 					break
 				}
 			}
 
-		}
-
-		err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
-		if err != nil {
-			return err
 		}
 
 		if tx, err := chainSvc.Create(ctx, creator); err != nil {
@@ -335,18 +330,25 @@ var initCmd = &cli.Command{
 			fmt.Println(tx)
 		}
 
-		ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
-		if err != nil {
-			return err
-		}
-
-		for address := range ap.Addresses {
-			amount := int64(100000000 / txPoolSize)
-			if tx, err := chainSvc.Send(ctx, creator, address, amount); err != nil {
-				// TODO: clear dir
+		if txPoolSize > 0 {
+			err = chain.CreateAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+			if err != nil {
 				return err
-			} else {
-				fmt.Printf("Sent %d SAO from creator %s to pool address %s, txhash=%s\r", amount, creator, address, tx)
+			}
+
+			ap, err := chain.LoadAddressPool(ctx, cliutil.KeyringHome, txPoolSize)
+			if err != nil {
+				return err
+			}
+
+			for address := range ap.Addresses {
+				amount := int64(1000 / txPoolSize)
+				if tx, err := chainSvc.Send(ctx, creator, address, amount); err != nil {
+					// TODO: clear dir
+					return err
+				} else {
+					fmt.Printf("Sent %d SAO from creator %s to pool address %s, txhash=%s\r", amount, creator, address, tx)
+				}
 			}
 		}
 
@@ -410,13 +412,6 @@ var joinCmd = &cli.Command{
 			return types.Wrapf(types.ErrReadConfigFailed, "invalid config for repo, got: %T", c)
 		}
 
-		tx, err := chain.Create(ctx, creator)
-		if err != nil {
-			return err
-		} else {
-			fmt.Println(tx)
-		}
-
 		// update metadata datastore
 		mds, err := repo.Datastore(ctx, "/metadata")
 		if err != nil {
@@ -424,6 +419,13 @@ var joinCmd = &cli.Command{
 		}
 		if err := mds.Put(ctx, datastore.NewKey("node-address"), []byte(creator)); err != nil {
 			return types.Wrap(types.ErrGetFailed, err)
+		}
+
+		tx, err := chain.Create(ctx, creator)
+		if err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
 		}
 
 		return nil
@@ -464,6 +466,102 @@ var cleanCmd = &cli.Command{
 			tds.Delete(ctx, datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX)))
 			console.Println("Peer information has been deleted!")
 		}
+
+		return nil
+	},
+}
+
+var addStorageCmd = &cli.Command{
+	Name:  "add-storage",
+	Usage: "add storage",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "creator",
+			Usage: "node's account on sao chain",
+		},
+		&cli.Uint64Flag{
+			Name:     "size",
+			Usage:    "storage size to add",
+			Value:    1000,
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+		// TODO: validate input
+		creator := cctx.String("creator")
+		if creator == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --creator")
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		size := cctx.Uint64("size")
+		if size <= 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "invalid size")
+		}
+
+		tx, err := chainSvc.AddVstorage(ctx, creator, size)
+		if err != nil {
+			return err
+		}
+		fmt.Println(tx)
+
+		return nil
+	},
+}
+
+var removeStorageCmd = &cli.Command{
+	Name:  "remove-storage",
+	Usage: "remove storage",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "creator",
+			Usage: "node's account on sao chain",
+		},
+		&cli.Uint64Flag{
+			Name:     "size",
+			Usage:    "storage size to remove",
+			Value:    1000,
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+		// TODO: validate input
+		creator := cctx.String("creator")
+		if creator == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --creator")
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		size := cctx.Uint64("size")
+		if size <= 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "invalid size")
+		}
+
+		tx, err := chainSvc.RemoveVstorage(ctx, creator, size)
+		if err != nil {
+			return err
+		}
+		fmt.Println(tx)
 
 		return nil
 	},
@@ -799,6 +897,84 @@ var claimCmd = &cli.Command{
 		}
 
 		if tx, err := chain.ClaimReward(ctx, creator); err != nil {
+			return err
+		} else {
+			fmt.Println(tx)
+		}
+
+		return nil
+	},
+}
+
+var declareFaultsRecoverCmd = &cli.Command{
+	Name:  "declare-faults-recover",
+	Usage: "declare that the storage faults have been recover and ready for check",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "creator",
+			Usage:    "node's account on sao chain",
+			Required: false,
+		},
+		&cli.Uint64SliceFlag{
+			Name:     "shard-ids",
+			Usage:    "shard id list to request for check",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		creator := cctx.String("creator")
+		if creator == "" {
+			apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
+			if err != nil {
+				return types.Wrap(types.ErrCreateClientFailed, err)
+			}
+			defer closer()
+
+			creator, err = apiClient.GetNodeAddress(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		shardIds := cctx.Uint64Slice("shard-ids")
+		if len(shardIds) == 0 {
+			return types.Wrapf(types.ErrInvalidParameters, "shard-ids is required")
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			log.Warn(err)
+		}
+
+		chain, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		faults := make([]*saotypes.Fault, 0)
+		for _, shardId := range shardIds {
+			shard, err := chain.GetShard(ctx, shardId)
+			if err != nil {
+				return err
+			}
+			order, err := chain.GetOrder(ctx, shard.OrderId)
+			if err != nil {
+				return err
+			}
+
+			faults = append(faults, &saotypes.Fault{
+				DataId:   order.DataId,
+				OrderId:  order.Id,
+				ShardId:  shardId,
+				CommitId: strings.Split(order.Commit, "\032")[0],
+				Provider: creator,
+				Reporter: creator,
+			})
+		}
+
+		if tx, err := chain.RecoverFaults(ctx, creator, creator, faults); err != nil {
 			return err
 		} else {
 			fmt.Println(tx)
