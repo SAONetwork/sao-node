@@ -1,17 +1,23 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+
+<a name="v0.1.5"></a>
+## [v0.1.5](https://github.com/SAONetwork/sao-node.git/compare/v0.1.4...v0.1.5) (2023-06-29)
+
 ### Features
-- update shard job to expire status after expiration
-- add storage command ([#21](https://github.com/SAONetwork/sao-node.git/issues/21))
-- add rpc to load model delegated by gateway ([#20](https://github.com/SAONetwork/sao-node.git/issues/20))
-- poe ([#17](https://github.com/SAONetwork/sao-node.git/issues/17))
-- remove expire shard from storage ([#19](https://github.com/SAONetwork/sao-node.git/issues/19))
+
+* update shard job to expire status after expiration ([#23](https://github.com/SAONetwork/sao-node.git/issues/23))  *#23* 
+* add storage command ([#21](https://github.com/SAONetwork/sao-node.git/issues/21))  *#21* 
+* add rpc to load model delegated by gateway ([#20](https://github.com/SAONetwork/sao-node.git/issues/20))  *#20* 
+* poe ([#17](https://github.com/SAONetwork/sao-node.git/issues/17))  *#17* 
+* remove expire shard from storage ([#19](https://github.com/SAONetwork/sao-node.git/issues/19))  *#19* 
 
 ### Bug Fixes
-- meta status ([#22](https://github.com/SAONetwork/sao-node.git/issues/22))
-- add startup pledge check ([#18](https://github.com/SAONetwork/sao-node.git/issues/18))
-- fetch replica mode content, handle invalid cid, model cache evict ([#13](https://github.com/SAONetwork/sao-node.git/issues/13))
+
+* meta status ([#22](https://github.com/SAONetwork/sao-node.git/issues/22))  *#22* 
+* add startup pledge check ([#18](https://github.com/SAONetwork/sao-node.git/issues/18))  *#18* 
+* fetch replica mode content, handle invalid cid, model cache evict ([#13](https://github.com/SAONetwork/sao-node.git/issues/13))  *#13* 
 
 
 <a name="v0.1.4"></a>

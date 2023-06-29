@@ -468,8 +468,12 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			}
 			contentList[shard.ShardId] = resp.Content
 		} else {
-			return nil, types.Wrapf(types.ErrFailuresResponsed, resp.Message)
+			continue
 		}
+	}
+
+	if content == nil && len(contentList) == 0 {
+		return nil, types.Wrapf(types.ErrFailuresResponsed, "%s", meta.DataId)
 	}
 
 	if res == nil {
@@ -987,6 +991,9 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 
 					newShards := make(map[string]types.OrderShardInfo)
 					for sp, shard := range order.Shards {
+						if shard.Status == ordertypes.ShardTimeout {
+							continue
+						}
 						peer, _ := gs.chainSvc.GetNodePeer(ctx, sp)
 						newShard := types.OrderShardInfo{
 							ShardId:  shard.Id,
