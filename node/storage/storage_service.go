@@ -109,7 +109,7 @@ func NewStoreService(
 }
 
 func (ss *StoreSvc) processExpire(ctx context.Context) error {
-	t := time.NewTicker( 24 * 60 * time.Minute)
+	t := time.NewTicker(24 * 60 * time.Minute)
 	defer t.Stop()
 
 	for {
@@ -147,8 +147,6 @@ func (ss *StoreSvc) processExpire(ctx context.Context) error {
 						log.Errorf("failed to get shard(%d) cid from local: %v", key.ShardId, err)
 						continue
 					}
-					log.Infof("shard expire info cid: %s", shardExpireInfo.Cid)
-					log.Infof("cid list: %v", cidList[shardExpireInfo.Cid])
 					if _, exists := cidList[shardExpireInfo.Cid]; !exists {
 						c, err := cid.Parse(shardExpireInfo.Cid)
 						if err != nil {

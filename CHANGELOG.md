@@ -2,6 +2,7 @@
 ## [Unreleased]
 
 ### Features
+- update shard job to expire status after expiration
 - add storage command ([#21](https://github.com/SAONetwork/sao-node.git/issues/21))
 - add rpc to load model delegated by gateway ([#20](https://github.com/SAONetwork/sao-node.git/issues/20))
 - poe ([#17](https://github.com/SAONetwork/sao-node.git/issues/17))
