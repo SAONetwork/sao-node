@@ -1,7 +1,15 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Features
+- add storage command ([#21](https://github.com/SAONetwork/sao-node.git/issues/21))
+- add rpc to load model delegated by gateway ([#20](https://github.com/SAONetwork/sao-node.git/issues/20))
+- poe ([#17](https://github.com/SAONetwork/sao-node.git/issues/17))
+- remove expire shard from storage ([#19](https://github.com/SAONetwork/sao-node.git/issues/19))
+
 ### Bug Fixes
+- meta status ([#22](https://github.com/SAONetwork/sao-node.git/issues/22))
+- add startup pledge check ([#18](https://github.com/SAONetwork/sao-node.git/issues/18))
 - fetch replica mode content, handle invalid cid, model cache evict ([#13](https://github.com/SAONetwork/sao-node.git/issues/13))
 
 

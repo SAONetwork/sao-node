@@ -109,7 +109,7 @@ func NewStoreService(
 }
 
 func (ss *StoreSvc) processExpire(ctx context.Context) error {
-	t := time.NewTicker(24 * 60 * time.Minute)
+	t := time.NewTicker( 24 * 60 * time.Minute)
 	defer t.Stop()
 
 	for {
@@ -133,7 +133,7 @@ func (ss *StoreSvc) processExpire(ctx context.Context) error {
 				expireMap[shard.Id] = expire
 			}
 
-			index, err := utils.GetShardCidIndex(ctx, ss.orderDs)
+			index, err := utils.GetShardExpireIndex(ctx, ss.orderDs)
 			if err != nil {
 				log.Error("failed to get shard expire index", err)
 				break
@@ -142,28 +142,50 @@ func (ss *StoreSvc) processExpire(ctx context.Context) error {
 				log.Infof("expiration: checking shard %d...", key.ShardId)
 				if _, exists := expireMap[key.ShardId]; !exists {
 					log.Infof("shard %d is not on chain", key.ShardId)
-					shardCid, err := utils.GetShardCid(ctx, ss.orderDs, key.ShardId)
+					shardExpireInfo, err := utils.GetShardExpire(ctx, ss.orderDs, key.ShardId)
 					if err != nil {
 						log.Errorf("failed to get shard(%d) cid from local: %v", key.ShardId, err)
 						continue
 					}
-					if _, exists := cidList[shardCid]; !exists {
-						c, err := cid.Parse(shardCid)
+					log.Infof("shard expire info cid: %s", shardExpireInfo.Cid)
+					log.Infof("cid list: %v", cidList[shardExpireInfo.Cid])
+					if _, exists := cidList[shardExpireInfo.Cid]; !exists {
+						c, err := cid.Parse(shardExpireInfo.Cid)
 						if err != nil {
-							log.Errorf("failed to parse shard %d cid %s: %v", key.ShardId, shardCid, err)
+							log.Errorf("failed to parse shard %d cid %s: %v", key.ShardId, shardExpireInfo.Cid, err)
 							continue
 						}
 						err = ss.storeManager.Remove(ctx, c)
 						if err != nil {
-							log.Errorf("failed to remove shard %d cid %s: %v", key.ShardId, shardCid, err)
+							log.Errorf("failed to remove shard %d cid %s: %v", key.ShardId, shardExpireInfo.Cid, err)
 							if !strings.Contains(err.Error(), "not pinned or pinned indirectly") {
 								continue
 							}
 						}
+						log.Infof("shard %d cid %s is removed from storage.", key.ShardId, shardExpireInfo.Cid)
 					}
-					err = utils.RemoveShardCidIndex(ctx, ss.orderDs, key.ShardId)
+					err = utils.RemoveShardExpireIndex(ctx, ss.orderDs, key.ShardId)
 					if err != nil {
-						log.Errorf("failed to remove shard %d cid %s index: %v", key.ShardId, shardCid, err)
+						log.Errorf("failed to remove shard %d cid %s index: %v", key.ShardId, shardExpireInfo.Cid, err)
+						continue
+					} else {
+						log.Infof("shard %d cid %s is remove from index.", key.ShardId, shardExpireInfo.Cid)
+					}
+
+					cid, err := cid.Parse(shardExpireInfo.Cid)
+					if err != nil {
+						log.Errorf("parse cid %s error %v", cid, err)
+						continue
+					}
+					sf, err := utils.GetShard(ctx, ss.orderDs, shardExpireInfo.OrderId, cid)
+					if err != nil {
+						log.Error("get shard from local error", err)
+						continue
+					}
+					sf.State = types.ShardStateExpired
+					err = utils.SaveShard(ctx, ss.orderDs, sf)
+					if err != nil {
+						log.Error("save shard error: ", err)
 					}
 				}
 			}
@@ -189,7 +211,7 @@ func (ss *StoreSvc) GetAllShards(ctx context.Context) ([]ordertypes.Shard, error
 }
 
 func (ss *StoreSvc) initShardsExpiration(ctx context.Context) error {
-	index, err := utils.GetShardCidIndex(ctx, ss.orderDs)
+	index, err := utils.GetShardExpireIndex(ctx, ss.orderDs)
 	if err != nil {
 		return err
 	}
@@ -201,7 +223,7 @@ func (ss *StoreSvc) initShardsExpiration(ctx context.Context) error {
 		}
 
 		for _, s := range myShards {
-			err := utils.SaveShardCid(ctx, ss.orderDs, s.Id, s.Cid)
+			err := utils.SaveShardExpire(ctx, ss.orderDs, s.Id, s.Cid, s.OrderId)
 			if err != nil {
 				return err
 			}
@@ -837,7 +859,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 			log.Warn("failed to get order: ", err)
 		} else {
 			shard := order.Shards[ss.nodeAddress]
-			err = utils.SaveShardCid(ctx, ss.orderDs, shard.Id, shard.Cid)
+			err = utils.SaveShardExpire(ctx, ss.orderDs, shard.Id, shard.Cid, shard.OrderId)
 			if err != nil {
 				log.Warn("save shard expire error: ", err)
 			}
@@ -933,7 +955,7 @@ func (ss *StoreSvc) getPendingShardList(ctx context.Context) ([]types.ShardInfo,
 		if err != nil {
 			return nil, err
 		}
-		if shard.State != types.ShardStateComplete && shard.State != types.ShardStateTerminate {
+		if shard.State != types.ShardStateComplete && shard.State != types.ShardStateTerminate && shard.State != types.ShardStateExpired {
 			pending = append(pending, shard)
 		}
 	}

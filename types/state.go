@@ -7,12 +7,18 @@ import (
 // ----------------
 // shard expire state
 // ----------------
-type ShardCidIndex struct {
-	Alls []ShardCidKey
+type ShardExpireIndex struct {
+	Alls []ShardExpireKey
 }
 
-type ShardCidKey struct {
+type ShardExpireKey struct {
 	ShardId uint64
+}
+
+type ShardExpireInfo struct {
+	ShardId uint64
+	Cid     string
+	OrderId uint64
 }
 
 // ----------------
@@ -147,6 +153,7 @@ const (
 	ShardStateTxSent
 	ShardStateComplete
 	ShardStateTerminate
+	ShardStateExpired
 )
 
 var shardStateString = map[ShardState]string{
@@ -155,6 +162,7 @@ var shardStateString = map[ShardState]string{
 	ShardStateTxSent:    "txSent",
 	ShardStateComplete:  "completed",
 	ShardStateTerminate: "terminated",
+	ShardStateExpired:   "expired",
 }
 
 func (s ShardState) String() string {
