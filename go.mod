@@ -361,7 +361,7 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/SaoNetwork/sao => ../sao-consensus
+replace github.com/SaoNetwork/sao => ../../sao-consensus
 
 replace github.com/whyrusleeping/cbor-gen => ../cbor-gen
 
