@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sao-node/chain"
 	"sao-node/node/indexer/jobs"
 	"sao-node/node/queue"
@@ -71,7 +72,11 @@ func NewIndexSvc(
 	go is.processPendingJobs(ctx)
 
 	log.Info("building storverse views job...")
-	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "storverse-sao", log)
+	platformId := os.Getenv("STORVERSE_PLATFORM_ID")
+	if platformId == "" {
+		platformId = "storverse-sao"
+	}
+	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, platformId, log)
 	is.JobsMap[job.ID] = job
 	is.schedQueue.Push(&queue.WorkRequest{
 		Job: job,
