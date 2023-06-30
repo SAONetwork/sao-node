@@ -73,25 +73,24 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	log.Info("KeyWord:", req.Proposal.Keyword)
 
 	var queryCommitId string
+	var model *types.Model
 	if req.Proposal.CommitId != "" {
 		queryCommitId = req.Proposal.CommitId
-	} else {
-		queryCommitId = req.Proposal.Keyword
-	}
 
-	log.Infof("load model, account: %s, key: %s", req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
-	model := mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
-	if model != nil {
-		log.Infof("Cache hit, model[%s, %s]-%s", model.DataId, model.CommitId, model.Alias)
-		if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
-			log.Debug("model", model)
-			// found latest data model in local cache already
-			log.Debugf("load the model[%s]-%s from cache", model.DataId, model.Alias)
-			log.Debug("model: ", string(model.Content))
-			return model, nil
-		} else {
-			log.Infof("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
-			log.Infof("local version model is %s:%s.", model.DataId, model.CommitId)
+		log.Infof("load model, account: %s, key: %s", req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
+		model = mm.loadModel(req.Proposal.Owner, req.Proposal.Keyword+queryCommitId)
+		if model != nil {
+			log.Infof("Cache hit, model[%s, %s]-%s", model.DataId, model.CommitId, model.Alias)
+			if (req.Proposal.CommitId == "" || model.CommitId == req.Proposal.CommitId) && len(model.Content) > 0 {
+				log.Debug("model", model)
+				// found latest data model in local cache already
+				log.Debugf("load the model[%s]-%s from cache", model.DataId, model.Alias)
+				log.Debug("model: ", string(model.Content))
+				return model, nil
+			} else {
+				log.Infof("not model %s:%s found in the cache, fetch it from the network", req.Proposal.Keyword, req.Proposal.CommitId)
+				log.Infof("local version model is %s:%s.", model.DataId, model.CommitId)
+			}
 		}
 	}
 
