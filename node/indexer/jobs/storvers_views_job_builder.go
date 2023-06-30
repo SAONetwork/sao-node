@@ -218,16 +218,6 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					}
 				}
 
-				// update notification read status
-				rowsAffected, err = storverse.UpdateNotificationReadStatus(ctx, db)
-				if err != nil {
-					log.Errorf("Error updating NOTIFICATION records: %v", err)
-				} else {
-					if rowsAffected > 0 {
-						log.Infof("Updated %d rows in NOTIFICATION", rowsAffected)
-					}
-				}
-
 				time.Sleep(5 * time.Second)
 				offset = 0
 				limit = 100
