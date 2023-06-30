@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS FILE_INFO (
                                          FILENAME     TEXT,
                                          FILECATEGORY TEXT,
                                          EXTENDINFO  TEXT,
-                                         THUMBNAILDATAID TEXT,
+                                         THUMBNAILDATAID TEXT
 );
 
 CREATE INDEX IF NOT EXISTS index_file_info_owner on file_info(OWNER);
