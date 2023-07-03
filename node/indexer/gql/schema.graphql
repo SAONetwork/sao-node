@@ -262,7 +262,8 @@ type RootQuery {
     """Get liked Verse for user"""
     likedVerses(userDataId: String
         limit: Int
-        offset: Int): [Verse!]!
+        offset: Int
+        caller: String): [Verse!]!
 
     """Get Verses by verse ID list"""
     versesByIds(ids: [String!]!, onlyFollowed:Boolean, userDataId: String): [Verse!]!

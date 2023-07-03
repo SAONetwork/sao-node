@@ -62,6 +62,7 @@ type likedVersesArgs struct {
 	UserDataId *string
 	Limit      *int32
 	Offset     *int32
+	Caller     *string
 }
 
 // query: verse(id) Verse
@@ -375,7 +376,7 @@ func (r *resolver) LikedVerses(ctx context.Context, args likedVersesArgs) ([]*ve
 
 	var verses []*verse
 	for rowsVerses.Next() {
-		v, err := verseFromRow(rowsVerses, ctx, r.indexSvc.Db, args.UserDataId)
+		v, err := verseFromRow(rowsVerses, ctx, r.indexSvc.Db, args.Caller)
 		if err != nil {
 			return nil, err
 		}
@@ -396,7 +397,7 @@ func (r *resolver) LikedVerses(ctx context.Context, args likedVersesArgs) ([]*ve
 		v.IsPaid = count > 0
 
 		// Process verse scope
-		v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
+		v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.Caller)
 		if err != nil {
 			// print error and continue
 			fmt.Printf("error processing verse scope: %s\n", err)
@@ -545,12 +546,10 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 		var count int
 		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE STATUS = 1 AND  VerseID = ? AND OWNER = ?"
 		err = db.QueryRowContext(ctx, likeQuery, v.DataId, userDataId).Scan(&count)
-		fmt.Printf("sql: %s, params: %s\n", likeQuery, v.DataId, *userDataId)
 
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 		}
-		fmt.Printf("count: %d\n", count)
 		v.HasLiked = count > 0
 	}
 
