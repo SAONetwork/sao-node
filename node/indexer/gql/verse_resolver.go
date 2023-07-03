@@ -191,7 +191,22 @@ func (r *resolver) Verses(ctx context.Context, args VerseArgs) ([]*verse, error)
 				continue
 			}
 		} else {
-			if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
+			if v.Scope == 4 {
+				var tokenID, price sql.NullString
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT TOKENID, PRICE FROM LISTING_INFO WHERE ITEMDATAID = ? ORDER BY TIME DESC LIMIT 1", v.DataId).Scan(&tokenID, &price)
+				if err != nil {
+					continue
+				} else {
+					if tokenID.Valid {
+						v.NftTokenID = tokenID.String
+					}
+					if price.Valid {
+						v.Price = price.String
+					}
+				}
+			}
+
+			if v.Scope == 2 || v.Scope == 3 {
 				v.NotInScope = v.Scope
 			}
 			if v.Scope == 5 {
@@ -530,6 +545,8 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 		var count int
 		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE STATUS = 1 AND  VerseID = ? AND OWNER = ?"
 		err = db.QueryRowContext(ctx, likeQuery, v.DataId, userDataId).Scan(&count)
+		fmt.Printf("sql: %s, params: %s\n", likeQuery, v.DataId, userDataId)
+
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 		}
