@@ -545,11 +545,12 @@ func verseFromRow(rowScanner interface{}, ctx context.Context, db *sql.DB, userD
 		var count int
 		likeQuery := "SELECT COUNT(*) FROM verse_like WHERE STATUS = 1 AND  VerseID = ? AND OWNER = ?"
 		err = db.QueryRowContext(ctx, likeQuery, v.DataId, userDataId).Scan(&count)
-		fmt.Printf("sql: %s, params: %s\n", likeQuery, v.DataId, userDataId)
+		fmt.Printf("sql: %s, params: %s\n", likeQuery, v.DataId, *userDataId)
 
 		if err != nil {
 			fmt.Println("Error scanning row: ", err)
 		}
+		fmt.Printf("count: %d\n", count)
 		v.HasLiked = count > 0
 	}
 
