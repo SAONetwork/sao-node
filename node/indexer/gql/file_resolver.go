@@ -180,7 +180,7 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 	orderedFileIDs := make([]string, 0)
 	orderedVerseIDs := make([]string, 0) // To keep track of verseId for each fileId
 	for _, verseId := range args.VerseIds {
-		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS, SCOPE, OWNER, CREATEDAT FROM VERSE WHERE DATAID = ? AND FILETYPE = 'image'", verseId)
+		rows, err := r.indexSvc.Db.QueryContext(ctx, "SELECT FILEIDS, SCOPE, OWNER, CREATEDAT, STATUS FROM VERSE WHERE DATAID = ? AND FILETYPE = 'image'", verseId)
 		if err != nil {
 			return nil, err
 		}
@@ -190,8 +190,9 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 		var scope int32
 		var owner string
 		var createdAt types.Uint64
+		var status string
 		if rows.Next() {
-			err = rows.Scan(&fileIDsJSON, &scope, &owner, &createdAt)
+			err = rows.Scan(&fileIDsJSON, &scope, &owner, &createdAt, &status)
 			if err != nil {
 				return nil, err
 			}
@@ -208,6 +209,13 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 				Owner:     owner,
 				CreatedAt: createdAt,
 				IsPaid:    count > 0,
+				Status:    status,
+			}
+
+			if v.Status == "2" {
+				// verse is deleted
+				fmt.Printf("verse is deleted: %s\n", verseId)
+				continue
 			}
 
 			if v.Price != "" {
