@@ -49,6 +49,11 @@ type SaoApi interface {
 	ModelUpdatePermission(ctx context.Context, req *types.PermissionProposal, isPublish bool) (apitypes.UpdatePermissionResp, error) //perm:write
 	ModelMigrate(ctx context.Context, dataIds []string) (apitypes.MigrateResp, error)                                                // perm:write
 
+	// Raise Storage Faults
+	FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.FileFaultsReportResp, error)
+	// Requst Check for Recoverable Storage Faults
+	RecoverCheck(ctx context.Context, provider string, faultIds []string) (*apitypes.FileRecoverReportResp, error)
+
 	// MethodGroup: Common
 
 	// GetPeerInfo get current node's peer information
