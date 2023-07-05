@@ -149,16 +149,26 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 
 // query: suggestedUsers(userDataId) [UserProfile!]!
 func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) ([]*userProfile, error) {
-	query := `SELECT USER_PROFILE.* 
-          FROM USER_PROFILE 
-          LEFT JOIN (
-            SELECT FOLLOWING, COUNT(*) as COUNT 
-            FROM USER_FOLLOWING 
-            GROUP BY FOLLOWING
-          ) as FOLLOWING_COUNTS ON USER_PROFILE.DATAID = FOLLOWING_COUNTS.FOLLOWING
-          WHERE USER_PROFILE.DATAID != ? AND USER_PROFILE.DATAID NOT IN (SELECT ITEMDATAID FROM LISTING_INFO)
-          ORDER BY FOLLOWING_COUNTS.COUNT DESC 
-          LIMIT ? OFFSET ?`
+	query := `
+			SELECT USER_PROFILE.* 
+			FROM USER_PROFILE 
+			LEFT JOIN (
+				SELECT FOLLOWING, COUNT(*) as COUNT 
+				FROM USER_FOLLOWING 
+				GROUP BY FOLLOWING
+			) as FOLLOWING_COUNTS ON USER_PROFILE.DATAID = FOLLOWING_COUNTS.FOLLOWING
+			WHERE USER_PROFILE.DATAID != ? 
+			AND USER_PROFILE.DATAID NOT IN (
+				SELECT ITEMDATAID FROM LISTING_INFO
+			)
+			AND USER_PROFILE.DATAID NOT IN (
+				SELECT FOLLOWING 
+				FROM USER_FOLLOWING 
+				WHERE FOLLOWER = ?
+			)
+			ORDER BY FOLLOWING_COUNTS.COUNT DESC 
+			LIMIT ? OFFSET ?
+		`
 
 	limit := 4
 	offset := 0
@@ -171,7 +181,7 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 		offset = int(*args.Offset)
 	}
 
-	rows, err := r.indexSvc.Db.QueryContext(ctx, query, *args.UserDataId, limit, offset)
+	rows, err := r.indexSvc.Db.QueryContext(ctx, query, *args.UserDataId, *args.UserDataId, limit, offset)
 	if err != nil {
 		return nil, err
 	}
