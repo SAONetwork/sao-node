@@ -46,11 +46,11 @@ var TypeConfigs = map[string]DataModelTypeConfig{
 		TableNameFunc: UserFollowingInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(UserFollowing{}),
 	},
-	"listing_bsctest_info": {
+	"listing_bsc_test_info": {
 		TableNameFunc: ListingInfoInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(ListingInfo{}),
 	},
-	"purchase_bsctest_order": {
+	"purchase_bsc_test_order": {
 		TableNameFunc: PurchaseOrderInsertionStrategy{}.TableName,
 		RecordType: reflect.TypeOf(PurchaseOrder{}),
 	},
