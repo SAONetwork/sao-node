@@ -290,7 +290,7 @@ type RootQuery {
     followedList(follower: String!, isExpired: Boolean!, limit: Int, offset: Int, userDataId: String): FollowingResult!
 
     """Get ListingInfo by DataId or TokenId"""
-    listingInfo(dataId: String, tokenId: String): ListingInfo
+    listingInfo(dataId: String, tokenId: String, itemType: String): ListingInfo
 
     """Get all PurchaseOrders"""
     purchaseOrders(itemDataId: String, userDataId: String, limit: Int, offset: Int): PurchaseOrderList!
