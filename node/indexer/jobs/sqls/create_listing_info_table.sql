@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS LISTING_INFO (
                                             ITEMDATAID TEXT,
                                             CHAINTYPE TEXT,
                                             TIME INT,
+                                            TYPE TEXT,
                                             PRIMARY KEY(COMMITID)
     ) WITHOUT ROWID;
 
