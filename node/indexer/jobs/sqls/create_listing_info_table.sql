@@ -15,3 +15,4 @@ CREATE INDEX IF NOT EXISTS index_listing_info_data_id on LISTING_INFO(DATAID);
 CREATE INDEX IF NOT EXISTS index_listing_info_id on LISTING_INFO(COMMITID);
 CREATE INDEX IF NOT EXISTS index_listing_info_token_id on LISTING_INFO(TOKENID);
 CREATE INDEX IF NOT EXISTS index_listing_info_item_data_id on LISTING_INFO(ITEMDATAID);
+CREATE UNIQUE INDEX IF NOT EXISTS index_listing_info_token_id_type on LISTING_INFO(TOKENID, TYPE);
