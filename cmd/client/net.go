@@ -2,7 +2,8 @@ package main
 
 import (
 	"fmt"
-	cliutil "sao-node/cmd"
+
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"

@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/ipfs/go-cid"

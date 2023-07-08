@@ -3,7 +3,8 @@ package repo
 import (
 	"os"
 	"path/filepath"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	dgbadger "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-datastore"

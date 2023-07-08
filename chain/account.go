@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"

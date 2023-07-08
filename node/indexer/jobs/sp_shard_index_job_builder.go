@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"sao-node/chain"
-	"sao-node/types"
-	"sao-node/utils"
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 )
 
 //go:embed sqls/create_sp_shard_table.sql

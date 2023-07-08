@@ -2,8 +2,9 @@ package utils
 
 import (
 	"regexp"
-	"sao-node/types"
 	"strings"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/ipfs/go-cid"
 	jsoniter "github.com/json-iterator/go"

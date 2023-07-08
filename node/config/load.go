@@ -6,9 +6,10 @@ import (
 	"io"
 	"reflect"
 	"regexp"
-	"sao-node/types"
 	"strings"
 	"unicode"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/BurntSushi/toml"
 	"github.com/kelseyhightower/envconfig"
