@@ -66,7 +66,6 @@ func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg 
 		if err != nil {
 			return nil, types.Wrap(types.ErrInvalidPath, err)
 		}
-
 			handler := http.FileServer(http.Dir(path))
 
 			// Configure middleware with the custom claims type
@@ -75,7 +74,6 @@ func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg 
 				SigningKey: secret,
 			}
 	*/
-
 	s := &HttpFileServer{
 		Cfg:        cfg,
 		NodeCFG:    ncfg,
@@ -83,7 +81,9 @@ func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg 
 		cctx:       cctx,
 		ServerPath: serverPath,
 	}
+
 	e.GET("/v1/*", s.load)
+	e.GET("/sao/*", s.load)
 
 	go func() {
 		err := e.Start(cfg.HttpFileServerAddress)
@@ -187,6 +187,8 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 		return nil, types.Wrap(types.ErrMarshalFailed, err)
 	}
 
+	log.Info("proposalbyte", string(proposalBytes))
+
 	jws, err := didManager.CreateJWS(proposalBytes)
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateJwsFailed, err)
@@ -222,7 +224,10 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 	defer closer()
 
 	req := ec.Request()
-	uri := strings.TrimLeft(req.URL.String(), "/v1/")
+
+	log.Info(req.URL.String())
+	uri := strings.Replace(req.URL.String(), "/sao/", "", 1)
+	log.Info(uri)
 
 	re, _ := regexp.Compile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
 	uuid := re.FindString(uri)
@@ -240,6 +245,19 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 
 	if keyword == "" && groupId == "" {
 		ec.String(http.StatusNotFound, "invalid keyword and group")
+		params := strings.SplitN(uri, "/", 3)
+		if len(params) == 3 {
+			key := fmt.Sprintf("%s-%s-%s", params[0], params[2], params[1])
+			model, err := c.GetModel(ctx, key)
+			log.Info(model, err, key)
+			if err == nil {
+				keyword = model.Model.Data
+			}
+		}
+	}
+
+	if keyword == "" {
+		ec.String(http.StatusNotFound, "invalid request")
 		return nil
 	}
 
@@ -249,9 +267,10 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 	}
 
 	proposal := saotypes.QueryProposal{
-		Owner:   didManager.Id,
-		Keyword: keyword,
-		GroupId: groupId,
+		Owner:       didManager.Id,
+		Keyword:     keyword,
+		GroupId:     groupId,
+		KeywordType: 1,
 	}
 
 	if !utils.IsDataId(keyword) {
@@ -271,7 +290,7 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 	resp, err := c.ModelLoad(ctx, request)
 	if err != nil {
 		if strings.Index(err.Error(), "NotFound") > 0 {
-			ec.String(http.StatusNotFound, "invalid keyword and group")
+			ec.String(http.StatusNotFound, "model not found")
 			return nil
 		}
 		return err

@@ -18,6 +18,372 @@ var _ = cid.Undef
 var _ = math.E
 var _ = sort.Sort
 
+func (t *ShardExpireKey) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{161}); err != nil {
+		return err
+	}
+
+	// t.ShardId (uint64) (uint64)
+	if len("ShardId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"ShardId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ShardId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("ShardId")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ShardId)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *ShardExpireKey) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ShardExpireKey{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("ShardExpireKey: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.ShardId (uint64) (uint64)
+		case "ShardId":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.ShardId = uint64(extra)
+
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (t *ShardExpireIndex) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{161}); err != nil {
+		return err
+	}
+
+	// t.Alls ([]types.ShardExpireKey) (slice)
+	if len("Alls") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Alls\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Alls"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Alls")); err != nil {
+		return err
+	}
+
+	if len(t.Alls) > cbg.MaxLength {
+		return xerrors.Errorf("Slice value in field t.Alls was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Alls))); err != nil {
+		return err
+	}
+	for _, v := range t.Alls {
+		if err := v.MarshalCBOR(cw); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (t *ShardExpireIndex) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ShardExpireIndex{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("ShardExpireIndex: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.Alls ([]types.ShardExpireKey) (slice)
+		case "Alls":
+
+			maj, extra, err = cr.ReadHeader()
+			if err != nil {
+				return err
+			}
+
+			if extra > cbg.MaxLength {
+				return fmt.Errorf("t.Alls: array too large (%d)", extra)
+			}
+
+			if maj != cbg.MajArray {
+				return fmt.Errorf("expected cbor array")
+			}
+
+			if extra > 0 {
+				t.Alls = make([]ShardExpireKey, extra)
+			}
+
+			for i := 0; i < int(extra); i++ {
+
+				var v ShardExpireKey
+				if err := v.UnmarshalCBOR(cr); err != nil {
+					return err
+				}
+
+				t.Alls[i] = v
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
+func (t *ShardExpireInfo) MarshalCBOR(w io.Writer) error {
+	if t == nil {
+		_, err := w.Write(cbg.CborNull)
+		return err
+	}
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{163}); err != nil {
+		return err
+	}
+
+	// t.ShardId (uint64) (uint64)
+	if len("ShardId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"ShardId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ShardId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("ShardId")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.ShardId)); err != nil {
+		return err
+	}
+
+	// t.Cid (string) (string)
+	if len("Cid") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"Cid\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Cid"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("Cid")); err != nil {
+		return err
+	}
+
+	if len(t.Cid) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.Cid was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Cid))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.Cid)); err != nil {
+		return err
+	}
+
+	// t.OrderId (uint64) (uint64)
+	if len("OrderId") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"OrderId\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("OrderId"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("OrderId")); err != nil {
+		return err
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajUnsignedInt, uint64(t.OrderId)); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *ShardExpireInfo) UnmarshalCBOR(r io.Reader) (err error) {
+	*t = ShardExpireInfo{}
+
+	cr := cbg.NewCborReader(r)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if maj != cbg.MajMap {
+		return fmt.Errorf("cbor input should be of type map")
+	}
+
+	if extra > cbg.MaxLength {
+		return fmt.Errorf("ShardExpireInfo: map struct too large (%d)", extra)
+	}
+
+	var name string
+	n := extra
+
+	for i := uint64(0); i < n; i++ {
+
+		{
+			sval, err := cbg.ReadString(cr)
+			if err != nil {
+				return err
+			}
+
+			name = string(sval)
+		}
+
+		switch name {
+		// t.ShardId (uint64) (uint64)
+		case "ShardId":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.ShardId = uint64(extra)
+
+			}
+			// t.Cid (string) (string)
+		case "Cid":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.Cid = string(sval)
+			}
+			// t.OrderId (uint64) (uint64)
+		case "OrderId":
+
+			{
+
+				maj, extra, err = cr.ReadHeader()
+				if err != nil {
+					return err
+				}
+				if maj != cbg.MajUnsignedInt {
+					return fmt.Errorf("wrong type for uint64 field")
+				}
+				t.OrderId = uint64(extra)
+
+			}
+
+		default:
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
+		}
+	}
+
+	return nil
+}
 func (t *OrderKey) MarshalCBOR(w io.Writer) error {
 	if t == nil {
 		_, err := w.Write(cbg.CborNull)

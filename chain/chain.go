@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"sao-node/types"
 	"time"
 
@@ -27,6 +28,8 @@ import (
 var log = logging.Logger("chain")
 
 const ADDRESS_PREFIX = "sao"
+const CURRENT_NET_VERSION = "v1.5.0"
+const DOWNLOAD_URL = "https://github.com/SAONetwork/sao-node/releases"
 
 // chain service provides access to cosmos chain, mainly including tx broadcast, data query, event listen.
 type ChainSvc struct {
@@ -61,11 +64,13 @@ type ChainSvcApi interface {
 	GetAccount(ctx context.Context, address string) (client.Account, error)
 	GetBalance(ctx context.Context, address string) (sdktypes.Coins, error)
 	GetDidInfo(ctx context.Context, did string) (types.DidInfo, error)
+	GetFishmen(ctx context.Context) (string, error)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	QueryPaymentAddress(ctx context.Context, did string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
+	GetModel(ctx context.Context, key string) (*modeltypes.QueryGetModelResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
 	Create(ctx context.Context, creator string) (string, error)
 	Reset(ctx context.Context, creator string, peerInfo string, status uint32, txAddresses []string, description *nodetypes.Description) (string, error)
@@ -79,12 +84,15 @@ type ChainSvcApi interface {
 	RenewOrder(ctx context.Context, creator string, orderRenewProposal types.OrderRenewProposal) (string, map[string]string, error)
 	MigrateOrder(ctx context.Context, creator string, dataIds []string) (string, map[string]string, int64, error)
 	GetOrder(ctx context.Context, orderId uint64) (*ordertypes.FullOrder, error)
+	GetShard(ctx context.Context, shardId uint64) (*ordertypes.Shard, error)
 	//SubscribeOrderComplete(ctx context.Context, orderId uint64, doneChan chan OrderCompleteResult) error
 	//UnsubscribeOrderComplete(ctx context.Context, orderId uint64) error
 	//SubscribeShardTask(ctx context.Context, nodeAddr string, shardTaskChan chan *ShardTask) error
 	//UnsubscribeShardTask(ctx context.Context, nodeAddr string) error
 	TerminateOrder(ctx context.Context, creator string, terminateProposal types.OrderTerminateProposal) (string, error)
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
+	ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error)
+	RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error)
 }
 
 func NewChainSvc(
@@ -103,6 +111,15 @@ func NewChainSvc(
 	)
 	if err != nil {
 		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
+	}
+
+	saoClient := saotypes.NewQueryClient(cosmos.Context())
+	resp, err := saoClient.NetVersion(ctx, &saotypes.QueryNetVersionRequest{})
+	if err != nil {
+		return nil, types.Wrap(types.ErrCreateChainServiceFailed, err)
+	}
+	if CURRENT_NET_VERSION != resp.Version {
+		return nil, fmt.Errorf("invalid net version, saonode has to be upgrade to adapt to the net verion %s. Download the the lastest saonode binary at %s", resp.Version, DOWNLOAD_URL)
 	}
 
 	accountRetriever := authtypes.AccountRetriever{}
@@ -240,4 +257,13 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 		return nil, types.Wrap(types.ErrTxQueryFailed, err)
 	}
 	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
+}
+
+func (c *ChainSvc) GetFishmen(ctx context.Context) (string, error) {
+	resp, err := c.nodeClient.Fishmen(ctx, &nodetypes.QueryFishmenRequest{})
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateChainServiceFailed, err)
+	}
+
+	return resp.Fishmen, nil
 }
