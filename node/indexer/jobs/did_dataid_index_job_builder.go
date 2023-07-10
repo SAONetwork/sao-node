@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strings"
 
-	"sao-node/chain"
-	"sao-node/types"
-	"sao-node/utils"
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	logging "github.com/ipfs/go-log/v2"
