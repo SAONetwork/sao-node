@@ -3,28 +3,30 @@ package gql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/graph-gophers/graphql-go"
 	"sao-node/node/indexer/gql/types"
+	"strconv"
 )
 
 type verseComment struct {
-	CommitId      string       `json:"CommitId"`
-	DataId        string       `json:"DataId"`
-	Alias         string       `json:"Alias"`
-	CreatedAt     types.Uint64 `json:"CreatedAt"`
-	UpdatedAt     types.Uint64 `json:"UpdatedAt"`
-	VerseID       string       `json:"VerseID"`
-	Owner         string       `json:"Owner"`
-	Status		int32        `json:"Status"`
-	Comment       string       `json:"Comment"`
-	Parent *verseComment `json:"Parent"`
-	LikeCount     int32        `json:"LikeCount"`
-	HasLiked      bool         `json:"HasLiked"`
-	OwnerEthAddr  string       `json:"OwnerEthAddr"`
-	OwnerAvatar   string       `json:"OwnerAvatar"`
-	OwnerUsername string       `json:"OwnerUsername"`
-	OwnerBio      string       `json:"OwnerBio"`
+	CommitId      string        `json:"CommitId"`
+	DataId        string        `json:"DataId"`
+	Alias         string        `json:"Alias"`
+	CreatedAt     types.Uint64  `json:"CreatedAt"`
+	UpdatedAt     types.Uint64  `json:"UpdatedAt"`
+	VerseID       string        `json:"VerseID"`
+	Owner         string        `json:"Owner"`
+	Status        int32         `json:"Status"`
+	Comment       string        `json:"Comment"`
+	Parent        *verseComment `json:"Parent"`
+	LikeCount     int32         `json:"LikeCount"`
+	HasLiked      bool          `json:"HasLiked"`
+	OwnerEthAddr  string        `json:"OwnerEthAddr"`
+	OwnerAvatar   string        `json:"OwnerAvatar"`
+	OwnerUsername string        `json:"OwnerUsername"`
+	OwnerBio      string        `json:"OwnerBio"`
 }
 
 type verseCommentsArgs struct {
@@ -35,6 +37,12 @@ type verseCommentsArgs struct {
 }
 
 func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([]*verseComment, error) {
+	claims, ok := ctx.Value("claims").(string)
+	// If UserDataId is not nil, require it to match the claims
+	if args.UserDataId != nil && (!ok || claims != *args.UserDataId) {
+		return nil, errors.New("Unauthorized")
+	}
+
 	limit := 10
 	offset := 0
 
@@ -44,6 +52,86 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 
 	if args.Offset != nil {
 		offset = int(*args.Offset)
+	}
+
+	// Find verse by fileInfo ID
+	var v verse
+	err := r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM VERSE WHERE DATAID = ?", args.VerseID).Scan(
+		&v.CommitId,
+		&v.DataId,
+		&v.Alias,
+		&v.CreatedAt,
+		&v.FileIDs,
+		&v.Owner,
+		&v.Price,
+		&v.Digest,
+		&v.Scope,
+		&v.Status,
+		&v.NftTokenID,
+		&v.FileType,
+	)
+
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	if err == sql.ErrNoRows {
+		return nil, errors.New("verse not found")
+	}
+
+	// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
+	if v.Price != "" {
+		price, err := strconv.ParseFloat(v.Price, 64)
+		if err != nil {
+			return nil, err
+		}
+
+		if price > 0 {
+			var count int
+			if args.UserDataId != nil {
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+			}
+			if err != nil {
+				return nil, err
+			}
+
+			v.IsPaid = count > 0
+		}
+	}
+
+	if args.UserDataId != nil {
+		// Process verse scope
+		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)
+		if err != nil {
+			return nil, err
+		}
+
+		// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
+		if v.Price != "" {
+			price, err := strconv.ParseFloat(v.Price, 64)
+			if err != nil {
+				return nil, err
+			}
+
+			if price > 0 {
+				var count int
+				err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+				if err != nil {
+					return nil, err
+				}
+
+				if count == 0 {
+					return nil, errors.New("the verse is charged and not paid yet")
+				}
+			}
+		}
+	} else {
+		if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
+			return nil, errors.New("you are not authorized to access the comments")
+		}
+		if v.Scope == 5 {
+			return nil, errors.New("the verse is private")
+		}
 	}
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, `
