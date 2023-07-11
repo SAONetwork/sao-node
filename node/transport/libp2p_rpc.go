@@ -54,10 +54,25 @@ func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, se
 	}
 
 	var peerInfos []string
+	var addressPattern string
 	for _, a := range h.Addrs() {
 		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
 		log.Debug("addr=", withP2p.String())
 		peerInfos = append(peerInfos, withP2p.String())
+		if strings.Contains(a.String(), "/ip4/127.0.0.1/udp/5154") {
+			addressPattern = a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String())).String()
+		}
+	}
+	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
+		announceAddresses := make([]string, 0)
+		for _, address := range cfg.Libp2p.AnnounceAddresses {
+			if strings.Contains(address, "udp") {
+				announceAddresses = append(announceAddresses, strings.ReplaceAll(addressPattern, "/ip4/127.0.0.1/udp/5154", address))
+			}
+		}
+		if len(announceAddresses) > 0 {
+			peerInfos = append(peerInfos, strings.Join(announceAddresses, ","))
+		}
 	}
 	if len(peerInfos) > 0 {
 		key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
