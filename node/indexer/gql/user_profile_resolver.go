@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
@@ -183,6 +184,10 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, query, *args.UserDataId, *args.UserDataId, limit, offset)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// If no rows are returned, return an empty array
+			return []*userProfile{}, nil
+		}
 		return nil, err
 	}
 	defer rows.Close()
