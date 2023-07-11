@@ -120,6 +120,12 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	peerInfos := ""
 	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
 		peerInfos = strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
+		for _, peerInfo := range strings.Split(peerInfos, ",") {
+			_, err := multiaddr.NewMultiaddr(peerInfo)
+			if err != nil {
+				return nil, types.Wrapf(types.ErrInvalidPeerInfo, "%s", peerInfo)
+			}
+		}
 	} else {
 		for _, a := range host.Addrs() {
 			withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
