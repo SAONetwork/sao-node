@@ -4,12 +4,13 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sao-node/api"
-	"sao-node/chain"
-	"sao-node/types"
-	"sao-node/utils"
 
-	apiclient "sao-node/api/client"
+	"github.com/SaoNetwork/sao-node/api"
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
+
+	apiclient "github.com/SaoNetwork/sao-node/api/client"
 
 	"github.com/mitchellh/go-homedir"
 )

@@ -2,8 +2,9 @@ package api
 
 import (
 	"context"
-	apitypes "sao-node/api/types"
-	"sao-node/types"
+
+	apitypes "github.com/SaoNetwork/sao-node/api/types"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/ipfs/go-cid"

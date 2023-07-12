@@ -4,8 +4,9 @@ import (
 	"context"
 	_ "embed"
 	"net/http"
-	"sao-node/node/indexer"
 	"sync"
+
+	"github.com/SaoNetwork/sao-node/node/indexer"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"

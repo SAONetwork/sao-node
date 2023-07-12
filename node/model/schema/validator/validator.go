@@ -1,9 +1,10 @@
 package validator
 
 import (
-	"sao-node/node/model/rule_engine"
-	"sao-node/types"
 	"strings"
+
+	"github.com/SaoNetwork/sao-node/node/model/rule_engine"
+	"github.com/SaoNetwork/sao-node/types"
 
 	jsoniter "github.com/json-iterator/go"
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v5"

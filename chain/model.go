@@ -2,7 +2,8 @@ package chain
 
 import (
 	"context"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"

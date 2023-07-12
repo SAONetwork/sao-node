@@ -8,15 +8,16 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"sao-node/api"
-	"sao-node/build"
-	cliutil "sao-node/cmd"
-	"sao-node/cmd/account"
-	"sao-node/node"
-	"sao-node/node/config"
-	"sao-node/node/repo"
-	"sao-node/types"
 	"strings"
+
+	"github.com/SaoNetwork/sao-node/api"
+	"github.com/SaoNetwork/sao-node/build"
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/cmd/account"
+	"github.com/SaoNetwork/sao-node/node"
+	"github.com/SaoNetwork/sao-node/node/config"
+	"github.com/SaoNetwork/sao-node/node/repo"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"cosmossdk.io/math"
 	"github.com/common-nighthawk/go-figure"
@@ -29,7 +30,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"os"
-	"sao-node/chain"
+
+	"github.com/SaoNetwork/sao-node/chain"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"

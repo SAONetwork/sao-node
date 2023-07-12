@@ -7,13 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sao-node/chain"
-	cliutil "sao-node/cmd"
-	"sao-node/types"
-	"sao-node/utils"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/chain"
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	did "github.com/SaoNetwork/sao-did"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
