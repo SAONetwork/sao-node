@@ -30,6 +30,16 @@ func (c *ChainSvc) GetMeta(ctx context.Context, dataId string) (*modeltypes.Quer
 	return resp, nil
 }
 
+func (c *ChainSvc) GetModel(ctx context.Context, key string) (*modeltypes.QueryGetModelResponse, error) {
+	resp, err := c.modelClient.Model(ctx, &modeltypes.QueryGetModelRequest{
+		Key: key,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
 func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error) {
 	clientctx := c.cosmos.Context()
 	if height > 0 {

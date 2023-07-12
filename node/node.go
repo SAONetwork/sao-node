@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 
 	"fmt"
 	"strings"
@@ -83,7 +84,7 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, error) {
+func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli.Context) (*Node, error) {
 	c, err := repo.Config()
 	if err != nil {
 		return nil, err
@@ -164,7 +165,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
 	tds.Put(ctx, key, []byte(peerInfos))
-
+	if err != nil {
+		return nil, err
+	}
 	ods, err := repo.Datastore(ctx, "/order")
 	if err != nil {
 		return nil, err
@@ -197,9 +200,19 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	if err != nil {
 		return nil, types.Wrap(types.ErrGetFailed, err)
 	}
-	log.Info("Node Peer Information: ", string(peerInfosBytes))
 
-	for _, ma := range strings.Split(string(peerInfosBytes), ",") {
+	peerInfos = string(peerInfosBytes)
+	if strings.HasSuffix(peerInfos, ",") {
+		peerInfos = strings.TrimRight(peerInfos, ",")
+		tds.Put(ctx, key, []byte(peerInfos))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	log.Info("Node Peer Information: ", string(peerInfos))
+
+	for _, ma := range strings.Split(peerInfos, ",") {
 		_, err := multiaddr.NewMultiaddr(ma)
 		if err != nil {
 			return nil, types.Wrap(types.ErrInvalidServerAddress, err)
@@ -268,7 +281,11 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 
 	if cfg.Module.GatewayEnable {
-		serverPath := path.Join(repo.Path, "http-files")
+		serverPath := cfg.SaoHttpFileServer.HttpFileServerPath
+		if serverPath == "" {
+			serverPath = path.Join(repo.Path, "http-files")
+		}
+
 		status = status | NODE_STATUS_SERVE_GATEWAY
 		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
@@ -279,7 +296,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		if cfg.SaoHttpFileServer.Enable {
 			log.Info("initialize http file server")
 
-			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer)
+			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx)
 			if err != nil {
 				return nil, err
 			}

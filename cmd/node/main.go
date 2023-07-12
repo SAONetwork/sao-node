@@ -769,7 +769,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		snode, err := node.NewNode(ctx, repo, cliutil.KeyringHome)
+		snode, err := node.NewNode(ctx, repo, cliutil.KeyringHome, cctx)
 		if err != nil {
 			return err
 		}

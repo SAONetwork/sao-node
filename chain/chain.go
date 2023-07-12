@@ -71,6 +71,7 @@ type ChainSvcApi interface {
 	QueryPaymentAddress(ctx context.Context, did string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
 	GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error)
+	GetModel(ctx context.Context, key string) (*modeltypes.QueryGetModelResponse, error)
 	UpdatePermission(ctx context.Context, signer string, proposal *types.PermissionProposal) (string, error)
 	Create(ctx context.Context, creator string) (string, error)
 	Reset(ctx context.Context, creator string, peerInfo string, status uint32, txAddresses []string, description *nodetypes.Description) (string, error)
