@@ -105,7 +105,7 @@ func NewSaoClient(ctx context.Context, opt SaoClientOptions) (*SaoClient, func()
 		}
 
 		if len(cfg.Token) == 0 {
-			return nil, nil, types.Wrapf(types.ErrInvalidToken, "Please fill token in configuration file.")
+			cfg.Token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJub25lIiwicmVhZCJdfQ.MtRRyP4iD5Xm7HhWnhuyWaqr8KIQWZ87syotX20T6Ho"
 		}
 
 		gatewayApi, closer, err = apiclient.NewNodeApi(ctx, opt.Gateway, cfg.Token)
