@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	cliutil "sao-node/cmd"
+
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/urfave/cli/v2"

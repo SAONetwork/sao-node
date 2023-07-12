@@ -57,7 +57,7 @@ func defCommon() Common {
 			StagingSapceSize: 32 * 1024 * 1024 * 1024,
 		},
 		Module: Module{
-			GatewayEnable: true,
+			GatewayEnable: false,
 			StorageEnable: true,
 			IndexerEnable: false,
 		},

@@ -2,8 +2,9 @@ package transport
 
 import (
 	"context"
-	"sao-node/types"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"

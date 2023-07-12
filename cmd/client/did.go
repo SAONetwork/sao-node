@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	saoclient "sao-node/client"
-	cliutil "sao-node/cmd"
-	"sao-node/types"
+
+	saoclient "github.com/SaoNetwork/sao-node/client"
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/tendermint/tendermint/libs/json"
 	"github.com/urfave/cli/v2"

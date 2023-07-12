@@ -8,15 +8,16 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"sao-node/api"
-	"sao-node/build"
-	cliutil "sao-node/cmd"
-	"sao-node/cmd/account"
-	"sao-node/node"
-	"sao-node/node/config"
-	"sao-node/node/repo"
-	"sao-node/types"
 	"strings"
+
+	"github.com/SaoNetwork/sao-node/api"
+	"github.com/SaoNetwork/sao-node/build"
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/cmd/account"
+	"github.com/SaoNetwork/sao-node/node"
+	"github.com/SaoNetwork/sao-node/node/config"
+	"github.com/SaoNetwork/sao-node/node/repo"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"cosmossdk.io/math"
 	"github.com/common-nighthawk/go-figure"
@@ -29,7 +30,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"os"
-	"sao-node/chain"
+
+	"github.com/SaoNetwork/sao-node/chain"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
@@ -119,6 +121,8 @@ func main() {
 			migrateCmd,
 			infoCmd,
 			claimCmd,
+			queryInfoCmd,
+			queryFaultsCmd,
 			declareFaultsRecoverCmd,
 			jobsCmd,
 			initTxAddressPoolCmd,
@@ -767,7 +771,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		snode, err := node.NewNode(ctx, repo, cliutil.KeyringHome)
+		snode, err := node.NewNode(ctx, repo, cliutil.KeyringHome, cctx)
 		if err != nil {
 			return err
 		}
@@ -900,6 +904,106 @@ var claimCmd = &cli.Command{
 			return err
 		} else {
 			fmt.Println(tx)
+		}
+
+		return nil
+	},
+}
+
+var queryInfoCmd = &cli.Command{
+	Name:  "fault-info",
+	Usage: "query the storage fault details",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "fault-id",
+			Usage:    "storage fault id",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		faultId := cctx.String("fault-id")
+		if faultId == "" {
+			return types.Wrapf(types.ErrInvalidParameters, "must provide --fault-id")
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			return err
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		fault, err := chainSvc.GetFault(ctx, faultId)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("==== Faults %s Details ====\n", faultId)
+		fmt.Printf(" Data Id %s\n", fault.DataId)
+		fmt.Printf(" Commit Id %s\n", fault.CommitId)
+		fmt.Printf(" Order Id %d\n", fault.OrderId)
+		fmt.Printf(" Shard Id %d\n", fault.ShardId)
+		fmt.Printf(" Reporter %s\n", fault.Reporter)
+		fmt.Printf(" Penalty %d\n", fault.Penalty)
+		fmt.Printf(" Status %d\n", fault.Status)
+		fmt.Println("===========================")
+
+		return nil
+	},
+}
+
+var queryFaultsCmd = &cli.Command{
+	Name:  "query-faults",
+	Usage: "query the storage faults on current node",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		apiClient, closer, err := cliutil.GetNodeApi(cctx, cctx.String(FlagStorageRepo), NodeApi, cliutil.ApiToken)
+		if err != nil {
+			return types.Wrap(types.ErrCreateClientFailed, err)
+		}
+		defer closer()
+
+		creator, err := apiClient.GetNodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		chainAddress, err := cliutil.GetChainAddress(cctx, cctx.String("repo"), cctx.App.Name)
+		if err != nil {
+			return err
+		}
+
+		chainSvc, err := chain.NewChainSvc(ctx, chainAddress, "/websocket", cliutil.KeyringHome)
+		if err != nil {
+			return err
+		}
+
+		faultIds, err := chainSvc.GetMyFaults(ctx, creator)
+		if err != nil {
+			return err
+		}
+
+		for _, faultId := range faultIds {
+			fmt.Printf("==== Faults %s Details ====\n", faultId)
+
+			fault, err := chainSvc.GetFault(ctx, faultId)
+			if err != nil {
+				return err
+			}
+			fmt.Printf(" Data Id %s\n", fault.DataId)
+			fmt.Printf(" Commit Id %s\n", fault.CommitId)
+			fmt.Printf(" Order Id %d\n", fault.OrderId)
+			fmt.Printf(" Shard Id %d\n", fault.ShardId)
+			fmt.Printf(" Reporter %s\n", fault.Reporter)
+			fmt.Printf(" Penalty %d\n", fault.Penalty)
+			fmt.Printf(" Status %d\n", fault.Status)
+			fmt.Println("===========================")
 		}
 
 		return nil

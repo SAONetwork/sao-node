@@ -150,6 +150,7 @@ var (
 	ErrExpiredOrder       = errors.Register(ModuleModel, 14029, "expired order")
 	ErrRetriesExceed      = errors.Register(ModuleModel, 14030, "shard retries too many times")
 	ErrInvalidProvider    = errors.Register(ModuleModel, 14031, "invalid provider")
+	ErrInvalidPeerInfo    = errors.Register(ModuleModel, 14032, "invalid peer info")
 )
 
 var (

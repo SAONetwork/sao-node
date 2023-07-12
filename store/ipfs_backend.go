@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sao-node/types"
 	"strings"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"

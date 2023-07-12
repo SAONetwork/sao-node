@@ -1,7 +1,7 @@
 package gql
 
 import (
-	"sao-node/node/indexer"
+	"github.com/SaoNetwork/sao-node/node/indexer"
 )
 
 type resolver struct {

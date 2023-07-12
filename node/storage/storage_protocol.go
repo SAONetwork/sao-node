@@ -2,7 +2,8 @@ package storage
 
 import (
 	"context"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 )
 
 type StorageProtocol interface {
