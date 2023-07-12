@@ -218,6 +218,28 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 				continue
 			}
 
+			if v.Price != "" {
+				price, err := strconv.ParseFloat(v.Price, 64)
+				if err != nil {
+					return nil, err
+				}
+
+				if price > 0 {
+					var count int
+					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+					if err != nil {
+						return nil, err
+					}
+
+					if count == 0 {
+						//the verse is charged and not paid yet
+						fmt.Printf("verse is not paid: %s\n", v.DataId)
+						continue
+					}
+					v.IsPaid = count > 0
+				}
+			}
+
 			// Process verse scope
 			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.UserDataId)
 			if err != nil {
