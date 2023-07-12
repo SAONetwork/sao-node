@@ -100,12 +100,6 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 	}
 
 	if args.UserDataId != nil {
-		// Process verse scope
-		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)
-		if err != nil {
-			return nil, err
-		}
-
 		// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
 		if v.Price != "" {
 			price, err := strconv.ParseFloat(v.Price, 64)
@@ -123,7 +117,19 @@ func (r *resolver) VerseComments(ctx context.Context, args verseCommentsArgs) ([
 				if count == 0 {
 					return nil, errors.New("the verse is charged and not paid yet")
 				}
+				v.IsPaid = count > 0
 			}
+		}
+
+		// Process verse scope
+		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)
+		if err != nil {
+			return nil, err
+		}
+
+		if v.NotInScope > 1 {
+			// verse is not accessible, return
+			return nil, errors.New("you are not authorized to access the file")
 		}
 	} else {
 		if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
