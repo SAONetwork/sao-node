@@ -189,8 +189,11 @@ var createCmd = &cli.Command{
 		}
 
 		if isPublic {
-			queryProposal.Owner = "all"
-			proposal.Owner = "all"
+			builtinDids, err := client.QueryDidParams(ctx)
+			if err != nil {
+				return err
+			}
+			proposal.ReadonlyDids = strings.Split(builtinDids, ",")
 		}
 
 		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)

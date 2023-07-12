@@ -14,6 +14,14 @@ import (
 	sidtypes "github.com/SaoNetwork/sao/x/did/types"
 )
 
+func (c *ChainSvc) QueryDidParams(ctx context.Context) (string, error) {
+	resp, err := c.didClient.Params(ctx, &sidtypes.QueryParamsRequest{})
+	if err != nil {
+		return "", types.Wrap(types.ErrQueryDidParamFailed, err)
+	}
+	return resp.Params.BuiltinDid, nil
+}
+
 func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error) {
 	resp, err := c.didClient.SidDocument(ctx, &sidtypes.QueryGetSidDocumentRequest{VersionId: versionId})
 	if err != nil {

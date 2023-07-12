@@ -66,6 +66,7 @@ type ChainSvcApi interface {
 	GetDidInfo(ctx context.Context, did string) (types.DidInfo, error)
 	GetFishmen(ctx context.Context) (string, error)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
+	QueryDidParams(ctx context.Context) (string, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	QueryPaymentAddress(ctx context.Context, did string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
