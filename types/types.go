@@ -3,6 +3,7 @@ package types
 // TODO: optimizae: OrderStats and OrderShards use comma split string
 
 import (
+	"context"
 	"strconv"
 	"strings"
 
@@ -148,3 +149,5 @@ func ParseMetaCommit(mc string) (MetaCommit, error) {
 		Height:   height,
 	}, nil
 }
+
+type FetchFunc func(context.Context, cid.Cid) ([]byte, error)

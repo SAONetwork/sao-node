@@ -3,13 +3,19 @@ package chain
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sao-node/types"
 	"strings"
 	"time"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
+	ordertypes "github.com/SaoNetwork/sao/x/order/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
+	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 )
 
 func (c *ChainSvc) Create(ctx context.Context, creator string) (string, error) {
@@ -283,6 +289,78 @@ func (c *ChainSvc) StartStatusReporter(ctx context.Context, creator string, stat
 				log.Infof("Reported node status[%b] to SAO network, txHash=%s", status, txHash)
 			case <-ctx.Done():
 				return
+			}
+		}
+	}()
+}
+
+func (c *ChainSvc) StartShardChecker(ctx context.Context, creator string, stagingPath string, fetch types.FetchFunc) {
+	shardChan := make(chan ordertypes.Shard, 100)
+	path, err := homedir.Expand(stagingPath)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	go func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				log.Info("Checking the shards assigned to me...")
+
+				resp, err := c.orderClient.ShardAll(ctx, &ordertypes.QueryAllShardRequest{
+					Pagination: &sdkquerytypes.PageRequest{Offset: 0, Limit: 300, Reverse: true, CountTotal: true}})
+				if err != nil {
+					log.Error(err.Error())
+				} else {
+					for _, shard := range resp.Shard {
+						if creator != shard.Sp {
+							continue
+						} else {
+							shardChan <- shard
+						}
+					}
+				}
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			shard := <-shardChan
+			time.Sleep(time.Second * 10)
+
+			order, err := c.GetOrder(ctx, shard.OrderId)
+			if err != nil {
+				log.Error(err.Error())
+			} else {
+				filename := filepath.Join(path, order.Owner, shard.Cid+"-"+order.DataId)
+				_, err := os.Stat(filename)
+				if err != nil {
+					if os.IsNotExist(err) {
+						cid, err := cid.Decode(shard.Cid)
+						if err != nil {
+							log.Error(err.Error())
+						}
+
+						content, err := fetch(ctx, cid)
+						if err != nil {
+							log.Error(err.Error())
+						} else {
+							_, _, err = c.CompleteOrder(ctx, creator, order.Id, cid, uint64(len(content)))
+							if err != nil {
+								log.Error(err.Error())
+							}
+						}
+					} else {
+						log.Error(err.Error())
+					}
+				}
 			}
 		}
 	}()

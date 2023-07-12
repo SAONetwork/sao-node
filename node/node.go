@@ -2,6 +2,7 @@ package node
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -414,6 +415,25 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	chainSvc.StartStatusReporter(ctx, sn.address, status)
+
+	chainSvc.StartShardChecker(ctx, sn.address, transportStagingPath, func(ctx context.Context, cid cid.Cid) ([]byte, error) {
+		reader, err := storageManager.Get(ctx, cid)
+		if err != nil {
+			return nil, err
+		}
+
+		content, err := io.ReadAll(reader)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = storageManager.Store(ctx, cid, bytes.NewReader(content))
+		if err != nil {
+			return nil, err
+		} else {
+			return content, nil
+		}
+	})
 
 	sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
 		for _, c := range notifyChan {
