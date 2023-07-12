@@ -3,10 +3,11 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"sao-node/node/transport"
-	"sao-node/types"
 	"strings"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/node/transport"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/network"

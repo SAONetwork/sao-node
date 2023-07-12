@@ -9,12 +9,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sao-node/api"
-	apitypes "sao-node/api/types"
-	"sao-node/types"
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/SaoNetwork/sao-node/api"
+	apitypes "github.com/SaoNetwork/sao-node/api/types"
+	"github.com/SaoNetwork/sao-node/types"
 
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"
 	"github.com/filecoin-project/go-jsonrpc/auth"

@@ -2,7 +2,8 @@ package cache
 
 import (
 	"encoding/json"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/bradfitz/gomemcache/memcache"
 )

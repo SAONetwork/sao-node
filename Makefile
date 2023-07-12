@@ -3,7 +3,7 @@ SHELL=/usr/bin/env bash
 GOCC?=go
 BINS:=
 
-ldflags=-X=sao-node/build.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
+ldflags=-X=sao-node/build.CurrentCommit=$(subst -,.,$(shell bash ./version.sh))
 GOFLAGS+=-ldflags="$(ldflags)"
 
 all: saonode saoclient

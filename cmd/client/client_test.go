@@ -3,9 +3,10 @@ package main
 import (
 	"context"
 	"encoding/hex"
-	saoclient "sao-node/client"
-	"sao-node/utils"
 	"testing"
+
+	saoclient "github.com/SaoNetwork/sao-node/client"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"

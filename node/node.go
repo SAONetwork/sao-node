@@ -4,22 +4,23 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	saokey "github.com/SaoNetwork/sao-did/key"
 	"io"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"sao-node/api"
-	"sao-node/chain"
-	"sao-node/node/gateway"
-	"sao-node/node/indexer"
-	"sao-node/node/indexer/gql"
-	"sao-node/node/transport"
-	"sao-node/store"
-	"sao-node/utils"
 	"sort"
 	"time"
+
+	saokey "github.com/SaoNetwork/sao-did/key"
+	"github.com/SaoNetwork/sao-node/api"
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/node/gateway"
+	"github.com/SaoNetwork/sao-node/node/indexer"
+	"github.com/SaoNetwork/sao-node/node/indexer/gql"
+	"github.com/SaoNetwork/sao-node/node/transport"
+	"github.com/SaoNetwork/sao-node/store"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	"cosmossdk.io/math"
 	saodid "github.com/SaoNetwork/sao-did"
@@ -30,15 +31,17 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
 
 	"fmt"
-	apitypes "sao-node/api/types"
-	"sao-node/node/config"
-	"sao-node/node/model"
-	"sao-node/node/repo"
-	"sao-node/node/storage"
-	"sao-node/types"
 	"strings"
+
+	apitypes "github.com/SaoNetwork/sao-node/api/types"
+	"github.com/SaoNetwork/sao-node/node/config"
+	"github.com/SaoNetwork/sao-node/node/model"
+	"github.com/SaoNetwork/sao-node/node/repo"
+	"github.com/SaoNetwork/sao-node/node/storage"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -81,7 +84,7 @@ type JwtPayload struct {
 	Allow []auth.Permission
 }
 
-func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, error) {
+func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli.Context) (*Node, error) {
 	c, err := repo.Config()
 	if err != nil {
 		return nil, err
@@ -118,6 +121,12 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	peerInfos := ""
 	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
 		peerInfos = strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
+		for _, peerInfo := range strings.Split(peerInfos, ",") {
+			_, err := multiaddr.NewMultiaddr(peerInfo)
+			if err != nil {
+				return nil, types.Wrapf(types.ErrInvalidPeerInfo, "%s", peerInfo)
+			}
+		}
 	} else {
 		for _, a := range host.Addrs() {
 			withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
@@ -156,7 +165,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 
 	key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
 	tds.Put(ctx, key, []byte(peerInfos))
-
+	if err != nil {
+		return nil, err
+	}
 	ods, err := repo.Datastore(ctx, "/order")
 	if err != nil {
 		return nil, err
@@ -189,9 +200,19 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	if err != nil {
 		return nil, types.Wrap(types.ErrGetFailed, err)
 	}
-	log.Info("Node Peer Information: ", string(peerInfosBytes))
 
-	for _, ma := range strings.Split(string(peerInfosBytes), ",") {
+	peerInfos = string(peerInfosBytes)
+	if strings.HasSuffix(peerInfos, ",") {
+		peerInfos = strings.TrimRight(peerInfos, ",")
+		tds.Put(ctx, key, []byte(peerInfos))
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	log.Info("Node Peer Information: ", string(peerInfos))
+
+	for _, ma := range strings.Split(peerInfos, ",") {
 		_, err := multiaddr.NewMultiaddr(ma)
 		if err != nil {
 			return nil, types.Wrap(types.ErrInvalidServerAddress, err)
@@ -260,7 +281,11 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 	}
 
 	if cfg.Module.GatewayEnable {
-		serverPath := path.Join(repo.Path, "http-files")
+		serverPath := cfg.SaoHttpFileServer.HttpFileServerPath
+		if serverPath == "" {
+			serverPath = path.Join(repo.Path, "http-files")
+		}
+
 		status = status | NODE_STATUS_SERVE_GATEWAY
 		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
@@ -271,7 +296,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string) (*Node, e
 		if cfg.SaoHttpFileServer.Enable {
 			log.Info("initialize http file server")
 
-			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer)
+			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx)
 			if err != nil {
 				return nil, err
 			}

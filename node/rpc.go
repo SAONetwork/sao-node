@@ -3,7 +3,8 @@ package node
 import (
 	"context"
 	"net/http"
-	"sao-node/api"
+
+	"github.com/SaoNetwork/sao-node/api"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"

@@ -7,13 +7,14 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sao-node/chain"
-	"sao-node/node/config"
-	"sao-node/node/queue"
-	"sao-node/store"
-	"sao-node/types"
-	"sao-node/utils"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/node/config"
+	"github.com/SaoNetwork/sao-node/node/queue"
+	"github.com/SaoNetwork/sao-node/store"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	ordertypes "github.com/SaoNetwork/sao/x/order/types"
@@ -468,8 +469,12 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 			}
 			contentList[shard.ShardId] = resp.Content
 		} else {
-			return nil, types.Wrapf(types.ErrFailuresResponsed, resp.Message)
+			continue
 		}
+	}
+
+	if content == nil && len(contentList) == 0 {
+		return nil, types.Wrapf(types.ErrFailuresResponsed, "%s", meta.DataId)
 	}
 
 	if res == nil {
@@ -987,6 +992,9 @@ func (gs *GatewaySvc) checkTimeout(ctx context.Context) {
 
 					newShards := make(map[string]types.OrderShardInfo)
 					for sp, shard := range order.Shards {
+						if shard.Status == ordertypes.ShardTimeout {
+							continue
+						}
 						peer, _ := gs.chainSvc.GetNodePeer(ctx, sp)
 						newShard := types.OrderShardInfo{
 							ShardId:  shard.Id,

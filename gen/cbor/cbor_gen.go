@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	gen "github.com/whyrusleeping/cbor-gen"
 )

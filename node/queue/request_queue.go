@@ -1,8 +1,9 @@
 package queue
 
 import (
-	"sao-node/types"
 	"sync"
+
+	"github.com/SaoNetwork/sao-node/types"
 )
 
 type WorkRequest struct {
