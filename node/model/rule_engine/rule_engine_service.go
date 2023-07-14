@@ -1,8 +1,9 @@
 package rule_engine
 
 import (
-	"sao-node/types"
 	"sync"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/hyperjumptech/grule-rule-engine/ast"
 	"github.com/hyperjumptech/grule-rule-engine/builder"

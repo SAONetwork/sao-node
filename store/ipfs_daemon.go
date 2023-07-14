@@ -5,8 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sao-node/types"
 	"sync"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	icore "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/kubo/config"

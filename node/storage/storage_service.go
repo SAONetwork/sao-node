@@ -5,13 +5,14 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sao-node/chain"
-	"sao-node/node/queue"
-	"sao-node/store"
-	"sao-node/types"
-	"sao-node/utils"
 	"strings"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/node/queue"
+	"github.com/SaoNetwork/sao-node/store"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 

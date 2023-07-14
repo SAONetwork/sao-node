@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
-	apiclient "sao-node/api/client"
-	cliutil "sao-node/cmd"
-	"sao-node/types"
+
+	apiclient "github.com/SaoNetwork/sao-node/api/client"
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/urfave/cli/v2"

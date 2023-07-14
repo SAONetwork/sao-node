@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	"sao-node/types"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"

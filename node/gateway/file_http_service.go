@@ -16,11 +16,11 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/urfave/cli/v2"
 
-	"sao-node/chain"
-	"sao-node/client"
-	"sao-node/node/config"
-	"sao-node/types"
-	"sao-node/utils"
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/client"
+	"github.com/SaoNetwork/sao-node/node/config"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"

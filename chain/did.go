@@ -2,7 +2,8 @@ package chain
 
 import (
 	"context"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"golang.org/x/xerrors"
 

@@ -1,4 +1,4 @@
-module sao-node
+module github.com/SaoNetwork/sao-node
 
 go 1.19
 
