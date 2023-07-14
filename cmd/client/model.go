@@ -189,14 +189,6 @@ var createCmd = &cli.Command{
 			Keyword: dataId,
 		}
 
-		if isPublic {
-			builtinDids, err := client.QueryDidParams(ctx)
-			if err != nil {
-				return err
-			}
-			proposal.ReadonlyDids = strings.Split(builtinDids, ",")
-		}
-
 		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
 		if err != nil {
 			return err
@@ -220,6 +212,50 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		if isPublic {
+			builtinDids, err := client.QueryDidParams(ctx)
+			if err != nil {
+				return err
+			}
+
+			proposal := saotypes.PermissionProposal{
+				Owner:         didManager.Id,
+				DataId:        resp.DataId,
+				ReadonlyDids:  strings.Split(builtinDids, ","),
+				ReadwriteDids: []string{},
+			}
+
+			proposalBytes, err := proposal.Marshal()
+			if err != nil {
+				return types.Wrap(types.ErrMarshalFailed, err)
+			}
+
+			jws, err := didManager.CreateJWS(proposalBytes)
+			if err != nil {
+				return types.Wrap(types.ErrCreateJwsFailed, err)
+			}
+
+			request := &types.PermissionProposal{
+				Proposal: proposal,
+				JwsSignature: saotypes.JwsSignature{
+					Protected: jws.Signatures[0].Protected,
+					Signature: jws.Signatures[0].Signature,
+				},
+			}
+			if clientPublish {
+				_, err = client.UpdatePermission(ctx, signer, request)
+				if err != nil {
+					return err
+				}
+			} else {
+				_, err := client.ModelUpdatePermission(ctx, request, !clientPublish)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		fmt.Printf("alias: %s, data id: %s\r\n", resp.Alias, resp.DataId)
 		return nil
 	},
