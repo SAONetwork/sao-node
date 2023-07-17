@@ -296,7 +296,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		if cfg.SaoHttpFileServer.Enable {
 			log.Info("initialize http file server")
 
-			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx)
+			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx, keyringHome)
 			if err != nil {
 				return nil, err
 			}
