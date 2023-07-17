@@ -2,8 +2,11 @@ package gateway
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
 	"regexp"
 	"strings"
@@ -18,6 +21,7 @@ import (
 
 	"github.com/SaoNetwork/sao-node/chain"
 	"github.com/SaoNetwork/sao-node/client"
+	"github.com/SaoNetwork/sao-node/node/cache"
 	"github.com/SaoNetwork/sao-node/node/config"
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
@@ -25,6 +29,10 @@ import (
 	saodid "github.com/SaoNetwork/sao-did"
 	saokey "github.com/SaoNetwork/sao-did/key"
 )
+
+type Info struct {
+	Keys []string `json:"keys"`
+}
 
 const (
 	FlagClientRepo = "repo"
@@ -34,11 +42,13 @@ const (
 var secret = []byte("SAO Network")
 
 type HttpFileServer struct {
-	Cfg        *config.SaoHttpFileServer
-	NodeCFG    *config.Node
-	Server     *echo.Echo
-	cctx       *cli.Context
-	ServerPath string
+	Cfg         *config.SaoHttpFileServer
+	NodeCFG     *config.Node
+	Server      *echo.Echo
+	cctx        *cli.Context
+	ServerPath  string
+	CacheSvc    cache.CacheSvcApi
+	KeyringHome string
 }
 
 type jwtClaims struct {
@@ -46,7 +56,7 @@ type jwtClaims struct {
 	jwt.StandardClaims
 }
 
-func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg *config.Node, cctx *cli.Context) (*HttpFileServer, error) {
+func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg *config.Node, cctx *cli.Context, keyringHome string) (*HttpFileServer, error) {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
@@ -58,32 +68,30 @@ func StartHttpFileServer(serverPath string, cfg *config.SaoHttpFileServer, ncfg 
 		e.Use(middleware.Recover())
 	}
 
-	// Unauthenticated entry
 	e.GET("/test", test)
 
-	/*
-		path, err := homedir.Expand(serverPath)
-		if err != nil {
-			return nil, types.Wrap(types.ErrInvalidPath, err)
-		}
-			handler := http.FileServer(http.Dir(path))
+	cacheSvc := cache.NewLruCacheSvc()
 
-			// Configure middleware with the custom claims type
-			config := middleware.JWTConfig{
-				Claims:     &jwtClaims{},
-				SigningKey: secret,
-			}
-	*/
+	if cfg.CacheSize <= 0 {
+		cfg.CacheSize = 1024
+	}
+
+	cacheSvc.CreateCache("sao-http", cfg.CacheSize)
 	s := &HttpFileServer{
-		Cfg:        cfg,
-		NodeCFG:    ncfg,
-		Server:     e,
-		cctx:       cctx,
-		ServerPath: serverPath,
+		Cfg:         cfg,
+		NodeCFG:     ncfg,
+		Server:      e,
+		cctx:        cctx,
+		ServerPath:  serverPath,
+		CacheSvc:    cacheSvc,
+		KeyringHome: keyringHome,
 	}
 
 	e.GET("/v1/*", s.load)
 	e.GET("/sao/*", s.load)
+
+	s.loadCacheFiles()
+	go s.CleanCacheFiles()
 
 	go func() {
 		err := e.Start(cfg.HttpFileServerAddress)
@@ -205,24 +213,6 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 
 func (h *HttpFileServer) load(ec echo.Context) error {
 
-	keyringHome := "~/.sao"
-	keyName := "client"
-	opt := client.SaoClientOptions{
-		Repo:        "~/.sao-cli",
-		Gateway:     "http://127.0.0.1:5151/rpc/v0",
-		ChainAddr:   h.NodeCFG.Chain.Remote,
-		KeyName:     keyName,
-		KeyringHome: keyringHome,
-	}
-
-	ctx := context.Background()
-	c, closer, err := client.NewSaoClient(ctx, opt)
-	if err != nil {
-		return err
-	}
-
-	defer closer()
-
 	req := ec.Request()
 
 	log.Info(req.URL.String())
@@ -231,72 +221,190 @@ func (h *HttpFileServer) load(ec echo.Context) error {
 
 	re, _ := regexp.Compile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
 	uuid := re.FindString(uri)
-	var keyword string
-	var groupId string
-	if uuid != "" {
-		keyword = uuid
-	} else {
-		params := strings.SplitN(uri, "/", 2)
-		if len(params) == 2 {
-			groupId = params[0]
-			keyword = params[1]
+	var dataId string
+	_dataId, err := h.CacheSvc.Get("sao-http", uri)
+
+	if _dataId != nil {
+		cachedFile := fmt.Sprintf("%s/%s", h.ServerPath, _dataId.(string))
+		_, err := os.Stat(cachedFile)
+		if err != nil {
+			_dataId = nil
 		}
 	}
 
-	if keyword == "" && groupId == "" {
-		ec.String(http.StatusNotFound, "invalid keyword and group")
-		params := strings.SplitN(uri, "/", 3)
-		if len(params) == 3 {
-			key := fmt.Sprintf("%s-%s-%s", params[0], params[2], params[1])
-			model, err := c.GetModel(ctx, key)
-			log.Info(model, err, key)
-			if err == nil {
-				keyword = model.Model.Data
+	if err != nil || _dataId == nil {
+		clicfg, err := utils.FromFile("~/.sao-cli", client.DefaultSaoClientConfig())
+		if err != nil {
+			return types.Wrap(types.ErrDecodeConfigFailed, err)
+		}
+		cfg, _ := clicfg.(*client.SaoClientConfig)
+
+		opt := client.SaoClientOptions{
+			Repo:        "~/.sao-cli",
+			Gateway:     "http://127.0.0.1:5151/rpc/v0",
+			ChainAddr:   h.NodeCFG.Chain.Remote,
+			KeyName:     cfg.KeyName,
+			KeyringHome: h.KeyringHome,
+		}
+
+		ctx := context.Background()
+		c, closer, err := client.NewSaoClient(ctx, opt)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+
+		var keyword string
+		var groupId string
+		if uuid != "" {
+			keyword = uuid
+		} else {
+			params := strings.SplitN(uri, "/", 2)
+			if len(params) == 2 {
+				groupId = params[0]
+				keyword = params[1]
+			}
+		}
+
+		if keyword == "" && groupId == "" {
+			ec.String(http.StatusNotFound, "invalid keyword and group")
+			params := strings.SplitN(uri, "/", 3)
+			if len(params) == 3 {
+				key := fmt.Sprintf("%s-%s-%s", params[0], params[2], params[1])
+				model, err := c.GetModel(ctx, key)
+				log.Info(model, err, key)
+				if err == nil {
+					keyword = model.Model.Data
+				}
+			}
+		}
+
+		if keyword == "" {
+			ec.String(http.StatusNotFound, "invalid request")
+			return nil
+		}
+
+		didManager, _, err := GetDidManager(ctx, c.Cfg.KeyName)
+		if err != nil {
+			return err
+		}
+
+		proposal := saotypes.QueryProposal{
+			Owner:       didManager.Id,
+			Keyword:     keyword,
+			GroupId:     groupId,
+			KeywordType: 1,
+		}
+
+		if !utils.IsDataId(keyword) {
+			proposal.KeywordType = 2
+		}
+		gatewayAddress, err := c.GetNodeAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		request, err := buildQueryRequest(ctx, didManager, proposal, c, gatewayAddress)
+		if err != nil {
+			return err
+		}
+
+		log.Debug("load model")
+		resp, err := c.ModelLoad(ctx, request)
+		if err != nil {
+			if strings.Index(err.Error(), "NotFound") > 0 {
+				ec.String(http.StatusNotFound, "model not found")
+				return nil
+			}
+			return err
+		}
+		dataId = resp.DataId
+		h.CacheSvc.Put("sao-http", uri, dataId)
+		h.updateCacheInfo(dataId, uri)
+	} else {
+		dataId = _dataId.(string)
+	}
+
+	cacheFile := path.Join(h.ServerPath, dataId)
+
+	return ec.File(cacheFile)
+}
+
+func (h *HttpFileServer) updateCacheInfo(dataId, key string) {
+	infoFile := fmt.Sprintf("%s/%s.info", h.ServerPath, dataId)
+	info, err := os.ReadFile(infoFile)
+	var dataInfo Info
+	if err != nil {
+		json.Unmarshal(info, &dataInfo)
+		dataInfo.Keys = append(dataInfo.Keys, key)
+	} else {
+		dataInfo = Info{
+			Keys: []string{key},
+		}
+	}
+	raw, _ := json.Marshal(&dataInfo)
+	os.WriteFile(infoFile, raw, 0644)
+}
+
+func (h *HttpFileServer) loadCacheFiles() {
+	files, err := ioutil.ReadDir(h.ServerPath)
+	if err != nil {
+		os.MkdirAll(h.ServerPath, os.ModePerm)
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		if len(file.Name()) != 36 {
+			continue
+		}
+		infoFile := fmt.Sprintf("%s/%s.info", h.ServerPath, file.Name())
+		info, err := os.ReadFile(infoFile)
+		if err == nil {
+			var dataInfo Info
+			json.Unmarshal(info, &dataInfo)
+			for _, key := range dataInfo.Keys {
+				h.CacheSvc.Put("sao-http", key, file.Name())
 			}
 		}
 	}
+}
 
-	if keyword == "" {
-		ec.String(http.StatusNotFound, "invalid request")
-		return nil
-	}
-
-	didManager, _, err := GetDidManager(ctx, c.Cfg.KeyName)
-	if err != nil {
-		return err
-	}
-
-	proposal := saotypes.QueryProposal{
-		Owner:       didManager.Id,
-		Keyword:     keyword,
-		GroupId:     groupId,
-		KeywordType: 1,
-	}
-
-	if !utils.IsDataId(keyword) {
-		proposal.KeywordType = 2
-	}
-
-	gatewayAddress, err := c.GetNodeAddress(ctx)
-	if err != nil {
-		return err
-	}
-
-	request, err := buildQueryRequest(ctx, didManager, proposal, c, gatewayAddress)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.ModelLoad(ctx, request)
-	if err != nil {
-		if strings.Index(err.Error(), "NotFound") > 0 {
-			ec.String(http.StatusNotFound, "model not found")
-			return nil
+func (h *HttpFileServer) CleanCacheFiles() {
+	t := time.NewTicker(1800 * time.Second)
+	for {
+		files, err := ioutil.ReadDir(h.ServerPath)
+		if err != nil {
+			continue
 		}
-		return err
+		for _, file := range files {
+			if file.IsDir() {
+				continue
+			}
+			if len(file.Name()) != 36 {
+				continue
+			}
+			infoFile := fmt.Sprintf("%s/%s.info", h.ServerPath, file.Name())
+			expired := true
+			info, err := os.ReadFile(infoFile)
+			if err == nil {
+				var dataInfo Info
+				json.Unmarshal(info, &dataInfo)
+				for _, key := range dataInfo.Keys {
+					dataId, err := h.CacheSvc.Get("sao-http", key)
+					if err == nil && dataId != nil && dataId.(string) == file.Name() {
+						expired = false
+					}
+				}
+			}
+			if expired {
+				os.Remove(fmt.Sprintf("%s/%s", h.ServerPath, file.Name()))
+				if _, err := os.Stat(infoFile); err == nil {
+					os.Remove(infoFile)
+				}
+			}
+		}
+		<-t.C
 	}
-
-	cacheFile := path.Join(h.ServerPath, resp.DataId)
-
-	return ec.File(cacheFile)
 }
