@@ -222,6 +222,32 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	var status = NODE_STATUS_ONLINE
 	var storageManager *store.StoreManager = nil
 	notifyChan := make(map[string]chan interface{})
+	var backends []store.StoreBackend
+	if cfg.SaoIpfs.Enable {
+		ipfsPath := path.Join(repo.Path, "ipfs")
+		ipfsDaemon, err := store.NewIpfsDaemon(ipfsPath)
+		if err != nil {
+			return nil, err
+		}
+		daemonApi, node, err := ipfsDaemon.Start(ctx)
+		if err != nil {
+			return nil, err
+		}
+		sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
+			log.Info("close ipfs daemon.")
+			return node.Close()
+		})
+		ipfsBackend, err := store.NewIpfsBackend("ipfs+sao", daemonApi)
+		if err != nil {
+			return nil, err
+		}
+		backends = append(backends, ipfsBackend)
+		log.Info("ipfs daemon initialized")
+	}
+
+	storageManager = store.NewStoreManager(backends)
+	log.Info("store manager daemon initialized")
+
 	if cfg.Module.StorageEnable && cfg.Module.GatewayEnable {
 		notifyChan[types.ShardAssignProtocol] = make(chan interface{})
 		notifyChan[types.ShardCompleteProtocol] = make(chan interface{})
@@ -231,7 +257,6 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		if cfg.Storage.AcceptOrder {
 			status = status | NODE_STATUS_ACCEPT_ORDER
 		}
-		var backends []store.StoreBackend
 		if len(cfg.Storage.Ipfs) > 0 {
 			for _, f := range cfg.Storage.Ipfs {
 				ipfsBackend, err := store.NewIpfsBackend(f.Conn, nil)
@@ -242,34 +267,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 				if err != nil {
 					return nil, err
 				}
-				backends = append(backends, ipfsBackend)
+				storageManager.AddBackend(ipfsBackend)
 			}
 		}
-
-		if cfg.SaoIpfs.Enable {
-			ipfsPath := path.Join(repo.Path, "ipfs")
-			ipfsDaemon, err := store.NewIpfsDaemon(ipfsPath)
-			if err != nil {
-				return nil, err
-			}
-			daemonApi, node, err := ipfsDaemon.Start(ctx)
-			if err != nil {
-				return nil, err
-			}
-			sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
-				log.Info("close ipfs daemon.")
-				return node.Close()
-			})
-			ipfsBackend, err := store.NewIpfsBackend("ipfs+sao", daemonApi)
-			if err != nil {
-				return nil, err
-			}
-			backends = append(backends, ipfsBackend)
-			log.Info("ipfs daemon initialized")
-		}
-
-		storageManager = store.NewStoreManager(backends)
-		log.Info("store manager daemon initialized")
 
 		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, transportStagingPath, storageManager, notifyChan, ods)
 		if err != nil {
