@@ -17,6 +17,7 @@ const (
 	ShardCompleteProtocol = "/sao/shard/complete/1.0"
 	ShardMigrateProtocol  = "/sao/shard/migrate/1.0"
 	ShardPingPongProtocol = "/sao/shard/pingpong/1.0"
+	RpcProtocol           = "/sao/rpc/1.0"
 
 	ErrorCodeInvalidRequest       = 1
 	ErrorCodeInvalidTx            = 2

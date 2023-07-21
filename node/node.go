@@ -185,9 +185,10 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	transportStagingPath := path.Join(repo.Path, "staging")
+	rpcHandler := transport.NewHandler(ctx, &sn, tds, cfg, transportStagingPath)
 	for _, address := range cfg.Transport.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			_, err := transport.StartLibp2pRpcServer(ctx, &sn, address, peerKey, tds, cfg, transportStagingPath)
+			_, err := transport.StartLibp2pRpcServer(ctx, address, peerKey, tds, cfg, rpcHandler)
 			if err != nil {
 				return nil, types.Wrap(types.ErrStartLibP2PRPCServerFailed, err)
 			}
@@ -287,7 +288,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		}
 
 		status = status | NODE_STATUS_SERVE_GATEWAY
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath, rpcHandler)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.gatewaySvc = gatewaySvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
