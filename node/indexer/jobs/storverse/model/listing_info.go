@@ -5,22 +5,23 @@ import (
 )
 
 type ListingInfo struct {
-	ID       string
-	Price    string
-	TokenId  string
+	ID         string
+	Price      string
+	TokenId    string
 	ItemDataId string
-	ChainType string
-	Time     int
-	CommitID string
-	DataID   string
-	Alias    string
+	ChainType  string
+	Time       int
+	Type       string
+	CommitID   string
+	DataID     string
+	Alias      string
 }
 
 type ListingInfoInsertionStrategy struct{}
 
 func (l ListingInfo) InsertValues() string {
-	return fmt.Sprintf("('%s','%s','%s','%s','%s','%s','%s',%d)",
-		l.CommitID, l.DataID, l.Alias, l.Price, l.TokenId, l.ItemDataId, l.ChainType, l.Time)
+	return fmt.Sprintf("('%s','%s','%s','%s','%s','%s','%s',%d, '%s')",
+		l.CommitID, l.DataID, l.Alias, l.Price, l.TokenId, l.ItemDataId, l.ChainType, l.Time, l.Type)
 }
 
 func (s ListingInfoInsertionStrategy) Convert(item interface{}) BatchInserter {

@@ -127,12 +127,6 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 	}
 
 	if args.UserDataId != nil {
-		// Process verse scope
-		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)
-		if err != nil {
-			return nil, err
-		}
-
 		// If verse price is greater than 0, check if there's a PurchaseOrder record with ItemDataID = verse.DATAID and BuyerDataID = userDataId
 		if v.Price != "" {
 			price, err := strconv.ParseFloat(v.Price, 64)
@@ -150,7 +144,19 @@ func (r *resolver) FileInfo(ctx context.Context, args struct {
 				if count == 0 {
 					return nil, errors.New("the file is charged and not paid yet")
 				}
+				v.IsPaid = count > 0
 			}
+		}
+
+		// Process verse scope
+		_, err = processVerseScope(ctx, r.indexSvc.Db, &v, *args.UserDataId)
+		if err != nil {
+			return nil, err
+		}
+
+		if v.NotInScope > 1 {
+			// verse is not accessible, return
+			return nil, errors.New("you are not authorized to access the file")
 		}
 	} else {
 		if v.Scope == 2 || v.Scope == 3 || v.Scope == 4 {
@@ -202,6 +208,28 @@ func (r *resolver) FileInfosByVerseIds(ctx context.Context, args struct {
 				Owner:     owner,
 				CreatedAt: createdAt,
 				IsPaid:    count > 0,
+			}
+
+			if v.Price != "" {
+				price, err := strconv.ParseFloat(v.Price, 64)
+				if err != nil {
+					return nil, err
+				}
+
+				if price > 0 {
+					var count int
+					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.UserDataId).Scan(&count)
+					if err != nil {
+						return nil, err
+					}
+
+					if count == 0 {
+						//the verse is charged and not paid yet
+						fmt.Printf("verse is not paid: %s\n", v.DataId)
+						continue
+					}
+					v.IsPaid = count > 0
+				}
 			}
 
 			// Process verse scope
@@ -355,6 +383,28 @@ func (r *resolver) FileInfos(ctx context.Context, args struct {
 		}
 
 		if args.Caller != nil { // Process verse scope
+			if v.Price != "" {
+				price, err := strconv.ParseFloat(v.Price, 64)
+				if err != nil {
+					return nil, err
+				}
+
+				if price > 0 {
+					var count int
+					err = r.indexSvc.Db.QueryRowContext(ctx, "SELECT COUNT(*) FROM PURCHASE_ORDER WHERE ITEMDATAID = ? AND BUYERDATAID = ?", v.DataId, *args.Caller).Scan(&count)
+					if err != nil {
+						return nil, err
+					}
+
+					if count == 0 {
+						//the verse is charged and not paid yet
+						fmt.Printf("verse is not paid: %s\n", v.DataId)
+						continue
+					}
+					v.IsPaid = count > 0
+				}
+			}
+
 			v, err = processVerseScope(ctx, r.indexSvc.Db, v, *args.Caller)
 			if err != nil {
 				fmt.Printf("error processing verse scope: %s\n", err)

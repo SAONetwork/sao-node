@@ -9,19 +9,21 @@ import (
 )
 
 type listingInfo struct {
-	CommitId        string       `json:"CommitId"`
-	DataId  string       `json:"dataId"`
-	Alias      string `json:"Alias"`
-	Price   string       `json:"price"`
-	TokenId string       `json:"tokenId"`
-	ItemDataId string `json:"itemDataId"`
-	ChainType string `json:"chainType"`
-	Time    types.Uint64 `json:"time"`
+	CommitId   string       `json:"CommitId"`
+	DataId     string       `json:"dataId"`
+	Alias      string       `json:"Alias"`
+	Price      string       `json:"price"`
+	TokenId    string       `json:"tokenId"`
+	ItemDataId string       `json:"itemDataId"`
+	ChainType  string       `json:"chainType"`
+	Time       types.Uint64 `json:"time"`
+	Type       string       `json:"type"`
 }
 
 type listingInfoArgs struct {
-	DataId *string
+	DataId  *string
 	TokenId *string
+	ItemType *string
 }
 
 // query: listingInfo(dataId) ListingInfo
@@ -35,7 +37,11 @@ func (r *resolver) ListingInfo(ctx context.Context, args listingInfoArgs) (*list
 	if args.DataId != nil {
 		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM LISTING_INFO WHERE DATAID = ?", *args.DataId)
 	} else {
-		row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM LISTING_INFO WHERE TOKENID = ?", *args.TokenId)
+		if args.ItemType != nil {
+			row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM LISTING_INFO WHERE TOKENID = ? AND TYPE = ?", *args.TokenId, *args.ItemType)
+		} else {
+			row = r.indexSvc.Db.QueryRowContext(ctx, "SELECT * FROM LISTING_INFO WHERE TOKENID = ?", *args.TokenId)
+		}
 	}
 	var info listingInfo
 	err := row.Scan(
@@ -47,6 +53,7 @@ func (r *resolver) ListingInfo(ctx context.Context, args listingInfoArgs) (*list
 		&info.ItemDataId,
 		&info.ChainType,
 		&info.Time,
+		&info.Type,
 	)
 	if err != nil {
 		return nil, err
@@ -54,6 +61,7 @@ func (r *resolver) ListingInfo(ctx context.Context, args listingInfoArgs) (*list
 
 	return &info, nil
 }
+
 
 func (l *listingInfo) ID() graphql.ID {
 	return graphql.ID(l.CommitId)
