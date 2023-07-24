@@ -5,14 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/SaoNetwork/sao-node/node/indexer/jobs"
-	"strings"
-	"time"
-
 	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/node/indexer/jobs"
 	"github.com/SaoNetwork/sao-node/node/queue"
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/ipfs/go-datastore"
 	_ "github.com/mattn/go-sqlite3"
@@ -72,7 +72,11 @@ func NewIndexSvc(
 	go is.processPendingJobs(ctx)
 
 	log.Info("building storverse views job...")
-	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, "storverse-sao", log)
+	platformId := os.Getenv("STORVERSE_PLATFORM_ID")
+	if platformId == "" {
+		platformId = "storverse-sao"
+	}
+	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, platformId, log)
 	is.JobsMap[job.ID] = job
 	is.schedQueue.Push(&queue.WorkRequest{
 		Job: job,
