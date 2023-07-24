@@ -718,10 +718,7 @@ func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposa
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
-	return apitypes.DeleteResp{
-		DataId: model.DataId,
-		Alias:  model.Alias,
-	}, nil
+	return apitypes.DeleteResp{}, nil
 }
 
 func (n *Node) ModelUpdate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
