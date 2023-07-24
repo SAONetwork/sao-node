@@ -49,6 +49,7 @@ func defCommon() Common {
 				"/ip4/0.0.0.0/tcp/5153",
 			},
 			AnnounceAddresses: []string{},
+			PublicAddress:     "",
 		},
 		Transport: Transport{
 			TransportListenAddress: []string{

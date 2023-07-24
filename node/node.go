@@ -135,6 +135,11 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 				peerInfos = peerInfos + ","
 			}
 			peerInfos = peerInfos + withP2p.String()
+			if strings.Contains(withP2p.String(), "127.0.0.1") && cfg.Libp2p.PublicAddress != "" {
+				publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", cfg.Libp2p.PublicAddress, 1)
+				log.Warn("addr=", publicAddrWithP2p)
+				peerInfos = peerInfos + "," + publicAddrWithP2p
+			}
 		}
 	}
 

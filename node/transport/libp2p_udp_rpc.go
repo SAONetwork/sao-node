@@ -49,6 +49,11 @@ func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.
 		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
 		log.Debug("addr=", withP2p.String())
 		peerInfos = append(peerInfos, withP2p.String())
+		if strings.Contains(withP2p.String(), "127.0.0.1") && cfg.Libp2p.PublicAddress != "" {
+			publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", cfg.Libp2p.PublicAddress, 1)
+			log.Debug("addr=", publicAddrWithP2p)
+			peerInfos = append(peerInfos, publicAddrWithP2p)
+		}
 		if strings.Contains(a.String(), "/ip4/127.0.0.1/udp/5154") {
 			addressPattern = a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String())).String()
 		}

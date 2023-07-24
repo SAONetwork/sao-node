@@ -103,6 +103,7 @@ type Libp2p struct {
 	// Format: multiaddress; see https://multiformats.io/multiaddr/
 	ListenAddress     []string
 	AnnounceAddresses []string
+	PublicAddress     string
 }
 
 type Cache struct {
