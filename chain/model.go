@@ -2,7 +2,8 @@ package chain
 
 import (
 	"context"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -22,6 +23,16 @@ func (c *ChainSvc) ListMeta(ctx context.Context, offset uint64, limit uint64) ([
 func (c *ChainSvc) GetMeta(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
 	resp, err := c.modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
 		DataId: dataId,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *ChainSvc) GetModel(ctx context.Context, key string) (*modeltypes.QueryGetModelResponse, error) {
+	resp, err := c.modelClient.Model(ctx, &modeltypes.QueryGetModelRequest{
+		Key: key,
 	})
 	if err != nil {
 		return nil, err

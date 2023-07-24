@@ -1,4 +1,4 @@
-module sao-node
+module github.com/SaoNetwork/sao-node
 
 go 1.19
 
@@ -11,7 +11,7 @@ require (
 
 require (
 	cosmossdk.io/math v1.0.0-beta.3
-	github.com/SaoNetwork/sao v0.1.4
+	github.com/SaoNetwork/sao v0.1.7
 	github.com/SaoNetwork/sao-did v0.0.12
 	github.com/bradfitz/gomemcache v0.0.0-20221031212613-62deef7fc822
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be
@@ -361,7 +361,7 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/SaoNetwork/sao => ../../sao-consensus
+// replace github.com/SaoNetwork/sao => ../sao-consensus
 
 replace github.com/whyrusleeping/cbor-gen => ../cbor-gen
 

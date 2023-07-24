@@ -2,7 +2,7 @@ package gql
 
 import (
 	"context"
-	"sao-node/node/indexer/gql/types"
+	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"strconv"
 )
 

@@ -3,7 +3,8 @@ package store
 import (
 	"context"
 	"io"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"

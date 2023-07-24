@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
-	cliutil "sao-node/cmd"
-	"sao-node/types"
+
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/ipfs/go-cid"

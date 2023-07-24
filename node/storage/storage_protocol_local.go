@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sao-node/types"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/mitchellh/go-homedir"
 )

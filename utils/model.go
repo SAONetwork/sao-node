@@ -3,7 +3,8 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"sao-node/types"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	applier "github.com/evanphx/json-patch"
 	creator "github.com/mattbaird/jsonpatch"

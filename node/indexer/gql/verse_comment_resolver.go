@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/graph-gophers/graphql-go"
-	"sao-node/node/indexer/gql/types"
+	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"strconv"
 )
 

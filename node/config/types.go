@@ -25,6 +25,7 @@ type SaoHttpFileServer struct {
 	Enable                  bool
 	HttpFileServerAddress   string
 	EnableHttpFileServerLog bool
+	HttpFileServerPath      string
 	TokenPeriod             time.Duration
 }
 

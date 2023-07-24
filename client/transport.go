@@ -7,8 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sao-node/types"
-	"sao-node/utils"
+
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"

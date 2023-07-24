@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"sao-node/store"
-	"sao-node/types"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/store"
+	"github.com/SaoNetwork/sao-node/types"
 )
 
 type LocalGatewayProtocol struct {

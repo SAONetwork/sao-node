@@ -3,7 +3,8 @@ package gql
 import (
 	"context"
 	"fmt"
-	"sao-node/node/indexer/gql/types"
+
+	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"

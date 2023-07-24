@@ -1,7 +1,7 @@
 package storverse_test
 
 import (
-	storverse "sao-node/node/indexer/jobs/storverse/model"
+	storverse "github.com/SaoNetwork/sao-node/node/indexer/jobs/storverse/model"
 	"testing"
 
 )

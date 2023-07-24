@@ -9,7 +9,7 @@ import (
 
 	saodid "github.com/SaoNetwork/sao-did"
 	saodidtypes "github.com/SaoNetwork/sao-did/types"
-	"sao-node/chain"
+	"github.com/SaoNetwork/sao-node/chain"
 )
 
 func authenticate(next http.Handler, resolver *resolver) http.Handler {

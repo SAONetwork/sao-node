@@ -3,11 +3,12 @@ package gql
 import (
 	"context"
 	_ "embed"
+	"github.com/SaoNetwork/sao-node/chain"
 	"net/http"
-	"sao-node/chain"
-	"sao-node/node/indexer"
 	"sync"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/node/indexer"
 
 	"github.com/graph-gophers/graphql-go"
 	"github.com/graph-gophers/graphql-go/relay"

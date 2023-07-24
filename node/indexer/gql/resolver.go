@@ -1,9 +1,9 @@
 package gql
 
 import (
+	"github.com/SaoNetwork/sao-node/chain"
 	"github.com/patrickmn/go-cache"
-	"sao-node/chain"
-	"sao-node/node/indexer"
+	"github.com/SaoNetwork/sao-node/node/indexer"
 	"time"
 )
 

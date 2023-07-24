@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
 	"io/ioutil"
-	"sao-node/node/indexer/gql/types"
+	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"strconv"
 )
 

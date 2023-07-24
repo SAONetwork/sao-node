@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"sao-node/chain"
-	cliutil "sao-node/cmd"
-	"sao-node/types"
 	"strings"
 	"syscall"
+
+	"github.com/SaoNetwork/sao-node/chain"
+	cliutil "github.com/SaoNetwork/sao-node/cmd"
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/labstack/gommon/log"
 	"github.com/mitchellh/go-homedir"

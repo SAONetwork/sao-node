@@ -3,8 +3,9 @@ package cache
 import (
 	"context"
 	"runtime"
-	"sao-node/types"
 	"strings"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	"github.com/go-redis/redis/v8"
 )

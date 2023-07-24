@@ -3,9 +3,10 @@ package chain
 import (
 	"context"
 	"fmt"
-	"sao-node/types"
 	"strings"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/types"
 
 	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	saotypes "github.com/SaoNetwork/sao/x/sao/types"

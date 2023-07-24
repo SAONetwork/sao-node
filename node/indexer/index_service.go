@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"sao-node/chain"
-	"sao-node/node/indexer/jobs"
-	"sao-node/node/queue"
-	"sao-node/types"
-	"sao-node/utils"
+	"github.com/SaoNetwork/sao-node/node/indexer/jobs"
 	"strings"
 	"time"
+
+	"github.com/SaoNetwork/sao-node/chain"
+	"github.com/SaoNetwork/sao-node/node/queue"
+	"github.com/SaoNetwork/sao-node/types"
+	"github.com/SaoNetwork/sao-node/utils"
 
 	"github.com/ipfs/go-datastore"
 	_ "github.com/mattn/go-sqlite3"
@@ -51,7 +52,7 @@ func NewIndexSvc(
 	jobsDs datastore.Batching,
 	dbPath string,
 ) *IndexSvc {
-	db, err := sql.Open("sqlite3", dbPath+"/indexer2.db")
+	db, err := sql.Open("sqlite3", dbPath+"/indexer.db")
 	if err != nil {
 		log.Error("failed to open database, %v", err)
 		return nil

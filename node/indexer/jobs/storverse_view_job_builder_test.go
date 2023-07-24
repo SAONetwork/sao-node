@@ -3,7 +3,7 @@ package jobs
 import (
 	"encoding/json"
 	"github.com/google/go-cmp/cmp"
-	storverse "sao-node/node/indexer/jobs/storverse/model"
+	storverse "github.com/SaoNetwork/sao-node/node/indexer/jobs/storverse/model"
 	"testing"
 )
 
