@@ -95,6 +95,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		return nil, types.Wrapf(types.ErrDecodeConfigFailed, "invalid config for repo, got: %T", c)
 	}
 
+	// print log cfg
+	log.Infof("cfg=%#v", cfg)
+
 	// get node address
 	mds, err := repo.Datastore(ctx, "/metadata")
 	if err != nil {

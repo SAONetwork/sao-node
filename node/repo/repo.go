@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -164,6 +165,7 @@ func (r *Repo) setPeerId(data []byte) error {
 }
 
 func (r *Repo) Config() (interface{}, error) {
+	fmt.Println("configPath", r.configPath)
 	return utils.FromFile(r.configPath, r.defaultConfig())
 }
 
