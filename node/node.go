@@ -714,7 +714,7 @@ func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposa
 		return apitypes.DeleteResp{}, err
 	}
 
-	model, err := n.manager.Delete(ctx, req, isPublish)
+	_, err = n.manager.Delete(ctx, req, isPublish)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
