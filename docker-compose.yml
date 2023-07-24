@@ -1,0 +1,50 @@
+version: '3'
+
+services:
+  saonode0:
+    container_name: saonode0
+    image: "saonetwork/saonode"
+    ports:
+      - "15151-15155:5151-5155"
+    environment:
+      - ID=0
+    volumes:
+      - ./networks/node0:/root/.sao-node
+    networks:
+      localnet:
+        ipv4_address: 192.168.11.2
+
+  saonode1:
+    container_name: saonode1
+    image: "saonetwork/saonode"
+    ports:
+      - "25151-25155:5151-5155"
+    environment:
+      - ID=1
+    volumes:
+      - ./networks/node1:/root/.sao-node
+    networks:
+      localnet:
+        ipv4_address: 192.168.11.3
+
+  saonode2:
+    container_name: saonode2
+    image: "saonetwork/saonode"
+    ports:
+      - "35151-35155:5151-5155"
+    environment:
+      - ID=2
+    volumes:
+      - ./networks/node2:/root/.sao-node
+    networks:
+      localnet:
+        ipv4_address: 192.168.11.4
+
+networks:
+  localnet:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      -
+        subnet: 192.168.11.0/16
