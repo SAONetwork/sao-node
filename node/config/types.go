@@ -104,6 +104,8 @@ type Libp2p struct {
 	ListenAddress     []string
 	AnnounceAddresses []string
 	PublicAddress     string
+	IntranetIpEnable  bool
+	ExternalIpEnable  bool
 }
 
 type Cache struct {

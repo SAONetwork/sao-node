@@ -50,6 +50,8 @@ func defCommon() Common {
 			},
 			AnnounceAddresses: []string{},
 			PublicAddress:     "",
+			IntranetIpEnable:  true,
+			ExternalIpEnable:  true,
 		},
 		Transport: Transport{
 			TransportListenAddress: []string{

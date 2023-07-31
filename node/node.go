@@ -119,6 +119,11 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	peerInfos := ""
+	if !cfg.Libp2p.ExternalIpEnable && !cfg.Libp2p.IntranetIpEnable && len(cfg.Libp2p.AnnounceAddresses) == 0 {
+		cfg.Libp2p.ExternalIpEnable = true
+		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")
+	}
+
 	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
 		peerInfos = strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
 		for _, peerInfo := range strings.Split(peerInfos, ",") {
@@ -130,15 +135,32 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	} else {
 		for _, a := range host.Addrs() {
 			withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
-			log.Debug("addr=", withP2p.String())
-			if len(peerInfos) > 0 {
-				peerInfos = peerInfos + ","
+			if cfg.Libp2p.IntranetIpEnable {
+				log.Debug("addr=", withP2p.String())
+				if len(peerInfos) > 0 {
+					peerInfos = peerInfos + ","
+				}
+				peerInfos = peerInfos + withP2p.String()
 			}
-			peerInfos = peerInfos + withP2p.String()
-			if strings.Contains(withP2p.String(), "127.0.0.1") && cfg.Libp2p.PublicAddress != "" {
-				publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", cfg.Libp2p.PublicAddress, 1)
-				log.Warn("addr=", publicAddrWithP2p)
-				peerInfos = peerInfos + "," + publicAddrWithP2p
+			if cfg.Libp2p.ExternalIpEnable && strings.Contains(withP2p.String(), "127.0.0.1") {
+				var externalIp string
+				if cfg.Libp2p.PublicAddress != "" {
+					externalIp = cfg.Libp2p.PublicAddress
+				} else {
+					externalIp, err = transport.GetExternalIp()
+					if err != nil {
+						log.Warnf("failed to get external Ip: %s", err.Error())
+					}
+				}
+
+				if externalIp != "" {
+					publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", externalIp, 1)
+					log.Debug("addr=", publicAddrWithP2p)
+					if len(peerInfos) > 0 {
+						peerInfos = peerInfos + ","
+					}
+					peerInfos = peerInfos + publicAddrWithP2p
+				}
 			}
 		}
 	}
