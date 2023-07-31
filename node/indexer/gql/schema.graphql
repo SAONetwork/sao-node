@@ -20,22 +20,54 @@ type JobList {
 }
 
 type Metadata {
-    ID: ID!
-    Did: String!
-    DataId: String!
-    Alias: String!
-    Cid: String!
-    GroupId: String!
-    Version: String!
-    Size: Int!
-    Expiration: Uint64!
-    Readers: String!
-    Writers: String!
+    dataId: ID!
+    owner: String!
+    alias: String!
+    groupId: String!
+    orderId: String!
+    tags: String!
+    cid: String!
+    commits: String!
+    extendInfo: String!
+    update: Boolean!
+    commit: String!
+    rule: String!
+    duration: Int!
+    createdAt: Int!
+    readonlyDids: String!
+    readwriteDids: String!
+    status: Int!
+    orders: String!
 }
 
 type MetadataList {
     totalCount: Int!
     Metadatas: [Metadata]!
+    more: Boolean!
+}
+
+type Order {
+    id: ID!
+    creator: String!
+    owner: String!
+    provider: String!
+    cid: String!
+    duration: Int!
+    status: String!
+    replica: Int!
+    amount: String!
+    size: String!
+    operation: String!
+    createdAt: Int!
+    timeout: Int!
+    dataId: String!
+    commit: String!
+    unitPrice: String!
+}
+
+type OrderList {
+    totalCount: Int!
+    orders: [Order!]!
     more: Boolean!
 }
 
@@ -232,7 +264,13 @@ type RootQuery {
     metadata(id: ID!): Metadata
 
     """Get all Metadatas"""
-    metadatas(query: String): MetadataList!
+    metadatas(query: String, owner: String): MetadataList!
+
+    """Get Order by ID"""
+    order(id: ID!): Order
+
+    """Get all Orders"""
+    orders(owner: String): OrderList!
 
     """Get Shard by ID"""
     shard(id: ID!): Shard

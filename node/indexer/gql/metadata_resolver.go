@@ -4,24 +4,28 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
-
-	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
 )
 
 type metadata struct {
-	CommitId   string
-	Did        string
-	DataId     string
-	Alias      string
-	Cid        string
-	GroupId    string
-	Version    string
-	Size       int32
-	Expiration types.Uint64
-	Readers    string
-	Writers    string
+	DataId        graphql.ID
+	Owner         string
+	Alias         string
+	GroupId       string
+	OrderId       string
+	Tags          string
+	Cid           string
+	Commits       string
+	ExtendInfo    string
+	Update        bool
+	Commit        string
+	Rule          string
+	Duration      int32
+	CreatedAt     int32
+	ReadonlyDids  string
+	ReadwriteDids string
+	Status        int32
+	Orders        string
 }
 
 type metadataList struct {
@@ -30,44 +34,53 @@ type metadataList struct {
 	More       bool
 }
 
-// query: metadata(id) Metadata
-func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (*metadata, error) {
-	var commitId uuid.UUID
-	err := commitId.UnmarshalText([]byte(args.ID))
-	if err != nil {
-		return nil, fmt.Errorf("parsing graphql ID '%s' as UUID: %w", args.ID, err)
-	}
-
-	row := r.indexSvc.Db.QueryRowContext(ctx, "SELECT COMMITID, DID, COALESCE(CID, '') AS CID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA WHERE COMMITID= ?", commitId.String())
-	var CommitId string
-	var Did string
-	var DataId string
-	var Cid string
-	var Alias string
-	var GroupId string
-	var Version string
-	var Size int32
-	var Expiration types.Uint64
-	var Readers string
-	var Writers string
-	err = row.Scan(&CommitId, &Did, &Cid, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
-	if err != nil {
-		fmt.Errorf("database scan error: %v", err)
-		return nil, err
-	}
-
-	return &metadata{
-		CommitId, Did, Cid, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
-	}, nil
+type QueryArgs struct {
+	Query  graphql.NullString
+	Owner  graphql.NullString
 }
 
-// query: metadatas(cursor, offset, limit) MetaList
-func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.NullString }) (*metadataList, error) {
-	queryStr := "SELECT COMMITID, DID, CID, DATAID, ALIAS, PLAT, VER, SIZE, EXPIRATION, READER, WRITER FROM METADATA "
-	if args.Query.Set && args.Query.Value != nil {
-		queryStr = queryStr + *args.Query.Value
+// query: metadata(dataId) Metadata
+func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (*metadata, error) {
+	var dataId string
+	dataId = string(args.ID)
+
+	row := r.indexSvc.Db.QueryRowContext(ctx, `SELECT dataId, owner, alias, groupId, orderId, tags, cid, commits, extendInfo, 
+    updateAt, commitId, rule, duration, createdAt, readonlyDids, readwriteDids, status, orders 
+    FROM METADATA WHERE dataId= ?`, dataId)
+
+	meta := &metadata{}
+	err := row.Scan(&meta.DataId, &meta.Owner, &meta.Alias, &meta.GroupId, &meta.OrderId, &meta.Tags, &meta.Cid,
+		&meta.Commits, &meta.ExtendInfo, &meta.Update, &meta.Commit, &meta.Rule, &meta.Duration, &meta.CreatedAt,
+		&meta.ReadonlyDids, &meta.ReadwriteDids, &meta.Status, &meta.Orders)
+	if err != nil {
+		return nil, fmt.Errorf("database scan error: %v", err)
 	}
-	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr)
+
+	return meta, nil
+}
+
+// query: metadatas(Query) MetaList
+func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList, error) {
+	queryStr := `SELECT dataId, owner, alias, groupId, orderId, tags, cid, commits, extendInfo, 
+    updateAt, commitId, rule, duration, createdAt, readonlyDids, readwriteDids, status, orders FROM METADATA`
+
+	var params []interface{}
+
+	if args.Query.Set && args.Query.Value != nil {
+		queryStr += " WHERE " + *args.Query.Value
+	}
+
+	if args.Owner.Set && args.Owner.Value != nil {
+		if len(params) > 0 {
+			queryStr += " AND "
+		} else {
+			queryStr += " WHERE "
+		}
+		queryStr += "owner = ?"
+		params = append(params, *args.Owner.Value)
+	}
+
+	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr, params...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,24 +88,14 @@ func (r *resolver) Metadatas(ctx context.Context, args struct{ Query graphql.Nul
 
 	metadatas := make([]*metadata, 0)
 	for rows.Next() {
-		var CommitId string
-		var Did string
-		var Cid string
-		var DataId string
-		var Alias string
-		var GroupId string
-		var Version string
-		var Size int32
-		var Expiration types.Uint64
-		var Readers string
-		var Writers string
-		err = rows.Scan(&CommitId, &Did, &Cid, &DataId, &Alias, &GroupId, &Version, &Size, &Expiration, &Readers, &Writers)
+		meta := &metadata{}
+		err = rows.Scan(&meta.DataId, &meta.Owner, &meta.Alias, &meta.GroupId, &meta.OrderId, &meta.Tags, &meta.Cid,
+			&meta.Commits, &meta.ExtendInfo, &meta.Update, &meta.Commit, &meta.Rule, &meta.Duration, &meta.CreatedAt,
+			&meta.ReadonlyDids, &meta.ReadwriteDids, &meta.Status, &meta.Orders)
 		if err != nil {
 			return nil, err
 		}
-		metadatas = append(metadatas, &metadata{
-			CommitId, Did, Cid, DataId, Alias, GroupId, Version, Size, Expiration, Readers, Writers,
-		})
+		metadatas = append(metadatas, meta)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -110,5 +113,5 @@ func (r *resolver) MetadataCount(ctx context.Context) (int32, error) {
 }
 
 func (m *metadata) ID() graphql.ID {
-	return graphql.ID(m.CommitId)
+	return m.DataId
 }
