@@ -725,7 +725,6 @@ func buildQueryRequest(ctx context.Context, didManager *did.DidManager, proposal
 func convertToInterfaceSlice(slice interface{}) []interface{} {
 	s := reflect.ValueOf(slice)
 	if s.Kind() != reflect.Slice {
-		log.Error("convertToInterfaceSlice() given a non-slice type")
 		return nil
 	}
 

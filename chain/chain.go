@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"encoding/hex"
+	"github.com/cosmos/cosmos-sdk/types/query"
 	"sao-node/types"
 	"time"
 
@@ -224,6 +225,10 @@ func (c *ChainSvc) GetBalance(ctx context.Context, address string) (sdktypes.Coi
 	return c.cosmos.BankBalances(ctx, address, nil)
 }
 
+func(c *ChainSvc) GetBlock(ctx context.Context, height int64) (*coretypes.ResultBlock, error) {
+	return c.cosmos.RPC.Block(ctx, &height)
+}
+
 func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coretypes.ResultTx, error) {
 	for {
 		curHeight, err := c.GetLastHeight(ctx)
@@ -240,4 +245,28 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 		return nil, types.Wrap(types.ErrTxQueryFailed, err)
 	}
 	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
+}
+
+func (c *ChainSvc) GetFishmen(ctx context.Context) (string, error) {
+	resp, err := c.nodeClient.Fishmen(ctx, &nodetypes.QueryFishmenRequest{})
+	if err != nil {
+		return "", types.Wrap(types.ErrCreateChainServiceFailed, err)
+	}
+
+	return resp.Fishmen, nil
+}
+
+func (c *ChainSvc) GetAllOrders(ctx context.Context, offset uint64, limit uint64) ([]ordertypes.Order, uint64, error) {
+	resp, err := c.orderClient.OrderAll(ctx, &ordertypes.QueryAllOrderRequest{
+		Pagination: &query.PageRequest{
+			Offset: offset,
+			Limit:  limit,
+			Reverse: false,
+			CountTotal: true,
+		},
+	})
+	if err != nil {
+		return nil, 0, types.Wrap(types.ErrQueryOrderFailed, err)
+	}
+	return resp.Order, resp.Pagination.Total, nil
 }

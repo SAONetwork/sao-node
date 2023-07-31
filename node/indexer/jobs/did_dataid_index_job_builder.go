@@ -15,12 +15,10 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var log = logging.Logger("indexer-jobs")
-
 //go:embed sqls/create_metadata_table.sql
 var createMetadataDBSQL string
 
-func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, platFormIds string) *types.Job {
+func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log *logging.ZapEventLogger) *types.Job {
 	// initialize the metadata database tables
 	log.Info("creating metadata tables...")
 	if _, err := db.ExecContext(ctx, createMetadataDBSQL); err != nil {
@@ -33,7 +31,7 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		var limit uint64 = 100
 		owenedMeta := make([]modeltypes.Metadata, 0)
 		for {
-			metaList, total, err := chainSvc.ListMeta(ctx, offset, limit)
+			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
 			if err != nil {
 				return nil, err
 			}
@@ -44,8 +42,8 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 			}
 
 			for _, meta := range metaList {
-				qry := "SELECT COUNT(*) FROM METADATA WHERE COMMITID=?"
-				row := db.QueryRowContext(ctx, qry, meta.Commit)
+				qry := "SELECT COUNT(*) FROM METADATA WHERE DATAID=? AND `commitId`=?"
+				row := db.QueryRowContext(ctx, qry, meta.DataId, meta.Commit)
 				var count int
 				err := row.Scan(&count)
 				if err != nil {
@@ -55,9 +53,12 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 				if count > 0 {
 					continue
 				} else {
-					if strings.Contains(platFormIds, meta.GroupId) {
-						owenedMeta = append(owenedMeta, meta)
+					qry := "DELETE FROM METADATA WHERE DATAID=? AND `commitId`<>?"
+					_, err = db.ExecContext(ctx, qry, meta.DataId, meta.Commit)
+					if err != nil {
+						return nil, err
 					}
+					owenedMeta = append(owenedMeta, meta)
 				}
 			}
 		}
@@ -70,15 +71,21 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 					valueArgs += ", "
 				}
 
-				valueArgs = fmt.Sprintf(`%s("%s", "%s", "%s", "%s", "%s", "v%d", %d, %d, "%s", "%s")`,
-					valueArgs, meta.Owner, meta.DataId, meta.Alias, meta.GroupId, meta.Commit, len(meta.Commits), meta.Size(), meta.CreatedAt+meta.Duration, meta.ReadonlyDids, meta.ReadwriteDids)
+				tags := strings.Join(meta.Tags, ",")
+				commits := strings.Join(meta.Commits, ",")
+				readonlyDids := strings.Join(meta.ReadonlyDids, ",")
+				readwriteDids := strings.Join(meta.ReadwriteDids, ",")
+
+				valueArgs += fmt.Sprintf(`("%s", "%s", "%s", "%s", %d, "%s", "%s", "%s", "%s", %t, "%s", "%s", %d, %d, "%s", "%s", %d, "%s")`,
+					meta.DataId, meta.Owner, meta.Alias, meta.GroupId, meta.OrderId, tags, meta.Cid, commits, meta.ExtendInfo, meta.Update, meta.Commit, meta.Rule, meta.Duration, meta.CreatedAt, readonlyDids, readwriteDids, meta.Status, strings.Trim(strings.Replace(fmt.Sprint(meta.Orders), " ", ",", -1), "[]"))
 
 				if index > 0 && index%500 == 0 {
 					log.Infof("sub batch prepare, 500 metadata records to be saved.")
-					stmt := fmt.Sprintf("INSERT INTO METADATA (DID, DATAID, ALIAS, PLAT, COMMITID, VER, SIZE, EXPIRATION, READER, WRITER) VALUES %s",
+					stmt := fmt.Sprintf("INSERT INTO METADATA (dataId, owner, alias, groupId, orderId, tags, cid, `commits`, extendInfo, `updateAt`, `commitId`, rule, duration, createdAt, readonlyDids, readwriteDids, status, orders) VALUES %s",
 						valueArgs)
 					_, err := db.Exec(stmt)
 					if err != nil {
+						log.Errorf("failed to save metadata: %w", err)
 						return nil, err
 					}
 					valueArgs = ""
@@ -86,10 +93,11 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 				}
 			}
 			if len(valueArgs) > 0 {
-				stmt := fmt.Sprintf("INSERT INTO METADATA (DID, DATAID, ALIAS, PLAT, COMMITID, VER, SIZE, EXPIRATION, READER, WRITER) VALUES %s",
+				stmt := fmt.Sprintf("INSERT INTO METADATA (dataId, owner, alias, groupId, orderId, tags, cid, commits, extendInfo, `updateAt`, `commitId`, rule, duration, createdAt, readonlyDids, readwriteDids, status, orders) VALUES %s",
 					valueArgs)
 				_, err := db.Exec(stmt)
 				if err != nil {
+					log.Errorf("failed to save metadata: %w", err)
 					return nil, err
 				}
 				log.Infof("batch done, %d metadata records saved.", len(owenedMeta))
