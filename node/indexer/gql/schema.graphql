@@ -38,6 +38,8 @@ type Metadata {
     readwriteDids: String!
     status: Int!
     orders: String!
+    size: String!
+    access: String!
 }
 
 type MetadataList {
@@ -69,6 +71,22 @@ type OrderList {
     totalCount: Int!
     orders: [Order!]!
     more: Boolean!
+}
+
+type Group {
+    groupId: ID!
+    createdAt: Int!
+    files: Int!
+}
+
+type GroupList {
+    groups: [Group]!
+}
+
+type UserSummary {
+    groupCount: Int!
+    totalFiles: Int!
+    expiration: Int!
 }
 
 type Shard {
@@ -271,6 +289,12 @@ type RootQuery {
 
     """Get all Orders"""
     orders(owner: String): OrderList!
+
+    """Get Group List"""
+    groupList: GroupList!
+
+    """Get user summary by owner"""
+    userSummary(owner: String!): UserSummary!
 
     """Get Shard by ID"""
     shard(id: ID!): Shard

@@ -76,8 +76,14 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 				readonlyDids := strings.Join(meta.ReadonlyDids, ",")
 				readwriteDids := strings.Join(meta.ReadwriteDids, ",")
 
+				resBlock, err :=  chainSvc.GetBlock(ctx, int64(meta.CreatedAt))
+				if err != nil {
+					log.Errorf("failed to get block at height %d for metadata %s: %w", meta.CreatedAt, meta.DataId, err)
+					return nil, err
+				}
+
 				valueArgs += fmt.Sprintf(`("%s", "%s", "%s", "%s", %d, "%s", "%s", "%s", "%s", %t, "%s", "%s", %d, %d, "%s", "%s", %d, "%s")`,
-					meta.DataId, meta.Owner, meta.Alias, meta.GroupId, meta.OrderId, tags, meta.Cid, commits, meta.ExtendInfo, meta.Update, meta.Commit, meta.Rule, meta.Duration, meta.CreatedAt, readonlyDids, readwriteDids, meta.Status, strings.Trim(strings.Replace(fmt.Sprint(meta.Orders), " ", ",", -1), "[]"))
+					meta.DataId, meta.Owner, meta.Alias, meta.GroupId, meta.OrderId, tags, meta.Cid, commits, meta.ExtendInfo, meta.Update, meta.Commit, meta.Rule, meta.Duration, resBlock.Block.Header.Time.Unix(), readonlyDids, readwriteDids, meta.Status, strings.Trim(strings.Replace(fmt.Sprint(meta.Orders), " ", ",", -1), "[]"))
 
 				if index > 0 && index%500 == 0 {
 					log.Infof("sub batch prepare, 500 metadata records to be saved.")
