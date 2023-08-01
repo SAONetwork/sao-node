@@ -74,8 +74,8 @@ type OrderList {
 }
 
 type Group {
-    groupId: ID!
-    createdAt: Int!
+    groupId: String!
+    lastChange: Int!
     files: Int!
 }
 
@@ -87,6 +87,9 @@ type UserSummary {
     groupCount: Int!
     totalFiles: Int!
     expiration: Int!
+    totalStorage: Uint64!
+    totalSpent: Uint64!
+    balance: String!
 }
 
 type Shard {
@@ -291,10 +294,10 @@ type RootQuery {
     orders(owner: String): OrderList!
 
     """Get Group List"""
-    groupList: GroupList!
+    groupList(owner: String!): GroupList!
 
     """Get user summary by owner"""
-    userSummary(owner: String!): UserSummary!
+    userSummary(owner: String!, address: String): UserSummary!
 
     """Get Shard by ID"""
     shard(id: ID!): Shard

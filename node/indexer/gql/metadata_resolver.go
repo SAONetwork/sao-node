@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"github.com/graph-gophers/graphql-go"
 )
 
@@ -47,9 +48,12 @@ type GroupList struct {
 }
 
 type UserSummary struct {
-	GroupCount int32
-	TotalFiles int32
-	Expiration int32
+	GroupCount   int32
+	TotalFiles   int32
+	Expiration   int32
+	TotalStorage types.Uint64
+	TotalSpent   types.Uint64
+	Balance      string
 }
 
 
@@ -140,12 +144,13 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 	}, nil
 }
 
-// GetGroupList fetches the group list by groupId.
-func (r *resolver) GetGroupList(ctx context.Context) (*GroupList, error) {
+// GroupList fetches the group list by groupId.
+func (r *resolver) GroupList(ctx context.Context, args struct{ Owner string }) (*GroupList, error) {
 	rows, err := r.indexSvc.Db.QueryContext(ctx, `
 		SELECT groupId, MAX(createdAt) as createdAt, COUNT(*) as files 
 		FROM METADATA
-		GROUP BY groupId`)
+		WHERE owner = ?
+		GROUP BY groupId`, args.Owner)
 	if err != nil {
 		return nil, err
 	}
@@ -169,39 +174,70 @@ func (r *resolver) GetGroupList(ctx context.Context) (*GroupList, error) {
 	}, nil
 }
 
-// GetUserSummary fetches the user summary for a specific owner.
-func (r *resolver) GetUserSummary(ctx context.Context, owner string) (*UserSummary, error) {
+// UserSummary fetches the user summary for a specific owner.
+func (r *resolver) UserSummary(ctx context.Context, args struct{ Owner string; Address *string }) (*UserSummary, error) {
 	lastHeight, err := r.chainSvc.GetLastHeight(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get last height: %w", err)
 	}
 
-	rows, err := r.indexSvc.Db.QueryContext(ctx, `
-        SELECT COUNT(DISTINCT groupId) as GroupCount, COUNT(*) as TotalFiles,
-            SUM(CASE WHEN duration < ? THEN 1 ELSE 0 END) as Expiration
-        FROM METADATA
-        WHERE owner = ?`, lastHeight, owner)
+	// Query METADATA table
+	metaRow, err := r.indexSvc.Db.QueryContext(ctx, `
+		SELECT COUNT(DISTINCT groupId) as GroupCount, COUNT(*) as TotalFiles,
+			SUM(CASE WHEN duration < ? THEN 1 ELSE 0 END) as Expiration
+		FROM METADATA
+		WHERE owner = ?`, lastHeight, args.Owner)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer metaRow.Close()
 
 	summary := &UserSummary{}
-	if rows.Next() {
-		if err := rows.Scan(&summary.GroupCount, &summary.TotalFiles, &summary.Expiration); err != nil {
+	if metaRow.Next() {
+		if err := metaRow.Scan(&summary.GroupCount, &summary.TotalFiles, &summary.Expiration); err != nil {
 			return nil, err
 		}
 	} else {
-		return nil, fmt.Errorf("no summary available for the given owner")
+		return nil, fmt.Errorf("no metadata summary available for the given owner")
 	}
 
-	if err := rows.Err(); err != nil {
+	if err := metaRow.Err(); err != nil {
 		return nil, err
+	}
+
+	// Query ORDERS table
+	orderRow, err := r.indexSvc.Db.QueryContext(ctx, `
+		SELECT COALESCE(SUM(CASE WHEN status = 3 THEN size ELSE 0 END), 0) as TotalStorage,
+			COALESCE(SUM(CASE WHEN status = 3 THEN amount ELSE 0 END), 0) as TotalSpent
+		FROM ORDERS
+		WHERE owner = ?`, args.Owner)
+	if err != nil {
+		return nil, err
+	}
+	defer orderRow.Close()
+
+	if orderRow.Next() {
+		if err := orderRow.Scan(&summary.TotalStorage, &summary.TotalSpent); err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, fmt.Errorf("no order summary available for the given owner")
+	}
+
+	if err := orderRow.Err(); err != nil {
+		return nil, err
+	}
+
+	if args.Address != nil {
+		balance, err := r.chainSvc.GetBalance(ctx, *args.Address)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get balance: %w", err)
+		}
+		summary.Balance = balance[0].Amount.String()
 	}
 
 	return summary, nil
 }
-
 
 func (r *resolver) MetadataCount(ctx context.Context) (int32, error) {
 	return 0, nil
