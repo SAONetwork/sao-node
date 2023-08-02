@@ -44,6 +44,7 @@ func (svc *LruCacheSvc) Put(name string, key string, value interface{}) {
 	cache := svc.Caches[name]
 	if cache == nil {
 		log.Errorf("the cache [%s] not found", name)
+		return
 	}
 
 	cache.put(key, value)
