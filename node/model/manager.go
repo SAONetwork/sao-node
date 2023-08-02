@@ -94,21 +94,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
-	newReq := &types.MetadataProposal{
-		Proposal: saotypes.QueryProposal{
-			Owner:           req.Proposal.Owner,
-			Keyword:         req.Proposal.Keyword,
-			GroupId:         req.Proposal.GroupId,
-			KeywordType:     req.Proposal.KeywordType,
-			LastValidHeight: req.Proposal.LastValidHeight,
-			Gateway:         req.Proposal.Gateway,
-			Version:         req.Proposal.Version,
-			DataOwner:       req.Proposal.DataOwner,
-		},
-		JwsSignature: req.JwsSignature,
-	}
-
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, newReq, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
 	if err != nil {
 		return nil, err
 	}
