@@ -94,7 +94,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, -1)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0, true)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 			if err != nil {
 				return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
 			}
-			meta, err = mm.GatewaySvc.QueryMeta(ctx, req, int64(commitInfo.Height))
+			meta, err = mm.GatewaySvc.QueryMeta(ctx, req, int64(commitInfo.Height), true)
 			if err != nil {
 				return nil, err
 			}
@@ -152,7 +152,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 			}
 
 			if commitInfo.CommitId == req.Proposal.CommitId {
-				meta, err = mm.GatewaySvc.QueryMeta(ctx, req, int64(commitInfo.Height))
+				meta, err = mm.GatewaySvc.QueryMeta(ctx, req, int64(commitInfo.Height), true)
 				if err != nil {
 					return nil, err
 				}
@@ -221,7 +221,7 @@ func (mm *ModelManager) Create(ctx context.Context, req *types.MetadataProposal,
 		return nil, types.Wrapf(types.ErrInvalidDataId, "the model is exsiting already, alias: %s, dataId: %s", oldModel.Alias, oldModel.DataId)
 	}
 
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0, false)
 	log.Infof("orderProposal: %#v", orderProposal)
 	log.Infof("meta: %#v", meta)
 	if err == nil && meta != nil {
@@ -277,7 +277,7 @@ func (mm *ModelManager) Update(ctx context.Context, req *types.MetadataProposal,
 	lastCommitId := commitIds[0]
 
 	var isFetch = true
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0, false)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +411,7 @@ func (mm *ModelManager) Delete(ctx context.Context, req *types.OrderTerminatePro
 }
 
 func (mm *ModelManager) ShowCommits(ctx context.Context, req *types.MetadataProposal) (*types.Model, error) {
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0, false)
 	if err != nil {
 		return nil, err
 	}

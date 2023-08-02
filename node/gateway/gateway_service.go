@@ -54,7 +54,7 @@ type FetchResult struct {
 }
 
 type GatewaySvcApi interface {
-	QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error)
+	QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64, modelClient bool) (*types.Model, error)
 	CommitModel(ctx context.Context, clientProposal *types.OrderStoreProposal, orderId uint64, content []byte) (*CommitResult, error)
 	FetchContent(ctx context.Context, req *types.MetadataProposal, meta *types.Model) (*FetchResult, error)
 	TerminateOrder(ctx context.Context, req *types.OrderTerminateProposal) error
@@ -344,10 +344,10 @@ func (gs *GatewaySvc) HandleShardStore(req types.ShardLoadReq) types.ShardLoadRe
 	return resp
 }
 
-func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error) {
+func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64, useModelClient bool) (*types.Model, error) {
 	//log the req
 	log.Debugf("QueryMeta. req=%v", req)
-	res, err := gs.chainSvc.QueryMetadata(ctx, req, height)
+	res, err := gs.chainSvc.QueryMetadata(ctx, req, height, useModelClient)
 	if err != nil {
 		return nil, err
 	}

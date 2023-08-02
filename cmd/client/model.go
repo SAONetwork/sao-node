@@ -549,7 +549,7 @@ var statusCmd = &cli.Command{
 				return err
 			}
 
-			res, err := client.QueryMetadata(ctx, request, 0)
+			res, err := client.QueryMetadata(ctx, request, 0, false)
 			if err != nil {
 				if len(states) > 0 {
 					states = fmt.Sprintf("%s\n[%s]: %s", states, dataId, err.Error())
@@ -629,7 +629,7 @@ var metaCmd = &cli.Command{
 			return err
 		}
 
-		res, err := client.QueryMetadata(ctx, request, 0)
+		res, err := client.QueryMetadata(ctx, request, 0, false)
 		if err != nil {
 			return types.Wrap(types.ErrQueryMetadataFailed, err)
 		} else {
@@ -1041,7 +1041,7 @@ var updateCmd = &cli.Command{
 			return err
 		}
 
-		res, err := client.QueryMetadata(ctx, request, 0)
+		res, err := client.QueryMetadata(ctx, request, 0, false)
 		if err != nil {
 			return err
 		}
