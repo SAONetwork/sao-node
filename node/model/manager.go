@@ -94,7 +94,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 		}
 	}
 
-	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, 0)
+	meta, err := mm.GatewaySvc.QueryMeta(ctx, req, -1)
 	if err != nil {
 		return nil, err
 	}
