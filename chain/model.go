@@ -42,9 +42,6 @@ func (c *ChainSvc) GetModel(ctx context.Context, key string) (*modeltypes.QueryG
 
 func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64, modelClient bool) (*saotypes.QueryMetadataResponse, error) {
 	clientctx := c.cosmos.Context()
-	if height > 0 {
-		clientctx = clientctx.WithHeight(height)
-	}
 	if req.Proposal.KeywordType <= 1 && modelClient {
 		modelClient := modeltypes.NewQueryClient(clientctx)
 		resp, err := modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
@@ -83,6 +80,9 @@ func (c *ChainSvc) QueryMetadata(ctx context.Context, req *types.MetadataProposa
 			Shards: shards,
 		}, nil
 	} else {
+		if height > 0 {
+			clientctx = clientctx.WithHeight(height)
+		}
 		saoClient := saotypes.NewQueryClient(clientctx)
 		resp, err := saoClient.Metadata(ctx, &saotypes.QueryMetadataRequest{
 			Proposal: saotypes.QueryProposal{
