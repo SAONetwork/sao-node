@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	saoclient "github.com/SaoNetwork/sao-node/client"
 	cliutil "github.com/SaoNetwork/sao-node/cmd"
@@ -45,7 +46,7 @@ var didCreateCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		opt := saoclient.SaoClientOptions{
 			Repo:        cctx.String(FlagClientRepo),
-			Gateway:     "none",
+			Gateway:     GatewayApi,
 			ChainAddr:   cliutil.ChainAddress,
 			KeyringHome: cliutil.KeyringHome,
 		}
@@ -62,7 +63,11 @@ var didCreateCmd = &cli.Command{
 
 		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:%s:%s", cctx.String("chain-id"), address))
 		if err != nil {
-			return err
+			// the DID has been bound
+			if !strings.Contains(err.Error(), "change payment address is not supported yet") {
+				return err
+			}
+			fmt.Printf("the DID %s has been bound\n", didManager.Id)
 		}
 
 		if cctx.Bool("override") {
@@ -127,7 +132,7 @@ var didSignCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		opt := saoclient.SaoClientOptions{
 			Repo:        cctx.String(FlagClientRepo),
-			Gateway:     "none",
+			Gateway:     GatewayApi,
 			ChainAddr:   cliutil.ChainAddress,
 			KeyringHome: cliutil.KeyringHome,
 		}

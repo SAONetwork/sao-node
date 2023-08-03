@@ -342,6 +342,8 @@ var downloadCmd = &cli.Command{
 			console.Println(resp.Cid)
 
 			path := filepath.Join("./", resp.Alias)
+			dir, _ := filepath.Split(path)
+			os.MkdirAll(dir, 0775)
 			file, err := os.Create(path)
 			if err != nil {
 				return err
