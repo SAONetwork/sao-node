@@ -32,7 +32,7 @@ type LoadResp struct {
 	CommitId string
 	Version  string
 	Cid      string
-	Content  string
+	Content  []byte
 }
 
 type DeleteResp struct {
