@@ -347,7 +347,7 @@ func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
 		}
 	}
 
-	return req.Cid, nil
+	return localCid.String(), nil
 }
 
 func (rs *Libp2pRpcServer) create(params []string) (string, error) {

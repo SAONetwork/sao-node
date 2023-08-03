@@ -293,10 +293,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							log.Info("file path: ", filePath)
 
 							// Remove leading and trailing quotation marks from resp.Content
-							content := strings.Trim(resp.Content, "\"")
+							//content := strings.Trim(resp.Content, "\"")
 
 							// write file
-							err := ioutil.WriteFile(filePath, []byte(content), 0644)
+							err := ioutil.WriteFile(filePath, resp.Content, 0644)
 							if err != nil {
 								log.Errorf("failed to write file: %w", err)
 								continue
@@ -617,7 +617,7 @@ func processMeta(meta modeltypes.Metadata, resp *apitypes.LoadResp, log *logging
 
 		var raw map[string]interface{}
 
-		jsonStr := resp.Content
+		jsonStr := string(resp.Content)
 		jsonStr = strings.Replace(jsonStr, "\n", "\\n", -1)
 		jsonStr = strings.Replace(jsonStr, "\v", " ", -1)
 

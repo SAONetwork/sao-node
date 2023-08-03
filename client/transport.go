@@ -75,6 +75,7 @@ func DoTransport(ctx context.Context, repo string, remoteAddr string, remotePeer
 		log.Error(err)
 		return cid.Undef
 	}
+	log.Info("Content CID: ", contentCid)
 
 	rpcReq := types.RpcReq{
 		Method: "Sao.Upload",
