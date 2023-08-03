@@ -657,7 +657,7 @@ func (n *Node) ModelLoad(ctx context.Context, req *types.MetadataProposal) (apit
 		CommitId: model.CommitId,
 		Version:  model.Version,
 		Cid:      model.Cid,
-		Content:  string(model.Content),
+		Content:  model.Content,
 	}, nil
 }
 
@@ -704,7 +704,7 @@ func (n *Node) ModelLoadDelegate(ctx context.Context, req *types.MetadataProposa
 		CommitId: model.CommitId,
 		Version:  model.Version,
 		Cid:      model.Cid,
-		Content:  string(model.Content),
+		Content:  model.Content,
 	}, nil
 }
 

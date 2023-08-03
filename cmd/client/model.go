@@ -387,7 +387,7 @@ var loadCmd = &cli.Command{
 			console.Println(ipfsUrl.Url)
 		} else {
 			fmt.Print("  Content   : ")
-			console.Println(resp.Content)
+			console.Println(string(resp.Content))
 		}
 
 		dumpFlag := cctx.Bool("dump")
@@ -398,7 +398,7 @@ var loadCmd = &cli.Command{
 				return types.Wrap(types.ErrCreateDirFailed, err)
 			}
 
-			_, err = file.Write([]byte(resp.Content))
+			_, err = file.Write(resp.Content)
 			if err != nil {
 				return types.Wrap(types.ErrWriteFileFailed, err)
 			}
