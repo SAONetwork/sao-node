@@ -217,7 +217,7 @@ func (rs *RpcHandler) Upload(params []string) (string, error) {
 		}
 	}
 
-	return req.Cid, nil
+	return localCid.String(), nil
 }
 
 func (rs *RpcHandler) Create(params []string) (string, error) {

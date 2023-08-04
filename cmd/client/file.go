@@ -349,7 +349,7 @@ var downloadCmd = &cli.Command{
 				return err
 			}
 
-			_, err = file.Write([]byte(resp.Content))
+			_, err = file.Write(resp.Content)
 			if err != nil {
 				return err
 			}
