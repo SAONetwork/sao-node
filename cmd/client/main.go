@@ -91,7 +91,7 @@ func main() {
 		},
 		Commands: []*cli.Command{
 			initCmd,
-			recoverClietnCmd,
+			recoverClientCmd,
 			netCmd,
 			modelCmd,
 			fileCmd,
@@ -181,7 +181,10 @@ var initCmd = &cli.Command{
 
 		hash, err := saoclient.UpdateDidBinding(cctx.Context, address, didManager.Id, fmt.Sprintf("cosmos:%s:%s", cctx.String("chain-id"), address))
 		if err != nil {
-			return err
+			// the DID has been bound
+			if !strings.Contains(err.Error(), "change payment address is not supported yet") {
+				return err
+			}
 		}
 
 		err = saoclient.SaveConfig(saoclient.Cfg)
@@ -196,7 +199,7 @@ var initCmd = &cli.Command{
 	},
 }
 
-var recoverClietnCmd = &cli.Command{
+var recoverClientCmd = &cli.Command{
 	Name:  "recover-cli",
 	Usage: "recover cli sao client with a specific did",
 	UsageText: "if you have already init sao cli client, you can do recover client by did.\n " +

@@ -1,6 +1,14 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Features
+- create model with public access ([#32](https://github.com/SAONetwork/sao-node.git/issues/32))
+- add tcp rpc handler ([#35](https://github.com/SAONetwork/sao-node.git/issues/35))
+- add http lru cache ([#33](https://github.com/SAONetwork/sao-node.git/issues/33))
+
+### Bug Fixes
+- gateway disable storage module bug fix - http server not working ([#34](https://github.com/SAONetwork/sao-node.git/issues/34))
+
 
 <a name="v0.1.6"></a>
 ## [v0.1.6](https://github.com/SAONetwork/sao-node.git/compare/v0.1.5...v0.1.6) (2023-07-12)
