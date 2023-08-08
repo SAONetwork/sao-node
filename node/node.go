@@ -188,9 +188,10 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	transportStagingPath := path.Join(repo.Path, "staging")
+	rpcHandler := transport.NewHandler(ctx, &sn, tds, cfg, transportStagingPath)
 	for _, address := range cfg.Transport.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			_, err := transport.StartLibp2pRpcServer(ctx, &sn, address, peerKey, tds, cfg, transportStagingPath)
+			_, err := transport.StartLibp2pRpcServer(ctx, address, peerKey, tds, cfg, rpcHandler)
 			if err != nil {
 				return nil, types.Wrap(types.ErrStartLibP2PRPCServerFailed, err)
 			}
@@ -225,6 +226,32 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	var status = NODE_STATUS_ONLINE
 	var storageManager *store.StoreManager = nil
 	notifyChan := make(map[string]chan interface{})
+	var backends []store.StoreBackend
+	if cfg.SaoIpfs.Enable {
+		ipfsPath := path.Join(repo.Path, "ipfs")
+		ipfsDaemon, err := store.NewIpfsDaemon(ipfsPath)
+		if err != nil {
+			return nil, err
+		}
+		daemonApi, node, err := ipfsDaemon.Start(ctx)
+		if err != nil {
+			return nil, err
+		}
+		sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
+			log.Info("close ipfs daemon.")
+			return node.Close()
+		})
+		ipfsBackend, err := store.NewIpfsBackend("ipfs+sao", daemonApi)
+		if err != nil {
+			return nil, err
+		}
+		backends = append(backends, ipfsBackend)
+		log.Info("ipfs daemon initialized")
+	}
+
+	storageManager = store.NewStoreManager(backends)
+	log.Info("store manager daemon initialized")
+
 	if cfg.Module.StorageEnable && cfg.Module.GatewayEnable {
 		notifyChan[types.ShardAssignProtocol] = make(chan interface{})
 		notifyChan[types.ShardCompleteProtocol] = make(chan interface{})
@@ -234,7 +261,6 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		if cfg.Storage.AcceptOrder {
 			status = status | NODE_STATUS_ACCEPT_ORDER
 		}
-		var backends []store.StoreBackend
 		if len(cfg.Storage.Ipfs) > 0 {
 			for _, f := range cfg.Storage.Ipfs {
 				ipfsBackend, err := store.NewIpfsBackend(f.Conn, nil)
@@ -245,34 +271,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 				if err != nil {
 					return nil, err
 				}
-				backends = append(backends, ipfsBackend)
+				storageManager.AddBackend(ipfsBackend)
 			}
 		}
-
-		if cfg.SaoIpfs.Enable {
-			ipfsPath := path.Join(repo.Path, "ipfs")
-			ipfsDaemon, err := store.NewIpfsDaemon(ipfsPath)
-			if err != nil {
-				return nil, err
-			}
-			daemonApi, node, err := ipfsDaemon.Start(ctx)
-			if err != nil {
-				return nil, err
-			}
-			sn.stopFuncs = append(sn.stopFuncs, func(_ context.Context) error {
-				log.Info("close ipfs daemon.")
-				return node.Close()
-			})
-			ipfsBackend, err := store.NewIpfsBackend("ipfs+sao", daemonApi)
-			if err != nil {
-				return nil, err
-			}
-			backends = append(backends, ipfsBackend)
-			log.Info("ipfs daemon initialized")
-		}
-
-		storageManager = store.NewStoreManager(backends)
-		log.Info("store manager daemon initialized")
 
 		sn.storeSvc, err = storage.NewStoreService(ctx, nodeAddr, chainSvc, host, transportStagingPath, storageManager, notifyChan, ods)
 		if err != nil {
@@ -290,7 +291,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		}
 
 		status = status | NODE_STATUS_SERVE_GATEWAY
-		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath)
+		var gatewaySvc = gateway.NewGatewaySvc(ctx, nodeAddr, chainSvc, host, cfg, storageManager, notifyChan, ods, keyringHome, transportStagingPath, serverPath, rpcHandler)
 		sn.manager = model.NewModelManager(&cfg.Cache, gatewaySvc)
 		sn.gatewaySvc = gatewaySvc
 		sn.stopFuncs = append(sn.stopFuncs, sn.manager.Stop)
@@ -299,7 +300,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		if cfg.SaoHttpFileServer.Enable {
 			log.Info("initialize http file server")
 
-			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx)
+			hfs, err := gateway.StartHttpFileServer(serverPath, &cfg.SaoHttpFileServer, cfg, cctx, keyringHome)
 			if err != nil {
 				return nil, err
 			}
@@ -718,14 +719,11 @@ func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposa
 		return apitypes.DeleteResp{}, err
 	}
 
-	model, err := n.manager.Delete(ctx, req, isPublish)
+	_, err = n.manager.Delete(ctx, req, isPublish)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
 	}
-	return apitypes.DeleteResp{
-		DataId: model.DataId,
-		Alias:  model.Alias,
-	}, nil
+	return apitypes.DeleteResp{}, nil
 }
 
 func (n *Node) ModelUpdate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {

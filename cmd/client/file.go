@@ -201,12 +201,19 @@ var uploadCmd = &cli.Command{
 			Usage:    "remote multiaddr",
 			Required: true,
 		},
+		&cli.StringFlag{
+			Name:  "protocol",
+			Usage: "protocol to use (tcp/udp)",
+			Value: "udp",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
 		fpath := cctx.String("filepath")
 		multiaddr := cctx.String("multiaddr")
+		protocol := cctx.String("protocol")
+
 		if !strings.Contains(multiaddr, "/p2p/") {
 			return types.Wrapf(types.ErrInvalidParameters, "invalid multiaddr: %s", multiaddr)
 		}
@@ -233,7 +240,13 @@ var uploadCmd = &cli.Command{
 
 		repo := cctx.String(FlagClientRepo)
 		for _, file := range files {
-			c := saoclient.DoTransport(ctx, repo, multiaddr, peerId, file)
+			var c cid.Cid
+			if protocol == "tcp" {
+				c = saoclient.DoTransportTCP(ctx, repo, multiaddr, file)
+			} else {
+				c = saoclient.DoTransport(ctx, repo, multiaddr, peerId, file)
+			}
+
 			if c != cid.Undef {
 				fmt.Printf("file [%s] successfully uploaded, CID is %s.\r\n", file, c.String())
 			} else {
@@ -342,6 +355,8 @@ var downloadCmd = &cli.Command{
 			console.Println(resp.Cid)
 
 			path := filepath.Join("./", resp.Alias)
+			dir, _ := filepath.Split(path)
+			os.MkdirAll(dir, 0775)
 			file, err := os.Create(path)
 			if err != nil {
 				return err

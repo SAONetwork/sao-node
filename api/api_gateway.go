@@ -27,7 +27,7 @@ type SaoApi interface {
 	// ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
 
 	// MethodGroup: Migration Job
-	MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error)
+	MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) //perm:read
 
 	// MethodGroup: Model
 	// The Model method group contains methods for manipulating data models.

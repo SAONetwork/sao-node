@@ -2,7 +2,6 @@ package chain
 
 import (
 	"context"
-
 	"github.com/SaoNetwork/sao-node/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
@@ -151,4 +150,30 @@ func (c *ChainSvc) UpdatePermission(ctx context.Context, signer string, proposal
 	}
 
 	return result.resp.TxResponse.TxHash, nil
+}
+
+func (c *ChainSvc) ListMetaByDid(ctx context.Context, did string) ([]modeltypes.Metadata, error) {
+
+	var offset uint64 = 0
+	var limit uint64 = 100
+	allMetadatas := []modeltypes.Metadata{}
+	for {
+		metaList, total, err := c.ListMeta(ctx, offset, limit)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, meta := range metaList {
+			if meta.Owner == did {
+				allMetadatas = append(allMetadatas, meta)
+			}
+		}
+
+		if offset+limit <= total {
+			offset += limit
+		} else {
+			break
+		}
+	}
+	return allMetadatas, nil
 }

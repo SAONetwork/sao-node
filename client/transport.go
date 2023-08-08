@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"github.com/libp2p/go-libp2p"
 	"io"
 	"os"
 	"path/filepath"
@@ -169,6 +171,134 @@ func DoTransport(ctx context.Context, repo string, remoteAddr string, remotePeer
 		}
 	}
 
+	return contentCid
+}
+
+func DoTransportTCP(ctx context.Context, repo string, peerInfo string, fpath string) cid.Cid {
+	clientKey := fetchKey(repo)
+	if clientKey == nil {
+		log.Error("failed to generate transport key")
+		return cid.Undef
+	}
+	listenAddrsOption := libp2p.ListenAddrStrings("/ip4/127.0.0.1/tcp/28848")
+	host, err := libp2p.New(listenAddrsOption, libp2p.Identity(clientKey))
+	a, err := ma.NewMultiaddr(peerInfo)
+	fmt.Println(err)
+	pi, err := peer.AddrInfoFromP2pAddr(a)
+	fmt.Println(err)
+	fmt.Println(pi)
+	host.Connect(ctx, *pi)
+	fmt.Println(err)
+
+	file, err := os.Open(fpath)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+
+	contentCid, err := utils.CalculateCid(content)
+	if err != nil {
+		log.Error(err)
+		return cid.Undef
+	}
+
+	rpcReq := types.RpcReq{
+		Method: "Sao.Upload",
+	}
+
+	var contentLength int = len(content)
+	var totalChunks = contentLength/types.CHUNK_SIZE + 1
+	chunkId := 0
+	for chunkId <= totalChunks {
+		var chunk []byte
+		if (chunkId+1)*types.CHUNK_SIZE < len(content) {
+			chunk = content[chunkId*types.CHUNK_SIZE : (chunkId+1)*types.CHUNK_SIZE]
+		} else if chunkId*types.CHUNK_SIZE < len(content) {
+			chunk = content[chunkId*types.CHUNK_SIZE:]
+		} else {
+			chunk = make([]byte, 0)
+		}
+
+		chunkCid, err := utils.CalculateCid(chunk)
+		if err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+
+		log.Info("Content[", chunkId, "], CID: ", chunkCid, ", length: ", len(chunk))
+
+		str, err := host.NewStream(ctx, pi.ID, types.RpcProtocol)
+		if err != nil {
+			log.Error("1", err)
+			return cid.Undef
+		}
+		defer str.Close()
+
+		req := &types.FileChunkReq{
+			ChunkId:     chunkId,
+			TotalLength: contentLength,
+			TotalChunks: totalChunks,
+			ChunkCid:    chunkCid.String(),
+			Cid:         contentCid.String(),
+			Content:     chunk,
+		}
+		b, err := json.Marshal(req)
+		if err != nil {
+			log.Error("2", err)
+			return cid.Undef
+		}
+
+		rpcReq.Params = append(make([]string, 0), string(b))
+		bytes, err := json.Marshal(rpcReq)
+		if err != nil {
+			log.Error("3", err)
+			return cid.Undef
+		}
+
+		if _, err := str.Write(bytes); err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+		if err := str.CloseWrite(); err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+
+		buf, err := io.ReadAll(str)
+		if err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+
+		var resp types.RpcResp
+		err = json.Unmarshal(buf, &resp)
+		if err != nil {
+			log.Error(err)
+			return cid.Undef
+		}
+
+		if resp.Error != "" {
+			log.Error("resp err: ", resp.Error)
+			return cid.Undef
+		}
+
+		remoteCid := resp.Data
+
+		if remoteCid == chunkCid.String() {
+			chunkId++
+		} else if remoteCid == contentCid.String() && len(chunk) == 0 {
+			break
+		} else {
+			log.Errorf("file cid mismatch, expected %s, but got %s", remoteCid, chunkCid)
+			return cid.Undef
+		}
+	}
 	return contentCid
 }
 
