@@ -67,6 +67,7 @@ type ChainSvcApi interface {
 	GetDidInfo(ctx context.Context, did string) (types.DidInfo, error)
 	GetFishmen(ctx context.Context) (string, error)
 	GetSidDocument(ctx context.Context, versionId string) (*sid.SidDocument, error)
+	QueryDidParams(ctx context.Context) (string, error)
 	UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error)
 	QueryPaymentAddress(ctx context.Context, did string) (string, error)
 	QueryMetadata(ctx context.Context, req *types.MetadataProposal, height int64) (*saotypes.QueryMetadataResponse, error)
@@ -94,6 +95,9 @@ type ChainSvcApi interface {
 	GetTx(ctx context.Context, hash string, heigth int64) (*coretypes.ResultTx, error)
 	ReportFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error)
 	RecoverFaults(ctx context.Context, creator string, provider string, faults []*saotypes.Fault) ([]string, error)
+	ListMeta(ctx context.Context, offset uint64, limit uint64) ([]modeltypes.Metadata, uint64, error)
+	ListMetaByDid(ctx context.Context, did string) ([]modeltypes.Metadata, error)
+	GetBlock(ctx context.Context, height int64) (*coretypes.ResultBlock, error)
 }
 
 func NewChainSvc(
@@ -258,6 +262,10 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 		return nil, types.Wrap(types.ErrTxQueryFailed, err)
 	}
 	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
+}
+
+func (c *ChainSvc) GetBlock(ctx context.Context, height int64) (*coretypes.ResultBlock, error) {
+	return c.cosmos.RPC.Block(ctx, &height)
 }
 
 func (c *ChainSvc) GetFishmen(ctx context.Context) (string, error) {

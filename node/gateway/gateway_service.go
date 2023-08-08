@@ -12,6 +12,7 @@ import (
 	"github.com/SaoNetwork/sao-node/chain"
 	"github.com/SaoNetwork/sao-node/node/config"
 	"github.com/SaoNetwork/sao-node/node/queue"
+	"github.com/SaoNetwork/sao-node/node/transport"
 	"github.com/SaoNetwork/sao-node/store"
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
@@ -100,6 +101,7 @@ func NewGatewaySvc(
 	keyringHome string,
 	stagingPath string,
 	serverPath string,
+	rh *transport.RpcHandler,
 ) *GatewaySvc {
 	cs := &GatewaySvc{
 		ctx:                ctx,
@@ -132,6 +134,7 @@ func NewGatewaySvc(
 		host,
 		cs,
 		local,
+		rh,
 	)
 
 	go cs.runSched(ctx, host)

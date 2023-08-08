@@ -27,6 +27,7 @@ type SaoHttpFileServer struct {
 	EnableHttpFileServerLog bool
 	HttpFileServerPath      string
 	TokenPeriod             time.Duration
+	CacheSize               int
 }
 
 // SaoIpfs contains configs for inprocess ipfs

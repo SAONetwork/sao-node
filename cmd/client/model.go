@@ -23,6 +23,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+var MetaStatus = map[int32]string{
+	0: "New",
+	1: "Update",
+	2: "ForceUpdate",
+	3: "Renew",
+	4: "Complete",
+}
+
 var modelCmd = &cli.Command{
 	Name:      "model",
 	Usage:     "data model management",
@@ -189,11 +197,6 @@ var createCmd = &cli.Command{
 			Keyword: dataId,
 		}
 
-		if isPublic {
-			queryProposal.Owner = "all"
-			proposal.Owner = "all"
-		}
-
 		clientProposal, err := buildClientProposal(ctx, didManager, proposal, client)
 		if err != nil {
 			return err
@@ -217,6 +220,50 @@ var createCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		if isPublic {
+			builtinDids, err := client.QueryDidParams(ctx)
+			if err != nil {
+				return err
+			}
+
+			proposal := saotypes.PermissionProposal{
+				Owner:         didManager.Id,
+				DataId:        resp.DataId,
+				ReadonlyDids:  strings.Split(builtinDids, ","),
+				ReadwriteDids: []string{},
+			}
+
+			proposalBytes, err := proposal.Marshal()
+			if err != nil {
+				return types.Wrap(types.ErrMarshalFailed, err)
+			}
+
+			jws, err := didManager.CreateJWS(proposalBytes)
+			if err != nil {
+				return types.Wrap(types.ErrCreateJwsFailed, err)
+			}
+
+			request := &types.PermissionProposal{
+				Proposal: proposal,
+				JwsSignature: saotypes.JwsSignature{
+					Protected: jws.Signatures[0].Protected,
+					Signature: jws.Signatures[0].Signature,
+				},
+			}
+			if clientPublish {
+				_, err = client.UpdatePermission(ctx, signer, request)
+				if err != nil {
+					return err
+				}
+			} else {
+				_, err := client.ModelUpdatePermission(ctx, request, !clientPublish)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		fmt.Printf("alias: %s, data id: %s\r\n", resp.Alias, resp.DataId)
 		return nil
 	},
@@ -348,7 +395,7 @@ var loadCmd = &cli.Command{
 			console.Println(ipfsUrl.Url)
 		} else {
 			fmt.Print("  Content   : ")
-			console.Println(resp.Content)
+			console.Println(string(resp.Content))
 		}
 
 		dumpFlag := cctx.Bool("dump")
@@ -359,7 +406,7 @@ var loadCmd = &cli.Command{
 				return types.Wrap(types.ErrCreateDirFailed, err)
 			}
 
-			_, err = file.Write([]byte(resp.Content))
+			_, err = file.Write(resp.Content)
 			if err != nil {
 				return types.Wrap(types.ErrWriteFileFailed, err)
 			}
@@ -374,14 +421,71 @@ var listCmd = &cli.Command{
 	Name:  "list",
 	Usage: "check models' status",
 	Flags: []cli.Flag{
-		&cli.StringSliceFlag{
-			Name:     "date",
-			Usage:    "updated date of data model's to be list",
+		&cli.StringFlag{
+			Name:     "did",
+			Usage:    "show model list owned by the given did ",
 			Required: false,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Printf("TODO...")
+		ctx := cctx.Context
+		client, closer, err := getSaoClient(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		var did string
+		if cctx.IsSet("did") {
+			did = cctx.String("did")
+		} else {
+			didManager, _, err := cliutil.GetDidManager(cctx, client.Cfg.KeyName)
+			if err != nil {
+				return err
+			}
+			did = didManager.Id
+		}
+		fmt.Printf("list meta owned by %s\n", did)
+		allMetadatas, err := client.ListMetaByDid(ctx, did)
+		if err != nil {
+			return err
+		}
+
+		currentHeight, err := client.GetLastHeight(ctx)
+		if err != nil {
+			return err
+		}
+
+		format := "%-4v %-36s %-20s %-12s %-25v %-25v %v \n"
+		fmt.Printf(format, "id", "dataId", "alias", "status", "createdAt", "lastUpdatedAt", "leftEpoch")
+		var count = 0
+		for _, meta := range allMetadatas {
+			count++
+			createdAt := ""
+			createdBlock, err := client.GetBlock(ctx, int64(meta.CreatedAt))
+			if err == nil {
+				createdAt = createdBlock.Block.Time.Format("2006-01-02T15:04:05Z07:00")
+			}
+			lastUpdated := ""
+			if len(meta.Commits) > 0 {
+				mc, err := types.ParseMetaCommit(meta.Commits[len(meta.Commits)-1])
+				if err != nil {
+					return err
+				}
+
+				lastUpdatedBlock, err := client.GetBlock(ctx, int64(mc.Height))
+				if err == nil {
+					lastUpdated = lastUpdatedBlock.Block.Time.Format("2006-01-02T15:04:05Z07:00")
+				}
+			}
+
+			leftEpoch := meta.CreatedAt + meta.Duration - uint64(currentHeight)
+			alias := meta.Alias
+			if len(alias) > 20 {
+				alias = alias[:20]
+			}
+			fmt.Printf(format, count, meta.DataId, alias, MetaStatus[meta.Status], createdAt, lastUpdated, leftEpoch)
+		}
 		return nil
 	},
 }

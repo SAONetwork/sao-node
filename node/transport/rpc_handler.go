@@ -1,35 +1,23 @@
 package transport
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/SaoNetwork/sao-node/api"
 	"github.com/SaoNetwork/sao-node/node/config"
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
-
-	"github.com/libp2p/go-libp2p"
-	libp2pwebtransport "github.com/libp2p/go-libp2p/p2p/transport/webtransport"
-	"github.com/mitchellh/go-homedir"
-	ma "github.com/multiformats/go-multiaddr"
-
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/mitchellh/go-homedir"
 )
 
-type Libp2pRpcServer struct {
+type RpcHandler struct {
 	Ctx              context.Context
 	DbLk             sync.Mutex
 	Db               datastore.Batching
@@ -38,137 +26,19 @@ type Libp2pRpcServer struct {
 	StagingSapceSize int64
 }
 
-func StartLibp2pRpcServer(ctx context.Context, ga api.SaoApi, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, stagingPath string) (*Libp2pRpcServer, error) {
-	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
-	if err != nil {
-		return nil, err
-	}
+func NewHandler(ctx context.Context, ga api.SaoApi, db datastore.Batching, cfg *config.Node, stagingPath string) *RpcHandler {
 
-	h, err := libp2p.New(libp2p.Transport(tr), libp2p.Identity(serverKey))
-	if err != nil {
-		return nil, err
-	}
-
-	err = h.Network().Listen(ma.StringCast(address + "/quic/webtransport"))
-	if err != nil {
-		return nil, err
-	}
-
-	var peerInfos []string
-	var addressPattern string
-	for _, a := range h.Addrs() {
-		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
-		log.Debug("addr=", withP2p.String())
-		peerInfos = append(peerInfos, withP2p.String())
-		if strings.Contains(a.String(), "/ip4/127.0.0.1/udp/5154") {
-			addressPattern = a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String())).String()
-		}
-	}
-	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
-		announceAddresses := make([]string, 0)
-		for _, address := range cfg.Libp2p.AnnounceAddresses {
-			if strings.Contains(address, "udp") {
-				announceAddresses = append(announceAddresses, strings.ReplaceAll(addressPattern, "/ip4/127.0.0.1/udp/5154", address))
-			}
-		}
-		if len(announceAddresses) > 0 {
-			peerInfos = append(peerInfos, strings.Join(announceAddresses, ","))
-		}
-	}
-	if len(peerInfos) > 0 {
-		key := datastore.NewKey(fmt.Sprintf(types.PEER_INFO_PREFIX))
-		peers, err := db.Get(ctx, key)
-		if err != nil {
-			return nil, err
-		}
-		if len(peers) > 0 {
-			db.Put(ctx, key, []byte(string(peers)+","+strings.Join(peerInfos, ",")))
-		} else {
-			db.Put(ctx, key, []byte(strings.Join(peerInfos, ",")))
-		}
-	}
-
-	rs := &Libp2pRpcServer{
+	handler := RpcHandler{
 		Ctx:              ctx,
 		Db:               db,
 		GatewayApi:       ga,
 		StagingPath:      stagingPath,
 		StagingSapceSize: cfg.Transport.StagingSapceSize,
 	}
-
-	h.Network().SetStreamHandler(rs.HandleStream)
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	select {
-	case <-c:
-	case <-time.After(time.Second):
-	}
-
-	return rs, nil
+	return &handler
 }
 
-func (rs *Libp2pRpcServer) HandleStream(s network.Stream) {
-	defer s.Close()
-
-	// Set a deadline on reading from the stream so it doesn’t hang
-	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
-	defer s.SetReadDeadline(time.Time{}) // nolint
-
-	var req types.RpcReq
-	var resp = types.RpcResp{}
-
-	buf := &bytes.Buffer{}
-	buf.ReadFrom(s)
-	err := json.Unmarshal(buf.Bytes(), &req)
-	if err == nil {
-		log.Info("Got rpc request: ", req.Method)
-
-		var result string
-		var err error
-		switch req.Method {
-		case "Sao.Upload":
-			req.Params = append(req.Params, filepath.Join(rs.StagingPath, s.Conn().RemotePeer().String()))
-			result, err = rs.upload(req.Params)
-		case "Sao.ModelCreate":
-			result, err = rs.create(req.Params)
-		case "Sao.ModelLoad":
-			result, err = rs.load(req.Params)
-		case "Sao.ModelUpdate":
-			result, err = rs.update(req.Params)
-		default:
-			resp.Error = "N/a"
-		}
-		if err != nil {
-			resp.Error = err.Error()
-		} else {
-			resp.Data = result
-		}
-
-	} else {
-		resp.Error = err.Error()
-	}
-
-	bytes, err := json.Marshal(resp)
-	if err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	if _, err := s.Write(bytes); err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	if err := s.CloseWrite(); err != nil {
-		log.Error(err.Error())
-		return
-	}
-
-	log.Info("Sent rpc response: ", resp)
-}
-
-func (rs *Libp2pRpcServer) handleChunkInfo(req *types.FileChunkReq, path string) {
+func (rs *RpcHandler) handleChunkInfo(req *types.FileChunkReq, path string) {
 	rs.DbLk.Lock()
 	defer rs.DbLk.Unlock()
 
@@ -218,7 +88,7 @@ func (rs *Libp2pRpcServer) handleChunkInfo(req *types.FileChunkReq, path string)
 	}
 }
 
-func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
+func (rs *RpcHandler) Upload(params []string) (string, error) {
 	if len(params) != 2 {
 		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
@@ -347,10 +217,10 @@ func (rs *Libp2pRpcServer) upload(params []string) (string, error) {
 		}
 	}
 
-	return req.Cid, nil
+	return localCid.String(), nil
 }
 
-func (rs *Libp2pRpcServer) create(params []string) (string, error) {
+func (rs *RpcHandler) Create(params []string) (string, error) {
 	if len(params) != 3 {
 		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
@@ -387,7 +257,7 @@ func (rs *Libp2pRpcServer) create(params []string) (string, error) {
 	return string(b), nil
 }
 
-func (rs *Libp2pRpcServer) load(params []string) (string, error) {
+func (rs *RpcHandler) Load(params []string) (string, error) {
 	if len(params) != 1 {
 		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}
@@ -411,7 +281,7 @@ func (rs *Libp2pRpcServer) load(params []string) (string, error) {
 	return string(b), nil
 }
 
-func (rs *Libp2pRpcServer) update(params []string) (string, error) {
+func (rs *RpcHandler) Update(params []string) (string, error) {
 	if len(params) != 3 {
 		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
 	}

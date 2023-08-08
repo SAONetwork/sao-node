@@ -1,8 +1,11 @@
 package gateway
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -16,21 +19,24 @@ import (
 type StreamGatewayProtocol struct {
 	ctx  context.Context
 	host host.Host
+	RH   *transport.RpcHandler
 	GatewayProtocolHandler
 	LocalGatewayProtocol
 }
 
-func NewStreamGatewayProtocol(ctx context.Context, host host.Host, handler GatewayProtocolHandler, local LocalGatewayProtocol) StreamGatewayProtocol {
+func NewStreamGatewayProtocol(ctx context.Context, host host.Host, handler GatewayProtocolHandler, local LocalGatewayProtocol, rh *transport.RpcHandler) StreamGatewayProtocol {
 	sgp := StreamGatewayProtocol{
 		ctx:                    ctx,
 		host:                   host,
 		GatewayProtocolHandler: handler,
 		LocalGatewayProtocol:   local,
+		RH:                     rh,
 	}
 	host.SetStreamHandler(types.ShardStoreProtocol, sgp.handleShardStoreStream)
 	host.SetStreamHandler(types.ShardCompleteProtocol, sgp.handleShardCompleteStream)
 	host.SetStreamHandler(types.ShardLoadProtocol, sgp.handleRelayStream)
 	host.SetStreamHandler(types.ShardPingPongProtocol, transport.HandlePingRequest)
+	host.SetStreamHandler(types.RpcProtocol, sgp.HandleRPCRequest)
 	return sgp
 }
 
@@ -39,6 +45,65 @@ func (l StreamGatewayProtocol) Stop(ctx context.Context) error {
 	l.host.RemoveStreamHandler(types.ShardStoreProtocol)
 	l.host.RemoveStreamHandler(types.ShardCompleteProtocol)
 	return nil
+}
+func (l StreamGatewayProtocol) HandleRPCRequest(s network.Stream) {
+	defer s.Close()
+
+	// Set a deadline on reading from the stream so it doesn’t hang
+	_ = s.SetReadDeadline(time.Now().Add(30 * time.Second))
+	defer s.SetReadDeadline(time.Time{}) // nolint
+
+	var req types.RpcReq
+	var resp = types.RpcResp{}
+
+	buf := &bytes.Buffer{}
+	buf.ReadFrom(s)
+	err := json.Unmarshal(buf.Bytes(), &req)
+	if err == nil {
+		log.Info("Got rpc request: ", req.Method)
+
+		var result string
+		var err error
+		switch req.Method {
+		case "Sao.Upload":
+			req.Params = append(req.Params, filepath.Join(l.RH.StagingPath, s.Conn().RemotePeer().String()))
+			result, err = l.RH.Upload(req.Params)
+		case "Sao.ModelCreate":
+			result, err = l.RH.Create(req.Params)
+		case "Sao.ModelLoad":
+			result, err = l.RH.Load(req.Params)
+		case "Sao.ModelUpdate":
+			result, err = l.RH.Update(req.Params)
+		default:
+			resp.Error = "N/a"
+		}
+		if err != nil {
+			resp.Error = err.Error()
+		} else {
+			resp.Data = result
+		}
+
+	} else {
+		resp.Error = err.Error()
+	}
+
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	if _, err := s.Write(bytes); err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	if err := s.CloseWrite(); err != nil {
+		log.Error(err.Error())
+		return
+	}
+
+	log.Info("Sent rpc response: ", resp)
 }
 
 func (l StreamGatewayProtocol) handleShardStoreStream(s network.Stream) {
