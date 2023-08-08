@@ -269,10 +269,6 @@ func (c *ChainSvc) GetTx(ctx context.Context, hash string, height int64) (*coret
 	return c.cosmos.RPC.Tx(ctx, hashBytes, true)
 }
 
-func (c *ChainSvc) GetBlock(ctx context.Context, height int64) (*coretypes.ResultBlock, error) {
-	return c.cosmos.RPC.Block(ctx, &height)
-}
-
 func (c *ChainSvc) GetFishmen(ctx context.Context) (string, error) {
 	resp, err := c.nodeClient.Fishmen(ctx, &nodetypes.QueryFishmenRequest{})
 	if err != nil {
