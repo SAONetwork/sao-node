@@ -622,6 +622,5 @@ func (mm *ModelManager) cacheModel(account string, model *types.Model) {
 	mm.CacheSvc.Put("did:key:zQ3shrEb8QivraEDEe627YU9dyRfgBEbS5Ch4MF3KRCB8YVxw", model.DataId + model.CommitId, model)
 	mm.CacheSvc.Put("did:key:zQ3shrEb8QivraEDEe627YU9dyRfgBEbS5Ch4MF3KRCB8YVxw", model.Alias + model.CommitId, model)
 
-	buf, _ := json.Marshal(model)
-	log.Debug("model: ", string(buf), " CACHED!!!")
+	log.Debug("model: ", model.DataId, " CACHED!!!")
 }
