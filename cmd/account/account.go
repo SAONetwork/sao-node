@@ -3,6 +3,7 @@ package account
 import (
 	"bufio"
 	"fmt"
+	"github.com/cosmos/go-bip39"
 	"os"
 	"strings"
 	"syscall"
@@ -258,6 +259,9 @@ var importCmd = &cli.Command{
 			secret = secret + line
 
 			if strings.Contains(line, "-----END TENDERMINT PRIVATE KEY-----") {
+				break
+			} else if bip39.IsMnemonicValid(line) {
+				secret = line // If line is a valid mnemonic, set it as the secret and break
 				break
 			}
 		}
