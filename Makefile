@@ -3,7 +3,8 @@ SHELL=/usr/bin/env bash
 GOCC?=go
 BINS:=
 
-ldflags=-X=github.com/SaoNetwork/sao-node/build.CurrentCommit=$(subst -,.,$(shell bash ./version.sh))
+version=$(shell bash ./version.sh)
+ldflags=-X=github.com/SaoNetwork/sao-node/build.CurrentCommit=$(subst -,.,"$(version)")
 GOFLAGS+=-ldflags="$(ldflags)"
 
 all: saonode saoclient

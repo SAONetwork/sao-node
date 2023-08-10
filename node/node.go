@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	ip "github.com/SaoNetwork/sao-node/node/public_ip"
+	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	"io"
 	"net/http"
 	"os"
@@ -124,6 +126,16 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")
 	}
 
+	// chain
+	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
+	if err != nil {
+		return nil, err
+	}
+
+	getNodeList := func() ([]nodetypes.Node, error) {
+		return chainSvc.ListNodes(ctx)
+	}
+
 	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
 		peerInfos = strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
 		for _, peerInfo := range strings.Split(peerInfos, ",") {
@@ -147,9 +159,13 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 				if cfg.Libp2p.PublicAddress != "" {
 					externalIp = cfg.Libp2p.PublicAddress
 				} else {
-					externalIp, err = transport.GetExternalIp()
+					nodeList, err := getNodeList()
 					if err != nil {
-						log.Warnf("failed to get external Ip: %s", err.Error())
+						return nil, err
+					}
+					externalIp = ip.DoPublicIpRequest(ctx, host, nodeList)
+					if externalIp == "" {
+						log.Warnf("failed to get external Ip")
 					}
 				}
 
@@ -163,12 +179,6 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 				}
 			}
 		}
-	}
-
-	// chain
-	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
-	if err != nil {
-		return nil, err
 	}
 
 	addresses := make([]string, 0)
@@ -215,7 +225,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	rpcHandler := transport.NewHandler(ctx, &sn, tds, cfg, transportStagingPath)
 	for _, address := range cfg.Transport.TransportListenAddress {
 		if strings.Contains(address, "udp") {
-			_, err := transport.StartLibp2pRpcServer(ctx, address, peerKey, tds, cfg, rpcHandler)
+			_, err := transport.StartLibp2pRpcServer(ctx, address, peerKey, tds, cfg, rpcHandler, getNodeList)
 			if err != nil {
 				return nil, types.Wrap(types.ErrStartLibP2PRPCServerFailed, err)
 			}

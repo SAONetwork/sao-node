@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	ip "github.com/SaoNetwork/sao-node/node/public_ip"
+	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -23,11 +25,13 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
+type GetNodeList = func() ([]nodetypes.Node, error)
+
 type Libp2pRpcServer struct {
 	RH *RpcHandler
 }
 
-func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, rh *RpcHandler) (*Libp2pRpcServer, error) {
+func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, rh *RpcHandler, getNodeList GetNodeList) (*Libp2pRpcServer, error) {
 	if !cfg.Libp2p.ExternalIpEnable && !cfg.Libp2p.IntranetIpEnable && len(cfg.Libp2p.AnnounceAddresses) == 0 {
 		cfg.Libp2p.ExternalIpEnable = true
 		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")
@@ -61,9 +65,13 @@ func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.
 			if cfg.Libp2p.PublicAddress != "" {
 				externalIp = cfg.Libp2p.PublicAddress
 			} else {
-				externalIp, err = GetExternalIp()
+				nodeList, err := getNodeList()
 				if err != nil {
-					log.Warnf("failed to get external Ip: %s", err.Error())
+					return nil, err
+				}
+				externalIp = ip.DoPublicIpRequest(ctx, h, nodeList)
+				if externalIp == "" {
+					log.Warnf("failed to get external Ip")
 				}
 			}
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	ip "github.com/SaoNetwork/sao-node/node/public_ip"
 	"github.com/SaoNetwork/sao-node/node/transport"
 	"github.com/SaoNetwork/sao-node/types"
 
@@ -37,6 +38,7 @@ func NewStreamGatewayProtocol(ctx context.Context, host host.Host, handler Gatew
 	host.SetStreamHandler(types.ShardLoadProtocol, sgp.handleRelayStream)
 	host.SetStreamHandler(types.ShardPingPongProtocol, transport.HandlePingRequest)
 	host.SetStreamHandler(types.RpcProtocol, sgp.HandleRPCRequest)
+	host.SetStreamHandler(types.PublicIpProtocol, ip.HandlePublicIpRequest)
 	return sgp
 }
 
