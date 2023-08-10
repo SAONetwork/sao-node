@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	ip "github.com/SaoNetwork/sao-node/node/public_ip"
-	nodetypes "github.com/SaoNetwork/sao/x/node/types"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -25,13 +23,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 )
 
-type GetNodeList = func() ([]nodetypes.Node, error)
-
 type Libp2pRpcServer struct {
 	RH *RpcHandler
 }
 
-func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, rh *RpcHandler, getNodeList GetNodeList) (*Libp2pRpcServer, error) {
+func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, rh *RpcHandler) (*Libp2pRpcServer, error) {
 	if !cfg.Libp2p.ExternalIpEnable && !cfg.Libp2p.IntranetIpEnable && len(cfg.Libp2p.AnnounceAddresses) == 0 {
 		cfg.Libp2p.ExternalIpEnable = true
 		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")
@@ -60,26 +56,10 @@ func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.
 			log.Debug("addr=", withP2p.String())
 			peerInfos = append(peerInfos, withP2p.String())
 		}
-		if cfg.Libp2p.ExternalIpEnable && strings.Contains(withP2p.String(), "127.0.0.1") {
-			var externalIp string
-			if cfg.Libp2p.PublicAddress != "" {
-				externalIp = cfg.Libp2p.PublicAddress
-			} else {
-				nodeList, err := getNodeList()
-				if err != nil {
-					return nil, err
-				}
-				externalIp = ip.DoPublicIpRequest(ctx, h, nodeList)
-				if externalIp == "" {
-					log.Warnf("failed to get external Ip")
-				}
-			}
-
-			if externalIp != "" {
-				publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", externalIp, 1)
-				log.Debug("addr=", publicAddrWithP2p)
-				peerInfos = append(peerInfos, publicAddrWithP2p)
-			}
+		if cfg.Libp2p.ExternalIpEnable && cfg.Libp2p.PublicAddress != "" && strings.Contains(withP2p.String(), "127.0.0.1") {
+			publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", cfg.Libp2p.PublicAddress, 1)
+			log.Debug("addr=", publicAddrWithP2p)
+			peerInfos = append(peerInfos, publicAddrWithP2p)
 		}
 		if strings.Contains(a.String(), "/ip4/127.0.0.1/udp/5154") {
 			addressPattern = a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String())).String()

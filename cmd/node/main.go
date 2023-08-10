@@ -685,8 +685,10 @@ var updateCmd = &cli.Command{
 		}
 
 		addresses := make([]string, 0)
-		for address := range ap.Addresses {
-			addresses = append(addresses, address)
+		if ap != nil {
+			for address := range ap.Addresses {
+				addresses = append(addresses, address)
+			}
 		}
 
 		description := &nodetypes.Description{
