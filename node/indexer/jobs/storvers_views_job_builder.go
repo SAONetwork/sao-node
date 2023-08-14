@@ -69,16 +69,16 @@ var createReadNotificationsDBSQL string
 type InsertionMap map[string]storverse.InsertionStrategy
 
 var insertionStrategies = InsertionMap{
-	"USER_PROFILE":    storverse.UserProfileInsertionStrategy{},
-	"VERSE":           storverse.VerseInsertionStrategy{},
-	"FILE_INFO":       storverse.FileInfoInsertionStrategy{},
-	"USER_FOLLOWING":  storverse.UserFollowingInsertionStrategy{},
-	"LISTING_INFO":    storverse.ListingInfoInsertionStrategy{},
-	"PURCHASE_ORDER":  storverse.PurchaseOrderInsertionStrategy{},
-	"VERSE_COMMENT":   storverse.VerseCommentInsertionStrategy{},
+	"USER_PROFILE":       storverse.UserProfileInsertionStrategy{},
+	"VERSE":              storverse.VerseInsertionStrategy{},
+	"FILE_INFO":          storverse.FileInfoInsertionStrategy{},
+	"USER_FOLLOWING":     storverse.UserFollowingInsertionStrategy{},
+	"LISTING_INFO":       storverse.ListingInfoInsertionStrategy{},
+	"PURCHASE_ORDER":     storverse.PurchaseOrderInsertionStrategy{},
+	"VERSE_COMMENT":      storverse.VerseCommentInsertionStrategy{},
 	"VERSE_COMMENT_LIKE": storverse.VerseCommentLikeInsertionStrategy{},
-	"VERSE_LIKE":      storverse.VerseLikeInsertionStrategy{},
-	"NOTIFICATION":    storverse.NotificationInsertionStrategy{},
+	"VERSE_LIKE":         storverse.VerseLikeInsertionStrategy{},
+	"NOTIFICATION":       storverse.NotificationInsertionStrategy{},
 	"READ_NOTIFICATIONS": storverse.ReadNotificationsInsertionStrategy{},
 }
 
@@ -293,10 +293,10 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 							log.Info("file path: ", filePath)
 
 							// Remove leading and trailing quotation marks from resp.Content
-							//content := strings.Trim(resp.Content, "\"")
+							content := strings.Trim(string(resp.Content), "\"")
 
 							// write file
-							err := ioutil.WriteFile(filePath, resp.Content, 0644)
+							err := ioutil.WriteFile(filePath, []byte(content), 0644)
 							if err != nil {
 								log.Errorf("failed to write file: %w", err)
 								continue
@@ -832,7 +832,6 @@ func GetSecondColumnFromInsertValues(insertValues string) string {
 	// If no second value, return an empty string
 	return ""
 }
-
 
 // Returns the timeout duration based on the filter count
 func getTimeoutDuration(filterCount int) time.Duration {
