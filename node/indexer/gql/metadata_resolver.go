@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"github.com/graph-gophers/graphql-go"
@@ -142,6 +143,12 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 			log.Errorf("database scan error - size: %v", err)
 		}
 		metadatas = append(metadatas, meta)
+
+		if strings.Contains(meta.ReadonlyDids, "did:key:zQ3shggYEtCZNEiwSeqLdLo97SqS2ERMHB2mgV8hmCGDn4DJ3") {
+			meta.Access = "public" // Set Access to "public"
+		} else {
+			meta.Access = "private"
+		}
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
