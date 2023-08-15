@@ -28,7 +28,7 @@ type metadata struct {
 	Status        int32
 	Orders        string
 	Size          string
-	Access		  string
+	Access        string
 }
 
 type metadataList struct {
@@ -56,10 +56,10 @@ type UserSummary struct {
 	Balance      string
 }
 
-
 type QueryArgs struct {
-	Query  graphql.NullString
-	Owner  graphql.NullString
+	Query   graphql.NullString
+	Owner   graphql.NullString
+	GroupId graphql.NullString
 }
 
 // query: metadata(dataId) Metadata
@@ -107,6 +107,16 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 		}
 		queryStr += "owner = ?"
 		params = append(params, *args.Owner.Value)
+	}
+
+	if args.GroupId.Set && args.GroupId.Value != nil {
+		if len(params) > 0 {
+			queryStr += " AND "
+		} else {
+			queryStr += " WHERE "
+		}
+		queryStr += "groupId = ?"
+		params = append(params, *args.GroupId.Value)
 	}
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr, params...)
@@ -175,7 +185,10 @@ func (r *resolver) GroupList(ctx context.Context, args struct{ Owner string }) (
 }
 
 // UserSummary fetches the user summary for a specific owner.
-func (r *resolver) UserSummary(ctx context.Context, args struct{ Owner string; Address *string }) (*UserSummary, error) {
+func (r *resolver) UserSummary(ctx context.Context, args struct {
+	Owner   string
+	Address *string
+}) (*UserSummary, error) {
 	lastHeight, err := r.chainSvc.GetLastHeight(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get last height: %w", err)

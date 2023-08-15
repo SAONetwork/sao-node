@@ -78,9 +78,16 @@ func NewIndexSvc(
 	}
 	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, platformId, log)
 	is.JobsMap[job.ID] = job
-	is.schedQueue.Push(&queue.WorkRequest{
-		Job: job,
-	})
+
+	go func() { // Run storverse job in its own goroutine
+		err := is.excute(ctx, job)
+		if err != nil {
+			log.Errorf("job[%s] failed due to %v", job.ID, err)
+			job.Status = types.JobStatusPending
+		} else {
+			log.Infof("job[%s] done.", job.ID)
+		}
+	}()
 
 	log.Info("building metadata index job...")
 	metadataJob := jobs.BuildMetadataIndexJob(ctx, is.ChainSvc, is.Db, log)

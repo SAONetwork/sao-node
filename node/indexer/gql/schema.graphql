@@ -285,7 +285,7 @@ type RootQuery {
     metadata(id: ID!): Metadata
 
     """Get all Metadatas"""
-    metadatas(query: String, owner: String): MetadataList!
+    metadatas(query: String, owner: String, groupId: String): MetadataList!
 
     """Get Order by ID"""
     order(id: ID!): Order
