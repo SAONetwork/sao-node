@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"github.com/graph-gophers/graphql-go"
 )
 
@@ -52,8 +51,8 @@ type UserSummary struct {
 	GroupCount   int32
 	TotalFiles   int32
 	Expiration   int32
-	TotalStorage types.Uint64
-	TotalSpent   types.Uint64
+	TotalStorage string
+	TotalSpent   string
 	Balance      string
 }
 

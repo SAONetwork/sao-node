@@ -87,8 +87,8 @@ type UserSummary {
     groupCount: Int!
     totalFiles: Int!
     expiration: Int!
-    totalStorage: Uint64!
-    totalSpent: Uint64!
+    totalStorage: String!
+    totalSpent: String!
     balance: String!
 }
 
