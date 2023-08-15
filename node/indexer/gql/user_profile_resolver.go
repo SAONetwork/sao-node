@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 	"github.com/google/uuid"
 	"github.com/graph-gophers/graphql-go"
-	"github.com/SaoNetwork/sao-node/node/indexer/gql/types"
 )
 
 type userProfile struct {
@@ -80,7 +80,7 @@ func (r *resolver) UserProfile(ctx context.Context, args userProfileArgs) (*user
 			query += " OR"
 		}
 		query += " ',' || ETHADDR || ',' LIKE ?"
-		queryParams = append(queryParams, "%," + *args.EthAddress + ",%")
+		queryParams = append(queryParams, "%,"+*args.EthAddress+",%")
 		argsCount++
 	}
 
@@ -165,7 +165,7 @@ func (r *resolver) SuggestedUsers(ctx context.Context, args suggestedUsersArgs) 
 			AND USER_PROFILE.DATAID NOT IN (
 				SELECT FOLLOWING 
 				FROM USER_FOLLOWING 
-				WHERE FOLLOWER = ?
+				WHERE FOLLOWER = ? AND STATUS =1
 			)
 			ORDER BY FOLLOWING_COUNTS.COUNT DESC 
 			LIMIT ? OFFSET ?
