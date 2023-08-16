@@ -76,7 +76,9 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 				readonlyDids := strings.Join(meta.ReadonlyDids, ",")
 				readwriteDids := strings.Join(meta.ReadwriteDids, ",")
 
-				resBlock, err :=  chainSvc.GetBlock(ctx, int64(meta.CreatedAt))
+				chainSvc.ListNodes(ctx)
+
+				resBlock, err := chainSvc.GetBlock(ctx, int64(meta.CreatedAt))
 				if err != nil {
 					log.Errorf("failed to get block at height %d for metadata %s: %w", meta.CreatedAt, meta.DataId, err)
 					return nil, err

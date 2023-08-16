@@ -103,6 +103,13 @@ func NewIndexSvc(
 		Job: orderSyncJob,
 	})
 
+	log.Info("building node sync job...")
+	nodeSyncJob := jobs.SyncNodesJob(ctx, is.ChainSvc, is.Db, log)
+	is.JobsMap[nodeSyncJob.ID] = nodeSyncJob
+	is.schedQueue.Push(&queue.WorkRequest{
+		Job: nodeSyncJob,
+	})
+
 	return is
 }
 

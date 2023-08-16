@@ -48,6 +48,39 @@ type MetadataList {
     more: Boolean!
 }
 
+type Node {
+    creator: String!
+    peer: String!
+    reputation: Float!
+    status: Int!
+    lastAliveHeight: Int!
+    txAddresses: String!
+    role: Int!
+    validator: String!
+    isGateway: Boolean!
+    isSP: Boolean!
+    isIndexer: Boolean!
+    isAlive: Boolean!
+    ipAddress: String!
+    lastAliveTime: Int!
+    name: String!
+}
+
+type NodeList {
+    totalCount: Int!
+    nodes: [Node]!
+    more: Boolean!
+}
+
+type NodeCountInfo {
+    totalGateway: Int!
+    onlineGateway: Int!
+    offlineGateway: Int!
+    totalSP: Int!
+    onlineSP: Int!
+    offlineSP: Int!
+}
+
 type Order {
     id: ID!
     creator: String!
@@ -286,6 +319,12 @@ type RootQuery {
 
     """Get all Metadatas"""
     metadatas(query: String, owner: String, groupId: String): MetadataList!
+
+    """Get all Nodes"""
+    nodes(isActive: Boolean, isGateway: Boolean, isSP: Boolean): NodeList!
+
+    """Get Node Count"""
+    countNodes(id: ID!): NodeCountInfo!
 
     """Get Order by ID"""
     order(id: ID!): Order
