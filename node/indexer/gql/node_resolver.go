@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	"github.com/graph-gophers/graphql-go"
 	"strings"
 )
 
@@ -95,7 +94,7 @@ func (r *resolver) Nodes(ctx context.Context, args struct {
 }
 
 // query: countNodes(id: ID!) NodeCountInfo
-func (r *resolver) CountNodes(ctx context.Context, args struct{ ID graphql.ID }) (*nodeCountInfo, error) {
+func (r *resolver) CountNodes(ctx context.Context) (*nodeCountInfo, error) {
 	countInfo := &nodeCountInfo{}
 
 	// Counting total gateways

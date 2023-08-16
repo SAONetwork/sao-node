@@ -324,7 +324,7 @@ type RootQuery {
     nodes(isActive: Boolean, isGateway: Boolean, isSP: Boolean): NodeList!
 
     """Get Node Count"""
-    countNodes(id: ID!): NodeCountInfo!
+    countNodes: NodeCountInfo!
 
     """Get Order by ID"""
     order(id: ID!): Order
