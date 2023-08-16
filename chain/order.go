@@ -315,9 +315,21 @@ func (c *ChainSvc) ListShards(ctx context.Context, offset uint64, limit uint64) 
 		Pagination: &sdkquerytypes.PageRequest{Offset: offset, Limit: limit, Reverse: false, CountTotal: true}})
 
 	if err != nil {
-		return nil, 0, types.Wrap(types.ErrQueryOrderFailed, err)
+		return nil, 0, types.Wrap(types.ErrQueryShardListFailed, err)
 	}
 	return resp.Shard, resp.Pagination.Total, nil
+}
+
+func (c *ChainSvc) ListShardsBySp(ctx context.Context, sp string, shardId uint64) ([]ordertypes.Shard, uint64, error) {
+	resp, err := c.orderClient.ShardListBySp(ctx, &ordertypes.QueryShardListBySpRequest{
+		Sp:      sp,
+		ShardId: shardId,
+	})
+
+	if err != nil {
+		return nil, 0, types.Wrap(types.ErrQueryShardListFailed, err)
+	}
+	return resp.Shard, resp.NextShardId, nil
 }
 
 // wsevent

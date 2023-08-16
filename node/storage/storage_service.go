@@ -105,6 +105,7 @@ func NewStoreService(
 	go ss.processIncompleteShards(ctx)
 	go ss.processMigrateLoop(ctx)
 	go ss.processExpire(ctx)
+	go ss.checkShardTask(ctx)
 
 	return ss, nil
 }
@@ -1086,4 +1087,73 @@ func (ss *StoreSvc) getMigrateKeyList(ctx context.Context) ([]types.MigrateKey, 
 		return nil, err
 	}
 	return index.All, nil
+}
+
+const CheckIntervalEpoch = 5
+
+func (ss *StoreSvc) checkShardTask(ctx context.Context) {
+	var latestHeight uint64 = 0
+	latestShardId, err := utils.GetLatestShardId(ss.ctx, ss.orderDs)
+	if err != nil {
+		log.Warn("failed to get latest shard id", err)
+	}
+
+	for {
+		height, err := ss.chainSvc.GetLastHeight(ctx)
+		newHeight := uint64(height)
+		if err != nil || newHeight <= latestHeight+CheckIntervalEpoch {
+			time.Sleep(5 * time.Second)
+			continue
+		}
+
+		shards, nextShardId, err := ss.chainSvc.ListShardsBySp(ctx, ss.nodeAddress, latestShardId)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		for _, shard := range shards {
+			if shard.Status != ordertypes.ShardWaiting {
+				continue
+			}
+
+			order, err := ss.chainSvc.GetOrder(ctx, shard.OrderId)
+			if err != nil {
+				log.Error("orderId: ", shard.OrderId, " ,err: ", err)
+				continue
+			}
+
+			cid, err := cid.Decode(shard.Cid)
+			if err != nil {
+				log.Error("shardId: ", shard.Id, " ,err: ", err)
+				continue
+			}
+
+			log.Infof("asking node %s for getting shard %d content", order.Provider, shard.Id)
+			shardInfo := types.ShardInfo{
+				Owner:          order.Owner,
+				OrderId:        shard.OrderId,
+				Gateway:        order.Provider,
+				Cid:            cid,
+				DataId:         order.DataId,
+				OrderOperation: fmt.Sprintf("%d", order.Operation),
+				ShardOperation: fmt.Sprintf("%d", order.Operation),
+				State:          types.ShardStateValidated,
+				ExpireHeight:   order.CreatedAt + order.Timeout,
+			}
+			err = utils.SaveShard(ss.ctx, ss.orderDs, shardInfo)
+			if err != nil {
+				// do not throw error, the best case is storage node handle shard again.
+				log.Warnf("put shard order=%d cid=%v error: %v", shardInfo.OrderId, shardInfo.Cid, err)
+			}
+			ss.schedQueue.Push(&queue.WorkRequest{Shard: shardInfo})
+		}
+
+		latestHeight = newHeight
+		latestShardId = nextShardId
+		err = utils.SaveLatestShardId(ss.ctx, ss.orderDs, latestShardId)
+		if err != nil {
+			log.Warn("failed to save latest shard id", err)
+		}
+	}
 }

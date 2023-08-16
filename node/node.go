@@ -376,7 +376,7 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 
 	if !hasPledged {
 		for {
-			if !cfg.Module.StorageEnable && !cfg.Storage.AcceptOrder {
+			if !cfg.Module.StorageEnable || !cfg.Storage.AcceptOrder {
 				break
 			}
 

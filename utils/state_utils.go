@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"time"
 
@@ -21,6 +22,7 @@ const (
 	MIGRATE_KEY            = "migrate-dataid-%s-from-%s"
 	SHARD_EXPIRE_INDEX_KEY = "shard-expire"
 	SHARD_EXPIRE_KEY       = "shard-expire-%d"
+	LATEST_SHARD_ID        = "latest-shard-id"
 )
 
 // -----
@@ -543,6 +545,38 @@ func GetShardIndex(ctx context.Context, ds datastore.Batching) (types.ShardIndex
 	var index types.ShardIndex
 	err = index.UnmarshalCBOR(bytes.NewReader(data))
 	return index, err
+}
+
+/**
+ * Save latest shard id that storage ready to check into data store.
+ */
+func SaveLatestShardId(ctx context.Context, ds datastore.Batching, shardId uint64) error {
+	key := datastore.NewKey(LATEST_SHARD_ID)
+
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, shardId)
+	err := ds.Put(ctx, key, buf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+/**
+ * Get latest shard id that storage ready to check from data store.
+ */
+func GetLatestShardId(ctx context.Context, ds datastore.Batching) (uint64, error) {
+	key := datastore.NewKey(LATEST_SHARD_ID)
+	exists, err := ds.Has(ctx, key)
+	if err != nil || !exists {
+		return 0, err
+	}
+
+	data, err := ds.Get(ctx, key)
+	if err != nil {
+		return 0, err
+	}
+	return binary.BigEndian.Uint64(data), nil
 }
 
 const RetryIntervalCoeff time.Duration = 3
