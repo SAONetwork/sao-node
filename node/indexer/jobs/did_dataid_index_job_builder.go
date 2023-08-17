@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -112,7 +113,7 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 			}
 		}
 
-		return nil, nil
+		return nil, errors.New("we will trigger next sync")
 	}
 
 	return &types.Job{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"errors"
 	"github.com/SaoNetwork/sao-node/chain"
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
@@ -70,7 +71,7 @@ func BuildOrderSyncJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB
 			}
 		}
 
-		return nil, nil
+		return nil, errors.New("we will trigger next sync")
 	}
 
 	return &types.Job{

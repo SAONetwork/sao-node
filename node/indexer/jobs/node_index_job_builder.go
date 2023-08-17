@@ -38,7 +38,7 @@ func SyncNodesJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log
 			row := db.QueryRowContext(ctx, qry, node.Creator)
 			var existingLastAliveHeight int64
 			err := row.Scan(&existingLastAliveHeight)
-			if err != nil && err != sql.ErrNoRows {
+			if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				log.Errorf("failed to query node data for %s: %w", node.Creator, err)
 				continue
 			}
@@ -80,7 +80,7 @@ func SyncNodesJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log
 					if len(parts) > 2 {
 						ip := net.ParseIP(parts[2])
 						// Check if the IP is valid and is not an internal IP
-						if ip != nil && !ip.IsLoopback() && ip.IsGlobalUnicast() {
+						if ip != nil && !ip.IsLoopback() && !ip.IsPrivate() {
 							ipAddress = ip.String()
 							break
 						}
@@ -99,7 +99,7 @@ func SyncNodesJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log
 			}
 		}
 		log.Infof("Sync done, %d nodes records updated.", len(nodes))
-		return nil, nil
+		return nil, errors.New("we will trigger next sync")
 	}
 
 	return &types.Job{
