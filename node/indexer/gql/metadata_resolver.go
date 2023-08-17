@@ -37,6 +37,12 @@ type metadataList struct {
 	More       bool
 }
 
+type CommitInfo struct {
+	CommitId  string
+	Size      string
+	CreatedAt int32
+}
+
 type Group struct {
 	GroupId    string `json:"groupId"`
 	LastChange int32  `json:"lastChange"`
@@ -158,6 +164,44 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 		Metadatas:  metadatas,
 		More:       false,
 	}, nil
+}
+
+func (r *resolver) Commits(ctx context.Context, args struct{ DataId string }) ([]CommitInfo, error) {
+	// Get the commits field for the given dataId
+	query := `SELECT commits FROM METADATA WHERE dataId = ?`
+	row := r.indexSvc.Db.QueryRowContext(ctx, query, args.DataId)
+
+	var commitIdString string
+	if err := row.Scan(&commitIdString); err != nil {
+		return nil, err
+	}
+
+	// Split the commits field by comma
+	commitPairs := strings.Split(commitIdString, ",")
+
+	var commits []CommitInfo
+	for _, pair := range commitPairs {
+		// Split each pair by the special character to get the commitId and height
+		parts := strings.Split(pair, "")
+		if len(parts) < 2 {
+			fmt.Sprintf("commitId and height not formatted in %s", pair)
+		}
+		commitId := parts[0]
+
+		query = `SELECT size, createdAt FROM ORDERS WHERE commitId = ?`
+		row = r.indexSvc.Db.QueryRowContext(ctx, query, commitId)
+
+		var commit CommitInfo
+		if err := row.Scan(&commit.Size, &commit.CreatedAt); err != nil {
+			fmt.Errorf("database scan error: %v", err)
+			continue
+		}
+		commit.CommitId = commitId
+
+		commits = append(commits, commit)
+	}
+
+	return commits, nil
 }
 
 // GroupList fetches the group list by groupId.

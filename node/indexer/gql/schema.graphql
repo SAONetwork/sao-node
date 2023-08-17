@@ -48,6 +48,12 @@ type MetadataList {
     more: Boolean!
 }
 
+type CommitInfo {
+    commitId: String!
+    size: String!
+    createdAt: Int!
+}
+
 type Node {
     creator: String!
     peer: String!
@@ -319,6 +325,9 @@ type RootQuery {
 
     """Get all Metadatas"""
     metadatas(query: String, owner: String, groupId: String): MetadataList!
+
+    """Get Commits"""
+    commits(dataId: String!): [CommitInfo!]!
 
     """Get all Nodes"""
     nodes(isActive: Boolean, isGateway: Boolean, isSP: Boolean): NodeList!
