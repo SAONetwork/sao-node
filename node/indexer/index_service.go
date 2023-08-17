@@ -150,6 +150,7 @@ func (is *IndexSvc) runSched(ctx context.Context) {
 				}
 			}()
 		}
+		time.Sleep(time.Second * SCHEDULE_INTERVAL)
 	}
 }
 
