@@ -47,13 +47,19 @@ func BuildOrderSyncJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB
 				}
 
 				if count == 0 {
+					resBlock, err := chainSvc.GetBlock(ctx, int64(order.CreatedAt))
+					if err != nil {
+						log.Errorf("failed to get block at height %d for order %s: %w", order.CreatedAt, order.Id, err)
+						return nil, err
+					}
+
 					stmt := `INSERT INTO ORDERS 
 					(creator, owner, id, provider, cid, duration, status, replica, amount, size, operation, createdAt, timeout, dataId, commitId, unitPrice)
 					VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-					_, err := db.ExecContext(ctx, stmt,
+					_, err = db.ExecContext(ctx, stmt,
 						order.Creator, order.Owner, order.Id, order.Provider, order.Cid, order.Duration,
-						order.Status, order.Replica, order.Amount.Amount.String(), order.Size_, order.Operation, order.CreatedAt,
+						order.Status, order.Replica, order.Amount.Amount.String(), order.Size_, order.Operation, resBlock.Block.Header.Time.Unix(),
 						order.Timeout, order.DataId, order.Commit, order.UnitPrice.Amount.String())
 
 					if err != nil {
