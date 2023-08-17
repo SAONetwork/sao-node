@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"errors"
+	"net"
 	"strings"
 	"time"
 
@@ -31,38 +33,65 @@ func SyncNodesJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log
 		}
 
 		for _, node := range nodes {
-			// Check if the node with the specific Creator and Peer already exists
-			qry := "SELECT COUNT(*) FROM NODE WHERE Creator=?"
+			// Check if the node with the specific Creator already exists
+			qry := "SELECT LastAliveHeight FROM NODE WHERE Creator=?"
 			row := db.QueryRowContext(ctx, qry, node.Creator)
-			var count int
-			err := row.Scan(&count)
-			if err != nil {
-				return nil, err
+			var existingLastAliveHeight int64
+			err := row.Scan(&existingLastAliveHeight)
+			if err != nil && err != sql.ErrNoRows {
+				log.Errorf("failed to query node data for %s: %w", node.Creator, err)
+				continue
 			}
 
-			// Extract specific flags from the Status bitmap
-			isGateway := (node.Status & 2) != 0
-			isSP := (node.Status & 4) != 0
-			isIndexer := (node.Status & 16) != 0
+			// If node info does not exist or LastAliveHeight has changed, insert or update
+			if errors.Is(err, sql.ErrNoRows) || existingLastAliveHeight != node.LastAliveHeight {
+				if existingLastAliveHeight != node.LastAliveHeight && !errors.Is(err, sql.ErrNoRows) {
+					deleteQuery := "DELETE FROM NODE WHERE Creator=?"
+					_, err := db.ExecContext(ctx, deleteQuery, node.Creator)
+					if err != nil {
+						log.Errorf("failed to delete node data for %s with different LastAliveHeight: %w", node.Creator, err)
+						return nil, err
+					}
+				}
+				// Extract specific flags from the Status bitmap
+				isGateway := (node.Status & 2) != 0
+				isSP := (node.Status & 4) != 0
+				isIndexer := (node.Status & 16) != 0
 
-			// Convert LastAliveHeight to Unix timestamp
-			resBlock, err := chainSvc.GetBlock(ctx, int64(node.LastAliveHeight))
-			if err != nil {
-				log.Errorf("failed to get block at height %d for node %s: %w", node.LastAliveHeight, node.Creator, err)
-				return nil, err
-			}
+				// Convert LastAliveHeight to Unix timestamp
+				resBlock, err := chainSvc.GetBlock(ctx, int64(node.LastAliveHeight))
+				if err != nil {
+					log.Errorf("failed to get block at height %d for node %s: %w", node.LastAliveHeight, node.Creator, err)
+					return nil, err
+				}
 
-			// Check if the LastAliveHeight is within the last 24 hours
-			isAlive := time.Now().Unix()-resBlock.Block.Header.Time.Unix() <= 24*60*60
+				// Check if the LastAliveHeight is within the last 24 hours
+				isAlive := time.Now().Unix()-resBlock.Block.Header.Time.Unix() <= 24*60*60
 
-			txAddresses := strings.Join(node.TxAddresses, ",")
+				txAddresses := strings.Join(node.TxAddresses, ",")
 
-			// If node info doesn't exist in the database, insert it
-			if count == 0 {
+				// Extracting IPAddress from node.Peer
+				peerAddresses := strings.Split(node.Peer, ",")
+				var ipAddress string
+				for _, address := range peerAddresses {
+					// Split by '/'
+					parts := strings.Split(address, "/")
+					// If the part contains an IP, then check if it's non-internal
+					if len(parts) > 2 {
+						ip := net.ParseIP(parts[2])
+						// Check if the IP is valid and is not an internal IP
+						if ip != nil && !ip.IsLoopback() && ip.IsGlobalUnicast() {
+							ipAddress = ip.String()
+							break
+						}
+					}
+				}
+
+				// Insert the new node data
 				query := `INSERT INTO NODE (Creator, Peer, Reputation, Status, LastAliveHeight, TxAddresses, Role, Validator, IsGateway, IsSP, IsIndexer, IsAlive, LastAliveTime, IPAddress, Name)
 					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
-				_, err := db.ExecContext(ctx, query, node.Creator, node.Peer, node.Reputation, node.Status, node.LastAliveHeight, txAddresses, node.Role, node.Validator, isGateway, isSP, isIndexer, isAlive, resBlock.Block.Header.Time.Unix(), "", "")
+				_, err = db.ExecContext(ctx, query, node.Creator, node.Peer, node.Reputation, node.Status, node.LastAliveHeight, txAddresses, node.Role, node.Validator, isGateway, isSP, isIndexer, isAlive, resBlock.Block.Header.Time.Unix(), ipAddress, "")
 				if err != nil {
 					log.Errorf("failed to insert node data for %s: %w", node.Creator, err)
 					return nil, err
