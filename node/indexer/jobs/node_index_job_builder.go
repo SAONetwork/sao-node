@@ -66,7 +66,7 @@ func SyncNodesJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log
 				}
 
 				// Check if the LastAliveHeight is within the last 24 hours
-				isAlive := time.Now().Unix()-resBlock.Block.Header.Time.Unix() <= 24*60*60
+				isAlive := time.Now().Unix()-resBlock.Block.Header.Time.Unix() <= 60*60
 
 				txAddresses := strings.Join(node.TxAddresses, ",")
 
