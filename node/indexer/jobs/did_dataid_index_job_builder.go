@@ -28,6 +28,20 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 	log.Info("creating metadata tables done.")
 
 	execFn := func(ctx context.Context, _ []interface{}) (interface{}, error) {
+		// Drop the temporary table if it exists
+		_, err := db.Exec("DROP TABLE IF EXISTS TempMetadata")
+		if err != nil {
+			log.Errorf("failed to drop temporary table: %w", err)
+			return nil, err
+		}
+		// Create a temporary table
+		_, err = db.Exec("CREATE TABLE TempMetadata (dataId VARCHAR(255))")
+		if err != nil {
+			log.Errorf("failed to create temporary table: %w", err)
+			return nil, err
+		}
+		log.Info("created temporary table")
+
 		var offset uint64 = 0
 		var limit uint64 = 100
 		owenedMeta := make([]modeltypes.Metadata, 0)
@@ -43,6 +57,12 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 			}
 
 			for _, meta := range metaList {
+				_, err = db.Exec("INSERT INTO TempMetadata (dataId) VALUES (?)", meta.DataId)
+				if err != nil {
+					log.Errorf("failed to insert into temporary table: %w", err)
+					return nil, err
+				}
+
 				qry := "SELECT COUNT(*) FROM METADATA WHERE DATAID=? AND `commitId`=?"
 				row := db.QueryRowContext(ctx, qry, meta.DataId, meta.Commit)
 				var count int
@@ -61,8 +81,24 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 					}
 					owenedMeta = append(owenedMeta, meta)
 				}
+
 			}
 		}
+
+		// Delete from METADATA table where dataId is not in the temporary table
+		query := "DELETE FROM METADATA WHERE dataId NOT IN (SELECT dataId FROM NonTempMetadata)"
+		result, err := db.Exec(query)
+		if err != nil {
+			log.Errorf("failed to delete metadata: %w", err)
+			return nil, err
+		}
+
+		rowsDeleted, err := result.RowsAffected()
+		if err != nil {
+			log.Errorf("failed to retrieve the count of deleted rows: %w", err)
+			return nil, err
+		}
+		log.Infof("%d rows deleted from METADATA table", rowsDeleted)
 
 		if len(owenedMeta) > 0 {
 			valueArgs := ""

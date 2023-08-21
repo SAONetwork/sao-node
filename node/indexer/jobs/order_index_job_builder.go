@@ -15,15 +15,14 @@ import (
 var createOrdersDBSQL string
 
 func BuildOrderSyncJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log *logging.ZapEventLogger) *types.Job {
-	execFn := func(ctx context.Context, _ []interface{}) (interface{}, error) {
-		// initialize the orders database tables
-		log.Info("creating orders tables...")
-		if _, err := db.ExecContext(ctx, createOrdersDBSQL); err != nil {
-			log.Errorf("failed to create tables: %w", err)
-			return nil, err
-		}
-		log.Info("creating orders tables done.")
+	// initialize the orders database tables
+	log.Info("creating orders tables...")
+	if _, err := db.ExecContext(ctx, createOrdersDBSQL); err != nil {
+		log.Errorf("failed to create tables: %w", err)
+	}
+	log.Info("creating orders tables done.")
 
+	execFn := func(ctx context.Context, _ []interface{}) (interface{}, error) {
 		var offset uint64 = 0
 		var limit uint64 = 100
 
