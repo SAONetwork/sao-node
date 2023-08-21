@@ -91,7 +91,7 @@ func UpdateEthAddresses(db *sql.DB, log *logging.ZapEventLogger) error {
 }
 
 func getAccountList(did string) (*AccountListResponse, error) {
-	resp, err := http.Get("http://127.0.0.1:1317/SaoNetwork/sao/did/account_list/" + did + ":")
+	resp, err := http.Get("https://api-beta.sao.network/SaoNetwork/sao/did/account_list/" + did + ":")
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func getAccountList(did string) (*AccountListResponse, error) {
 }
 
 func getAccountId(accountDid string) (*AccountIdResponse, error) {
-	resp, err := http.Get("http://127.0.0.1:1317/SaoNetwork/sao/did/account_id/" + accountDid + ":")
+	resp, err := http.Get("https://api-beta.sao.network/SaoNetwork/sao/did/account_id/" + accountDid + ":")
 	if err != nil {
 		return nil, err
 	}
