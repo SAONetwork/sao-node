@@ -24,7 +24,7 @@ var log = logging.Logger("indexer")
 
 const (
 	WINDOW_SIZE       = 20
-	SCHEDULE_INTERVAL = 20
+	SCHEDULE_INTERVAL = 60
 	MAX_RETRIES       = 10
 )
 
@@ -79,13 +79,18 @@ func NewIndexSvc(
 	job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, platformId, log)
 	is.JobsMap[job.ID] = job
 
-	go func() { // Run storverse job in its own goroutine
-		err := is.excute(ctx, job)
-		if err != nil {
-			log.Errorf("job[%s] failed due to %v", job.ID, err)
-			job.Status = types.JobStatusPending
-		} else {
-			log.Infof("job[%s] done.", job.ID)
+	go func() {
+		for {
+			err := is.excute(ctx, job)
+			if err != nil {
+				log.Errorf("job[%s] failed due to %v", job.ID, err)
+				job.Status = types.JobStatusPending
+				log.Infof("Retrying job[%s]...", job.ID)
+				continue
+			} else {
+				log.Infof("job[%s] done.", job.ID)
+				continue
+			}
 		}
 	}()
 
