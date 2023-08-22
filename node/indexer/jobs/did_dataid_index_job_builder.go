@@ -32,7 +32,6 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		_, err := db.Exec("DROP TABLE IF EXISTS TempMetadata")
 		if err != nil {
 			log.Errorf("failed to drop temporary table: %w", err)
-			return nil, err
 		}
 		// Create a temporary table
 		_, err = db.Exec("CREATE TABLE TempMetadata (dataId VARCHAR(255))")
