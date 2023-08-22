@@ -24,7 +24,7 @@ var log = logging.Logger("indexer")
 
 const (
 	WINDOW_SIZE       = 20
-	SCHEDULE_INTERVAL = 60
+	SCHEDULE_INTERVAL = 10
 	MAX_RETRIES       = 10
 )
 

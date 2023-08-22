@@ -218,7 +218,7 @@ func BuildStorverseViewsJob(ctx context.Context, chainSvc *chain.ChainSvc, db *s
 					}
 				}
 
-				time.Sleep(5 * time.Second)
+				time.Sleep(60 * time.Second)
 				offset = 0
 				limit = 100
 				// Clear the slices
