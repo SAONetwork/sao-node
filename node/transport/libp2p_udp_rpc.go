@@ -28,6 +28,11 @@ type Libp2pRpcServer struct {
 }
 
 func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.PrivKey, db datastore.Batching, cfg *config.Node, rh *RpcHandler) (*Libp2pRpcServer, error) {
+	if !cfg.Libp2p.ExternalIpEnable && !cfg.Libp2p.IntranetIpEnable && len(cfg.Libp2p.AnnounceAddresses) == 0 {
+		cfg.Libp2p.ExternalIpEnable = true
+		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")
+	}
+
 	tr, err := libp2pwebtransport.New(serverKey, nil, network.NullResourceManager)
 	if err != nil {
 		return nil, err
@@ -47,8 +52,15 @@ func StartLibp2pRpcServer(ctx context.Context, address string, serverKey crypto.
 	var addressPattern string
 	for _, a := range h.Addrs() {
 		withP2p := a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String()))
-		log.Debug("addr=", withP2p.String())
-		peerInfos = append(peerInfos, withP2p.String())
+		if cfg.Libp2p.IntranetIpEnable {
+			log.Debug("addr=", withP2p.String())
+			peerInfos = append(peerInfos, withP2p.String())
+		}
+		if cfg.Libp2p.ExternalIpEnable && cfg.Libp2p.PublicAddress != "" && strings.Contains(withP2p.String(), "127.0.0.1") {
+			publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", cfg.Libp2p.PublicAddress, 1)
+			log.Debug("addr=", publicAddrWithP2p)
+			peerInfos = append(peerInfos, publicAddrWithP2p)
+		}
 		if strings.Contains(a.String(), "/ip4/127.0.0.1/udp/5154") {
 			addressPattern = a.Encapsulate(ma.StringCast("/p2p/" + h.ID().String())).String()
 		}
