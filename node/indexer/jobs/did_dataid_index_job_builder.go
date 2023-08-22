@@ -85,7 +85,7 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		}
 
 		// Delete from METADATA table where dataId is not in the temporary table
-		query := "DELETE FROM METADATA WHERE dataId NOT IN (SELECT dataId FROM NonTempMetadata)"
+		query := "DELETE FROM METADATA WHERE dataId NOT IN (SELECT dataId FROM TempMetadata)"
 		result, err := db.Exec(query)
 		if err != nil {
 			log.Errorf("failed to delete metadata: %w", err)
