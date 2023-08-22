@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS ORDERS (
                                       duration TEXT,
                                       status INTEGER,
                                       replica INTEGER,
+                                      shards TEXT,
                                       denom TEXT,
                                       amount TEXT,
                                       `size` TEXT,

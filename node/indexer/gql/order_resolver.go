@@ -3,27 +3,35 @@ package gql
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/graph-gophers/graphql-go"
 )
 
 type order struct {
-	Id         string
-	Creator    string
-	Owner      string
-	Provider   string
-	Cid        string
-	Duration   int32
-	Status     string
-	Replica    int32
-	Amount     string
-	Size       string
-	Operation  string
-	CreatedAt  int32
-	Timeout    int32
-	DataId     string
-	Commit     string
-	UnitPrice  string
+	Id          string
+	Creator     string
+	Owner       string
+	Provider    string
+	Cid         string
+	Duration    int32
+	Status      string
+	Replica     int32
+	Amount      string
+	Size        string
+	Operation   string
+	CreatedAt   int32
+	Timeout     int32
+	DataId      string
+	Commit      string
+	UnitPrice   string
+	OrderShards []*OrderShard
+}
+
+type OrderShard struct {
+	ShardId int32
+	Status  int32
 }
 
 type orderList struct {
@@ -33,7 +41,7 @@ type orderList struct {
 }
 
 type OrderQueryArgs struct {
-	Owner  graphql.NullString
+	Owner graphql.NullString
 }
 
 // query: order(orderId) Order
@@ -42,14 +50,29 @@ func (r *resolver) Order(ctx context.Context, args struct{ ID graphql.ID }) (*or
 	orderId = string(args.ID)
 
 	row := r.indexSvc.Db.QueryRowContext(ctx, `SELECT id, creator, owner, provider, cid, duration, status, 
-    replica, amount, size, operation, createdAt, timeout, dataId, commitId, unitPrice FROM ORDERS WHERE id= ?`, orderId)
+    replica, amount, size, operation, createdAt, timeout, dataId, commitId, unitPrice, shards FROM ORDERS WHERE id= ?`, orderId)
 
+	ShardIds := ""
 	ord := &order{}
 	err := row.Scan(&ord.Id, &ord.Creator, &ord.Owner, &ord.Provider, &ord.Cid, &ord.Duration, &ord.Status,
 		&ord.Replica, &ord.Amount, &ord.Size, &ord.Operation, &ord.CreatedAt, &ord.Timeout, &ord.DataId, &ord.Commit,
-		&ord.UnitPrice)
+		&ord.UnitPrice, &ShardIds)
 	if err != nil {
 		return nil, fmt.Errorf("database scan error: %v", err)
+	}
+
+	// ShardIds is string with comma split, Convert it to uint64 array
+	for _, shard := range strings.Split(ShardIds, ",") {
+		shardUint64, err := strconv.ParseUint(shard, 10, 64)
+		if err != nil {
+			log.Errorf("failed to parse shard %s: %w", shard, err)
+		}
+		saoShard, err := r.chainSvc.GetShard(ctx, shardUint64)
+		if err != nil {
+			log.Errorf("failed to get shard %d: %w", shardUint64, err)
+		}
+		// put shardId and saoShard.Status into &ord.OrderShards
+		ord.OrderShards = append(ord.OrderShards, &OrderShard{ShardId: int32(shardUint64), Status: saoShard.Status})
 	}
 
 	return ord, nil

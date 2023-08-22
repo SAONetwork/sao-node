@@ -9,6 +9,8 @@ import (
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
 	logging "github.com/ipfs/go-log/v2"
+	"strconv"
+	"strings"
 )
 
 //go:embed sqls/create_orders_table.sql
@@ -38,35 +40,49 @@ func BuildOrderSyncJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB
 			}
 
 			for _, order := range orderList {
-				qry := "SELECT COUNT(*) FROM ORDERS WHERE id=?"
+				qry := "SELECT status FROM ORDERS WHERE id=?"
 				row := db.QueryRowContext(ctx, qry, order.Id)
-				var count int
-				err := row.Scan(&count)
-				if err != nil {
+				var existingStatus int32
+				err := row.Scan(&existingStatus)
+
+				if err != nil && err != sql.ErrNoRows {
 					return nil, err
 				}
 
-				if count == 0 {
-					resBlock, err := chainSvc.GetBlock(ctx, int64(order.CreatedAt))
-					if err != nil {
-						log.Errorf("failed to get block at height %d for order %s: %w", order.CreatedAt, order.Id, err)
-						return nil, err
-					}
-
-					stmt := `INSERT INTO ORDERS 
-					(creator, owner, id, provider, cid, duration, status, replica, amount, size, operation, createdAt, timeout, dataId, commitId, unitPrice)
-					VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-
-					_, err = db.ExecContext(ctx, stmt,
-						order.Creator, order.Owner, order.Id, order.Provider, order.Cid, order.Duration,
-						order.Status, order.Replica, order.Amount.Amount.String(), order.Size_, order.Operation, resBlock.Block.Header.Time.Unix(),
-						order.Timeout, order.DataId, order.Commit, order.UnitPrice.Amount.String())
-
+				if err == nil && existingStatus != order.Status {
+					// The order exists, and the status has changed, so delete the existing record
+					qry := "DELETE FROM ORDERS WHERE id=?"
+					_, err = db.ExecContext(ctx, qry, order.Id)
 					if err != nil {
 						return nil, err
 					}
-					log.Infof("insert order %s", order.Id)
 				}
+
+				resBlock, err := chainSvc.GetBlock(ctx, int64(order.CreatedAt))
+				if err != nil {
+					log.Errorf("failed to get block at height %d for order %s: %w", order.CreatedAt, order.Id, err)
+					return nil, err
+				}
+
+				shards := ""
+				for _, shard := range order.Shards {
+					shards += strconv.FormatUint(shard, 10) + ","
+				}
+				shards = strings.TrimSuffix(shards, ",")
+
+				stmt := `INSERT INTO ORDERS 
+					(creator, owner, id, provider, cid, duration, status, replica, shards, amount, size, operation, createdAt, timeout, dataId, commitId, unitPrice)
+					VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+				_, err = db.ExecContext(ctx, stmt,
+					order.Creator, order.Owner, order.Id, order.Provider, order.Cid, order.Duration,
+					order.Status, order.Replica, shards, order.Amount.Amount.String(), order.Size_, order.Operation, resBlock.Block.Header.Time.Unix(),
+					order.Timeout, order.DataId, order.Commit, order.UnitPrice.Amount.String())
+
+				if err != nil {
+					return nil, err
+				}
+				log.Infof("insert order %s", order.Id)
 			}
 		}
 

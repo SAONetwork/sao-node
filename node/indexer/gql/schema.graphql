@@ -104,6 +104,7 @@ type Order {
     dataId: String!
     commit: String!
     unitPrice: String!
+    orderShards: [OrderShard]!
 }
 
 type OrderList {
@@ -129,6 +130,11 @@ type UserSummary {
     totalStorage: String!
     totalSpent: String!
     balance: String!
+}
+
+type OrderShard {
+    shardId: Int!
+    status: Int!
 }
 
 type Shard {
