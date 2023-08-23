@@ -46,10 +46,16 @@ func BuildOrderSyncJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB
 				err := row.Scan(&existingStatus)
 
 				if err != nil && err != sql.ErrNoRows {
+					// Some unexpected database error occurred
 					return nil, err
 				}
 
-				if err == nil && existingStatus != order.Status {
+				if err == sql.ErrNoRows {
+					// The order does not exist, so insert it (we'll handle this after this block)
+				} else if existingStatus == order.Status {
+					// The order exists and the status hasn't changed, so move on to the next order
+					continue
+				} else {
 					// The order exists, and the status has changed, so delete the existing record
 					qry := "DELETE FROM ORDERS WHERE id=?"
 					_, err = db.ExecContext(ctx, qry, order.Id)
@@ -80,9 +86,9 @@ func BuildOrderSyncJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB
 					order.Timeout, order.DataId, order.Commit, order.UnitPrice.Amount.String())
 
 				if err != nil {
+					log.Errorf("failed to insert order %s: %w", order.Id, err)
 					return nil, err
 				}
-				log.Infof("insert order %s", order.Id)
 			}
 		}
 

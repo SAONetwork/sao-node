@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/SaoNetwork/sao-node/chain"
 	"github.com/SaoNetwork/sao-node/types"
@@ -49,6 +50,36 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 			if err != nil {
 				return nil, err
 			}
+
+			if len(metaList) == 0 {
+				break
+			}
+
+			var dataIds []string
+			var placeholders []string
+
+			for _, meta := range metaList {
+				dataIds = append(dataIds, meta.DataId)
+				placeholders = append(placeholders, "(?)")
+			}
+
+			// Capture the start time before the insert
+			startTime := time.Now()
+			// Insert the current batch into TempMetadata
+			stmt := fmt.Sprintf("INSERT INTO TempMetadata (dataId) VALUES %s", strings.Join(placeholders, ","))
+			_, err = db.Exec(stmt, ConvertToInterfaceSlice(dataIds)...)
+			if err != nil {
+				log.Errorf("failed to insert into temporary table: %w", err)
+				return nil, err
+			}
+
+			// Capture the end time after the insert
+			endTime := time.Now()
+
+			// Calculate and log the duration
+			duration := endTime.Sub(startTime)
+			log.Infof("Time spent on insert: %v", duration)
+
 			if offset*limit <= total {
 				offset++
 			} else {
@@ -56,12 +87,6 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 			}
 
 			for _, meta := range metaList {
-				_, err = db.Exec("INSERT INTO TempMetadata (dataId) VALUES (?)", meta.DataId)
-				if err != nil {
-					log.Errorf("failed to insert into temporary table: %w", err)
-					return nil, err
-				}
-
 				qry := "SELECT COUNT(*) FROM METADATA WHERE DATAID=? AND `commitId`=?"
 				row := db.QueryRowContext(ctx, qry, meta.DataId, meta.Commit)
 				var count int
@@ -158,4 +183,12 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		ExecFunc:    execFn,
 		Args:        make([]interface{}, 0),
 	}
+}
+
+func ConvertToInterfaceSlice(strSlice []string) []interface{} {
+	ifaceSlice := make([]interface{}, len(strSlice))
+	for i, v := range strSlice {
+		ifaceSlice[i] = v
+	}
+	return ifaceSlice
 }
