@@ -811,7 +811,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 				cid, _ := utils.CalculateCid(resp.Content)
 				log.Debugf("ipfs cid %v, task cid %v, order id %v", cid, task.Cid, task.OrderId)
 				if cid.String() != task.Cid.String() {
-					ss.updateShardError(task, err)
+					ss.updateShardError(task, types.Wrapf(types.ErrInvalidCid, "ipfs cid %v != task cid %v", cid, task.Cid))
 					return types.Wrapf(types.ErrInvalidCid, "ipfs cid %v != task cid %v", cid, task.Cid)
 				}
 			}
@@ -827,7 +827,7 @@ func (ss *StoreSvc) process(ctx context.Context, task *types.ShardInfo) error {
 			// make sure the data is still there
 			isExist := ss.storeManager.IsExist(ctx, task.Cid)
 			if !isExist {
-				ss.updateShardError(task, err)
+				ss.updateShardError(task, types.Wrapf(types.ErrDataMissing, "shard with cid %s not found", task.Cid))
 				return types.Wrapf(types.ErrDataMissing, "shard with cid %s not found", task.Cid)
 			}
 		}
