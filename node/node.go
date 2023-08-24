@@ -590,8 +590,18 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 }
 
 func (n *Node) ModelCreate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+	// check cid
+	contentCid, err := utils.CalculateCid(content)
+	if err != nil {
+		return apitypes.CreateResp{}, err
+	}
+
+	if contentCid.String() != orderProposal.Proposal.Cid {
+		return apitypes.CreateResp{}, types.ErrInvalidCid
+	}
+
 	// verify signature
-	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
+	err = n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
@@ -639,6 +649,15 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 		content, err := io.ReadAll(file)
 		if err != nil {
 			return apitypes.CreateResp{}, types.Wrap(types.ErrReadFileFailed, err)
+		}
+
+		contentCid, err := utils.CalculateCid(content)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		if contentCid.String() != cidStr {
+			return apitypes.CreateResp{}, types.ErrInvalidCid
 		}
 
 		// verify signature
