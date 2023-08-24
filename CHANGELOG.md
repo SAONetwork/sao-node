@@ -1,6 +1,9 @@
 <a name="unreleased"></a>
 ## [Unreleased]
 
+### Features
+- public address ([#37](https://github.com/SAONetwork/sao-node.git/issues/37))
+
 
 <a name="v0.1.7"></a>
 ## [v0.1.7](https://github.com/SAONetwork/sao-node.git/compare/v0.1.6...v0.1.7) (2023-08-08)
