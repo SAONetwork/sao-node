@@ -21,6 +21,10 @@ type node struct {
 	IPAddress       string
 	LastAliveTime   int32
 	Name            string
+	Details         string
+	Identity        string
+	SecurityContact string
+	Website         string
 }
 
 type nodeList struct {
@@ -44,7 +48,7 @@ func (r *resolver) Nodes(ctx context.Context, args struct {
 	IsGateway *bool
 	IsSP      *bool
 }) (*nodeList, error) {
-	queryStr := "SELECT Creator, Peer, Reputation, Status, LastAliveHeight, TxAddresses, Role, Validator, IsGateway, IsSP, IsIndexer, IsAlive, IPAddress, LastAliveTime, Name FROM NODE"
+	queryStr := "SELECT Creator, Peer, Reputation, Status, LastAliveHeight, TxAddresses, Role, Validator, IsGateway, IsSP, IsIndexer, IsAlive, IPAddress, LastAliveTime, Name, Details, `Identity`, SecurityContact, Website FROM NODE"
 
 	var params []interface{}
 	var whereClauses []string
@@ -75,7 +79,7 @@ func (r *resolver) Nodes(ctx context.Context, args struct {
 	nodes := make([]*node, 0)
 	for rows.Next() {
 		n := &node{}
-		err = rows.Scan(&n.Creator, &n.Peer, &n.Reputation, &n.Status, &n.LastAliveHeight, &n.TxAddresses, &n.Role, &n.Validator, &n.IsGateway, &n.IsSP, &n.IsIndexer, &n.IsAlive, &n.IPAddress, &n.LastAliveTime, &n.Name)
+		err = rows.Scan(&n.Creator, &n.Peer, &n.Reputation, &n.Status, &n.LastAliveHeight, &n.TxAddresses, &n.Role, &n.Validator, &n.IsGateway, &n.IsSP, &n.IsIndexer, &n.IsAlive, &n.IPAddress, &n.LastAliveTime, &n.Name, &n.Details, &n.Identity, &n.SecurityContact, &n.Website)
 		if err != nil {
 			return nil, err
 		}

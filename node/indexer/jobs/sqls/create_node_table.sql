@@ -14,6 +14,10 @@ CREATE TABLE IF NOT EXISTS NODE (
                                     IPAddress      TEXT,
                                     LastAliveTime INTEGER,
                                     `Name`          TEXT,
+                                    Details         TEXT,
+                                    `Identity`       TEXT,
+                                    SecurityContact TEXT,
+                                    Website         TEXT,
                                     PRIMARY KEY (Creator)
     ) WITHOUT ROWID;
 

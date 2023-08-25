@@ -70,6 +70,10 @@ type Node {
     ipAddress: String!
     lastAliveTime: Int!
     name: String!
+    details: String!
+    identity: String!
+    securityContact: String!
+    website: String!
 }
 
 type NodeList {

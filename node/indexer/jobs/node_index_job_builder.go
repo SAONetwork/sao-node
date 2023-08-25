@@ -87,11 +87,21 @@ func SyncNodesJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sql.DB, log
 					}
 				}
 
-				// Insert the new node data
-				query := `INSERT INTO NODE (Creator, Peer, Reputation, Status, LastAliveHeight, TxAddresses, Role, Validator, IsGateway, IsSP, IsIndexer, IsAlive, LastAliveTime, IPAddress, Name)
-					VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+				var details, identity, securityContact, website, name string
 
-				_, err = db.ExecContext(ctx, query, node.Creator, node.Peer, node.Reputation, node.Status, node.LastAliveHeight, txAddresses, node.Role, node.Validator, isGateway, isSP, isIndexer, isAlive, resBlock.Block.Header.Time.Unix(), ipAddress, "")
+				if node.Description != nil {
+					details = node.Description.Details
+					identity = node.Description.Identity
+					securityContact = node.Description.SecurityContact
+					website = node.Description.Website
+					name = node.Description.Moniker
+				}
+
+				// Insert the new node data
+				query := `INSERT INTO NODE (Creator, Peer, Reputation, Status, LastAliveHeight, TxAddresses, Role, Validator, IsGateway, IsSP, IsIndexer, IsAlive, LastAliveTime, IPAddress, Name, Details, Identity, SecurityContact, Website)
+            		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+
+				_, err = db.ExecContext(ctx, query, node.Creator, node.Peer, node.Reputation, node.Status, node.LastAliveHeight, txAddresses, node.Role, node.Validator, isGateway, isSP, isIndexer, isAlive, resBlock.Block.Header.Time.Unix(), ipAddress, name, details, identity, securityContact, website)
 				if err != nil {
 					log.Errorf("failed to insert node data for %s: %w", node.Creator, err)
 					return nil, err
