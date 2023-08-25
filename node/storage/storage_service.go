@@ -64,6 +64,8 @@ type StoreSvc struct {
 	ctx                context.Context
 	orderDs            datastore.Batching
 	storageProtocolMap map[string]StorageProtocol
+	relayInfo          string
+	relayExpiration    time.Time
 }
 
 func NewStoreService(
@@ -1156,4 +1158,13 @@ func (ss *StoreSvc) checkShardTask(ctx context.Context) {
 			log.Warn("failed to save latest shard id", err)
 		}
 	}
+}
+
+func (ss *StoreSvc) SetRelayInfo(ctx context.Context, relayInfo string, expiration time.Time) {
+	ss.relayInfo = relayInfo
+	ss.relayExpiration = expiration
+}
+
+func (ss *StoreSvc) GetRelayInfo(ctx context.Context) (string, time.Time) {
+	return ss.relayInfo, ss.relayExpiration
 }

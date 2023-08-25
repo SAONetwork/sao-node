@@ -5,7 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	ip "github.com/SaoNetwork/sao-node/node/public_ip"
+	"github.com/libp2p/go-libp2p/core/network"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"path"
@@ -380,9 +383,22 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 	log.Info("Write token: ", string(tokenWrite))
 
+	reset := func(peerInfo string) (string, error) {
+		if peerInfo != "" && len(peerInfosBytes) > 0 {
+			peerInfo = string(peerInfosBytes) + "," + peerInfo
+		} else {
+			peerInfo = string(peerInfosBytes)
+		}
+		return chainSvc.Reset(ctx, sn.address, peerInfo, status, addresses, nil)
+	}
+
 	if cfg.Module.StorageEnable {
 		// Connect to P2P network
-		sn.ConnectToGatewayCluster(ctx)
+		if cfg.Module.GatewayEnable {
+			sn.ConnectToGatewayCluster(ctx, nil)
+		} else {
+			sn.ConnectToGatewayCluster(ctx, reset)
+		}
 	}
 
 	// chainSvc.stop should be after chain listener unsubscribe
@@ -435,7 +451,9 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 		}
 	}
 
-	_, err = chainSvc.Reset(ctx, sn.address, string(peerInfosBytes), status, addresses, nil)
+	if cfg.Module.GatewayEnable {
+		reset("")
+	}
 	log.Infof("repo: %s, Remote: %s, WsEndpoint： %s", repo.Path, cfg.Chain.Remote, cfg.Chain.WsEndpoint)
 	log.Infof("node[%s] is joining SAO network...", sn.address)
 	if err != nil {
@@ -474,8 +492,8 @@ func newRpcServer(ga api.SaoApi, cfg *config.API) (*http.Server, error) {
 	return rpcServer, nil
 }
 
-func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
-	n.ConnectPeers(ctx)
+func (n *Node) ConnectToGatewayCluster(ctx context.Context, reset func(string) (string, error)) {
+	n.ConnectPeers(ctx, reset)
 
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
@@ -484,7 +502,7 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				n.ConnectPeers(ctx)
+				n.ConnectPeers(ctx, reset)
 				transport.DoPingRequest(ctx, n.host)
 
 				log.Infof("Sent keep alive messages to peers")
@@ -495,13 +513,14 @@ func (n *Node) ConnectToGatewayCluster(ctx context.Context) {
 	}()
 }
 
-func (n *Node) ConnectPeers(ctx context.Context) {
+func (n *Node) ConnectPeers(ctx context.Context, reset func(string) (string, error)) {
 	nodes, err := n.chainSvc.ListNodes(ctx)
 	if err != nil {
 		log.Error(types.Wrap(types.ErrQueryNodeFailed, err))
 		return
 	}
 
+	gateways := []*peer.AddrInfo{}
 	for _, node := range nodes {
 		if node.Status&NODE_STATUS_SERVE_GATEWAY == 0 {
 			continue
@@ -517,7 +536,7 @@ func (n *Node) ConnectPeers(ctx context.Context) {
 			}
 
 			isFound := false
-			for _, peer := range n.host.Peerstore().Peers() {
+			for _, peer := range n.host.Network().Peers() {
 				if strings.Contains(peerInfo, peer.ShortString()) {
 					isFound = true
 					break
@@ -546,7 +565,49 @@ func (n *Node) ConnectPeers(ctx context.Context) {
 			} else {
 				log.Info("Connected to the peer ", node.Creator, " , peerinfos: ", node.Peer)
 			}
+			gateways = append(gateways, pi)
 			break
+		}
+	}
+
+	if reset != nil &&
+		n.storeSvc != nil &&
+		n.gatewaySvc == nil &&
+		len(gateways) != 0 {
+
+		ri, expiration := n.storeSvc.GetRelayInfo(ctx)
+		if ri != "" {
+			if time.Now().Before(expiration) {
+				a, err := multiaddr.NewMultiaddr(ri)
+				if err == nil {
+					pi, err := peer.AddrInfoFromP2pAddr(a)
+					if err == nil {
+						if n.host.Network().Connectedness(pi.ID) == network.Connected {
+							return
+						}
+					} else {
+						log.Error(types.ErrInvalidPeerInfo, "multi address=", a, ", err: ", err)
+					}
+				} else {
+					log.Error(types.ErrInvalidPeerInfo, "peerInfo=", ri, ", err: ", err)
+				}
+			}
+		}
+
+		var pi *peer.AddrInfo
+		var reservation *client.Reservation
+		for len(gateways) > 0 {
+			pi = gateways[rand.Intn(len(gateways))]
+			reservation, err = client.Reserve(context.Background(), n.host, *pi)
+			if err == nil {
+				break
+			}
+			log.Error(err)
+		}
+		if len(gateways) > 0 {
+			ri = pi.Addrs[0].String() + "/p2p/" + pi.ID.String()
+			n.storeSvc.SetRelayInfo(ctx, ri, reservation.Expiration)
+			reset(ri + "/p2p-circuit/p2p/" + n.host.ID().String())
 		}
 	}
 }

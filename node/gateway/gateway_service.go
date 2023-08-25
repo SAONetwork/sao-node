@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/relay"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -87,6 +88,8 @@ type GatewaySvc struct {
 
 	completeResultChan chan string
 	completeMap        map[string]int64
+
+	relay *relay.Relay
 }
 
 func NewGatewaySvc(
@@ -136,6 +139,8 @@ func NewGatewaySvc(
 		local,
 		rh,
 	)
+
+	cs.relay, _ = relay.New(host)
 
 	go cs.runSched(ctx, host)
 	go cs.processIncompleteOrders(ctx)
