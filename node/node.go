@@ -332,6 +332,14 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 			sn.stopFuncs = append(sn.stopFuncs, hfs.Stop)
 		}
 
+		// api server
+		rpcServer, err := newRpcServer(&sn, &cfg.Api)
+		if err != nil {
+			return nil, err
+		}
+		sn.rpcServer = rpcServer
+		sn.stopFuncs = append(sn.stopFuncs, rpcServer.Shutdown)
+
 		log.Info("gateway node initialized")
 	}
 
@@ -359,14 +367,6 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 
 		log.Info("indexing node initialized")
 	}
-
-	// api server
-	rpcServer, err := newRpcServer(&sn, &cfg.Api)
-	if err != nil {
-		return nil, err
-	}
-	sn.rpcServer = rpcServer
-	sn.stopFuncs = append(sn.stopFuncs, rpcServer.Shutdown)
 
 	tokenRead, err := sn.AuthNew(ctx, api.AllPermissions[:2])
 	if err != nil {
