@@ -22,6 +22,7 @@ var (
 	ErrMarshalFailed   = errors.Register(ModuleCommon, 10009, "failed to marshal payload")
 	ErrUnMarshalFailed = errors.Register(ModuleCommon, 10010, "failed to unmarshal payload")
 	ErrUnSupport       = errors.Register(ModuleCommon, 10011, "not implemented yet")
+	ErrNotSupport      = errors.Register(ModuleCommon, 10012, "not support")
 )
 
 var (
