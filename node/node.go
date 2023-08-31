@@ -120,6 +120,13 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	peerInfos := ""
+	if cfg.Module.GatewayEnable {
+		if !cfg.Libp2p.ExternalIpEnable {
+			cfg.Libp2p.ExternalIpEnable = true
+			log.Warn("The gateway node must provide an external ip, enable external ip as default")
+		}
+	}
+
 	if !cfg.Libp2p.ExternalIpEnable && !cfg.Libp2p.IntranetIpEnable && len(cfg.Libp2p.AnnounceAddresses) == 0 {
 		cfg.Libp2p.ExternalIpEnable = true
 		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")

@@ -5,6 +5,7 @@
 - public address ([#37](https://github.com/SAONetwork/sao-node.git/issues/37))
 
 ### Bug Fixes
+- check cid in CreateModel and CreateModelFile ([#47](https://github.com/SAONetwork/sao-node.git/issues/47))
 - storage service segment fault ([#46](https://github.com/SAONetwork/sao-node.git/issues/46))
 
 
