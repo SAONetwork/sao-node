@@ -66,6 +66,8 @@ type QueryArgs struct {
 	Query   graphql.NullString
 	Owner   graphql.NullString
 	GroupId graphql.NullString
+	Limit   *int32
+	Offset  *int32
 }
 
 // query: metadata(dataId) Metadata
@@ -96,8 +98,9 @@ func (r *resolver) Metadata(ctx context.Context, args struct{ ID graphql.ID }) (
 
 // query: metadatas(Query) MetaList
 func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList, error) {
+	baseQuery := `FROM METADATA`
 	queryStr := `SELECT dataId, owner, alias, groupId, orderId, tags, cid, commits, extendInfo, 
-    updateAt, commitId, rule, duration, createdAt, readonlyDids, readwriteDids, status, orders FROM METADATA`
+    updateAt, commitId, rule, duration, createdAt, readonlyDids, readwriteDids, status, orders ` + baseQuery
 
 	var params []interface{}
 
@@ -122,8 +125,25 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 			queryStr += " WHERE "
 		}
 		queryStr += "groupId = ?"
-		params = append(params, *args.GroupId.Value)
+		params = append(params, args.GroupId.Value)
 	}
+
+	queryStr += " ORDER BY createdAt DESC"
+
+	// Add limit and offset
+	limit := 100 // default
+	if args.Limit != nil {
+		limit = int(*args.Limit)
+	}
+	queryStr += " LIMIT ?"
+	params = append(params, limit)
+
+	offset := 0 // default
+	if args.Offset != nil {
+		offset = int(*args.Offset)
+	}
+	queryStr += " OFFSET ?"
+	params = append(params, offset)
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr, params...)
 	if err != nil {
@@ -159,10 +179,18 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 		return nil, err
 	}
 
+	// Fetch total count for pagination
+	countQuery := "SELECT COUNT(*) " + baseQuery
+	var totalCount int32
+	err = r.indexSvc.Db.QueryRowContext(ctx, countQuery, params...).Scan(&totalCount)
+	if err != nil {
+		return nil, err
+	}
+
 	return &metadataList{
-		TotalCount: int32(len(metadatas)),
+		TotalCount: totalCount,
 		Metadatas:  metadatas,
-		More:       false,
+		More:       len(metadatas) == limit, // if the number of fetched rows is equal to the limit, then there might be more results.
 	}, nil
 }
 

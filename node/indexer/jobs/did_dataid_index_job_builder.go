@@ -43,7 +43,7 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		log.Info("created temporary table")
 
 		var offset uint64 = 0
-		var limit uint64 = 100
+		var limit uint64 = 500
 		owenedMeta := make([]modeltypes.Metadata, 0)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)

@@ -41,7 +41,47 @@ type orderList struct {
 }
 
 type OrderQueryArgs struct {
-	Owner graphql.NullString
+	Owner   *graphql.NullString
+	Limit   *int32
+	Offset  *int32
+	OrderBy *OrderByInput
+}
+
+type OrderByInput struct {
+	Column OrderByColumn
+	Order  SortOrder
+}
+
+type OrderByColumn string
+type SortOrder string
+
+const (
+	// For OrderByColumn
+	ID         OrderByColumn = "ID"
+	CREATOR    OrderByColumn = "CREATOR"
+	PROVIDER   OrderByColumn = "PROVIDER"
+	DURATION   OrderByColumn = "DURATION"
+	STATUS     OrderByColumn = "STATUS"
+	REPLICA    OrderByColumn = "REPLICA"
+	AMOUNT     OrderByColumn = "AMOUNT"
+	SIZE       OrderByColumn = "SIZE"
+	CREATED_AT OrderByColumn = "CREATED_AT"
+
+	// For SortOrder
+	ASC  SortOrder = "ASC"
+	DESC SortOrder = "DESC"
+)
+
+var columnMapping = map[OrderByColumn]string{
+	ID:         "id",
+	CREATOR:    "creator",
+	PROVIDER:   "provider",
+	DURATION:   "duration",
+	STATUS:     "status",
+	REPLICA:    "replica",
+	AMOUNT:     "amount",
+	SIZE:       "size",
+	CREATED_AT: "createdAt",
 }
 
 // query: order(orderId) Order
@@ -80,15 +120,43 @@ func (r *resolver) Order(ctx context.Context, args struct{ ID graphql.ID }) (*or
 
 // query: orders(Owner) OrderList
 func (r *resolver) Orders(ctx context.Context, args OrderQueryArgs) (*orderList, error) {
+	baseQuery := `FROM ORDERS`
 	queryStr := `SELECT id, creator, owner, provider, cid, duration, status, replica, amount, size, operation, 
-    createdAt, timeout, dataId, commitId, unitPrice FROM ORDERS`
+    createdAt, timeout, dataId, commitId, unitPrice ` + baseQuery
 
 	var params []interface{}
 
 	if args.Owner.Set && args.Owner.Value != nil {
 		queryStr += " WHERE owner = ?"
-		params = append(params, *args.Owner.Value)
+		baseQuery += " WHERE owner = ?" // needed for count query too
+		params = append(params, args.Owner.Value)
 	}
+
+	// Add ordering
+	if args.OrderBy != nil {
+		sqlColumn, exists := columnMapping[args.OrderBy.Column]
+		if !exists {
+			return nil, fmt.Errorf("Invalid orderBy column provided")
+		}
+		queryStr += fmt.Sprintf(" ORDER BY %s %s", sqlColumn, args.OrderBy.Order)
+	} else {
+		queryStr += " ORDER BY CAST(id AS UNSIGNED) DESC"
+	}
+
+	// Add limit and offset if provided
+	limit := 100
+	if args.Limit != nil {
+		limit = int(*args.Limit)
+	}
+	queryStr += " LIMIT ?"
+	params = append(params, limit)
+
+	offset := 0
+	if args.Offset != nil {
+		offset = int(*args.Offset)
+	}
+	queryStr += " OFFSET ?"
+	params = append(params, offset)
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr, params...)
 	if err != nil {
@@ -111,10 +179,18 @@ func (r *resolver) Orders(ctx context.Context, args OrderQueryArgs) (*orderList,
 		return nil, err
 	}
 
+	// Fetch total count
+	countQuery := "SELECT COUNT(*) " + baseQuery
+	var totalCount int32
+	err = r.indexSvc.Db.QueryRowContext(ctx, countQuery, params...).Scan(&totalCount)
+	if err != nil {
+		return nil, err
+	}
+
 	return &orderList{
-		TotalCount: int32(len(orders)),
+		TotalCount: totalCount,
 		Orders:     orders,
-		More:       false,
+		More:       len(orders) == limit, // if the number of fetched rows is equal to the limit, then there might be more results.
 	}, nil
 }
 

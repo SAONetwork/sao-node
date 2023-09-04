@@ -111,6 +111,28 @@ type Order {
     orderShards: [OrderShard]!
 }
 
+enum OrderByColumn {
+    ID
+    CREATOR
+    PROVIDER
+    DURATION
+    STATUS
+    REPLICA
+    AMOUNT
+    SIZE
+    CREATED_AT
+}
+
+enum SortOrder {
+    ASC
+    DESC
+}
+
+input OrderByInput {
+    column: OrderByColumn!
+    order: SortOrder!
+}
+
 type OrderList {
     totalCount: Int!
     orders: [Order!]!
@@ -334,7 +356,7 @@ type RootQuery {
     metadata(id: ID!): Metadata
 
     """Get all Metadatas"""
-    metadatas(query: String, owner: String, groupId: String): MetadataList!
+    metadatas(query: String, owner: String, groupId: String, limit: Int, offset: Int): MetadataList!
 
     """Get Commits"""
     commits(dataId: String!): [CommitInfo!]!
@@ -349,7 +371,7 @@ type RootQuery {
     order(id: ID!): Order
 
     """Get all Orders"""
-    orders(owner: String): OrderList!
+    orders(owner: String, limit: Int, offset: Int, orderBy: OrderByInput): OrderList!
 
     """Get Group List"""
     groupList(owner: String!): GroupList!
