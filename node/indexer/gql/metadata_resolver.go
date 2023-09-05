@@ -130,20 +130,15 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 
 	queryStr += " ORDER BY createdAt DESC"
 
-	// Add limit and offset
-	limit := 100 // default
+	// Add limit and offset if provided
 	if args.Limit != nil {
-		limit = int(*args.Limit)
+		queryStr += " LIMIT ?"
+		params = append(params, int(*args.Limit))
 	}
-	queryStr += " LIMIT ?"
-	params = append(params, limit)
-
-	offset := 0 // default
 	if args.Offset != nil {
-		offset = int(*args.Offset)
+		queryStr += " OFFSET ?"
+		params = append(params, int(*args.Offset))
 	}
-	queryStr += " OFFSET ?"
-	params = append(params, offset)
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr, params...)
 	if err != nil {
@@ -187,10 +182,15 @@ func (r *resolver) Metadatas(ctx context.Context, args QueryArgs) (*metadataList
 		return nil, err
 	}
 
+	moreResults := false
+	if args.Limit != nil && len(metadatas) == int(*args.Limit) {
+		moreResults = true
+	}
+
 	return &metadataList{
 		TotalCount: totalCount,
 		Metadatas:  metadatas,
-		More:       len(metadatas) == limit, // if the number of fetched rows is equal to the limit, then there might be more results.
+		More:       moreResults, // if the number of fetched rows is equal to the limit, then there might be more results.
 	}, nil
 }
 

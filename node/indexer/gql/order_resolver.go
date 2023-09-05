@@ -144,19 +144,14 @@ func (r *resolver) Orders(ctx context.Context, args OrderQueryArgs) (*orderList,
 	}
 
 	// Add limit and offset if provided
-	limit := 100
 	if args.Limit != nil {
-		limit = int(*args.Limit)
+		queryStr += " LIMIT ?"
+		params = append(params, int(*args.Limit))
 	}
-	queryStr += " LIMIT ?"
-	params = append(params, limit)
-
-	offset := 0
 	if args.Offset != nil {
-		offset = int(*args.Offset)
+		queryStr += " OFFSET ?"
+		params = append(params, int(*args.Offset))
 	}
-	queryStr += " OFFSET ?"
-	params = append(params, offset)
 
 	rows, err := r.indexSvc.Db.QueryContext(ctx, queryStr, params...)
 	if err != nil {
@@ -187,10 +182,15 @@ func (r *resolver) Orders(ctx context.Context, args OrderQueryArgs) (*orderList,
 		return nil, err
 	}
 
+	moreResults := false
+	if args.Limit != nil && len(orders) == int(*args.Limit) {
+		moreResults = true
+	}
+
 	return &orderList{
 		TotalCount: totalCount,
 		Orders:     orders,
-		More:       len(orders) == limit, // if the number of fetched rows is equal to the limit, then there might be more results.
+		More:       moreResults,
 	}, nil
 }
 
