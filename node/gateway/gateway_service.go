@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/SaoNetwork/sao-node/chain"
@@ -348,37 +349,131 @@ func (gs *GatewaySvc) HandleShardStore(req types.ShardLoadReq) types.ShardLoadRe
 }
 
 func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error) {
-	res, err := gs.chainSvc.QueryMetadata(ctx, req, height)
+
+	res, err := gs.chainSvc.QueryModelMetadata(ctx, req.Proposal.Keyword)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("QueryMeta succeed. meta=%v", res.Metadata)
+	meta := &res.Metadata
+
+	// validate the permission for all query operations
+	isValid := meta.Owner == req.Proposal.Owner
+	if !isValid {
+		builtinDids, err := gs.chainSvc.QueryBuiltinDid(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, readwriteDid := range meta.ReadwriteDids {
+			if strings.Contains(builtinDids, readwriteDid) {
+				isValid = true
+				break
+			}
+			if readwriteDid == req.Proposal.Owner {
+				isValid = true
+				break
+			}
+		}
+
+		if !isValid {
+			for _, readonlyDid := range meta.ReadonlyDids {
+				if strings.Contains(builtinDids, readonlyDid) {
+					isValid = true
+					break
+				}
+				if readonlyDid == req.Proposal.Owner {
+					isValid = true
+					break
+				}
+			}
+		}
+
+		if !isValid {
+			return nil, types.Wrapf(types.ErrNoPermission, "No permission to query the model")
+		}
+	}
 
 	var commitInfo types.MetaCommit
-	if len(res.Metadata.Commits) > 0 {
-		commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
-		commitInfo, err = types.ParseMetaCommit(commit)
+	var orderId uint64
+	var order *ordertypes.FullOrder
+	if height == 0 {
+		if len(res.Metadata.Commits) > 0 {
+			commit := res.Metadata.Commits[len(res.Metadata.Commits)-1]
+			commitInfo, err = types.ParseMetaCommit(commit)
+			if err != nil {
+				return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s, err: %v", commit, err)
+			}
+		} else {
+			return nil, types.Wrapf(types.ErrInvalidCommitInfo, "no commit information")
+		}
+
+		if len(res.Metadata.Orders) > 0 {
+			orderId = res.Metadata.Orders[len(res.Metadata.Orders)-1]
+		} else {
+			orderId = res.OrderId
+		}
+		order, err = gs.chainSvc.GetOrder(ctx, orderId)
 		if err != nil {
-			return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s", commit)
+			return nil, types.Wrap(types.ErrQueryOrderFailed, err)
 		}
 	} else {
-		return nil, types.Wrapf(types.ErrInvalidCommitInfo, "no commit information")
+		// height is not 0, try find the old version
+		index := len(res.Metadata.Commits) - 1
+		for ; index >= 0; index-- {
+			commit := res.Metadata.Commits[index]
+			commitInfo, err = types.ParseMetaCommit(commit)
+			if err != nil {
+				return nil, types.Wrapf(types.ErrInvalidCommitInfo, "invalid commit information: %s, err: %v", commit, err)
+			}
+			if commitInfo.Height <= uint64(height) {
+				break
+			}
+		}
+		if index == -1 {
+			return nil, types.Wrapf(types.ErrNotFound, "meta not found before height %d", height)
+		}
+
+		for ; index < len(res.Metadata.Orders); index++ {
+
+			order, err = gs.chainSvc.GetOrder(ctx, res.Metadata.Orders[index])
+			if err != nil {
+				return nil, types.Wrap(types.ErrQueryOrderFailed, err)
+			}
+			if order.Commit == commitInfo.CommitId {
+				break
+			}
+		}
+		if index == len(res.Metadata.Orders) {
+			return nil, types.Wrapf(types.ErrNotFound, "should be unreached!!!!!!! cannot find order with commit %s", commitInfo.CommitId)
+		}
+	}
+
+	var shards = make(map[string]*saotypes.ShardMeta)
+	for sp, s := range res.Shards {
+		shards[sp] = &saotypes.ShardMeta{
+			ShardId:  s.ShardId,
+			Peer:     s.Peer,
+			Cid:      s.Cid,
+			Provider: order.Provider,
+			Sp:       sp,
+		}
 	}
 
 	return &types.Model{
-		DataId:   res.Metadata.DataId,
-		Alias:    res.Metadata.Alias,
-		GroupId:  res.Metadata.GroupId,
-		Owner:    res.Metadata.Owner,
-		OrderId:  res.Metadata.OrderId,
-		Tags:     res.Metadata.Tags,
-		Cid:      res.Metadata.Cid,
-		Shards:   res.Shards,
-		CommitId: commitInfo.CommitId,
-		Commits:  res.Metadata.Commits,
-		// Content: N/a,
-		ExtendInfo: res.Metadata.ExtendInfo,
+		DataId:        res.Metadata.DataId,
+		Alias:         res.Metadata.Alias,
+		GroupId:       res.Metadata.GroupId,
+		OrderId:       orderId,
+		Owner:         res.Metadata.Owner,
+		Tags:          res.Metadata.Tags,
+		Cid:           res.Metadata.Cid,
+		Shards:        shards,
+		CommitId:      commitInfo.CommitId,
+		Commits:       res.Metadata.Commits,
+		ExtendInfo:    res.Metadata.ExtendInfo,
+		ReadWriteDids: res.Metadata.ReadwriteDids,
+		ReadOnlyDids:  res.Metadata.ReadonlyDids,
 	}, nil
 }
 
