@@ -3,6 +3,7 @@ package account
 import (
 	"bufio"
 	"fmt"
+	"github.com/cosmos/go-bip39"
 	"os"
 	"strings"
 	"syscall"
@@ -245,11 +246,12 @@ var importCmd = &cli.Command{
 			name = strings.Replace(string(indata), "\n", "", -1)
 		}
 
-		fmt.Println("Enter secret:")
-		var secret string
+		fmt.Println("Enter secret (Mnemonic or Tendermint Private Key):")
 		reader := bufio.NewReader(os.Stdin)
+		var secret string
+		var mnemonic string
+
 		for {
-			// read line from stdin using newline as separator
 			line, err := reader.ReadString('\n')
 			if err != nil {
 				return types.Wrap(types.ErrInvalidSecrect, err)
@@ -257,7 +259,12 @@ var importCmd = &cli.Command{
 
 			secret = secret + line
 
-			if strings.Contains(line, "-----END TENDERMINT PRIVATE KEY-----") {
+			if strings.HasPrefix(secret, "-----BEGIN TENDERMINT PRIVATE KEY-----") && strings.Contains(line, "-----END TENDERMINT PRIVATE KEY-----") {
+				break
+			}
+
+			if bip39.IsMnemonicValid(strings.TrimSpace(secret)) {
+				mnemonic = strings.TrimSpace(secret)
 				break
 			}
 		}
@@ -278,9 +285,20 @@ var importCmd = &cli.Command{
 				return types.Wrapf(types.ErrInvalidBinaryName, ", Name=%s", cctx.App.Name)
 			}
 		}
-		err = chain.Import(ctx, cliutil.KeyringHome, name, secret, string(passphrase))
-		if err != nil {
-			return err
+
+		if mnemonic != "" {
+			addr, err := chain.GenerateAccount(ctx, cliutil.KeyringHome, name, mnemonic)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Account %s has been imported, address=%s\n", name, addr)
+			// Additional code to handle successful mnemonic import
+			// ...
+		} else {
+			err = chain.Import(ctx, cliutil.KeyringHome, name, secret, string(passphrase))
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
