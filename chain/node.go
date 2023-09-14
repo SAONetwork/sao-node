@@ -223,6 +223,16 @@ func (c *ChainSvc) ShowNodeInfo(ctx context.Context, creator string) {
 		fmt.Println("P2P Peer Info:", peer)
 	}
 
+	desc := resp.Node.Description
+	if desc != nil {
+		fmt.Println("Node Description")
+		fmt.Println("Details:", desc.Details)
+		fmt.Println("Identity:", desc.Identity)
+		fmt.Println("Moniker:", desc.Moniker)
+		fmt.Println("Security Contact:", desc.SecurityContact)
+		fmt.Println("Website:", desc.Website)
+	}
+
 	pledgeResp, err := c.nodeClient.Pledge(ctx, &nodetypes.QueryGetPledgeRequest{
 		Creator: creator,
 	})
