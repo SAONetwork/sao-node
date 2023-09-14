@@ -126,7 +126,7 @@ func (r *resolver) Orders(ctx context.Context, args OrderQueryArgs) (*orderList,
 
 	var params []interface{}
 
-	if args.Owner.Set && args.Owner.Value != nil {
+	if args.Owner != nil && args.Owner.Set && args.Owner.Value != nil {
 		queryStr += " WHERE owner = ?"
 		baseQuery += " WHERE owner = ?" // needed for count query too
 		params = append(params, args.Owner.Value)
