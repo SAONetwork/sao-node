@@ -597,6 +597,10 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 }
 
 func (n *Node) ModelCreate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.CreateResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	// check cid
 	contentCid, err := utils.CalculateCid(content)
 	if err != nil {
@@ -632,6 +636,10 @@ func (n *Node) ModelCreate(ctx context.Context, req *types.MetadataProposal, ord
 }
 
 func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64) (apitypes.CreateResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.CreateResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	// Asynchronous order and the content has been uploaded already
 	cidStr := orderProposal.Proposal.Cid
 	key := datastore.NewKey(types.FILE_INFO_PREFIX + cidStr)
@@ -694,6 +702,10 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 }
 
 func (n *Node) ModelLoad(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.LoadResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.LoadResp{}, err
@@ -715,6 +727,10 @@ func (n *Node) ModelLoad(ctx context.Context, req *types.MetadataProposal) (apit
 }
 
 func (n *Node) ModelLoadDelegate(ctx context.Context, req *types.MetadataProposal) (apitypes.LoadResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.LoadResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.LoadResp{}, err
@@ -762,6 +778,10 @@ func (n *Node) ModelLoadDelegate(ctx context.Context, req *types.MetadataProposa
 }
 
 func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposal, isPublish bool) (apitypes.DeleteResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.DeleteResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.DeleteResp{}, err
@@ -775,6 +795,10 @@ func (n *Node) ModelDelete(ctx context.Context, req *types.OrderTerminateProposa
 }
 
 func (n *Node) ModelUpdate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, patch []byte) (apitypes.UpdateResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.UpdateResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	// verify signature
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
@@ -799,6 +823,10 @@ func (n *Node) ModelUpdate(ctx context.Context, req *types.MetadataProposal, ord
 }
 
 func (n *Node) ModelShowCommits(ctx context.Context, req *types.MetadataProposal) (apitypes.ShowCommitsResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.ShowCommitsResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.ShowCommitsResp{}, err
@@ -816,6 +844,10 @@ func (n *Node) ModelShowCommits(ctx context.Context, req *types.MetadataProposal
 }
 
 func (n *Node) ModelRenewOrder(ctx context.Context, req *types.OrderRenewProposal, isPublish bool) (apitypes.RenewResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.RenewResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.RenewResp{}, err
@@ -831,6 +863,10 @@ func (n *Node) ModelRenewOrder(ctx context.Context, req *types.OrderRenewProposa
 }
 
 func (n *Node) ModelUpdatePermission(ctx context.Context, req *types.PermissionProposal, isPublish bool) (apitypes.UpdatePermissionResp, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return apitypes.UpdatePermissionResp{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
+
 	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.UpdatePermissionResp{}, err
@@ -857,6 +893,9 @@ func (n *Node) GetPeerInfo(ctx context.Context) (apitypes.GetPeerInfoResp, error
 }
 
 func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.GenerateTokenResp, error) {
+	if !n.cfg.SaoHttpFileServer.Enable {
+		return apitypes.GenerateTokenResp{}, types.Wrapf(types.ErrNotSupport, " sao http file server is disabled")
+	}
 	server, token := n.hfs.GenerateToken(owner)
 	if token != "" {
 		return apitypes.GenerateTokenResp{
@@ -869,7 +908,7 @@ func (n *Node) GenerateToken(ctx context.Context, owner string) (apitypes.Genera
 }
 
 func (n *Node) GetHttpUrl(ctx context.Context, dataId string) (apitypes.GetUrlResp, error) {
-	if n.cfg.SaoHttpFileServer.HttpFileServerAddress != "" {
+	if n.cfg.SaoHttpFileServer.Enable && n.cfg.SaoHttpFileServer.HttpFileServerAddress != "" {
 		return apitypes.GetUrlResp{
 			Url: "http://" + n.cfg.SaoHttpFileServer.HttpFileServerAddress + "/saonetwork/" + dataId,
 		}, nil
@@ -978,30 +1017,51 @@ func (n *Node) getDidManager(ctx context.Context, keyringHome string, keyName st
 }
 
 func (n *Node) OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return types.OrderInfo{}, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
 	return n.gatewaySvc.OrderStatus(ctx, id)
 }
 
 func (n *Node) OrderList(ctx context.Context) ([]types.OrderInfo, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return nil, types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
 	return n.gatewaySvc.OrderList(ctx)
 }
 
 func (n *Node) OrderFix(ctx context.Context, id string) error {
+	if !n.cfg.Module.GatewayEnable {
+		return types.Wrapf(types.ErrNotSupport, "i am not a gateway node")
+	}
 	return n.gatewaySvc.OrderFix(ctx, id)
 }
 
 func (n *Node) ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) {
+	if !n.cfg.Module.StorageEnable {
+		return types.ShardInfo{}, types.Wrapf(types.ErrNotSupport, "i am not a storage node")
+	}
 	return n.storeSvc.ShardStatus(ctx, orderId, cid)
 }
 
 func (n *Node) ShardList(ctx context.Context) ([]types.ShardInfo, error) {
+	if !n.cfg.Module.StorageEnable {
+		return nil, types.Wrapf(types.ErrNotSupport, "i am not a storage node")
+	}
 	return n.storeSvc.ShardList(ctx)
 }
 
 func (n *Node) ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error {
+	if !n.cfg.Module.StorageEnable {
+		return types.Wrapf(types.ErrNotSupport, "i am not a storage node")
+	}
 	return n.storeSvc.ShardFix(ctx, orderId, cid)
 }
 
 func (n *Node) ModelMigrate(ctx context.Context, dataIds []string) (apitypes.MigrateResp, error) {
+	if !n.cfg.Module.StorageEnable {
+		return apitypes.MigrateResp{}, types.Wrapf(types.ErrNotSupport, "i am not a storage node")
+	}
 	hash, results, err := n.storeSvc.Migrate(ctx, dataIds)
 	return apitypes.MigrateResp{
 		Results: results,
@@ -1010,6 +1070,9 @@ func (n *Node) ModelMigrate(ctx context.Context, dataIds []string) (apitypes.Mig
 }
 
 func (n *Node) MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) {
+	if !n.cfg.Module.StorageEnable {
+		return nil, types.Wrapf(types.ErrNotSupport, "i am not a storage node")
+	}
 	return n.storeSvc.MigrateList(ctx)
 }
 
