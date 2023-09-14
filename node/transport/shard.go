@@ -63,10 +63,14 @@ func HandleRequest(ctx context.Context, peerInfos string, host host.Host, protoc
 		}
 	} else {
 		err = host.Connect(ctx, *pi)
+		streamCtx := ctx
+		if strings.Contains(pi.String(), "p2p-circuit") {
+			streamCtx = network.WithUseTransient(streamCtx, string(protocol))
+		}
 		if err != nil {
 			return types.Wrap(types.ErrConnectFailed, err)
 		}
-		stream, err = host.NewStream(ctx, pi.ID, protocol)
+		stream, err = host.NewStream(streamCtx, pi.ID, protocol)
 	}
 
 	if err != nil {

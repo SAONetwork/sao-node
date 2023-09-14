@@ -87,10 +87,10 @@ var Doc = map[string][]DocField{
 			Comment: `websocket endpoint`,
 		},
 		{
-			Name: "AddressPrefix",
-			Type: "string",
+			Name: "TxPoolSize",
+			Type: "uint",
 
-			Comment: `sao chain account prefix`,
+			Comment: `tx address pool size`,
 		},
 	},
 	"Common": []DocField{
@@ -119,6 +119,20 @@ var Doc = map[string][]DocField{
 			Comment: ``,
 		},
 	},
+	"Indexer": []DocField{
+		{
+			Name: "DbPath",
+			Type: "string",
+
+			Comment: `indexer db path`,
+		},
+		{
+			Name: "ListenAddress",
+			Type: "string",
+
+			Comment: `Binding address for the graphsql service`,
+		},
+	},
 	"Ipfs": []DocField{
 		{
 			Name: "Conn",
@@ -135,6 +149,30 @@ var Doc = map[string][]DocField{
 			Comment: `Binding address for the libp2p host - 0 means random port.
 Format: multiaddress; see https://multiformats.io/multiaddr/`,
 		},
+		{
+			Name: "AnnounceAddresses",
+			Type: "[]string",
+
+			Comment: ``,
+		},
+		{
+			Name: "PublicAddress",
+			Type: "string",
+
+			Comment: ``,
+		},
+		{
+			Name: "IntranetIpEnable",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "ExternalIpEnable",
+			Type: "bool",
+
+			Comment: ``,
+		},
 	},
 	"Module": []DocField{
 		{
@@ -148,6 +186,12 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 			Type: "bool",
 
 			Comment: `Enable storage module`,
+		},
+		{
+			Name: "IndexerEnable",
+			Type: "bool",
+
+			Comment: `Enable indexer module`,
 		},
 	},
 	"Node": []DocField{
@@ -181,6 +225,12 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 
 			Comment: ``,
 		},
+		{
+			Name: "Indexer",
+			Type: "Indexer",
+
+			Comment: ``,
+		},
 	},
 	"SaoHttpFileServer": []DocField{
 		{
@@ -196,20 +246,26 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 			Comment: ``,
 		},
 		{
-			Name: "HttpFileServerPath",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
 			Name: "EnableHttpFileServerLog",
 			Type: "bool",
 
 			Comment: ``,
 		},
 		{
+			Name: "HttpFileServerPath",
+			Type: "string",
+
+			Comment: ``,
+		},
+		{
 			Name: "TokenPeriod",
 			Type: "time.Duration",
+
+			Comment: ``,
+		},
+		{
+			Name: "CacheSize",
+			Type: "int",
 
 			Comment: ``,
 		},
@@ -220,12 +276,6 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 			Type: "bool",
 
 			Comment: `Enable in process ipfs instance`,
-		},
-		{
-			Name: "Repo",
-			Type: "string",
-
-			Comment: `ipfs repo path`,
 		},
 	},
 	"Storage": []DocField{
@@ -246,12 +296,6 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 		{
 			Name: "TransportListenAddress",
 			Type: "[]string",
-
-			Comment: ``,
-		},
-		{
-			Name: "StagingPath",
-			Type: "string",
 
 			Comment: ``,
 		},

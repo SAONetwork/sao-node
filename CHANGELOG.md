@@ -8,7 +8,6 @@
 - check cid in CreateModel and CreateModelFile ([#47](https://github.com/SAONetwork/sao-node.git/issues/47))
 - storage service segment fault ([#46](https://github.com/SAONetwork/sao-node.git/issues/46))
 
-
 <a name="v0.1.7"></a>
 ## [v0.1.7](https://github.com/SAONetwork/sao-node.git/compare/v0.1.6...v0.1.7) (2023-08-08)
 
