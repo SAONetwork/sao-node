@@ -2,12 +2,27 @@
 ## [Unreleased]
 
 ### Features
-- create model with public access ([#32](https://github.com/SAONetwork/sao-node.git/issues/32))
-- add tcp rpc handler ([#35](https://github.com/SAONetwork/sao-node.git/issues/35))
-- add http lru cache ([#33](https://github.com/SAONetwork/sao-node.git/issues/33))
+- public address ([#37](https://github.com/SAONetwork/sao-node.git/issues/37))
 
 ### Bug Fixes
-- gateway disable storage module bug fix - http server not working ([#34](https://github.com/SAONetwork/sao-node.git/issues/34))
+- storage service segment fault ([#46](https://github.com/SAONetwork/sao-node.git/issues/46))
+
+
+<a name="v0.1.7"></a>
+## [v0.1.7](https://github.com/SAONetwork/sao-node.git/compare/v0.1.6...v0.1.7) (2023-08-08)
+
+### Features
+
+* implement model list ([#38](https://github.com/SAONetwork/sao-node.git/issues/38))  *#38* 
+* create model with public access ([#32](https://github.com/SAONetwork/sao-node.git/issues/32))  *#32* 
+* add tcp rpc handler ([#35](https://github.com/SAONetwork/sao-node.git/issues/35))  *#35* 
+* add http lru cache ([#33](https://github.com/SAONetwork/sao-node.git/issues/33))  *#33* 
+
+### Bug Fixes
+
+* libp2p tcp client support ([#41](https://github.com/SAONetwork/sao-node.git/issues/41))  *#2*  *#41*  *#2* 
+* load content type ([#39](https://github.com/SAONetwork/sao-node.git/issues/39))  *#39*  *#2* 
+* gateway disable storage module bug fix - http server not working ([#34](https://github.com/SAONetwork/sao-node.git/issues/34))  *#34* 
 
 
 <a name="v0.1.6"></a>

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	ip "github.com/SaoNetwork/sao-node/node/public_ip"
 	"io"
 	"net/http"
 	"os"
@@ -122,6 +123,28 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	}
 
 	peerInfos := ""
+	if !cfg.Libp2p.ExternalIpEnable && !cfg.Libp2p.IntranetIpEnable && len(cfg.Libp2p.AnnounceAddresses) == 0 {
+		cfg.Libp2p.ExternalIpEnable = true
+		log.Warn("Intranet ip and external ip are both disabled, enable external ip as default")
+	}
+
+	// chain
+	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.Libp2p.ExternalIpEnable && cfg.Libp2p.PublicAddress == "" {
+		nodeList, err := chainSvc.ListNodes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		cfg.Libp2p.PublicAddress = ip.DoPublicIpRequest(ctx, host, nodeList)
+		if cfg.Libp2p.PublicAddress == "" {
+			log.Warnf("failed to get external Ip")
+		}
+	}
+
 	if len(cfg.Libp2p.AnnounceAddresses) > 0 {
 		peerInfos = strings.Join(cfg.Libp2p.AnnounceAddresses, ",")
 		for _, peerInfo := range strings.Split(peerInfos, ",") {
@@ -133,18 +156,22 @@ func NewNode(ctx context.Context, repo *repo.Repo, keyringHome string, cctx *cli
 	} else {
 		for _, a := range host.Addrs() {
 			withP2p := a.Encapsulate(multiaddr.StringCast("/p2p/" + host.ID().String()))
-			log.Debug("addr=", withP2p.String())
-			if len(peerInfos) > 0 {
-				peerInfos = peerInfos + ","
+			if cfg.Libp2p.IntranetIpEnable {
+				log.Debug("addr=", withP2p.String())
+				if len(peerInfos) > 0 {
+					peerInfos = peerInfos + ","
+				}
+				peerInfos = peerInfos + withP2p.String()
 			}
-			peerInfos = peerInfos + withP2p.String()
+			if cfg.Libp2p.ExternalIpEnable && cfg.Libp2p.PublicAddress != "" && strings.Contains(withP2p.String(), "127.0.0.1") {
+				publicAddrWithP2p := strings.Replace(withP2p.String(), "127.0.0.1", cfg.Libp2p.PublicAddress, 1)
+				log.Debug("addr=", publicAddrWithP2p)
+				if len(peerInfos) > 0 {
+					peerInfos = peerInfos + ","
+				}
+				peerInfos = peerInfos + publicAddrWithP2p
+			}
 		}
-	}
-
-	// chain
-	chainSvc, err := chain.NewChainSvc(ctx, cfg.Chain.Remote, cfg.Chain.WsEndpoint, keyringHome)
-	if err != nil {
-		return nil, err
 	}
 
 	addresses := make([]string, 0)
@@ -568,8 +595,18 @@ func (n *Node) AuthNew(ctx context.Context, perms []auth.Permission) ([]byte, er
 }
 
 func (n *Node) ModelCreate(ctx context.Context, req *types.MetadataProposal, orderProposal *types.OrderStoreProposal, orderId uint64, content []byte) (apitypes.CreateResp, error) {
+	// check cid
+	contentCid, err := utils.CalculateCid(content)
+	if err != nil {
+		return apitypes.CreateResp{}, err
+	}
+
+	if contentCid.String() != orderProposal.Proposal.Cid {
+		return apitypes.CreateResp{}, types.ErrInvalidCid
+	}
+
 	// verify signature
-	err := n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
+	err = n.validSignature(ctx, &req.Proposal, req.Proposal.Owner, req.JwsSignature)
 	if err != nil {
 		return apitypes.CreateResp{}, err
 	}
@@ -617,6 +654,15 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 		content, err := io.ReadAll(file)
 		if err != nil {
 			return apitypes.CreateResp{}, types.Wrap(types.ErrReadFileFailed, err)
+		}
+
+		contentCid, err := utils.CalculateCid(content)
+		if err != nil {
+			return apitypes.CreateResp{}, err
+		}
+
+		if contentCid.String() != cidStr {
+			return apitypes.CreateResp{}, types.ErrInvalidCid
 		}
 
 		// verify signature

@@ -362,6 +362,7 @@ require (
 )
 
 // replace github.com/SaoNetwork/sao => ../sao-consensus
+replace github.com/whyrusleeping/cbor-gen => github.com/SAONetwork/cbor-gen v0.0.0-20230906031359-b0807ab74849
 
 replace github.com/whyrusleeping/cbor-gen => ../cbor-gen
 

@@ -80,6 +80,9 @@ github.com/Microsoft/go-winio v0.6.0 h1:slsWYD/zyx7lCXoZVlvQrj0hPTM1HI4+v1sIda2y
 github.com/Microsoft/go-winio v0.6.0/go.mod h1:cTAf44im0RAYeL23bpB+fzCyDH2MJiz2BO69KH/soAE=
 github.com/OneOfOne/xxhash v1.2.2 h1:KMrpdQIwFcEqXDklaen+P1axHaj9BSKzvpUUfnHldSE=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
+github.com/SAONetwork/cbor-gen v0.0.0-20230626070512-15080722cc68/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
+github.com/SAONetwork/cbor-gen v0.0.0-20230906031359-b0807ab74849 h1:dw5rVi3YurJPpAMnURC5rTCkSunqIsRBQBhNZGj8hvw=
+github.com/SAONetwork/cbor-gen v0.0.0-20230906031359-b0807ab74849/go.mod h1:fgkXqYy7bV2cFeIEOkVTZS/WjXARfBqSH6Q2qHL33hQ=
 github.com/SaoNetwork/sao v0.1.7 h1:v/yN7KmpvdCNyYxMLglpANWtUQp8Tax5TkHpolAgPHE=
 github.com/SaoNetwork/sao v0.1.7/go.mod h1:J9WnJqzodA5EJG+vd/+hg7qC+tzyw8D63CJybbLfKDE=
 github.com/SaoNetwork/sao-did v0.0.12 h1:PchVFK+z8e8uxdZNP3xLmP/hic/xTypy2mIw72yxRcE=
