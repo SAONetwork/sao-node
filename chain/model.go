@@ -3,6 +3,7 @@ package chain
 import (
 	"context"
 	"github.com/SaoNetwork/sao-node/types"
+	didtypes "github.com/SaoNetwork/sao/x/did/types"
 
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
 	sdkquerytypes "github.com/cosmos/cosmos-sdk/types/query"
@@ -35,6 +36,19 @@ func (c *ChainSvc) GetModel(ctx context.Context, key string) (*modeltypes.QueryG
 	})
 	if err != nil {
 		return nil, err
+	}
+	return resp, nil
+}
+
+func (c *ChainSvc) QueryModelMetadata(ctx context.Context, dataId string) (*modeltypes.QueryGetMetadataResponse, error) {
+	clientctx := c.cosmos.Context()
+
+	modelClient := modeltypes.NewQueryClient(clientctx)
+	resp, err := modelClient.Metadata(ctx, &modeltypes.QueryGetMetadataRequest{
+		DataId: dataId,
+	})
+	if err != nil {
+		return nil, types.Wrap(types.ErrQueryMetadataFailed, err)
 	}
 	return resp, nil
 }
@@ -137,4 +151,15 @@ func (c *ChainSvc) ListMetaByDid(ctx context.Context, did string) ([]modeltypes.
 		}
 	}
 	return allMetadatas, nil
+}
+
+func (c *ChainSvc) QueryBuiltinDid(ctx context.Context) (string, error) {
+	clientctx := c.cosmos.Context()
+
+	didClient := didtypes.NewQueryClient(clientctx)
+	resp, err := didClient.Params(ctx, &didtypes.QueryParamsRequest{})
+	if err != nil {
+		return "", types.Wrap(types.ErrQueryMetadataFailed, err)
+	}
+	return resp.Params.BuiltinDid, nil
 }

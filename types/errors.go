@@ -89,6 +89,7 @@ var (
 	ErrOpenDataStoreFailed    = errors.Register(ModuleClient, 12013, "failed to open the data store")
 	ErrInvalidParameters      = errors.Register(ModuleClient, 12014, "invalid parameters")
 	ErrCreateClientFailed     = errors.Register(ModuleClient, 12015, "failed to create client")
+	ErrInvalidOwner           = errors.Register(ModuleClient, 12016, "invalid owner")
 )
 
 var (
@@ -154,6 +155,7 @@ var (
 	ErrRetriesExceed      = errors.Register(ModuleModel, 14030, "shard retries too many times")
 	ErrInvalidProvider    = errors.Register(ModuleModel, 14031, "invalid provider")
 	ErrInvalidPeerInfo    = errors.Register(ModuleModel, 14032, "invalid peer info")
+	ErrNoPermission       = errors.Register(ModuleModel, 14033, "no permission")
 )
 
 var (

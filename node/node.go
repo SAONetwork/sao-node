@@ -683,6 +683,10 @@ func (n *Node) ModelCreate(ctx context.Context, req *types.MetadataProposal, ord
 		return apitypes.CreateResp{}, err
 	}
 
+	if req.Proposal.Owner != orderProposal.Proposal.Owner {
+		return apitypes.CreateResp{}, types.Wrapf(types.ErrInvalidOwner, "use different owner in proposals, meta: %s, store: %s", req.Proposal.Owner, orderProposal.Proposal.Owner)
+	}
+
 	// model process
 	model, err := n.manager.Create(ctx, req, orderProposal, orderId, content)
 	if err != nil {
@@ -745,6 +749,10 @@ func (n *Node) ModelCreateFile(ctx context.Context, req *types.MetadataProposal,
 		err = n.validSignature(ctx, &orderProposal.Proposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
 		if err != nil {
 			return apitypes.CreateResp{}, err
+		}
+
+		if req.Proposal.Owner != orderProposal.Proposal.Owner {
+			return apitypes.CreateResp{}, types.Wrapf(types.ErrInvalidOwner, "use different owner in proposals, meta: %s, store: %s", req.Proposal.Owner, orderProposal.Proposal.Owner)
 		}
 
 		model, err := n.manager.Create(ctx, req, orderProposal, orderId, content)
@@ -869,6 +877,10 @@ func (n *Node) ModelUpdate(ctx context.Context, req *types.MetadataProposal, ord
 	err = n.validSignature(ctx, &orderProposal.Proposal, orderProposal.Proposal.Owner, orderProposal.JwsSignature)
 	if err != nil {
 		return apitypes.UpdateResp{}, err
+	}
+
+	if req.Proposal.Owner != orderProposal.Proposal.Owner {
+		return apitypes.UpdateResp{}, types.Wrapf(types.ErrInvalidOwner, "use different owner in proposals, meta: %s, store: %s", req.Proposal.Owner, orderProposal.Proposal.Owner)
 	}
 
 	model, err := n.manager.Update(ctx, req, orderProposal, orderId, patch)

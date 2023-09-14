@@ -3,19 +3,21 @@ package types
 import "github.com/SaoNetwork/sao/x/sao/types"
 
 type Model struct {
-	DataId     string
-	Alias      string
-	GroupId    string
-	OrderId    uint64
-	Owner      string
-	Tags       []string
-	Cid        string
-	Shards     map[string]*types.ShardMeta
-	CommitId   string
-	Commits    []string
-	Version    string
-	Content    []byte
-	ExtendInfo string
+	DataId        string
+	Alias         string
+	GroupId       string
+	OrderId       uint64
+	Owner         string
+	Tags          []string
+	Cid           string
+	Shards        map[string]*types.ShardMeta
+	CommitId      string
+	Commits       []string
+	Version       string
+	Content       []byte
+	ExtendInfo    string
+	ReadWriteDids []string
+	ReadOnlyDids  []string
 }
 
 const Type_Prefix_File = "file_"
