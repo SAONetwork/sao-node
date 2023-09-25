@@ -2,11 +2,20 @@
 ## [Unreleased]
 
 ### Features
+- storage sync task from saod and request shard content from gateway ([#43](https://github.com/SAONetwork/sao-node.git/issues/43))
+- add role check before handling rpc requests ([#49](https://github.com/SAONetwork/sao-node.git/issues/49))
+- Force gateway node to enable external IP ([#48](https://github.com/SAONetwork/sao-node.git/issues/48))
+- import account by mnemonic ([#44](https://github.com/SAONetwork/sao-node.git/issues/44))
+- node info cmd show description ([#45](https://github.com/SAONetwork/sao-node.git/issues/45))
 - public address ([#37](https://github.com/SAONetwork/sao-node.git/issues/37))
 
 ### Bug Fixes
 - check cid in CreateModel and CreateModelFile ([#47](https://github.com/SAONetwork/sao-node.git/issues/47))
 - storage service segment fault ([#46](https://github.com/SAONetwork/sao-node.git/issues/46))
+
+### Code Refactoring
+- query meta, add permission check, add proposal owner check ([#50](https://github.com/SAONetwork/sao-node.git/issues/50))
+
 
 <a name="v0.1.7"></a>
 ## [v0.1.7](https://github.com/SAONetwork/sao-node.git/compare/v0.1.6...v0.1.7) (2023-08-08)
