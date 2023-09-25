@@ -70,29 +70,6 @@ func NewIndexSvc(
 	go is.runSched(ctx)
 	go is.processPendingJobs(ctx)
 
-	//log.Info("building storverse views job...")
-	//platformId := os.Getenv("STORVERSE_PLATFORM_ID")
-	//if platformId == "" {
-	//	platformId = "storverse-sao"
-	//}
-	//job := jobs.BuildStorverseViewsJob(ctx, is.ChainSvc, is.Db, platformId, log)
-	//is.JobsMap[job.ID] = job
-	//
-	//go func() {
-	//	for {
-	//		err := is.excute(ctx, job)
-	//		if err != nil {
-	//			log.Errorf("job[%s] failed due to %v", job.ID, err)
-	//			job.Status = types.JobStatusPending
-	//			log.Infof("Retrying job[%s]...", job.ID)
-	//			continue
-	//		} else {
-	//			log.Infof("job[%s] done.", job.ID)
-	//			continue
-	//		}
-	//	}
-	//}()
-
 	log.Info("building metadata index job...")
 	metadataJob := jobs.BuildMetadataIndexJob(ctx, is.ChainSvc, is.Db, log)
 	is.JobsMap[metadataJob.ID] = metadataJob
