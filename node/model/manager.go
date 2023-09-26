@@ -181,7 +181,7 @@ func (mm *ModelManager) Load(ctx context.Context, req *types.MetadataProposal) (
 	model.Content = result.Content
 	model.Version = version
 
-	mm.cacheModel(req.Proposal.Owner, model)
+	mm.cacheModel(meta.Owner, model)
 
 	return model, nil
 }
