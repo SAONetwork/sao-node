@@ -355,7 +355,19 @@ func (gs *GatewaySvc) HandleShardStore(req types.ShardLoadReq) types.ShardLoadRe
 
 func (gs *GatewaySvc) QueryMeta(ctx context.Context, req *types.MetadataProposal, height int64) (*types.Model, error) {
 
-	res, err := gs.chainSvc.QueryModelMetadata(ctx, req.Proposal.Keyword)
+	var dataId string
+	if req.Proposal.KeywordType > 1 {
+		key := fmt.Sprintf("%s-%s-%s", req.Proposal.DataOwner, req.Proposal.Keyword, req.Proposal.GroupId)
+		res, err := gs.chainSvc.GetModel(ctx, key)
+		if err != nil {
+			return nil, err
+		}
+		dataId = res.Model.Data
+	} else {
+		dataId = req.Proposal.Keyword
+	}
+
+	res, err := gs.chainSvc.QueryModelMetadata(ctx, dataId)
 	if err != nil {
 		return nil, err
 	}
@@ -502,8 +514,9 @@ func (gs *GatewaySvc) FetchShard(ctx context.Context, provider string, cidStr st
 		OrderId: orderId,
 		Proposal: types.MetadataProposalCbor{
 			Proposal: types.QueryProposal{
-				Owner:   gs.nodeAddress,
-				Gateway: gs.nodeAddress,
+				Owner:     gs.nodeAddress,
+				Gateway:   gs.nodeAddress,
+				DataOwner: gs.nodeAddress,
 			},
 		},
 		RequestId:     time.Now().UnixMilli(),
@@ -550,6 +563,7 @@ func (gs *GatewaySvc) FetchContent(ctx context.Context, req *types.MetadataPropo
 					Gateway:         req.Proposal.Gateway,
 					CommitId:        req.Proposal.CommitId,
 					Version:         req.Proposal.Version,
+					DataOwner:       req.Proposal.DataOwner,
 				},
 				JwsSignature: types.JwsSignature{
 					Protected: req.JwsSignature.Protected,
