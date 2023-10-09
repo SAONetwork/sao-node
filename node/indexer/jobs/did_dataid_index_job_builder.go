@@ -43,11 +43,12 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 		log.Info("created temporary table")
 
 		var offset uint64 = 0
-		var limit uint64 = 500
+		var limit uint64 = 200
 		owenedMeta := make([]modeltypes.Metadata, 0)
 		for {
 			metaList, total, err := chainSvc.ListMeta(ctx, offset*limit, limit)
 			if err != nil {
+				log.Error("Failed to read metadata list")
 				return nil, err
 			}
 
@@ -108,6 +109,7 @@ func BuildMetadataIndexJob(ctx context.Context, chainSvc *chain.ChainSvc, db *sq
 
 			}
 		}
+		log.Info("read metadata done")
 
 		// Delete from METADATA table where dataId is not in the temporary table
 		query := "DELETE FROM METADATA WHERE dataId NOT IN (SELECT dataId FROM TempMetadata)"
