@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/SaoNetwork/sao-node/chain"
 	"github.com/SaoNetwork/sao-node/node/indexer/jobs"
 	"github.com/SaoNetwork/sao-node/node/queue"
 	"github.com/SaoNetwork/sao-node/types"
 	"github.com/SaoNetwork/sao-node/utils"
-	"strings"
-	"time"
 
 	"github.com/ipfs/go-datastore"
 	_ "github.com/mattn/go-sqlite3"
@@ -123,7 +124,7 @@ func (is *IndexSvc) runSched(ctx context.Context) {
 				log.Infof("job[%s] running...", sq.Job.ID)
 
 				if err != nil {
-					log.Errorf("job[%s] failed due to %v", sq.Job.ID, err)
+					log.Errorf("job[%s] [%s]failed due to %v", sq.Job.ID, sq.Job.Description, err)
 					is.schedQueue.Push(sq)
 					sq.Job.Status = types.JobStatusPending
 				} else {
