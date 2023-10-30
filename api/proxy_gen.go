@@ -7,6 +7,7 @@ import (
 
 	apitypes "github.com/SaoNetwork/sao-node/api/types"
 	"github.com/SaoNetwork/sao-node/types"
+	sidtypes "github.com/SaoNetwork/sao/x/did/types"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -20,7 +21,9 @@ type SaoApiStruct struct {
 
 		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"none"`
 
-		FaultsCheck func(p0 context.Context, p1 []string) (*apitypes.FileFaultsReportResp, error) ``
+		DidBindingProof func(p0 context.Context, p1 string, p2 []*sidtypes.PubKey, p3 *sidtypes.AccountAuth, p4 *sidtypes.BindingProof) (string, error) `perm:"write"`
+
+		FaultsCheck func(p0 context.Context, p1 []string) (*apitypes.FileFaultsReportResp, error) `perm:"write"`
 
 		GenerateToken func(p0 context.Context, p1 string) (apitypes.GenerateTokenResp, error) `perm:"read"`
 
@@ -34,7 +37,7 @@ type SaoApiStruct struct {
 
 		GetPeerInfo func(p0 context.Context) (apitypes.GetPeerInfoResp, error) `perm:"read"`
 
-		MigrateJobList func(p0 context.Context) ([]types.MigrateInfo, error) ``
+		MigrateJobList func(p0 context.Context) ([]types.MigrateInfo, error) `perm:"read"`
 
 		ModelCreate func(p0 context.Context, p1 *types.MetadataProposal, p2 *types.OrderStoreProposal, p3 uint64, p4 []byte) (apitypes.CreateResp, error) `perm:"write"`
 
@@ -54,13 +57,13 @@ type SaoApiStruct struct {
 
 		ModelUpdatePermission func(p0 context.Context, p1 *types.PermissionProposal, p2 bool) (apitypes.UpdatePermissionResp, error) `perm:"write"`
 
-		OrderList func(p0 context.Context) ([]types.OrderInfo, error) ``
+		OrderList func(p0 context.Context) ([]types.OrderInfo, error) `perm:"read"`
 
 		OrderStatus func(p0 context.Context, p1 string) (types.OrderInfo, error) `perm:"read"`
 
-		RecoverCheck func(p0 context.Context, p1 string, p2 []string) (*apitypes.FileRecoverReportResp, error) ``
+		RecoverCheck func(p0 context.Context, p1 string, p2 []string) (*apitypes.FileRecoverReportResp, error) `perm:"write"`
 
-		ShardList func(p0 context.Context) ([]types.ShardInfo, error) ``
+		ShardList func(p0 context.Context) ([]types.ShardInfo, error) `perm:"read"`
 
 		ShardStatus func(p0 context.Context, p1 uint64, p2 cid.Cid) (types.ShardInfo, error) `perm:"read"`
 	}
@@ -89,6 +92,17 @@ func (s *SaoApiStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permiss
 
 func (s *SaoApiStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
 	return *new([]auth.Permission), ErrNotSupported
+}
+
+func (s *SaoApiStruct) DidBindingProof(p0 context.Context, p1 string, p2 []*sidtypes.PubKey, p3 *sidtypes.AccountAuth, p4 *sidtypes.BindingProof) (string, error) {
+	if s.Internal.DidBindingProof == nil {
+		return "", ErrNotSupported
+	}
+	return s.Internal.DidBindingProof(p0, p1, p2, p3, p4)
+}
+
+func (s *SaoApiStub) DidBindingProof(p0 context.Context, p1 string, p2 []*sidtypes.PubKey, p3 *sidtypes.AccountAuth, p4 *sidtypes.BindingProof) (string, error) {
+	return "", ErrNotSupported
 }
 
 func (s *SaoApiStruct) FaultsCheck(p0 context.Context, p1 []string) (*apitypes.FileFaultsReportResp, error) {

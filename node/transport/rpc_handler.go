@@ -3,6 +3,7 @@ package transport
 import (
 	"context"
 	"encoding/json"
+	sidtypes "github.com/SaoNetwork/sao/x/did/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -306,6 +307,45 @@ func (rs *RpcHandler) Update(params []string) (string, error) {
 	}
 
 	resp, err := rs.GatewayApi.ModelUpdate(rs.Ctx, &req, &orderProposal, uint64(orderId), []byte(params[2]))
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+	return string(b), nil
+}
+
+func (rs *RpcHandler) BindingProof(params []string) (string, error) {
+	if len(params) != 3 {
+		return "", types.Wrapf(types.ErrInvalidParameters, "invalid params length")
+	}
+
+	var keys []*sidtypes.PubKey
+	err := json.Unmarshal([]byte(params[1]), &keys)
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+
+	var accAuth sidtypes.AccountAuth
+	err = json.Unmarshal([]byte(params[2]), &accAuth)
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+
+	var proof sidtypes.BindingProof
+	err = json.Unmarshal([]byte(params[3]), &proof)
+	if err != nil {
+		log.Error(err.Error())
+		return "", nil
+	}
+
+	resp, err := rs.GatewayApi.DidBindingProof(rs.Ctx, params[0], keys, &accAuth, &proof)
 	if err != nil {
 		log.Error(err.Error())
 		return "", nil

@@ -134,6 +134,8 @@ func (rs *Libp2pRpcServer) HandleStream(s network.Stream) {
 			result, err = rs.RH.Load(req.Params)
 		case "Sao.ModelUpdate":
 			result, err = rs.RH.Update(req.Params)
+		case "Did.BindingProof":
+			result, err = rs.RH.BindingProof(req.Params)
 		default:
 			resp.Error = "N/a"
 		}
