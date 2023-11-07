@@ -2,6 +2,7 @@ package chain
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/SaoNetwork/sao-node/types"
@@ -101,6 +102,8 @@ func (c *ChainSvc) StoreOrder(ctx context.Context, signer string, clientProposal
 	resultChan := make(chan BroadcastTxJobResult)
 	c.broadcastMsg(txAddress, msg, resultChan)
 	result := <-resultChan
+	fmt.Printf("result: %#v \n", result)
+	fmt.Printf("result resp: %#v \n", result.resp)
 	if result.err != nil {
 		return saotypes.MsgStoreResponse{}, "", -1, types.Wrap(types.ErrTxProcessFailed, result.err)
 	}
