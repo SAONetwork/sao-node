@@ -120,5 +120,5 @@ type Cache struct {
 
 type Transport struct {
 	TransportListenAddress []string
-	StagingSapceSize       int64
+	StagingSpaceSize       int64
 }

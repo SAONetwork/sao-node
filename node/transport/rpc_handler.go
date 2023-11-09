@@ -24,7 +24,7 @@ type RpcHandler struct {
 	Db               datastore.Batching
 	GatewayApi       api.SaoApi
 	StagingPath      string
-	StagingSapceSize int64
+	StagingSpaceSize int64
 }
 
 func NewHandler(ctx context.Context, ga api.SaoApi, db datastore.Batching, cfg *config.Node, stagingPath string) *RpcHandler {
@@ -34,7 +34,7 @@ func NewHandler(ctx context.Context, ga api.SaoApi, db datastore.Batching, cfg *
 		Db:               db,
 		GatewayApi:       ga,
 		StagingPath:      stagingPath,
-		StagingSapceSize: cfg.Transport.StagingSapceSize,
+		StagingSpaceSize: cfg.Transport.StagingSpaceSize,
 	}
 	return &handler
 }
@@ -119,14 +119,14 @@ func (rs *RpcHandler) Upload(params []string) (string, error) {
 				return "", err
 			}
 
-			if int64(len(req.Content)) > rs.StagingSapceSize {
-				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSapceSize-info.Size())
+			if int64(len(req.Content)) > rs.StagingSpaceSize {
+				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSpaceSize-info.Size())
 			}
 		} else if err != nil {
 			return "", err
 		} else {
-			if info.Size()+int64(len(req.Content)) > rs.StagingSapceSize {
-				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSapceSize-info.Size())
+			if info.Size()+int64(len(req.Content)) > rs.StagingSpaceSize {
+				return "", types.Wrapf(types.ErrInvalidParameters, "not enough staging space under %s, need %v but only %v left", rs.StagingPath, len(req.Content), rs.StagingSpaceSize-info.Size())
 			}
 		}
 

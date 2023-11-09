@@ -300,7 +300,7 @@ Format: multiaddress; see https://multiformats.io/multiaddr/`,
 			Comment: ``,
 		},
 		{
-			Name: "StagingSapceSize",
+			Name: "StagingSpaceSize",
 			Type: "int64",
 
 			Comment: ``,

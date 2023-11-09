@@ -211,7 +211,7 @@ func GetChainAddress(cctx *cli.Context, repoPath string, binaryName string) (str
 
 	if chainAddress == "" {
 		configPath := filepath.Join(repoPath, "config.toml")
-		if binaryName == "saonode" {
+		if binaryName == "saonode" || binaryName == "saopayment" {
 			r, err := repo.PrepareRepo(repoPath)
 			if err != nil {
 				return chainAddress, types.Wrap(types.ErrInvalidRepoPath, err)
