@@ -2951,7 +2951,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 
 	cw := cbg.NewCborWriter(w)
 
-	if _, err := cw.Write([]byte{168}); err != nil {
+	if _, err := cw.Write([]byte{169}); err != nil {
 		return err
 	}
 
@@ -3124,6 +3124,29 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	if _, err := io.WriteString(w, string(t.Version)); err != nil {
 		return err
 	}
+
+	// t.DataOwner (string) (string)
+	if len("DataOwner") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"DataOwner\" was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("DataOwner"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("DataOwner")); err != nil {
+		return err
+	}
+
+	if len(t.DataOwner) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.DataOwner was too long")
+	}
+
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.DataOwner))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.DataOwner)); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -3260,6 +3283,17 @@ func (t *QueryProposal) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 				t.Version = string(sval)
+			}
+			// t.DataOwner (string) (string)
+		case "DataOwner":
+
+			{
+				sval, err := cbg.ReadString(cr)
+				if err != nil {
+					return err
+				}
+
+				t.DataOwner = string(sval)
 			}
 
 		default:

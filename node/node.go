@@ -610,6 +610,7 @@ func (n *Node) ConnectPeers(ctx context.Context, reset func(string) (string, err
 				break
 			}
 			log.Error(err)
+			time.Sleep(time.Second)
 		}
 		if len(gateways) > 0 {
 			ri = pi.Addrs[0].String() + "/p2p/" + pi.ID.String()

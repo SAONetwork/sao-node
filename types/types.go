@@ -84,6 +84,7 @@ type QueryProposal struct {
 	Gateway         string
 	CommitId        string
 	Version         string
+	DataOwner       string
 }
 
 type RelayProposal struct {

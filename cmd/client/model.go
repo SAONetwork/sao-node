@@ -295,6 +295,11 @@ var loadCmd = &cli.Command{
 			Usage:    "dump data model content to ./<dataid>.json",
 			Required: false,
 		},
+		&cli.StringFlag{
+			Name:     "data-owner",
+			Usage:    "dataOwner which use to query metadata with alias keyword",
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
@@ -328,15 +333,20 @@ var loadCmd = &cli.Command{
 		}
 
 		proposal := saotypes.QueryProposal{
-			Owner:    didManager.Id,
-			Keyword:  keyword,
-			GroupId:  groupId,
-			CommitId: commitId,
-			Version:  version,
+			Owner:     didManager.Id,
+			Keyword:   keyword,
+			GroupId:   groupId,
+			CommitId:  commitId,
+			Version:   version,
+			DataOwner: didManager.Id,
 		}
 
 		if !utils.IsDataId(keyword) {
 			proposal.KeywordType = 2
+			dataOwner := cctx.String("data-owner")
+			if dataOwner != "" {
+				proposal.DataOwner = dataOwner
+			}
 		}
 
 		gatewayAddress, err := client.GetNodeAddress(ctx)

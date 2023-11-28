@@ -520,6 +520,7 @@ func (ss *StoreSvc) HandleShardLoad(req types.ShardLoadReq, remotePeerId string)
 			Gateway:         req.Proposal.Proposal.Gateway,
 			CommitId:        req.Proposal.Proposal.CommitId,
 			Version:         req.Proposal.Proposal.Version,
+			DataOwner:       req.Proposal.Proposal.DataOwner,
 		}
 
 		proposalBytes, err := p.Marshal()
