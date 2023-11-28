@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 
+	sidtypes "github.com/SaoNetwork/sao/x/did/types"
+
 	apitypes "github.com/SaoNetwork/sao-node/api/types"
 	"github.com/SaoNetwork/sao-node/types"
 
@@ -19,12 +21,10 @@ type SaoApi interface {
 	// MethodGroup: Order Job
 	OrderStatus(ctx context.Context, id string) (types.OrderInfo, error) //perm:read
 	OrderList(ctx context.Context) ([]types.OrderInfo, error)            //perm:read
-	// OrderFix(ctx context.Context, id string) error                       //perm:write
 
 	// MethodGroup: Shard Job
 	ShardStatus(ctx context.Context, orderId uint64, cid cid.Cid) (types.ShardInfo, error) //perm:read
 	ShardList(ctx context.Context) ([]types.ShardInfo, error)                              //perm:read
-	// ShardFix(ctx context.Context, orderId uint64, cid cid.Cid) error
 
 	// MethodGroup: Migration Job
 	MigrateJobList(ctx context.Context) ([]types.MigrateInfo, error) //perm:read
@@ -51,9 +51,9 @@ type SaoApi interface {
 	ModelMigrate(ctx context.Context, dataIds []string) (apitypes.MigrateResp, error)                                                // perm:write
 
 	// Raise Storage Faults
-	FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.FileFaultsReportResp, error)
+	FaultsCheck(ctx context.Context, dataIds []string) (*apitypes.FileFaultsReportResp, error) // perm:write
 	// Requst Check for Recoverable Storage Faults
-	RecoverCheck(ctx context.Context, provider string, faultIds []string) (*apitypes.FileRecoverReportResp, error)
+	RecoverCheck(ctx context.Context, provider string, faultIds []string) (*apitypes.FileRecoverReportResp, error) // perm:write
 
 	// MethodGroup: Common
 
@@ -69,4 +69,8 @@ type SaoApi interface {
 	GetNodeAddress(ctx context.Context) (string, error) //perm:read
 	// GetNetPeers get current node's connected peer list
 	GetNetPeers(context.Context) ([]types.PeerInfo, error) //perm:read
+
+	// DidBindingProof binding account id to sid
+	DidBindingProof(ctx context.Context, rootDocId string, keys []*sidtypes.PubKey, accAuth *sidtypes.AccountAuth, proof *sidtypes.BindingProof) (string, error) //perm:write
+
 }

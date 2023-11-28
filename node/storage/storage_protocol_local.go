@@ -79,16 +79,35 @@ func (l LocalStorageProtocol) RequestShardStore(ctx context.Context, req types.S
 	filename := filepath.Join(path, req.Owner, req.Cid.String()+"-"+req.DataId)
 	bytes, err := os.ReadFile(filename)
 	if err != nil {
-		resp.ResponseId = time.Now().UnixMilli()
-		resp.Code = types.ErrorCodeInternalErr
-		resp.Message = fmt.Sprintf("read file failed: %s", filename)
-		return resp
-	} else {
-		resp.Content = bytes
-		resp.Code = 0
-		resp.ResponseId = time.Now().UnixMilli()
-		return resp
+
+		dir, err := os.ReadDir(path)
+		if err != nil {
+			resp.ResponseId = time.Now().UnixMilli()
+			resp.Code = types.ErrorCodeInternalErr
+			resp.Message = fmt.Sprintf("read dir failed: %s", path)
+			return resp
+		}
+
+		var file string
+		for _, ent := range dir {
+			file = filepath.Join(path, ent.Name(), req.Cid.String(), req.Cid.String())
+			_, err = os.Stat(file)
+			if err == nil {
+				break
+			}
+		}
+		bytes, err = os.ReadFile(file)
+		if err != nil {
+			resp.ResponseId = time.Now().UnixMilli()
+			resp.Code = types.ErrorCodeInternalErr
+			resp.Message = fmt.Sprintf("read file failed: %s", filename)
+			return resp
+		}
 	}
+	resp.Content = bytes
+	resp.Code = 0
+	resp.ResponseId = time.Now().UnixMilli()
+	return resp
 }
 
 func (l LocalStorageProtocol) RequestShardMigrate(ctx context.Context, req types.ShardMigrateReq, _ string) types.ShardMigrateResp {

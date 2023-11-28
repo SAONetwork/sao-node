@@ -45,6 +45,27 @@ func (c *ChainSvc) GetSidDocument(ctx context.Context, versionId string) (*sid.S
 	}, nil
 }
 
+func (c *ChainSvc) CreateDidBinding(ctx context.Context, creator string, rootDocId string, keys []*sidtypes.PubKey, accAuth *sidtypes.AccountAuth, proof *sidtypes.BindingProof) (string, error) {
+	msg := &sidtypes.MsgBinding{
+		Creator:     creator,
+		AccountId:   proof.Account,
+		RootDocId:   rootDocId,
+		Keys:        keys,
+		AccountAuth: accAuth,
+		Proof:       proof,
+	}
+	resultChan := make(chan BroadcastTxJobResult)
+	c.broadcastMsg(creator, msg, resultChan)
+	result := <-resultChan
+	if result.err != nil {
+		return "", types.Wrap(types.ErrTxProcessFailed, result.err)
+	}
+	if result.resp.TxResponse.Code != 0 {
+		return "", types.Wrapf(types.ErrTxProcessFailed, "MsgUpdatePaymentAddress tx hash=%s, code=%d", result.resp.TxResponse.TxHash, result.resp.TxResponse.Code)
+	}
+	return result.resp.TxResponse.TxHash, nil
+}
+
 func (c *ChainSvc) UpdateDidBinding(ctx context.Context, creator string, did string, accountId string) (string, error) {
 	msg := &sidtypes.MsgUpdatePaymentAddress{
 		Creator:   creator,

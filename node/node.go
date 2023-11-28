@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	ip "github.com/SaoNetwork/sao-node/node/public_ip"
+	sidtypes "github.com/SaoNetwork/sao/x/did/types"
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/p2p/protocol/circuitv2/client"
 	"io"
@@ -1328,4 +1329,11 @@ func (n *Node) RecoverCheck(ctx context.Context, provider string, faultIds []str
 	}
 
 	return nil, types.Wrapf(types.ErrInvalidParameters, "no recoverable faults found")
+}
+
+func (n *Node) DidBindingProof(ctx context.Context, rootDocId string, keys []*sidtypes.PubKey, accAuth *sidtypes.AccountAuth, proof *sidtypes.BindingProof) (string, error) {
+	if !n.cfg.Module.GatewayEnable {
+		return "", types.Wrapf(types.ErrNotSupport, "i am not a storage node")
+	}
+	return n.chainSvc.CreateDidBinding(ctx, n.address, rootDocId, keys, accAuth, proof)
 }

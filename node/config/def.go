@@ -57,7 +57,7 @@ func defCommon() Common {
 			TransportListenAddress: []string{
 				"/ip4/0.0.0.0/udp/5154",
 			},
-			StagingSapceSize: 32 * 1024 * 1024 * 1024,
+			StagingSpaceSize: 32 * 1024 * 1024 * 1024,
 		},
 		Module: Module{
 			GatewayEnable: false,
