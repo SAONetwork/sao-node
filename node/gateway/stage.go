@@ -51,10 +51,27 @@ func GetStagedShard(basedir string, creator string, cid cid.Cid, dataId string) 
 	filename := cid.String() + "-" + dataId
 	bytes, err := os.ReadFile(filepath.Join(path, creator, filename))
 	if err != nil {
-		return nil, types.Wrap(types.ErrReadFileFailed, err)
-	} else {
-		return bytes, nil
+
+		dir, err := os.ReadDir(path)
+		if err != nil {
+			return nil, types.Wrap(types.ErrReadFileFailed, err)
+		}
+
+		var file string
+		for _, ent := range dir {
+			file = filepath.Join(path, ent.Name(), cid.String(), cid.String())
+			_, err = os.Stat(file)
+			if err == nil {
+				break
+			}
+		}
+		bytes, err = os.ReadFile(file)
+		if err != nil {
+			return nil, types.Wrap(types.ErrReadFileFailed, err)
+		}
 	}
+
+	return bytes, nil
 }
 
 func UnstageShard(basedir string, creator string, cid string, dataId string) error {
