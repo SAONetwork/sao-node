@@ -204,13 +204,13 @@ func (c *ChainSvc) broadcastLoop(ctx context.Context, ch chan BroadcastTxJob) {
 					counter, exist := c.seqMap[job.signer]
 					if !exist {
 						seq = account.GetSequence()
-						c.seqMap[job.signer] = NewSeqCounter(seq + 1)
+						c.seqMap[job.signer] = NewSeqCounter(seq)
 					} else {
 						seq = counter.GetSeq()
 						// local seq adjustment
 						if account.GetSequence() > seq {
 							seq = account.GetSequence()
-							c.seqMap[job.signer] = NewSeqCounter(seq + 1)
+							c.seqMap[job.signer] = NewSeqCounter(seq)
 						}
 					}
 					txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, seq, job.msg)
