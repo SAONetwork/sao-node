@@ -11,7 +11,6 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
-	"github.com/SAONetwork/sao-cosmosclient/cosmosclient"
 	"github.com/SaoNetwork/sao-did/sid"
 	didtypes "github.com/SaoNetwork/sao/x/did/types"
 	modeltypes "github.com/SaoNetwork/sao/x/model/types"
@@ -21,6 +20,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/client"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/ignite/cli/ignite/pkg/cosmosclient"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/tendermint/tendermint/rpc/client/http"
@@ -46,7 +46,6 @@ type ChainSvc struct {
 	ap               *AddressPool
 	broadcastChanMap map[string]chan BroadcastTxJob
 	stopChan         chan struct{}
-	seqMap           map[string]SeqCounter
 }
 
 type BroadcastTxJob struct {
@@ -153,7 +152,6 @@ func NewChainSvc(
 		accountRetriever: accountRetriever,
 		broadcastChanMap: make(map[string]chan BroadcastTxJob),
 		stopChan:         make(chan struct{}),
-		seqMap:           make(map[string]SeqCounter),
 	}, nil
 }
 
@@ -192,38 +190,16 @@ func (c *ChainSvc) broadcastLoop(ctx context.Context, ch chan BroadcastTxJob) {
 					err: types.Wrap(types.ErrAccountNotFound, err),
 				}
 			} else {
-				go func(job BroadcastTxJob) {
-					// get next seq
-					account, err := c.GetAccount(ctx, job.signer)
-					if err != nil {
-						job.resultChan <- BroadcastTxJobResult{
-							err: types.Wrap(types.ErrAccountNotFound, err),
-						}
+				txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, job.msg)
+				if err != nil {
+					job.resultChan <- BroadcastTxJobResult{
+						err: types.Wrap(types.ErrTxProcessFailed, err),
 					}
-					var seq uint64
-					counter, exist := c.seqMap[job.signer]
-					if !exist {
-						seq = account.GetSequence()
-						c.seqMap[job.signer] = NewSeqCounter(seq)
-					} else {
-						seq = counter.GetSeq()
-						// local seq adjustment
-						if account.GetSequence() > seq {
-							seq = account.GetSequence()
-							c.seqMap[job.signer] = NewSeqCounter(seq)
-						}
+				} else {
+					job.resultChan <- BroadcastTxJobResult{
+						resp: txResp,
 					}
-					txResp, err := c.cosmos.BroadcastTx(ctx, signerAcc, seq, job.msg)
-					if err != nil {
-						job.resultChan <- BroadcastTxJobResult{
-							err: types.Wrap(types.ErrTxProcessFailed, err),
-						}
-					} else {
-						job.resultChan <- BroadcastTxJobResult{
-							resp: txResp,
-						}
-					}
-				}(job)
+				}
 			}
 		case <-c.stopChan:
 			log.Info("tx broadcast loop stopped.")

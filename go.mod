@@ -55,7 +55,6 @@ require (
 )
 
 require (
-	github.com/SAONetwork/sao-cosmosclient v0.0.0-20231027090703-d02270551a79
 	github.com/cosmos/cosmos-sdk v0.46.6
 	github.com/cosmos/go-bip39 v1.0.0
 	github.com/filecoin-project/lotus v1.19.0
