@@ -324,7 +324,9 @@ func (r *resolver) UserSummary(ctx context.Context, args struct {
 		if err != nil {
 			return nil, fmt.Errorf("unable to get balance: %w", err)
 		}
-		summary.Balance = balance[0].Amount.String()
+		if len(balance) > 0 {
+			summary.Balance = balance[0].Amount.String()
+		}
 	}
 
 	return summary, nil
