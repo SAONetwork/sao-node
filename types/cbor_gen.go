@@ -17,6 +17,7 @@ var _ = xerrors.Errorf
 var _ = cid.Undef
 var _ = math.E
 var _ = sort.Sort
+const MaxLength  = 819200
 
 func (t *ShardExpireKey) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -31,7 +32,7 @@ func (t *ShardExpireKey) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ShardId (uint64) (uint64)
-	if len("ShardId") > cbg.MaxLength {
+	if len("ShardId") > MaxLength {
 		return xerrors.Errorf("Value in field \"ShardId\" was too long")
 	}
 
@@ -68,7 +69,7 @@ func (t *ShardExpireKey) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardExpireKey: map struct too large (%d)", extra)
 	}
 
@@ -124,7 +125,7 @@ func (t *ShardExpireIndex) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Alls ([]types.ShardExpireKey) (slice)
-	if len("Alls") > cbg.MaxLength {
+	if len("Alls") > MaxLength {
 		return xerrors.Errorf("Value in field \"Alls\" was too long")
 	}
 
@@ -135,7 +136,7 @@ func (t *ShardExpireIndex) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Alls) > cbg.MaxLength {
+	if len(t.Alls) > MaxLength {
 		return xerrors.Errorf("Slice value in field t.Alls was too long")
 	}
 
@@ -169,7 +170,7 @@ func (t *ShardExpireIndex) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardExpireIndex: map struct too large (%d)", extra)
 	}
 
@@ -196,7 +197,7 @@ func (t *ShardExpireIndex) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > MaxLength {
 				return fmt.Errorf("t.Alls: array too large (%d)", extra)
 			}
 
@@ -239,7 +240,7 @@ func (t *ShardExpireInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ShardId (uint64) (uint64)
-	if len("ShardId") > cbg.MaxLength {
+	if len("ShardId") > MaxLength {
 		return xerrors.Errorf("Value in field \"ShardId\" was too long")
 	}
 
@@ -255,7 +256,7 @@ func (t *ShardExpireInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (string) (string)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -266,7 +267,7 @@ func (t *ShardExpireInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Cid) > cbg.MaxLength {
+	if len(t.Cid) > MaxLength {
 		return xerrors.Errorf("Value in field t.Cid was too long")
 	}
 
@@ -278,7 +279,7 @@ func (t *ShardExpireInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -315,7 +316,7 @@ func (t *ShardExpireInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardExpireInfo: map struct too large (%d)", extra)
 	}
 
@@ -397,7 +398,7 @@ func (t *OrderKey) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -408,7 +409,7 @@ func (t *OrderKey) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -440,7 +441,7 @@ func (t *OrderKey) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("OrderKey: map struct too large (%d)", extra)
 	}
 
@@ -492,7 +493,7 @@ func (t *OrderIndex) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Alls ([]types.OrderKey) (slice)
-	if len("Alls") > cbg.MaxLength {
+	if len("Alls") > MaxLength {
 		return xerrors.Errorf("Value in field \"Alls\" was too long")
 	}
 
@@ -503,7 +504,7 @@ func (t *OrderIndex) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Alls) > cbg.MaxLength {
+	if len(t.Alls) > MaxLength {
 		return xerrors.Errorf("Slice value in field t.Alls was too long")
 	}
 
@@ -537,7 +538,7 @@ func (t *OrderIndex) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("OrderIndex: map struct too large (%d)", extra)
 	}
 
@@ -564,7 +565,7 @@ func (t *OrderIndex) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > MaxLength {
 				return fmt.Errorf("t.Alls: array too large (%d)", extra)
 			}
 
@@ -607,7 +608,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ShardId (uint64) (uint64)
-	if len("ShardId") > cbg.MaxLength {
+	if len("ShardId") > MaxLength {
 		return xerrors.Errorf("Value in field \"ShardId\" was too long")
 	}
 
@@ -623,7 +624,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Peer (string) (string)
-	if len("Peer") > cbg.MaxLength {
+	if len("Peer") > MaxLength {
 		return xerrors.Errorf("Value in field \"Peer\" was too long")
 	}
 
@@ -634,7 +635,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Peer) > cbg.MaxLength {
+	if len(t.Peer) > MaxLength {
 		return xerrors.Errorf("Value in field t.Peer was too long")
 	}
 
@@ -646,7 +647,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (string) (string)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -657,7 +658,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Cid) > cbg.MaxLength {
+	if len(t.Cid) > MaxLength {
 		return xerrors.Errorf("Value in field t.Cid was too long")
 	}
 
@@ -669,7 +670,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Provider (string) (string)
-	if len("Provider") > cbg.MaxLength {
+	if len("Provider") > MaxLength {
 		return xerrors.Errorf("Value in field \"Provider\" was too long")
 	}
 
@@ -680,7 +681,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Provider) > cbg.MaxLength {
+	if len(t.Provider) > MaxLength {
 		return xerrors.Errorf("Value in field t.Provider was too long")
 	}
 
@@ -692,7 +693,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.State (types.OrderShardState) (string)
-	if len("State") > cbg.MaxLength {
+	if len("State") > MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
 
@@ -703,7 +704,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.State) > cbg.MaxLength {
+	if len(t.State) > MaxLength {
 		return xerrors.Errorf("Value in field t.State was too long")
 	}
 
@@ -715,7 +716,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteHash (string) (string)
-	if len("CompleteHash") > cbg.MaxLength {
+	if len("CompleteHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteHash\" was too long")
 	}
 
@@ -726,7 +727,7 @@ func (t *OrderShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CompleteHash) > cbg.MaxLength {
+	if len(t.CompleteHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.CompleteHash was too long")
 	}
 
@@ -758,7 +759,7 @@ func (t *OrderShardInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("OrderShardInfo: map struct too large (%d)", extra)
 	}
 
@@ -869,7 +870,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -880,7 +881,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -892,7 +893,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Owner (string) (string)
-	if len("Owner") > cbg.MaxLength {
+	if len("Owner") > MaxLength {
 		return xerrors.Errorf("Value in field \"Owner\" was too long")
 	}
 
@@ -903,7 +904,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Owner) > cbg.MaxLength {
+	if len(t.Owner) > MaxLength {
 		return xerrors.Errorf("Value in field t.Owner was too long")
 	}
 
@@ -915,7 +916,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (cid.Cid) (struct)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -931,7 +932,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.StagePath (string) (string)
-	if len("StagePath") > cbg.MaxLength {
+	if len("StagePath") > MaxLength {
 		return xerrors.Errorf("Value in field \"StagePath\" was too long")
 	}
 
@@ -942,7 +943,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.StagePath) > cbg.MaxLength {
+	if len(t.StagePath) > MaxLength {
 		return xerrors.Errorf("Value in field t.StagePath was too long")
 	}
 
@@ -954,7 +955,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -970,7 +971,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderHash (string) (string)
-	if len("OrderHash") > cbg.MaxLength {
+	if len("OrderHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderHash\" was too long")
 	}
 
@@ -981,7 +982,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.OrderHash) > cbg.MaxLength {
+	if len(t.OrderHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.OrderHash was too long")
 	}
 
@@ -993,7 +994,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderTxType (types.AssignTxType) (string)
-	if len("OrderTxType") > cbg.MaxLength {
+	if len("OrderTxType") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderTxType\" was too long")
 	}
 
@@ -1004,7 +1005,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.OrderTxType) > cbg.MaxLength {
+	if len(t.OrderTxType) > MaxLength {
 		return xerrors.Errorf("Value in field t.OrderTxType was too long")
 	}
 
@@ -1016,7 +1017,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderHeight (int64) (int64)
-	if len("OrderHeight") > cbg.MaxLength {
+	if len("OrderHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderHeight\" was too long")
 	}
 
@@ -1038,7 +1039,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Shards (map[string]types.OrderShardInfo) (map)
-	if len("Shards") > cbg.MaxLength {
+	if len("Shards") > MaxLength {
 		return xerrors.Errorf("Value in field \"Shards\" was too long")
 	}
 
@@ -1066,7 +1067,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		for _, k := range keys {
 			v := t.Shards[k]
 
-			if len(k) > cbg.MaxLength {
+			if len(k) > MaxLength {
 				return xerrors.Errorf("Value in field k was too long")
 			}
 
@@ -1085,7 +1086,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ExpireHeight (uint64) (uint64)
-	if len("ExpireHeight") > cbg.MaxLength {
+	if len("ExpireHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"ExpireHeight\" was too long")
 	}
 
@@ -1101,7 +1102,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.State (types.OrderState) (uint64)
-	if len("State") > cbg.MaxLength {
+	if len("State") > MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
 
@@ -1117,7 +1118,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Tries (uint64) (uint64)
-	if len("Tries") > cbg.MaxLength {
+	if len("Tries") > MaxLength {
 		return xerrors.Errorf("Value in field \"Tries\" was too long")
 	}
 
@@ -1133,7 +1134,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RetryAt (int64) (int64)
-	if len("RetryAt") > cbg.MaxLength {
+	if len("RetryAt") > MaxLength {
 		return xerrors.Errorf("Value in field \"RetryAt\" was too long")
 	}
 
@@ -1155,7 +1156,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.LastErr (string) (string)
-	if len("LastErr") > cbg.MaxLength {
+	if len("LastErr") > MaxLength {
 		return xerrors.Errorf("Value in field \"LastErr\" was too long")
 	}
 
@@ -1166,7 +1167,7 @@ func (t *OrderInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.LastErr) > cbg.MaxLength {
+	if len(t.LastErr) > MaxLength {
 		return xerrors.Errorf("Value in field t.LastErr was too long")
 	}
 
@@ -1198,7 +1199,7 @@ func (t *OrderInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("OrderInfo: map struct too large (%d)", extra)
 	}
 
@@ -1472,7 +1473,7 @@ func (t *ShardKey) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -1488,7 +1489,7 @@ func (t *ShardKey) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (cid.Cid) (struct)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -1525,7 +1526,7 @@ func (t *ShardKey) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardKey: map struct too large (%d)", extra)
 	}
 
@@ -1594,7 +1595,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -1610,7 +1611,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -1621,7 +1622,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -1633,7 +1634,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (cid.Cid) (struct)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -1649,7 +1650,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Owner (string) (string)
-	if len("Owner") > cbg.MaxLength {
+	if len("Owner") > MaxLength {
 		return xerrors.Errorf("Value in field \"Owner\" was too long")
 	}
 
@@ -1660,7 +1661,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Owner) > cbg.MaxLength {
+	if len(t.Owner) > MaxLength {
 		return xerrors.Errorf("Value in field t.Owner was too long")
 	}
 
@@ -1672,7 +1673,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Gateway (string) (string)
-	if len("Gateway") > cbg.MaxLength {
+	if len("Gateway") > MaxLength {
 		return xerrors.Errorf("Value in field \"Gateway\" was too long")
 	}
 
@@ -1683,7 +1684,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Gateway) > cbg.MaxLength {
+	if len(t.Gateway) > MaxLength {
 		return xerrors.Errorf("Value in field t.Gateway was too long")
 	}
 
@@ -1695,7 +1696,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderOperation (string) (string)
-	if len("OrderOperation") > cbg.MaxLength {
+	if len("OrderOperation") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderOperation\" was too long")
 	}
 
@@ -1706,7 +1707,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.OrderOperation) > cbg.MaxLength {
+	if len(t.OrderOperation) > MaxLength {
 		return xerrors.Errorf("Value in field t.OrderOperation was too long")
 	}
 
@@ -1718,7 +1719,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ShardOperation (string) (string)
-	if len("ShardOperation") > cbg.MaxLength {
+	if len("ShardOperation") > MaxLength {
 		return xerrors.Errorf("Value in field \"ShardOperation\" was too long")
 	}
 
@@ -1729,7 +1730,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.ShardOperation) > cbg.MaxLength {
+	if len(t.ShardOperation) > MaxLength {
 		return xerrors.Errorf("Value in field t.ShardOperation was too long")
 	}
 
@@ -1741,7 +1742,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteHash (string) (string)
-	if len("CompleteHash") > cbg.MaxLength {
+	if len("CompleteHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteHash\" was too long")
 	}
 
@@ -1752,7 +1753,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CompleteHash) > cbg.MaxLength {
+	if len(t.CompleteHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.CompleteHash was too long")
 	}
 
@@ -1764,7 +1765,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteHeight (int64) (int64)
-	if len("CompleteHeight") > cbg.MaxLength {
+	if len("CompleteHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteHeight\" was too long")
 	}
 
@@ -1786,7 +1787,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Size (uint64) (uint64)
-	if len("Size") > cbg.MaxLength {
+	if len("Size") > MaxLength {
 		return xerrors.Errorf("Value in field \"Size\" was too long")
 	}
 
@@ -1802,7 +1803,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Tries (uint64) (uint64)
-	if len("Tries") > cbg.MaxLength {
+	if len("Tries") > MaxLength {
 		return xerrors.Errorf("Value in field \"Tries\" was too long")
 	}
 
@@ -1818,7 +1819,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ExpireHeight (uint64) (uint64)
-	if len("ExpireHeight") > cbg.MaxLength {
+	if len("ExpireHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"ExpireHeight\" was too long")
 	}
 
@@ -1834,7 +1835,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.State (types.ShardState) (uint64)
-	if len("State") > cbg.MaxLength {
+	if len("State") > MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
 
@@ -1850,7 +1851,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RetryAt (int64) (int64)
-	if len("RetryAt") > cbg.MaxLength {
+	if len("RetryAt") > MaxLength {
 		return xerrors.Errorf("Value in field \"RetryAt\" was too long")
 	}
 
@@ -1872,7 +1873,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.LastErr (string) (string)
-	if len("LastErr") > cbg.MaxLength {
+	if len("LastErr") > MaxLength {
 		return xerrors.Errorf("Value in field \"LastErr\" was too long")
 	}
 
@@ -1883,7 +1884,7 @@ func (t *ShardInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.LastErr) > cbg.MaxLength {
+	if len(t.LastErr) > MaxLength {
 		return xerrors.Errorf("Value in field t.LastErr was too long")
 	}
 
@@ -1915,7 +1916,7 @@ func (t *ShardInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardInfo: map struct too large (%d)", extra)
 	}
 
@@ -2173,7 +2174,7 @@ func (t *ShardIndex) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.All ([]types.ShardKey) (slice)
-	if len("All") > cbg.MaxLength {
+	if len("All") > MaxLength {
 		return xerrors.Errorf("Value in field \"All\" was too long")
 	}
 
@@ -2184,7 +2185,7 @@ func (t *ShardIndex) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.All) > cbg.MaxLength {
+	if len(t.All) > MaxLength {
 		return xerrors.Errorf("Slice value in field t.All was too long")
 	}
 
@@ -2218,7 +2219,7 @@ func (t *ShardIndex) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardIndex: map struct too large (%d)", extra)
 	}
 
@@ -2245,7 +2246,7 @@ func (t *ShardIndex) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > MaxLength {
 				return fmt.Errorf("t.All: array too large (%d)", extra)
 			}
 
@@ -2288,7 +2289,7 @@ func (t *MigrateKey) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -2299,7 +2300,7 @@ func (t *MigrateKey) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -2311,7 +2312,7 @@ func (t *MigrateKey) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.FromProvider (string) (string)
-	if len("FromProvider") > cbg.MaxLength {
+	if len("FromProvider") > MaxLength {
 		return xerrors.Errorf("Value in field \"FromProvider\" was too long")
 	}
 
@@ -2322,7 +2323,7 @@ func (t *MigrateKey) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.FromProvider) > cbg.MaxLength {
+	if len(t.FromProvider) > MaxLength {
 		return xerrors.Errorf("Value in field t.FromProvider was too long")
 	}
 
@@ -2354,7 +2355,7 @@ func (t *MigrateKey) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("MigrateKey: map struct too large (%d)", extra)
 	}
 
@@ -2417,7 +2418,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -2428,7 +2429,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -2440,7 +2441,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -2456,7 +2457,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (string) (string)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -2467,7 +2468,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Cid) > cbg.MaxLength {
+	if len(t.Cid) > MaxLength {
 		return xerrors.Errorf("Value in field t.Cid was too long")
 	}
 
@@ -2479,7 +2480,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.FromProvider (string) (string)
-	if len("FromProvider") > cbg.MaxLength {
+	if len("FromProvider") > MaxLength {
 		return xerrors.Errorf("Value in field \"FromProvider\" was too long")
 	}
 
@@ -2490,7 +2491,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.FromProvider) > cbg.MaxLength {
+	if len(t.FromProvider) > MaxLength {
 		return xerrors.Errorf("Value in field t.FromProvider was too long")
 	}
 
@@ -2502,7 +2503,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ToProvider (string) (string)
-	if len("ToProvider") > cbg.MaxLength {
+	if len("ToProvider") > MaxLength {
 		return xerrors.Errorf("Value in field \"ToProvider\" was too long")
 	}
 
@@ -2513,7 +2514,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.ToProvider) > cbg.MaxLength {
+	if len(t.ToProvider) > MaxLength {
 		return xerrors.Errorf("Value in field t.ToProvider was too long")
 	}
 
@@ -2525,7 +2526,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.MigrateTxHash (string) (string)
-	if len("MigrateTxHash") > cbg.MaxLength {
+	if len("MigrateTxHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"MigrateTxHash\" was too long")
 	}
 
@@ -2536,7 +2537,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.MigrateTxHash) > cbg.MaxLength {
+	if len(t.MigrateTxHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.MigrateTxHash was too long")
 	}
 
@@ -2548,7 +2549,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.MigrateTxHeight (int64) (int64)
-	if len("MigrateTxHeight") > cbg.MaxLength {
+	if len("MigrateTxHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"MigrateTxHeight\" was too long")
 	}
 
@@ -2570,7 +2571,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteTxHash (string) (string)
-	if len("CompleteTxHash") > cbg.MaxLength {
+	if len("CompleteTxHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteTxHash\" was too long")
 	}
 
@@ -2581,7 +2582,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CompleteTxHash) > cbg.MaxLength {
+	if len(t.CompleteTxHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.CompleteTxHash was too long")
 	}
 
@@ -2593,7 +2594,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteTxHeight (int64) (int64)
-	if len("CompleteTxHeight") > cbg.MaxLength {
+	if len("CompleteTxHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteTxHeight\" was too long")
 	}
 
@@ -2615,7 +2616,7 @@ func (t *MigrateInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.State (types.MigrateState) (uint64)
-	if len("State") > cbg.MaxLength {
+	if len("State") > MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
 
@@ -2652,7 +2653,7 @@ func (t *MigrateInfo) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("MigrateInfo: map struct too large (%d)", extra)
 	}
 
@@ -2841,7 +2842,7 @@ func (t *MigrateIndex) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.All ([]types.MigrateKey) (slice)
-	if len("All") > cbg.MaxLength {
+	if len("All") > MaxLength {
 		return xerrors.Errorf("Value in field \"All\" was too long")
 	}
 
@@ -2852,7 +2853,7 @@ func (t *MigrateIndex) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.All) > cbg.MaxLength {
+	if len(t.All) > MaxLength {
 		return xerrors.Errorf("Slice value in field t.All was too long")
 	}
 
@@ -2886,7 +2887,7 @@ func (t *MigrateIndex) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("MigrateIndex: map struct too large (%d)", extra)
 	}
 
@@ -2913,7 +2914,7 @@ func (t *MigrateIndex) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > MaxLength {
 				return fmt.Errorf("t.All: array too large (%d)", extra)
 			}
 
@@ -2956,7 +2957,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Owner (string) (string)
-	if len("Owner") > cbg.MaxLength {
+	if len("Owner") > MaxLength {
 		return xerrors.Errorf("Value in field \"Owner\" was too long")
 	}
 
@@ -2967,7 +2968,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Owner) > cbg.MaxLength {
+	if len(t.Owner) > MaxLength {
 		return xerrors.Errorf("Value in field t.Owner was too long")
 	}
 
@@ -2979,7 +2980,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Keyword (string) (string)
-	if len("Keyword") > cbg.MaxLength {
+	if len("Keyword") > MaxLength {
 		return xerrors.Errorf("Value in field \"Keyword\" was too long")
 	}
 
@@ -2990,7 +2991,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Keyword) > cbg.MaxLength {
+	if len(t.Keyword) > MaxLength {
 		return xerrors.Errorf("Value in field t.Keyword was too long")
 	}
 
@@ -3002,7 +3003,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.GroupId (string) (string)
-	if len("GroupId") > cbg.MaxLength {
+	if len("GroupId") > MaxLength {
 		return xerrors.Errorf("Value in field \"GroupId\" was too long")
 	}
 
@@ -3013,7 +3014,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.GroupId) > cbg.MaxLength {
+	if len(t.GroupId) > MaxLength {
 		return xerrors.Errorf("Value in field t.GroupId was too long")
 	}
 
@@ -3025,7 +3026,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.KeywordType (uint64) (uint64)
-	if len("KeywordType") > cbg.MaxLength {
+	if len("KeywordType") > MaxLength {
 		return xerrors.Errorf("Value in field \"KeywordType\" was too long")
 	}
 
@@ -3041,7 +3042,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.LastValidHeight (uint64) (uint64)
-	if len("LastValidHeight") > cbg.MaxLength {
+	if len("LastValidHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"LastValidHeight\" was too long")
 	}
 
@@ -3057,7 +3058,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Gateway (string) (string)
-	if len("Gateway") > cbg.MaxLength {
+	if len("Gateway") > MaxLength {
 		return xerrors.Errorf("Value in field \"Gateway\" was too long")
 	}
 
@@ -3068,7 +3069,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Gateway) > cbg.MaxLength {
+	if len(t.Gateway) > MaxLength {
 		return xerrors.Errorf("Value in field t.Gateway was too long")
 	}
 
@@ -3080,7 +3081,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CommitId (string) (string)
-	if len("CommitId") > cbg.MaxLength {
+	if len("CommitId") > MaxLength {
 		return xerrors.Errorf("Value in field \"CommitId\" was too long")
 	}
 
@@ -3091,7 +3092,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CommitId) > cbg.MaxLength {
+	if len(t.CommitId) > MaxLength {
 		return xerrors.Errorf("Value in field t.CommitId was too long")
 	}
 
@@ -3103,7 +3104,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Version (string) (string)
-	if len("Version") > cbg.MaxLength {
+	if len("Version") > MaxLength {
 		return xerrors.Errorf("Value in field \"Version\" was too long")
 	}
 
@@ -3114,7 +3115,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Version) > cbg.MaxLength {
+	if len(t.Version) > MaxLength {
 		return xerrors.Errorf("Value in field t.Version was too long")
 	}
 
@@ -3126,7 +3127,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataOwner (string) (string)
-	if len("DataOwner") > cbg.MaxLength {
+	if len("DataOwner") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataOwner\" was too long")
 	}
 
@@ -3137,7 +3138,7 @@ func (t *QueryProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataOwner) > cbg.MaxLength {
+	if len(t.DataOwner) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataOwner was too long")
 	}
 
@@ -3169,7 +3170,7 @@ func (t *QueryProposal) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("QueryProposal: map struct too large (%d)", extra)
 	}
 
@@ -3317,7 +3318,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.NodeAddress (string) (string)
-	if len("NodeAddress") > cbg.MaxLength {
+	if len("NodeAddress") > MaxLength {
 		return xerrors.Errorf("Value in field \"NodeAddress\" was too long")
 	}
 
@@ -3328,7 +3329,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.NodeAddress) > cbg.MaxLength {
+	if len(t.NodeAddress) > MaxLength {
 		return xerrors.Errorf("Value in field t.NodeAddress was too long")
 	}
 
@@ -3340,7 +3341,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.LocalPeerId (string) (string)
-	if len("LocalPeerId") > cbg.MaxLength {
+	if len("LocalPeerId") > MaxLength {
 		return xerrors.Errorf("Value in field \"LocalPeerId\" was too long")
 	}
 
@@ -3351,7 +3352,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.LocalPeerId) > cbg.MaxLength {
+	if len(t.LocalPeerId) > MaxLength {
 		return xerrors.Errorf("Value in field t.LocalPeerId was too long")
 	}
 
@@ -3363,7 +3364,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RelayPeerIds (string) (string)
-	if len("RelayPeerIds") > cbg.MaxLength {
+	if len("RelayPeerIds") > MaxLength {
 		return xerrors.Errorf("Value in field \"RelayPeerIds\" was too long")
 	}
 
@@ -3374,7 +3375,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.RelayPeerIds) > cbg.MaxLength {
+	if len(t.RelayPeerIds) > MaxLength {
 		return xerrors.Errorf("Value in field t.RelayPeerIds was too long")
 	}
 
@@ -3386,7 +3387,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TargetPeerInfo (string) (string)
-	if len("TargetPeerInfo") > cbg.MaxLength {
+	if len("TargetPeerInfo") > MaxLength {
 		return xerrors.Errorf("Value in field \"TargetPeerInfo\" was too long")
 	}
 
@@ -3397,7 +3398,7 @@ func (t *RelayProposal) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.TargetPeerInfo) > cbg.MaxLength {
+	if len(t.TargetPeerInfo) > MaxLength {
 		return xerrors.Errorf("Value in field t.TargetPeerInfo was too long")
 	}
 
@@ -3429,7 +3430,7 @@ func (t *RelayProposal) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("RelayProposal: map struct too large (%d)", extra)
 	}
 
@@ -3514,7 +3515,7 @@ func (t *JwsSignature) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Protected (string) (string)
-	if len("Protected") > cbg.MaxLength {
+	if len("Protected") > MaxLength {
 		return xerrors.Errorf("Value in field \"Protected\" was too long")
 	}
 
@@ -3525,7 +3526,7 @@ func (t *JwsSignature) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Protected) > cbg.MaxLength {
+	if len(t.Protected) > MaxLength {
 		return xerrors.Errorf("Value in field t.Protected was too long")
 	}
 
@@ -3537,7 +3538,7 @@ func (t *JwsSignature) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Signature (string) (string)
-	if len("Signature") > cbg.MaxLength {
+	if len("Signature") > MaxLength {
 		return xerrors.Errorf("Value in field \"Signature\" was too long")
 	}
 
@@ -3548,7 +3549,7 @@ func (t *JwsSignature) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Signature) > cbg.MaxLength {
+	if len(t.Signature) > MaxLength {
 		return xerrors.Errorf("Value in field t.Signature was too long")
 	}
 
@@ -3580,7 +3581,7 @@ func (t *JwsSignature) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("JwsSignature: map struct too large (%d)", extra)
 	}
 
@@ -3643,7 +3644,7 @@ func (t *MetadataProposalCbor) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Proposal (types.QueryProposal) (struct)
-	if len("Proposal") > cbg.MaxLength {
+	if len("Proposal") > MaxLength {
 		return xerrors.Errorf("Value in field \"Proposal\" was too long")
 	}
 
@@ -3659,7 +3660,7 @@ func (t *MetadataProposalCbor) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.JwsSignature (types.JwsSignature) (struct)
-	if len("JwsSignature") > cbg.MaxLength {
+	if len("JwsSignature") > MaxLength {
 		return xerrors.Errorf("Value in field \"JwsSignature\" was too long")
 	}
 
@@ -3695,7 +3696,7 @@ func (t *MetadataProposalCbor) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("MetadataProposalCbor: map struct too large (%d)", extra)
 	}
 
@@ -3756,7 +3757,7 @@ func (t *RelayProposalCbor) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Proposal (types.RelayProposal) (struct)
-	if len("Proposal") > cbg.MaxLength {
+	if len("Proposal") > MaxLength {
 		return xerrors.Errorf("Value in field \"Proposal\" was too long")
 	}
 
@@ -3772,7 +3773,7 @@ func (t *RelayProposalCbor) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Signature ([]uint8) (slice)
-	if len("Signature") > cbg.MaxLength {
+	if len("Signature") > MaxLength {
 		return xerrors.Errorf("Value in field \"Signature\" was too long")
 	}
 
@@ -3816,7 +3817,7 @@ func (t *RelayProposalCbor) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("RelayProposalCbor: map struct too large (%d)", extra)
 	}
 
@@ -3889,7 +3890,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -3905,7 +3906,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -3916,7 +3917,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -3928,7 +3929,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Assignee (string) (string)
-	if len("Assignee") > cbg.MaxLength {
+	if len("Assignee") > MaxLength {
 		return xerrors.Errorf("Value in field \"Assignee\" was too long")
 	}
 
@@ -3939,7 +3940,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Assignee) > cbg.MaxLength {
+	if len(t.Assignee) > MaxLength {
 		return xerrors.Errorf("Value in field t.Assignee was too long")
 	}
 
@@ -3951,7 +3952,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TxHash (string) (string)
-	if len("TxHash") > cbg.MaxLength {
+	if len("TxHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"TxHash\" was too long")
 	}
 
@@ -3962,7 +3963,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.TxHash) > cbg.MaxLength {
+	if len(t.TxHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.TxHash was too long")
 	}
 
@@ -3974,7 +3975,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Height (int64) (int64)
-	if len("Height") > cbg.MaxLength {
+	if len("Height") > MaxLength {
 		return xerrors.Errorf("Value in field \"Height\" was too long")
 	}
 
@@ -3996,7 +3997,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.AssignTxType (types.AssignTxType) (string)
-	if len("AssignTxType") > cbg.MaxLength {
+	if len("AssignTxType") > MaxLength {
 		return xerrors.Errorf("Value in field \"AssignTxType\" was too long")
 	}
 
@@ -4007,7 +4008,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.AssignTxType) > cbg.MaxLength {
+	if len(t.AssignTxType) > MaxLength {
 		return xerrors.Errorf("Value in field t.AssignTxType was too long")
 	}
 
@@ -4019,7 +4020,7 @@ func (t *ShardAssignReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TimeoutHeight (uint64) (uint64)
-	if len("TimeoutHeight") > cbg.MaxLength {
+	if len("TimeoutHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"TimeoutHeight\" was too long")
 	}
 
@@ -4056,7 +4057,7 @@ func (t *ShardAssignReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardAssignReq: map struct too large (%d)", extra)
 	}
 
@@ -4197,7 +4198,7 @@ func (t *ShardAssignResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Code (uint64) (uint64)
-	if len("Code") > cbg.MaxLength {
+	if len("Code") > MaxLength {
 		return xerrors.Errorf("Value in field \"Code\" was too long")
 	}
 
@@ -4213,7 +4214,7 @@ func (t *ShardAssignResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
-	if len("Message") > cbg.MaxLength {
+	if len("Message") > MaxLength {
 		return xerrors.Errorf("Value in field \"Message\" was too long")
 	}
 
@@ -4224,7 +4225,7 @@ func (t *ShardAssignResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Message) > cbg.MaxLength {
+	if len(t.Message) > MaxLength {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
 
@@ -4256,7 +4257,7 @@ func (t *ShardAssignResp) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardAssignResp: map struct too large (%d)", extra)
 	}
 
@@ -4323,7 +4324,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -4339,7 +4340,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -4350,7 +4351,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -4362,7 +4363,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cids ([]cid.Cid) (slice)
-	if len("Cids") > cbg.MaxLength {
+	if len("Cids") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cids\" was too long")
 	}
 
@@ -4373,7 +4374,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Cids) > cbg.MaxLength {
+	if len(t.Cids) > MaxLength {
 		return xerrors.Errorf("Slice value in field t.Cids was too long")
 	}
 
@@ -4387,7 +4388,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TxHash (string) (string)
-	if len("TxHash") > cbg.MaxLength {
+	if len("TxHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"TxHash\" was too long")
 	}
 
@@ -4398,7 +4399,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.TxHash) > cbg.MaxLength {
+	if len(t.TxHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.TxHash was too long")
 	}
 
@@ -4410,7 +4411,7 @@ func (t *ShardCompleteReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Height (int64) (int64)
-	if len("Height") > cbg.MaxLength {
+	if len("Height") > MaxLength {
 		return xerrors.Errorf("Value in field \"Height\" was too long")
 	}
 
@@ -4452,7 +4453,7 @@ func (t *ShardCompleteReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardCompleteReq: map struct too large (%d)", extra)
 	}
 
@@ -4505,7 +4506,7 @@ func (t *ShardCompleteReq) UnmarshalCBOR(r io.Reader) (err error) {
 				return err
 			}
 
-			if extra > cbg.MaxLength {
+			if extra > MaxLength {
 				return fmt.Errorf("t.Cids: array too large (%d)", extra)
 			}
 
@@ -4585,7 +4586,7 @@ func (t *ShardCompleteResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Code (uint64) (uint64)
-	if len("Code") > cbg.MaxLength {
+	if len("Code") > MaxLength {
 		return xerrors.Errorf("Value in field \"Code\" was too long")
 	}
 
@@ -4601,7 +4602,7 @@ func (t *ShardCompleteResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
-	if len("Message") > cbg.MaxLength {
+	if len("Message") > MaxLength {
 		return xerrors.Errorf("Value in field \"Message\" was too long")
 	}
 
@@ -4612,7 +4613,7 @@ func (t *ShardCompleteResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Message) > cbg.MaxLength {
+	if len(t.Message) > MaxLength {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
 
@@ -4624,7 +4625,7 @@ func (t *ShardCompleteResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Recoverable (bool) (bool)
-	if len("Recoverable") > cbg.MaxLength {
+	if len("Recoverable") > MaxLength {
 		return xerrors.Errorf("Value in field \"Recoverable\" was too long")
 	}
 
@@ -4660,7 +4661,7 @@ func (t *ShardCompleteResp) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardCompleteResp: map struct too large (%d)", extra)
 	}
 
@@ -4745,7 +4746,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Owner (string) (string)
-	if len("Owner") > cbg.MaxLength {
+	if len("Owner") > MaxLength {
 		return xerrors.Errorf("Value in field \"Owner\" was too long")
 	}
 
@@ -4756,7 +4757,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Owner) > cbg.MaxLength {
+	if len(t.Owner) > MaxLength {
 		return xerrors.Errorf("Value in field t.Owner was too long")
 	}
 
@@ -4768,7 +4769,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -4779,7 +4780,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -4791,7 +4792,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -4807,7 +4808,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (cid.Cid) (struct)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -4823,7 +4824,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Proposal (types.MetadataProposalCbor) (struct)
-	if len("Proposal") > cbg.MaxLength {
+	if len("Proposal") > MaxLength {
 		return xerrors.Errorf("Value in field \"Proposal\" was too long")
 	}
 
@@ -4839,7 +4840,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RequestId (int64) (int64)
-	if len("RequestId") > cbg.MaxLength {
+	if len("RequestId") > MaxLength {
 		return xerrors.Errorf("Value in field \"RequestId\" was too long")
 	}
 
@@ -4861,7 +4862,7 @@ func (t *ShardLoadReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RelayProposal (types.RelayProposalCbor) (struct)
-	if len("RelayProposal") > cbg.MaxLength {
+	if len("RelayProposal") > MaxLength {
 		return xerrors.Errorf("Value in field \"RelayProposal\" was too long")
 	}
 
@@ -4897,7 +4898,7 @@ func (t *ShardLoadReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardLoadReq: map struct too large (%d)", extra)
 	}
 
@@ -5034,7 +5035,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Code (uint64) (uint64)
-	if len("Code") > cbg.MaxLength {
+	if len("Code") > MaxLength {
 		return xerrors.Errorf("Value in field \"Code\" was too long")
 	}
 
@@ -5050,7 +5051,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
-	if len("Message") > cbg.MaxLength {
+	if len("Message") > MaxLength {
 		return xerrors.Errorf("Value in field \"Message\" was too long")
 	}
 
@@ -5061,7 +5062,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Message) > cbg.MaxLength {
+	if len(t.Message) > MaxLength {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
 
@@ -5073,7 +5074,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -5089,7 +5090,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (cid.Cid) (struct)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -5105,7 +5106,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Content ([]uint8) (slice)
-	if len("Content") > cbg.MaxLength {
+	if len("Content") > MaxLength {
 		return xerrors.Errorf("Value in field \"Content\" was too long")
 	}
 
@@ -5129,7 +5130,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.RequestId (int64) (int64)
-	if len("RequestId") > cbg.MaxLength {
+	if len("RequestId") > MaxLength {
 		return xerrors.Errorf("Value in field \"RequestId\" was too long")
 	}
 
@@ -5151,7 +5152,7 @@ func (t *ShardLoadResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.ResponseId (int64) (int64)
-	if len("ResponseId") > cbg.MaxLength {
+	if len("ResponseId") > MaxLength {
 		return xerrors.Errorf("Value in field \"ResponseId\" was too long")
 	}
 
@@ -5193,7 +5194,7 @@ func (t *ShardLoadResp) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardLoadResp: map struct too large (%d)", extra)
 	}
 
@@ -5362,7 +5363,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.MigrateFrom (string) (string)
-	if len("MigrateFrom") > cbg.MaxLength {
+	if len("MigrateFrom") > MaxLength {
 		return xerrors.Errorf("Value in field \"MigrateFrom\" was too long")
 	}
 
@@ -5373,7 +5374,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.MigrateFrom) > cbg.MaxLength {
+	if len(t.MigrateFrom) > MaxLength {
 		return xerrors.Errorf("Value in field t.MigrateFrom was too long")
 	}
 
@@ -5385,7 +5386,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.OrderId (uint64) (uint64)
-	if len("OrderId") > cbg.MaxLength {
+	if len("OrderId") > MaxLength {
 		return xerrors.Errorf("Value in field \"OrderId\" was too long")
 	}
 
@@ -5401,7 +5402,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.DataId (string) (string)
-	if len("DataId") > cbg.MaxLength {
+	if len("DataId") > MaxLength {
 		return xerrors.Errorf("Value in field \"DataId\" was too long")
 	}
 
@@ -5412,7 +5413,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.DataId) > cbg.MaxLength {
+	if len(t.DataId) > MaxLength {
 		return xerrors.Errorf("Value in field t.DataId was too long")
 	}
 
@@ -5424,7 +5425,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TxHash (string) (string)
-	if len("TxHash") > cbg.MaxLength {
+	if len("TxHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"TxHash\" was too long")
 	}
 
@@ -5435,7 +5436,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.TxHash) > cbg.MaxLength {
+	if len(t.TxHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.TxHash was too long")
 	}
 
@@ -5447,7 +5448,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.TxHeight (int64) (int64)
-	if len("TxHeight") > cbg.MaxLength {
+	if len("TxHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"TxHeight\" was too long")
 	}
 
@@ -5469,7 +5470,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Cid (string) (string)
-	if len("Cid") > cbg.MaxLength {
+	if len("Cid") > MaxLength {
 		return xerrors.Errorf("Value in field \"Cid\" was too long")
 	}
 
@@ -5480,7 +5481,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Cid) > cbg.MaxLength {
+	if len(t.Cid) > MaxLength {
 		return xerrors.Errorf("Value in field t.Cid was too long")
 	}
 
@@ -5492,7 +5493,7 @@ func (t *ShardMigrateReq) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Content ([]uint8) (slice)
-	if len("Content") > cbg.MaxLength {
+	if len("Content") > MaxLength {
 		return xerrors.Errorf("Value in field \"Content\" was too long")
 	}
 
@@ -5536,7 +5537,7 @@ func (t *ShardMigrateReq) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardMigrateReq: map struct too large (%d)", extra)
 	}
 
@@ -5684,7 +5685,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Code (uint64) (uint64)
-	if len("Code") > cbg.MaxLength {
+	if len("Code") > MaxLength {
 		return xerrors.Errorf("Value in field \"Code\" was too long")
 	}
 
@@ -5700,7 +5701,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Message (string) (string)
-	if len("Message") > cbg.MaxLength {
+	if len("Message") > MaxLength {
 		return xerrors.Errorf("Value in field \"Message\" was too long")
 	}
 
@@ -5711,7 +5712,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Message) > cbg.MaxLength {
+	if len(t.Message) > MaxLength {
 		return xerrors.Errorf("Value in field t.Message was too long")
 	}
 
@@ -5723,7 +5724,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteHash (string) (string)
-	if len("CompleteHash") > cbg.MaxLength {
+	if len("CompleteHash") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteHash\" was too long")
 	}
 
@@ -5734,7 +5735,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.CompleteHash) > cbg.MaxLength {
+	if len(t.CompleteHash) > MaxLength {
 		return xerrors.Errorf("Value in field t.CompleteHash was too long")
 	}
 
@@ -5746,7 +5747,7 @@ func (t *ShardMigrateResp) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.CompleteHeight (int64) (int64)
-	if len("CompleteHeight") > cbg.MaxLength {
+	if len("CompleteHeight") > MaxLength {
 		return xerrors.Errorf("Value in field \"CompleteHeight\" was too long")
 	}
 
@@ -5788,7 +5789,7 @@ func (t *ShardMigrateResp) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardMigrateResp: map struct too large (%d)", extra)
 	}
 
@@ -5892,7 +5893,7 @@ func (t *ShardPingPong) MarshalCBOR(w io.Writer) error {
 	}
 
 	// t.Local (string) (string)
-	if len("Local") > cbg.MaxLength {
+	if len("Local") > MaxLength {
 		return xerrors.Errorf("Value in field \"Local\" was too long")
 	}
 
@@ -5903,7 +5904,7 @@ func (t *ShardPingPong) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.Local) > cbg.MaxLength {
+	if len(t.Local) > MaxLength {
 		return xerrors.Errorf("Value in field t.Local was too long")
 	}
 
@@ -5935,7 +5936,7 @@ func (t *ShardPingPong) UnmarshalCBOR(r io.Reader) (err error) {
 		return fmt.Errorf("cbor input should be of type map")
 	}
 
-	if extra > cbg.MaxLength {
+	if extra > MaxLength {
 		return fmt.Errorf("ShardPingPong: map struct too large (%d)", extra)
 	}
 
